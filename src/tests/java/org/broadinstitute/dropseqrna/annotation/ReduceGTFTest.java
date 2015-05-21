@@ -1,8 +1,10 @@
 package org.broadinstitute.dropseqrna.annotation;
 
+import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.OverlapDetector;
 
 import java.io.File;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -29,8 +31,8 @@ public class ReduceGTFTest {
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
 	public void test1() {
 		ReduceGTF r = new ReduceGTF();
-		Set<String> featureTypes=r.splitSet(r.FEATURE_TYPES, ",");
-		Set<String> ignoredFunctionalTypes=r.splitSet(r.IGNORE_FUNC_TYPES, ",");
+		Set<String> featureTypes = new HashSet<>(r.FEATURE_TYPE);
+		Set<String> ignoredFunctionalTypes = new HashSet<>(r.IGNORE_FUNC_TYPE);
 		
 		List<GTFRecord> records = r.parseGTF (GTF_FILE1, SD, featureTypes, ignoredFunctionalTypes, true);
 		Assert.assertNotNull(records);
@@ -40,8 +42,8 @@ public class ReduceGTFTest {
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
 	public void test2() {
 		ReduceGTF r = new ReduceGTF();
-		Set<String> featureTypes=r.splitSet(r.FEATURE_TYPES, ",");
-		Set<String> ignoredFunctionalTypes=r.splitSet(r.IGNORE_FUNC_TYPES, ",");
+        Set<String> featureTypes = new HashSet<>(r.FEATURE_TYPE);
+        Set<String> ignoredFunctionalTypes = new HashSet<>(r.IGNORE_FUNC_TYPE);
 		
 		List<GTFRecord> records = r.parseGTF (GTF_FILE3, SD, featureTypes, ignoredFunctionalTypes, true);
 		Assert.assertNotNull(records);
@@ -70,8 +72,8 @@ public class ReduceGTFTest {
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
 	public void testAPITD1() {
 		ReduceGTF r = new ReduceGTF();
-		Set<String> featureTypes=r.splitSet(r.FEATURE_TYPES, ",");
-		Set<String> ignoredFunctionalTypes=r.splitSet(r.IGNORE_FUNC_TYPES, ",");
+        Set<String> featureTypes = new HashSet<>(r.FEATURE_TYPE);
+        Set<String> ignoredFunctionalTypes = new HashSet<>(r.IGNORE_FUNC_TYPE);
 		
 		List<GTFRecord> records = r.parseGTF (GTF_FILE4, SD, featureTypes, ignoredFunctionalTypes, true);
 		Assert.assertNotNull(records);
@@ -92,8 +94,8 @@ public class ReduceGTFTest {
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
 	public void testAPITD1Complex() {
 		ReduceGTF r = new ReduceGTF();
-		Set<String> featureTypes=r.splitSet(r.FEATURE_TYPES, ",");
-		Set<String> ignoredFunctionalTypes=r.splitSet(r.IGNORE_FUNC_TYPES, ",");
+        Set<String> featureTypes = new HashSet<>(r.FEATURE_TYPE);
+        Set<String> ignoredFunctionalTypes = new HashSet<>(r.IGNORE_FUNC_TYPE);
 		
 		List<GTFRecord> records = r.parseGTF (GTF_FILE5, SD, featureTypes, ignoredFunctionalTypes, true);
 		Assert.assertNotNull(records);

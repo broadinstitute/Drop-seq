@@ -3,6 +3,7 @@ package org.broadinstitute.dropseqrna.annotation;
 import htsjdk.samtools.SAMFileReader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 
@@ -40,9 +41,15 @@ import picard.util.TabbedInputParser;
 )
 public class ReduceGTF extends CommandLineProgram {
 
-	private static final Log log = Log.getInstance(ReduceGTF.class);
-	
-	@Option(shortName = StandardOptionDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME, doc="The reference sequence dictionary.  Only chromosomes found in this file AND the GTF file will be retained.")
+    private static final Log log = Log.getInstance(ReduceGTF.class);
+    private static final List<String> DEFAULT_FEATURE_TYPES = CollectionUtil.makeList("gene", "transcript", "exon");
+    private static final List<String> DEFAULT_IGNORED_FUNC_TYPES = CollectionUtil.makeList(
+            "pseudogene", "polymorphic_pseudogene", "TR_J_pseudogene", "TR_V_pseudogene", "IG_C_pseudogene",
+            "IG_J_pseudogene", "IG_V_pseudogene");
+    private static final String NA = "NA";
+
+    @Option(shortName = StandardOptionDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME, doc="The reference sequence dictionary." +
+            "  Only chromosomes found in this file AND the GTF file will be retained.")
 	public File SEQUENCE_DICTIONARY;
 	
 	@Option(doc="The GTF file to reduce")
@@ -54,13 +61,15 @@ public class ReduceGTF extends CommandLineProgram {
 	@Option(doc="The field name that contains the function of the gene/transcript")
 	public String FUNCTION_FIELD="gene_biotype";
 	
-	@Option(doc="The comma separated list of feature types to extract. Only lines of the GTF that have these feature types will be extracted.  This is the 3rd field of the GTF file, some examples of standard feature types are CDS, start_codon, stop_codon, and exon.")
-	public String FEATURE_TYPES="gene,transcript,exon";
+	@Option(doc="Feature type(s) to extract. Only lines of the GTF that have these feature types will be extracted.  " +
+            "This is the 3rd field of the GTF file, some examples of standard feature types are CDS, start_codon, stop_codon, and exon. ")
+	public List<String> FEATURE_TYPE = DEFAULT_FEATURE_TYPES;
 	
-	@Option(doc="Comma seperated list of functional types to ignore.  These are values in the FUNCTIONAL_FIELD column in the GTF file.") 
-	public String IGNORE_FUNC_TYPES="pseudogene,polymorphic_pseudogene,TR_J_pseudogene,TR_V_pseudogene,IG_C_pseudogene,IG_J_pseudogene,IG_V_pseudogene";
+	@Option(doc="Functional type(s) to ignore.  These are values in the FUNCTIONAL_FIELD column in the GTF file.")
+	public List<String> IGNORE_FUNC_TYPE = DEFAULT_IGNORED_FUNC_TYPES;
 	
-	@Option(doc="Enhance this reduced GTF file with genes,transcripts,introns, and consensus introns.  This is real handy when your GTF file only defines exons, but has the transcript and gene IDs they belong to.")
+	@Option(doc="Enhance this reduced GTF file with genes,transcripts,introns, and consensus introns.  This is real " +
+            "handy when your GTF file only defines exons, but has the transcript and gene IDs they belong to.")
 	public boolean ENHANCE_GTF=true;
 	
 	@Override
@@ -69,8 +78,8 @@ public class ReduceGTF extends CommandLineProgram {
 		IOUtil.assertFileIsReadable(GTF);
 		IOUtil.assertFileIsWritable(this.OUTPUT);
 		
-		Set<String> featureTypes=splitSet(this.FEATURE_TYPES, ",");
-		Set<String> ignoredFunctionalTypes=splitSet(this.IGNORE_FUNC_TYPES, ",");
+		Set<String> featureTypes = new HashSet<>(FEATURE_TYPE);
+		Set<String> ignoredFunctionalTypes = new HashSet<>(IGNORE_FUNC_TYPE);
 		
 		List<GTFRecord> records = parseGTF (this.GTF, this.SEQUENCE_DICTIONARY, featureTypes, ignoredFunctionalTypes, true );
 		
@@ -155,7 +164,7 @@ public class ReduceGTF extends CommandLineProgram {
 		}
 		
 		boolean negativeStrand=false;
-		if (strand=="-") negativeStrand=true;
+		if (strand.equals("-")) negativeStrand=true;
 		
 		GTFRecord r = new GTFRecord(chr, startPos, endPos, negativeStrand, geneID, geneName, transcriptName, transcriptID, transcriptType, featureType);
 		
@@ -163,7 +172,8 @@ public class ReduceGTF extends CommandLineProgram {
 	}
 	
 	private void writeHeader (PrintStream out) {
-		String [] line = {"chr", "start", "end", "strand", "gene_name", "gene_id", "transcript_name", "transcript_id", "transcriptType", "annotationType"};
+		String [] line = {"chr", "start", "end", "strand", "gene_name", "gene_id", "transcript_name", "transcript_id",
+                "transcriptType", "annotationType"};
 		String h = StringUtils.join(line, "\t");
 		out.println(h);
 	}
@@ -188,19 +198,15 @@ public class ReduceGTF extends CommandLineProgram {
 		return (result);
 	}
 	
-	Set<String> splitSet (String s, String delimiter) {
-		Set<String> result = new HashSet<String>();
-		String [] r = s.split(delimiter);
-		for (String a: r) {
-			result.add(a);
-		}
-		return (result);
-	}
-	
 	private void writeLine (GTFRecord r, PrintStream out) {
 		if (r==null) return;
 		String [] line={r.getChromosome(),new Integer(r.getStart()).toString(), new Integer(r.getEnd()).toString(), r.getStrandAsString(), r.getGeneName(), r.getGeneID(),
 				r.getTranscriptName(), r.getTranscriptID(), r.getTranscriptType(), r.getFeatureType()};
+        for (int i = 0; i < line.length; ++i) {
+            if (line[i] == null || line[i].isEmpty()) {
+                line[i] = NA;
+            }
+        }
 		String h = StringUtils.join(line, "\t");
 		out.println(h);
 	}

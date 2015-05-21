@@ -157,15 +157,11 @@ public class GTFReader {
     		
         	if (featureType.equals("exon")) {
         		Exon e = new Exon(start,end);
-        		// RefFlatParser has an off by 1 error.  It takes a 0 based coordinate and changes it to a 1 based coordinate, then tests to see if it's less than or equal to another exon.
-        		// I'm not too fussed about 1bp features, but I'd rather wrongfully toss a 1 bp exon than the whole gene.
-        		if (e.start!=e.end) {
-        			exons.add(e);
-            		transcriptionStart = Math.min(transcriptionStart, start);
-            		transcriptionEnd = Math.max(transcriptionEnd, end);	
-        		}
-        		
-        	}
+                exons.add(e);
+                transcriptionStart = Math.min(transcriptionStart, start);
+                transcriptionEnd = Math.max(transcriptionEnd, end);
+
+            }
             if (featureType.equals("CDS")) {
             	codingStart=Math.min(codingStart, start);
         		codingEnd=Math.max(codingEnd, end);

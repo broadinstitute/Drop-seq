@@ -84,7 +84,9 @@ public class GTFRecord implements Comparable<GTFRecord> {
         if (!this.geneName.equals(that.geneName)) return false;
         if (!this.transcriptName.equals(that.transcriptName)) return false;
         if (!this.transcriptID.equals(that.transcriptID)) return false;
-        if (!this.transcriptType.equals(that.transcriptType)) return false;
+        if (this.transcriptType == null) {
+            if (that.transcriptType != null) return false;
+        } else if (!this.transcriptType.equals(that.transcriptType)) return false;
         if (!this.featureType.equals(that.featureType)) return false;
         
         return true;
@@ -97,7 +99,10 @@ public class GTFRecord implements Comparable<GTFRecord> {
         result = 31 * result + geneName.hashCode();
         result = 31 * result + transcriptName.hashCode();
         result = 31 * result + transcriptID.hashCode();
-        result = 31 * result + transcriptType.hashCode();
+        if (transcriptType != null) {
+            // E.g. ERCC
+            result = 31 * result + transcriptType.hashCode();
+        }
         result = 31 * result + featureType.hashCode();
         return result;
     }

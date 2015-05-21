@@ -9,7 +9,7 @@ import picard.annotation.AnnotationException;
 import picard.annotation.Gene;
 
 
-public class GeneFromGTF extends Gene implements Iterable<GeneFromGTF.Transcript> {
+public class GeneFromGTF extends Gene implements Iterable<Gene.Transcript> {
 	
 	private String geneID;
 	private String transcriptType;
@@ -71,6 +71,7 @@ public class GeneFromGTF extends Gene implements Iterable<GeneFromGTF.Transcript
          if (this.getEnd() != that.getEnd()) return false;
          if (!this.getName().equals(that.getName())) return false;
          if (!this.getSequence().equals(that.getSequence())) return false;
+         if (!this.getGeneID().equals(that.getGeneID())) return false;
 
          return true;
      }
