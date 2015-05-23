@@ -16,6 +16,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.OutputWriterUtil;
+import org.broadinstitute.dropseqrna.utils.readIterators.UMIIterator;
 
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
@@ -54,21 +55,13 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 				this.GENE_EXON_TAG, this.STRAND_TAG, this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL, 
 				this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD, USE_STRAND_INFO);
 				
-		
-		DEUtils u = new DEUtils(this.MAX_RECORDS_IN_RAM);
-		CloseableIterator<SAMRecord> cIter = u.getReadsInTagOrder(this.INPUT, this.GENE_EXON_TAG, this.STRAND_TAG, this.CELL_BARCODE_TAG, this.READ_MQ, true, USE_STRAND_INFO,barcodes);
-		PeekableIterator<SAMRecord> iter = new PeekableIterator<SAMRecord>(cIter);
-		
-		if (iter.hasNext()==false) {
-			log.error("No records found in BAM file. Quitting!");
-			System.exit(1);
-		}
+		UMIIterator umiIterator = new UMIIterator(this.INPUT, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG, 
+				this.READ_MQ, true, this.USE_STRAND_INFO, barcodes, this.MAX_RECORDS_IN_RAM);
 				
-		Utils utils = new Utils();
-		iter = utils.primeIterator(iter, this.CELL_BARCODE_TAG, this.GENE_EXON_TAG);
 		
 		UMICollection batch;
-		while ((batch=u.getUMICollection(iter, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG))!=null) {
+		
+		while ((batch=umiIterator.next())!=null) {
 			if (batch.isEmpty()==false) {
 				String cellTag = batch.getCellBarcode();
 				if (barcodes.contains(cellTag) || barcodes.isEmpty()) {
@@ -120,22 +113,14 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 		
 		writePerTranscriptHeader(out);
 		
-		DEUtils u = new DEUtils(this.MAX_RECORDS_IN_RAM);
-		CloseableIterator<SAMRecord> cIter = u.getReadsInTagOrder(bamFile, geneExonTag, strandTag, cellTag, mapQuality, true, useStrandInfo, null);
-		PeekableIterator<SAMRecord> iter = new PeekableIterator<SAMRecord>(cIter);
+		UMIIterator umiIterator = new UMIIterator(bamFile, geneExonTag, cellTag, molecularBarcodeTag, strandTag, 
+				mapQuality, true, useStrandInfo, null, this.MAX_RECORDS_IN_RAM);
 		
-		if (iter.hasNext()==false) {
-			log.error("No records found in BAM file. Quitting!");
-			System.exit(1);
-		}
-				
-		Utils utils = new Utils();
-		iter = utils.primeIterator(iter, cellTag, geneExonTag);
 		
 		ObjectCounter<String> transcriptsPerCell = new ObjectCounter<String>();
 		
 		UMICollection batch;
-		while ((batch=u.getUMICollection(iter, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG))!=null) {
+		while ((batch=umiIterator.next())!=null) {
 			if (batch.isEmpty()==false) {
 				int numTranscripts = batch.getMolecularBarcodeCounts().getSize();
 				transcriptsPerCell.incrementByCount(batch.getCellBarcode(), numTranscripts);

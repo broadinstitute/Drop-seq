@@ -8,9 +8,10 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
-import org.broadinstitute.dropseqrna.barnyard.DEUtils;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
+import org.broadinstitute.dropseqrna.utils.readIterators.DEIteratorUtils;
+import org.broadinstitute.dropseqrna.utils.readIterators.UMIIterator;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -54,23 +55,23 @@ public class DigitalExpressionTest {
 	private int READ_MQ=10;
 	private Boolean USE_STRAND_INFO=true;
 	
-	private PeekableIterator<SAMRecord> getIter() {
-		DEUtils u = new DEUtils(this.MAX_RECORDS_IN_RAM/2);
+	
+	private UMIIterator getUMIIterator () {
 		String [] barcodes ={"ATCAGGGACAGA", "AGGGAAAATTGA", "TTGCCTTACGCG", "TGGCGAAGAGAT", "TACAATTAAGGC"};
 		List<String> cellBarcodes = Arrays.asList(barcodes);
 		
-		CloseableIterator<SAMRecord> cIter = u.getReadsInTagOrder(this.IN_FILE, this.GENE_EXON_TAG, this.STRAND_TAG, this.CELL_BARCODE_TAG, this.READ_MQ, true, USE_STRAND_INFO, cellBarcodes);
-		PeekableIterator<SAMRecord> iter = new PeekableIterator<SAMRecord>(cIter);
-		iter = new Utils().primeIterator (iter, this.GENE_EXON_TAG);
-		return iter;
+		UMIIterator iter = new UMIIterator(this.IN_FILE, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG, this.READ_MQ, 
+				true, this.USE_STRAND_INFO, cellBarcodes, this.MAX_RECORDS_IN_RAM);
+		
+		return (iter);
 	}
+	
 	
 	@Test(groups={"dropseq", "transcriptome"})
 	public void DGEIntegrationTest () {
-		DEUtils u = new DEUtils(this.MAX_RECORDS_IN_RAM/2);
-		PeekableIterator<SAMRecord> iter  = getIter();
+		UMIIterator u = getUMIIterator ();
 		UMICollection batch;
-		while ((batch=u.getUMICollection(iter, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG))!=null) {
+		while ((batch=u.next())!=null) {
 			if (batch==null || batch.isEmpty()){
 				continue;	
 			}

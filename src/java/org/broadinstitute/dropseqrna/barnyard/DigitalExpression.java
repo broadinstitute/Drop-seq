@@ -24,6 +24,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.editdistance.EDUtils;
+import org.broadinstitute.dropseqrna.utils.readIterators.UMIIterator;
 
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
@@ -99,21 +100,17 @@ public class DigitalExpression extends DGECommandLineBase {
 		PrintStream out = new PrintStream(IOUtil.openFileForWriting(OUTPUT));
 		
 		writeHeader(out, cellBarcodes);
+
+		UMIIterator umiIterator = new UMIIterator(this.INPUT, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG, 
+		this.READ_MQ, true, this.USE_STRAND_INFO, cellBarcodes, this.MAX_RECORDS_IN_RAM);
 		
-		DEUtils u = new DEUtils(this.MAX_RECORDS_IN_RAM/2);
-		CloseableIterator<SAMRecord> cIter = u.getReadsInTagOrder(this.INPUT, this.GENE_EXON_TAG, this.STRAND_TAG, this.CELL_BARCODE_TAG, this.READ_MQ, true, USE_STRAND_INFO, cellBarcodes);
-		PeekableIterator<SAMRecord> iter = new PeekableIterator<SAMRecord>(cIter);
-		
-		iter = new Utils().primeIterator (iter, this.GENE_EXON_TAG);
-		if (iter.hasNext()==false) {
-			log.error("No records found to iterate on.  Did you select the right BAM tags for your cell barcode, and gene/exon tag?");
-		}
 		String gene = null;
 		Map<String, Integer> countMap = new HashMap<String, Integer>();
 		Map<String, DESummary> summaryMap = initializeSummary(cellBarcodes);
 		
+		
 		UMICollection batch;
-		while ((batch=u.getUMICollection(iter, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG))!=null) {
+		while ((batch=umiIterator.next())!=null) {
 			if (batch==null || batch.isEmpty()){
 				continue;	
 			}
@@ -149,7 +146,7 @@ public class DigitalExpression extends DGECommandLineBase {
 		if (this.SUMMARY!=null) {
 			writeSummary(summaryMap.values(), this.SUMMARY);
 		}
-		iter.close();
+		
 		
 	}
 	 

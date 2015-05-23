@@ -30,6 +30,7 @@ import java.util.Set;
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.BAMTagComparator;
+import org.broadinstitute.dropseqrna.utils.readIterators.DEIteratorUtils;
 
 import picard.analysis.MetricAccumulationLevel;
 import picard.analysis.RnaSeqMetrics;
@@ -104,7 +105,8 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
      	l.add(this.CELL_BARCODE_TAG);
      	PeekableIterator<SAMRecord> iter = new PeekableIterator<SAMRecord>(getReadsInTagOrder (this.INPUT, this.CELL_BARCODE_TAG, rg, cellBarcodes, this.READ_MQ));
      	log.info("Priming iterator");
-     	iter = new Utils().primeIterator (iter, this.CELL_BARCODE_TAG);
+     	DEIteratorUtils utils = new DEIteratorUtils();
+     	iter = utils.primeIterator (iter, this.CELL_BARCODE_TAG);
      	log.info("Iterator primed!");
      	
 		while (iter.hasNext()) {

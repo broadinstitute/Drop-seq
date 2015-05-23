@@ -25,8 +25,9 @@ import java.util.Set;
 
 import org.broadinstitute.dropseqrna.annotation.AnnotationUtils;
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
-import org.broadinstitute.dropseqrna.barnyard.DEUtils;
+import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.readIterators.DEIteratorUtils;
 
 import picard.annotation.Gene;
 import picard.annotation.LocusFunction;
@@ -222,11 +223,11 @@ public class TagReadWithGeneExon extends CommandLineProgram {
 		
 		StringBuilder result = new StringBuilder();
 		Iterator<Gene> iter = genes.iterator();
-		result.append(DEUtils.strandToString(iter.next().isPositiveStrand()));
+		result.append(Utils.strandToString(iter.next().isPositiveStrand()));
 		
 		while (iter.hasNext()) {
 			result.append(",");
-			result.append(DEUtils.strandToString(iter.next().isPositiveStrand()));
+			result.append(Utils.strandToString(iter.next().isPositiveStrand()));
 		}
 		
 		return (result.toString());
