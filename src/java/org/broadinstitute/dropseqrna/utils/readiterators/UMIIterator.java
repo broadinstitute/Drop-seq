@@ -1,4 +1,4 @@
-package org.broadinstitute.dropseqrna.utils.readIterators;
+package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.PeekableIterator;

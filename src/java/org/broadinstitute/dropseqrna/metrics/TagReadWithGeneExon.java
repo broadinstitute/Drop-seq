@@ -27,7 +27,7 @@ import org.broadinstitute.dropseqrna.annotation.AnnotationUtils;
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.readIterators.DEIteratorUtils;
+import org.broadinstitute.dropseqrna.utils.readiterators.DEIteratorUtils;
 
 import picard.annotation.Gene;
 import picard.annotation.LocusFunction;

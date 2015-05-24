@@ -30,7 +30,7 @@ import java.util.Set;
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.BAMTagComparator;
-import org.broadinstitute.dropseqrna.utils.readIterators.DEIteratorUtils;
+import org.broadinstitute.dropseqrna.utils.readiterators.DEIteratorUtils;
 
 import picard.analysis.MetricAccumulationLevel;
 import picard.analysis.RnaSeqMetrics;

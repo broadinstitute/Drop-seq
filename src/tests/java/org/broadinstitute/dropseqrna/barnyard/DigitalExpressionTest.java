@@ -10,8 +10,8 @@ import java.util.List;
 
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
-import org.broadinstitute.dropseqrna.utils.readIterators.DEIteratorUtils;
-import org.broadinstitute.dropseqrna.utils.readIterators.UMIIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.DEIteratorUtils;
+import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

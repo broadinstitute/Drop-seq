@@ -1,4 +1,4 @@
-package org.broadinstitute.dropseqrna.utils.readIterators;
+package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
 
@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.broadinstitute.dropseqrna.utils.readiterators.DEIteratorUtils;
+import org.broadinstitute.dropseqrna.utils.readiterators.SimpleTagIterator;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 

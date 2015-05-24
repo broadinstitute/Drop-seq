@@ -24,7 +24,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.editdistance.EDUtils;
-import org.broadinstitute.dropseqrna.utils.readIterators.UMIIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
