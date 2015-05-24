@@ -73,7 +73,7 @@ public class DEIteratorUtils {
 		return (result);		
 	}
 	
-	private List<String> getValuesForTags(List<String>tags, SAMRecord r) {
+	public static List<String> getValuesForTags(List<String>tags, SAMRecord r) {
 		List<String> currentValues = new ArrayList<String>();
 		for (String t: tags) {
 			currentValues.add(r.getStringAttribute(t));
@@ -81,7 +81,7 @@ public class DEIteratorUtils {
 		return (currentValues);
 	}
 	
-	private boolean testTagsNotEqual (List<String> original, List<String> next) {
+	public static boolean testTagsNotEqual (List<String> original, List<String> next) {
 		for (int i=0; i<original.size(); i++) {
 			String s1 = original.get(i);
 			String s2 = next.get(i);
@@ -97,7 +97,7 @@ public class DEIteratorUtils {
 	}
 	
 	public CloseableIterator<SAMRecord> getReadsInTagOrder (File inFile, List<String> sortingTags, ReadProcessorCollection filters) {	
-		SamReader reader = SamReaderFactory.makeDefault().open(inFile);
+		SamReader reader = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(inFile);
 		
 		SAMSequenceDictionary dict= reader.getFileHeader().getSequenceDictionary();
 		List<SAMProgramRecord> programs =reader.getFileHeader().getProgramRecords();
