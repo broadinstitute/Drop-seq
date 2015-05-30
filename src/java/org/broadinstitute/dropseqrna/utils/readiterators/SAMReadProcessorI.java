@@ -12,6 +12,6 @@ import java.util.Collection;
  */
 public interface SAMReadProcessorI {
 
-	public Collection<SAMRecord> processRead (SAMRecord r);
+	public Collection<SAMRecord> processRead (SAMRecord r, Collection<SAMRecord> outList);
 	
 }

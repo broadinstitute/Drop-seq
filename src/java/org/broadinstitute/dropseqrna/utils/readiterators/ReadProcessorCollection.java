@@ -25,14 +25,21 @@ public class ReadProcessorCollection {
 		this.processorList.add(processor);
 	}
 	
+	// Pass in a collection of samrecords that's empty.
+	// shove records into the temp list.
+	// swap the result with the temp list
+	// empty the temp list.
 	public Collection<SAMRecord> processRead (SAMRecord r) {
 		Collection<SAMRecord> result = new ArrayList<SAMRecord>();
 		result.add(r);
+		Collection<SAMRecord> temp = new ArrayList<SAMRecord>();
 		
 		for (SAMReadProcessorI p: processorList) {
 			Collection<SAMRecord> processorResult = new ArrayList<SAMRecord>();
 			for (SAMRecord rec: result) {
-				processorResult.addAll(p.processRead(rec));
+				temp = p.processRead(rec, temp);
+				processorResult.addAll(temp);
+				temp.clear();
 			}
 			// a processor is done - push result into current and loop again.
 			result=processorResult;
@@ -40,5 +47,10 @@ public class ReadProcessorCollection {
 		
 		return (result);
 	}
+	
+	
+	
+	
+	
 	
 }

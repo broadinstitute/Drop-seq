@@ -47,18 +47,17 @@ public class UMIReadProcessor implements SAMReadProcessorI {
 		this.useStrandInfo = useStrandInfo;
 	}
 	@Override
-	public Collection<SAMRecord> processRead(SAMRecord r) {
+	public Collection<SAMRecord> processRead(SAMRecord r, Collection<SAMRecord> tempList) {
 		String cellBC=r.getStringAttribute(cellBarcodeTag);
 		String geneList = r.getStringAttribute(this.geneExonTag);
-		List<SAMRecord> result = new ArrayList<SAMRecord>();
 		
 		// if there are cell barcodes to filter on, and this read's cell barcode isn't one of them, then move on to the next read;
 		if (this.cellBarcodeList!=null && !cellBarcodeList.contains(cellBC)) {
-			return (result);
+			return (tempList);
 		}
 		// if the read doesn't pass map quality, etc, more on.
 		if (r.isSecondaryOrSupplementary() || r.getMappingQuality()<this.readMQ || geneList==null) {
-			return (result);
+			return (tempList);
 		}
 		
 		// there's at least one good copy of the read.  Does the read match on strand/gene, or is it assigned to multiple genes?
@@ -80,13 +79,13 @@ public class UMIReadProcessor implements SAMReadProcessorI {
 					String geneStrand = strands[i];
 					String readStrandString = Utils.strandToString(!r.getReadNegativeStrandFlag());
 					if (geneStrand.equals(readStrandString)) {
-						result.add(rr);
+						tempList.add(rr);
 					} else {
 						// rejected read
 						// log.info("Read wrong strand");
 					}
 				} else { // if you don't use strand info, add the read to all genes.
-					result.add(rr);	
+					tempList.add(rr);	
 				}
 			}
 		} 
@@ -95,10 +94,10 @@ public class UMIReadProcessor implements SAMReadProcessorI {
 			int randomNum = rand.nextInt((genes.length-1) + 1);
 			String g = genes[randomNum];
 			r.setAttribute(geneExonTag, g);
-			result.add(r);
+			tempList.add(r);
 		}
 		
-		return result;
+		return tempList;
 	}
 
 }

@@ -17,17 +17,17 @@ public class MapQualityProcessor implements SAMReadProcessorI {
 	}
 	
 	@Override
-	public Collection<SAMRecord> processRead(SAMRecord r) {
-		List<SAMRecord> result = new ArrayList<SAMRecord>(1);
+	public Collection<SAMRecord> processRead(SAMRecord r, Collection<SAMRecord> outList) {
+		
 		
 		// drop read if we filter on non-primary and we see a non-primary read.
-		if (rejectNonPrimaryReads && r.isSecondaryOrSupplementary()) return (result);
+		if (rejectNonPrimaryReads && r.isSecondaryOrSupplementary()) return (outList);
 		// reject on map quality if quality score is set.
-		if (this.mapQuality!=null && this.mapQuality < r.getMappingQuality()) return (result);
+		if (this.mapQuality!=null && r.getMappingQuality() < this.mapQuality) return (outList);
 		
 		// you're all good
-		result.add(r);
-		return result;
+		outList.add(r);
+		return outList;
 	}
 
 }

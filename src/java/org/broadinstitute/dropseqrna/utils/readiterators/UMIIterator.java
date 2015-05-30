@@ -1,6 +1,7 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.PeekableIterator;
 
 import java.io.File;
@@ -11,12 +12,12 @@ import java.util.List;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 
-public class UMIIterator extends AbstractBAMTagIterator<UMICollection>  {
+public class UMIIterator implements CloseableIterator<UMICollection>  {
 	
-	private String geneExonTag;
-	private String cellBarcodeTag;
-	private String molecularBarcodeTag;
-	private List<String> sortingTags;
+	private final AggregatedTagOrderIterator atoi;
+	private final String geneExonTag;
+	private final String cellBarcodeTag;
+	private final String molecularBarcodeTag;
 	
 	/**
 	 * Construct an object that generates UMI objects from a BAM file
@@ -32,20 +33,20 @@ public class UMIIterator extends AbstractBAMTagIterator<UMICollection>  {
 	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.  Only reads with these values will be used.  If set to null, all cell barcodes are used. 
 	 */
 	public UMIIterator(File bamFile, String geneExonTag, String cellBarcodeTag, String molecularBarcodeTag, String strandTag, int readMQ, boolean assignReadsToAllGenes, boolean useStrandInfo, List<String> cellBarcodes, int maxRecordsInRAM) {
-		super(maxRecordsInRAM);
-		
 		this.geneExonTag=geneExonTag;
 		this.cellBarcodeTag=cellBarcodeTag;
 		this.molecularBarcodeTag=molecularBarcodeTag;
 		
-		UMIReadProcessor f = new UMIReadProcessor(cellBarcodeTag, cellBarcodes, geneExonTag, strandTag, readMQ, assignReadsToAllGenes, useStrandInfo);
-		
 		// assign the tags in the order you want data sorted.
+		List<String> sortingTags = new ArrayList<String>();
 		sortingTags = new ArrayList<String>();
 		sortingTags.add(geneExonTag);
 		sortingTags.add(cellBarcodeTag);
 		
-		initialize (bamFile, sortingTags, f);
+		UMIReadProcessor f = new UMIReadProcessor(cellBarcodeTag, cellBarcodes, geneExonTag, strandTag, readMQ, assignReadsToAllGenes, useStrandInfo);
+		
+		TagOrderIterator toi = new TagOrderIterator(bamFile, sortingTags, f, true);
+		this.atoi = new AggregatedTagOrderIterator(toi);
 		
 	}
 	
@@ -55,13 +56,11 @@ public class UMIIterator extends AbstractBAMTagIterator<UMICollection>  {
 	 */
 	@Override
 	public UMICollection next () {
-		if (super.iter==null || super.iter.hasNext()==false) {
-			super.iter.close();
+		if (!this.atoi.hasNext()) {
 			return null;
 		}
 		
-		//Collection<SAMRecord> records = iterUtils.getRecordCollection(iter, this.geneExonTag, this.cellBarcodeTag);
-		Collection<SAMRecord> records = iterUtils.getRecordCollection(super.iter, this.sortingTags);
+		Collection<SAMRecord> records = this.atoi.next();
 		PeekableIterator<SAMRecord> recordCollectionIter = new PeekableIterator<SAMRecord>(records.iterator());
 		
 		// the next record is the first of the "batch"
@@ -80,6 +79,21 @@ public class UMIIterator extends AbstractBAMTagIterator<UMICollection>  {
 		// I ran out of reads
 		recordCollectionIter.close();
 		return (umi);
+	}
+	
+	@Override
+	public void remove() {
+		this.atoi.remove();
+	}
+
+	@Override
+	public void close() {
+		this.atoi.close();
+	}
+
+	@Override
+	public boolean hasNext() {
+		return this.atoi.hasNext();
 	}
 	
 	

@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMFileWriterImpl;
 import htsjdk.samtools.SAMProgramRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMTagUtil;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloseableIterator;
@@ -30,15 +31,31 @@ public class DEIteratorUtils {
 	private static final Log log = Log.getInstance(DEIteratorUtils.class);
 	private ProgressLogger progress = new ProgressLogger(log, 100000);
 	
-	private Integer MAX_RECORDS_IN_RAM;
+	private Integer MAX_RECORDS_IN_RAM = SAMFileWriterImpl.getDefaultMaxRecordsInRam();
 	
-	public DEIteratorUtils () {
-		MAX_RECORDS_IN_RAM = SAMFileWriterImpl.getDefaultMaxRecordsInRam();
+	
+	
+	public static List<Short> getShortBAMTags (List<String> tags) {
+		List<Short> result = new ArrayList<Short>(tags.size());
+		
+		for (String tag : tags) {
+			short s = SAMTagUtil.getSingleton().makeBinaryTag(tag);
+			result.add(s);
+		}
+		return (result);
 	}
 	
-	public DEIteratorUtils (int maxRecordsInRam) {
-		MAX_RECORDS_IN_RAM = maxRecordsInRam;
+	public static List<String> getStringBAMTags (List<Short> tags) {
+		List<String> result = new ArrayList<String>(tags.size());
+		
+		for (Short tag : tags) {
+			String s = SAMTagUtil.getSingleton().makeStringTag(tag);
+			result.add(s);
+		}
+		return (result);
 	}
+	
+	
 	
 	
 	/**
@@ -48,7 +65,7 @@ public class DEIteratorUtils {
 	 * @param cellBarcodeTag
 	 * @return
 	 */
-	
+	/*
 	public Collection<SAMRecord> getRecordCollection (PeekableIterator<SAMRecord> iter, List<String> tags) {
 		if (iter.hasNext()==false) return (null);
 		List<SAMRecord> result = new ArrayList<SAMRecord>();
@@ -73,41 +90,30 @@ public class DEIteratorUtils {
 		return (result);		
 	}
 	
-	public static List<String> getValuesForTags(List<String>tags, SAMRecord r) {
-		List<String> currentValues = new ArrayList<String>();
-		for (String t: tags) {
-			currentValues.add(r.getStringAttribute(t));
-		}
-		return (currentValues);
-	}
 	
-	public static boolean testTagsNotEqual (List<String> original, List<String> next) {
-		for (int i=0; i<original.size(); i++) {
-			String s1 = original.get(i);
-			String s2 = next.get(i);
-			if (!s1.equals(s2)) return (true);
-		}
-		return (false);
-	}
 	
-	public CloseableIterator<SAMRecord> getReadsInTagOrder (File inFile, List<String> sortingTags, SAMReadProcessorI filter) {
+	
+	
+	public CloseableIterator<SAMRecord> getReadsInTagOrder (File inFile, List<Short> sortingTags, SAMReadProcessorI filter) {
 		ReadProcessorCollection c = new ReadProcessorCollection();		
 		c.addFilter (filter);
 		return (getReadsInTagOrder(inFile, sortingTags, c));
 	}
 	
-	public CloseableIterator<SAMRecord> getReadsInTagOrder (File inFile, List<String> sortingTags, ReadProcessorCollection filters) {	
+	public CloseableIterator<SAMRecord> getReadsInTagOrder (File inFile, List<Short> sortingTags, ReadProcessorCollection filters) {	
 		SamReader reader = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(inFile);
 		
 		SAMSequenceDictionary dict= reader.getFileHeader().getSequenceDictionary();
-		List<SAMProgramRecord> programs =reader.getFileHeader().getProgramRecords();
+		//List<SAMProgramRecord> programs =reader.getFileHeader().getProgramRecords();
 		
 		final SAMFileHeader writerHeader = new SAMFileHeader();
         // writerHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
         writerHeader.setSequenceDictionary(dict);
+        
         for (SAMProgramRecord spr : programs) {
         	writerHeader.addProgramRecord(spr);
         }
+        
 		SortingCollection<SAMRecord> alignmentSorter = SortingCollection.newInstance(SAMRecord.class,
 	            new BAMRecordCodec(writerHeader), new BAMTagComparator(sortingTags),
 	                MAX_RECORDS_IN_RAM);
@@ -134,7 +140,7 @@ public class DEIteratorUtils {
 		log.info("Sorting finished.");
 		return (result);
 	}
-	
+	*/
 	
 	
 	
@@ -145,7 +151,9 @@ public class DEIteratorUtils {
 	 * 
 	 * @return
 	 */
+	/*
 	public PeekableIterator<SAMRecord> primeIterator (PeekableIterator<SAMRecord> iter, String...emptyAttribute) {
+		
 		ProgressLogger primeLog = new ProgressLogger(log, 1000000, "Skipped records without tags "+ getFormattedString(emptyAttribute));
 		if (iter.hasNext()==false) return (iter);
 		
@@ -183,7 +191,7 @@ public class DEIteratorUtils {
 		return (b.toString());
 	}
 	
-	
+	*/
 
 	
 		

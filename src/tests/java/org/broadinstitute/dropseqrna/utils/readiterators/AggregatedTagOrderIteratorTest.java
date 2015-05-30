@@ -1,0 +1,266 @@
+package org.broadinstitute.dropseqrna.utils.readiterators;
+
+import htsjdk.samtools.SAMRecord;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+/**
+ * 
+ * @author nemesh
+ *
+ */
+public class AggregatedTagOrderIteratorTest {
+	// See TagOrderIteratorTest for more info about the data in the test BAM
+	File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/testTagSorting.bam");
+
+	@Test(enabled=true)
+	public void testGeneSorting() {
+		ReadProcessorCollection filters = new ReadProcessorCollection();
+		List<String> sortingTags = new ArrayList<String>();
+		sortingTags.add("GE");
+
+		TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags,filters, true);
+		AggregatedTagOrderIterator atoi = new AggregatedTagOrderIterator(toi);
+		int counter=0;
+		
+		String [] geneOrder={"CHUK", "NKTR", "SNRPA1"};
+		Map<String, Integer> geneCounts = new HashMap<String, Integer>();
+		geneCounts.put("CHUK", 4);
+		geneCounts.put("NKTR", 4);
+		geneCounts.put("SNRPA1", 4);
+		
+		 while (toi.hasNext()) {
+			  Collection<SAMRecord> r = atoi.next();
+			  int size = r.size();
+			  SAMRecord rec = r.iterator().next();
+			  
+			  String gene = rec.getStringAttribute("GE");
+			  System.out.println("Gene [" + gene +"] size [" + size +"]");
+			  
+			  String expectedGene = geneOrder[counter];
+			  int expectedSize = geneCounts.get(gene);
+			  
+			  Assert.assertEquals(gene, expectedGene);
+			  Assert.assertEquals(size, expectedSize);
+			  counter++;
+		 }
+	}
+	
+	@Test(enabled=true)
+	public void testCellSorting() {
+		ReadProcessorCollection filters = new ReadProcessorCollection();
+		List<String> sortingTags = new ArrayList<String>();
+		sortingTags.add("ZC");
+
+		TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags,filters, true);
+		AggregatedTagOrderIterator atoi = new AggregatedTagOrderIterator(toi);
+		int counter=0;
+		
+		String [] cellOrder={"ATCAGGGACAGA", "TGGCGAAGAGAT"};
+		Map<String, Integer> cellCounts = new HashMap<String, Integer>();
+		cellCounts.put("ATCAGGGACAGA", 6);
+		cellCounts.put("TGGCGAAGAGAT", 6);
+		
+		
+		 while (atoi.hasNext()) {
+			  Collection<SAMRecord> r = atoi.next();
+			  int size = r.size();
+			  SAMRecord rec = r.iterator().next();
+			  
+			  String cell = rec.getStringAttribute("ZC");
+			  System.out.println("Cell [" + cell +"] size [" + size +"]");
+			  
+			  String expectedGene = cellOrder[counter];
+			  int expectedSize = cellCounts.get(cell);
+			  
+			  Assert.assertEquals(cell, expectedGene);
+			  Assert.assertEquals(size, expectedSize);
+			  counter++;
+		 }
+	}
+	
+	@Test(enabled=true)
+	public void testGeneCellSorting() {
+		ReadProcessorCollection filters = new ReadProcessorCollection();
+		List<String> sortingTags = new ArrayList<String>();
+		sortingTags.add("GE");
+		sortingTags.add("ZC");
+		  
+		TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, filters, true);
+		AggregatedTagOrderIterator atoi = new AggregatedTagOrderIterator(toi);
+		int counter=0;
+		  
+		
+		String [] geneOrder={"CHUK", "CHUK", "NKTR", "NKTR", "SNRPA1", "SNRPA1"};
+		String [] cellOrder={"ATCAGGGACAGA", "TGGCGAAGAGAT", "ATCAGGGACAGA", "TGGCGAAGAGAT", "ATCAGGGACAGA", "TGGCGAAGAGAT"};
+		int [] expectedSize = {2,2,2,2,2,2};
+		
+		while (atoi.hasNext()) {
+			Collection<SAMRecord> r = atoi.next();
+			int size = r.size();
+			SAMRecord rec = r.iterator().next();
+			
+			String readName = rec.getReadName();
+			String cellName = rec.getStringAttribute("ZC");
+			String geneName = rec.getStringAttribute("GE");
+			
+			System.out.println("Cell [" + cellName +"] geneName [" + geneName +"] size [" + size +"]");
+
+			Assert.assertEquals(cellName, cellOrder[counter]);
+			Assert.assertEquals(geneName, geneOrder[counter]);
+			Assert.assertEquals(size, expectedSize[counter]);
+			counter++;
+		}
+	}
+	
+	
+	
+	/****
+	 * SOME TESTS BY #READS ON A LARGER BAM
+	 */
+	
+	@Test (enabled=true)
+	public void testGetCellGeneBatch() {
+		File f = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.bam");
+		String cellTag = "ZC";
+		String geneExonTag = "GE";
+				
+		List<String>sortingTags = new ArrayList<String>();
+		
+		sortingTags.add(geneExonTag);
+		sortingTags.add(cellTag);
+		
+		TagOrderIterator toi = new TagOrderIterator(f, sortingTags, new MapQualityProcessor(10, true), true);
+		AggregatedTagOrderIterator iter = new AggregatedTagOrderIterator(toi);
+		
+		while (iter.hasNext()) {
+			Collection<SAMRecord> recs=iter.next();
+			SAMRecord r = recs.iterator().next();
+			int setSize = recs.size();
+			String cell = r.getStringAttribute(cellTag);
+			String geneExon = r.getStringAttribute(geneExonTag); 
+			int expectedSize = getCellGeneBatchExpectedSize(geneExon, cell);
+			Assert.assertTrue(testAllRecordsSamTags(recs, sortingTags, expectedSize, setSize));
+			Assert.assertEquals(expectedSize, setSize);
+		}
+		iter.close();
+	}
+	
+	@Test (enabled=true)
+	public void testGetCellBatch() {
+		File f = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.bam");
+		String cellTag = "ZC";
+		
+		List<String>sortingTags = new ArrayList<String>();
+		
+		sortingTags.add(cellTag);
+				
+		TagOrderIterator toi = new TagOrderIterator(f, sortingTags, new MapQualityProcessor(10, true), true);
+		AggregatedTagOrderIterator atoi = new AggregatedTagOrderIterator(toi);
+		
+		while (atoi.hasNext()) {
+			List<SAMRecord> recs=atoi.next();
+			SAMRecord r = recs.iterator().next();
+			int setSize = recs.size();
+			String cell = r.getStringAttribute(cellTag);
+			int expectedSize = getCellBatchExpectedSize(cell);
+			
+			Assert.assertTrue(testAllRecordsSamTags(recs, sortingTags, expectedSize, setSize));
+			
+			Assert.assertEquals(expectedSize, setSize);
+		}
+		atoi.close();
+		
+	}
+	
+	
+	private boolean testAllRecordsSamTags(Collection<SAMRecord> recs, List<String> sortingTags, int expectedSize, int setSize) {
+		
+		SAMRecord firstRec = recs.iterator().next();
+		List<String> values = getValuesForTags(sortingTags, firstRec);
+		System.out.println(buildLogString(values, sortingTags)+ "expected [" + expectedSize +"] observed [" + setSize + "]");
+		for (SAMRecord r: recs) {
+			List<String> newVals = getValuesForTags(sortingTags, firstRec);
+			boolean equalFlag = testTagsEqual(values, newVals);
+			if (equalFlag) return (true);
+		}
+		return true;		
+	}
+	
+	private List<String> getValuesForTags(List<String>tags, SAMRecord r) {
+		List<String> currentValues = new ArrayList<String>();
+		for (String t: tags) {
+			currentValues.add(r.getStringAttribute(t));
+		}
+		return (currentValues);
+	}
+	
+	private boolean testTagsEqual (List<String> original, List<String> next) {
+		for (int i=0; i<original.size(); i++) {
+			String s1 = original.get(i);
+			String s2 = next.get(i);
+			if (!s1.equals(s2)) return (false);
+		}
+		return (true);
+	}
+	
+	private String buildLogString (List<String> values, List<String> sortingTags) {
+		Assert.assertEquals(values.size(), sortingTags.size());
+		
+		StringBuilder b = new StringBuilder();
+		for (int i=0; i<values.size(); i++) {
+			b.append(sortingTags.get(i));
+			b.append(" [" + values.get(i) +"] ");
+		}
+		return (b.toString());
+	}
+	
+	// samtools view -q 10 5cell3gene.bam |grep ZC:Z:ATCAGGGACAGA |grep GE:Z:HUMAN_3:42642106-42690227:NKTR |wc -l
+	// for all 5 cells / 3 genes.
+	// cells=( ZC:Z:ATCAGGGACAGA AGGGAAAATTGA TTGCCTTACGCG TGGCGAAGAGAT TACAATTAAGGC ); genes=( HUMAN_3:42642106-42690227:NKTR HUMAN_10:101948055-101989376:CHUK HUMAN_15:101821715-101835487:SNRPA1 ); for c in "${cells[@]}"; do for g in "${genes[@]}"; do r=$(samtools view -q 10 -F 260 5cell3gene.bam |grep ${c} |grep ${g} |wc -l); echo ${c} ${g} ${r}; done; done
+	// assumes filtering to primary reads map quality >=10. 
+	private int getCellGeneBatchExpectedSize (String gene, String cell) {
+		
+		if (cell.equals("ATCAGGGACAGA") && gene.equals("HUMAN_3:42642106-42690227:NKTR") ) return 845;
+		if (cell.equals("ATCAGGGACAGA") && gene.equals("HUMAN_10:101948055-101989376:CHUK") ) return 200;		
+		if (cell.equals("ATCAGGGACAGA") && gene.equals("HUMAN_15:101821715-101835487:SNRPA1") ) return 225;
+		
+		if (cell.equals("AGGGAAAATTGA") && gene.equals("HUMAN_3:42642106-42690227:NKTR") ) return 428;
+		if (cell.equals("AGGGAAAATTGA") && gene.equals("HUMAN_10:101948055-101989376:CHUK") ) return 212;
+		if (cell.equals("AGGGAAAATTGA") && gene.equals("HUMAN_15:101821715-101835487:SNRPA1") ) return 238;
+		
+		if (cell.equals("TTGCCTTACGCG") && gene.equals("HUMAN_3:42642106-42690227:NKTR") ) return 473;
+		if (cell.equals("TTGCCTTACGCG") && gene.equals("HUMAN_10:101948055-101989376:CHUK") ) return 62;
+		if (cell.equals("TTGCCTTACGCG") && gene.equals("HUMAN_15:101821715-101835487:SNRPA1") ) return 581;
+		
+		if (cell.equals("TGGCGAAGAGAT") && gene.equals("HUMAN_3:42642106-42690227:NKTR") ) return 612;
+		if (cell.equals("TGGCGAAGAGAT") && gene.equals("HUMAN_10:101948055-101989376:CHUK") ) return 12;
+		if (cell.equals("TGGCGAAGAGAT") && gene.equals("HUMAN_15:101821715-101835487:SNRPA1") ) return 166;
+		
+		if (cell.equals("TACAATTAAGGC") && gene.equals("HUMAN_3:42642106-42690227:NKTR") ) return 385;
+		if (cell.equals("TACAATTAAGGC") && gene.equals("HUMAN_10:101948055-101989376:CHUK") ) return 160;
+		if (cell.equals("TACAATTAAGGC") && gene.equals("HUMAN_15:101821715-101835487:SNRPA1") ) return 294;
+		return -1;
+		
+	}
+	
+	//cells=( ZC:Z:ATCAGGGACAGA AGGGAAAATTGA TTGCCTTACGCG TGGCGAAGAGAT TACAATTAAGGC ); for c in "${cells[@]}"; do r=$(samtools view -q 10 -F 260 5cell3gene.bam |grep ${c} |wc -l); echo ${c} ${r}; done
+	private int getCellBatchExpectedSize (String cell) {
+		
+		if (cell.equals("ATCAGGGACAGA")) return 1270;
+		if (cell.equals("AGGGAAAATTGA")) return 878;
+		if (cell.equals("TTGCCTTACGCG")) return 1116;
+		if (cell.equals("TGGCGAAGAGAT")) return 790;
+		if (cell.equals("TACAATTAAGGC")) return 839;		
+		return -1;
+		
+	}
+}
