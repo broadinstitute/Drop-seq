@@ -45,7 +45,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		
 		UMIReadProcessor f = new UMIReadProcessor(cellBarcodeTag, cellBarcodes, geneExonTag, strandTag, readMQ, assignReadsToAllGenes, useStrandInfo);
 		
-		TagOrderIterator toi = new TagOrderIterator(bamFile, sortingTags, f, true);
+		TagOrderIterator toi = new TagOrderIterator(bamFile, sortingTags, sortingTags, f, true);
 		this.atoi = new AggregatedTagOrderIterator(toi);
 		
 	}

@@ -45,7 +45,7 @@ public class TagOrderIteratorTest {
 	  sortingTags.add("GE");
 	  //sortingTags.add("XM");
 	  
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, filters, true);
+	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, filters, true);
 	  int counter=0;
 	  
 	  String [] geneOrder={"CHUK", "CHUK", "CHUK", "CHUK", "NKTR", "NKTR", "NKTR", "NKTR", "SNRPA1", "SNRPA1", "SNRPA1", "SNRPA1"};
@@ -67,7 +67,7 @@ public class TagOrderIteratorTest {
 	  
 	  sortingTags.add("ZC");
 	  
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, filters, true);
+	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, filters, true);
 	  int counter=0;
 	  
 	  String [] cellOrder={"ATCAGGGACAGA","ATCAGGGACAGA","ATCAGGGACAGA","ATCAGGGACAGA","ATCAGGGACAGA","ATCAGGGACAGA","TGGCGAAGAGAT", "TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT"};
@@ -91,7 +91,7 @@ public class TagOrderIteratorTest {
 	  sortingTags.add("GE");
 	  sortingTags.add("ZC");
 	  
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, filters, true);
+	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, filters, true);
 	  int counter=0;
 	  
 	  String [] cellOrder={"ATCAGGGACAGA", "ATCAGGGACAGA", "TGGCGAAGAGAT", "TGGCGAAGAGAT","ATCAGGGACAGA", "ATCAGGGACAGA", "TGGCGAAGAGAT", "TGGCGAAGAGAT","ATCAGGGACAGA", "ATCAGGGACAGA", "TGGCGAAGAGAT", "TGGCGAAGAGAT"};
@@ -117,7 +117,7 @@ public class TagOrderIteratorTest {
 	  sortingTags.add("GE");
 	  sortingTags.add("XM");
 	  
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, filters, true);
+	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, filters, true);
 	  int counter=0;
 	  
 	  String [] cellOrder={"ATCAGGGACAGA", "ATCAGGGACAGA", "ATCAGGGACAGA", "ATCAGGGACAGA", "ATCAGGGACAGA", "ATCAGGGACAGA", "TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT"};

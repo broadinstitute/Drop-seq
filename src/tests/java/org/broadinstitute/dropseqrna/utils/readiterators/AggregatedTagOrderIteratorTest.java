@@ -27,7 +27,7 @@ public class AggregatedTagOrderIteratorTest {
 		List<String> sortingTags = new ArrayList<String>();
 		sortingTags.add("GE");
 
-		TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags,filters, true);
+		TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, filters, true);
 		AggregatedTagOrderIterator atoi = new AggregatedTagOrderIterator(toi);
 		int counter=0;
 		
@@ -60,7 +60,7 @@ public class AggregatedTagOrderIteratorTest {
 		List<String> sortingTags = new ArrayList<String>();
 		sortingTags.add("ZC");
 
-		TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags,filters, true);
+		TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags,sortingTags, filters, true);
 		AggregatedTagOrderIterator atoi = new AggregatedTagOrderIterator(toi);
 		int counter=0;
 		
@@ -94,7 +94,7 @@ public class AggregatedTagOrderIteratorTest {
 		sortingTags.add("GE");
 		sortingTags.add("ZC");
 		  
-		TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, filters, true);
+		TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, filters, true);
 		AggregatedTagOrderIterator atoi = new AggregatedTagOrderIterator(toi);
 		int counter=0;
 		  
@@ -138,7 +138,7 @@ public class AggregatedTagOrderIteratorTest {
 		sortingTags.add(geneExonTag);
 		sortingTags.add(cellTag);
 		
-		TagOrderIterator toi = new TagOrderIterator(f, sortingTags, new MapQualityProcessor(10, true), true);
+		TagOrderIterator toi = new TagOrderIterator(f, sortingTags, sortingTags, new MapQualityProcessor(10, true), true);
 		AggregatedTagOrderIterator iter = new AggregatedTagOrderIterator(toi);
 		
 		while (iter.hasNext()) {
@@ -163,7 +163,7 @@ public class AggregatedTagOrderIteratorTest {
 		
 		sortingTags.add(cellTag);
 				
-		TagOrderIterator toi = new TagOrderIterator(f, sortingTags, new MapQualityProcessor(10, true), true);
+		TagOrderIterator toi = new TagOrderIterator(f, sortingTags, sortingTags, new MapQualityProcessor(10, true), true);
 		AggregatedTagOrderIterator atoi = new AggregatedTagOrderIterator(toi);
 		
 		while (atoi.hasNext()) {

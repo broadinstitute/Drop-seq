@@ -25,7 +25,7 @@ public class TagValueProcessorTest {
 	  List<String> sortingTags = new ArrayList<String>();
 	  sortingTags.add("ZC");
 	  
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, p, true);
+	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, p, true);
 	  int counter=0;
 	  
 	  String [] cellOrder={"TGGCGAAGAGAT", "TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT"};
@@ -53,7 +53,7 @@ public class TagValueProcessorTest {
 	  List<String> sortingTags = new ArrayList<String>();
 	  sortingTags.add("ZC");
 	  
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, p, true);
+	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, p, true);
 	  int counter=0;
 	  
 	  String [] cellOrder={"TGGCGAAGAGAT", "TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT"};
