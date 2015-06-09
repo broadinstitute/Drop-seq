@@ -21,12 +21,33 @@ public class ObjectCounter<T extends Comparable<T>> {
 		countMap = new HashMap<T, Integer>();
 	}
 	
+	/**
+	 * Make a shallow copy of the input object counter.
+	 */
+	public ObjectCounter (ObjectCounter<T> counter) {
+		this();
+		for (T key: counter.getKeys()) {
+			this.countMap.put(key, counter.getCountForKey(key));
+		}
+	}
+	
 	public boolean hasKey (T object) {
 		return this.countMap.containsKey(object);
 	}
 	
 	public void increment (T object) {
 		incrementByCount(object, 1);
+	}
+	
+	/**
+	 * Add the contents of an ObjectCounter of the same type to this object. 
+	 * @param object
+	 */
+	public void increment (ObjectCounter<T> object) {
+		for (T key : object.getKeys()) {
+			Integer count = object.getCountForKey(key);
+			this.incrementByCount(key, count);
+		}
 	}
 	
 	public void clear() {
@@ -63,6 +84,10 @@ public class ObjectCounter<T extends Comparable<T>> {
 		Integer count = countMap.get(key);
 		if (count==null) return 0;
 		return count;
+	}
+	
+	public Collection<Integer> getCounts() {
+		return (this.countMap.values());
 	}
 	
 	public int getTotalCount() {
@@ -139,7 +164,13 @@ public class ObjectCounter<T extends Comparable<T>> {
 		this.countMap=result;
 	}
 	
+	// public boolean equals()
+	
 	public String toString () {
 		return this.countMap.toString();
 	}
+	
+	
+	
+	
 }

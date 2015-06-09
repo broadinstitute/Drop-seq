@@ -1,21 +1,41 @@
-package org.broadinstitute.dropseqrna.priv.utils.editdistance;
+package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.*;
+import htsjdk.samtools.MergingSamRecordIterator;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamFileHeaderMerger;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.IterableAdapter;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.samtools.util.ProgressLogger;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.metrics.BAMTagHistogram;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.editdistance.BarcodeWithCount;
-import org.broadinstitute.dropseqrna.utils.editdistance.EDUtils;
+
 import picard.PicardException;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.File;
-import java.util.*;
 
 /**
  * Fold down barcodes, possibly in the context of another barcode (that has been folded down already.) 
@@ -190,13 +210,13 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 	 * @param barcodes
 	 * @return A map of each child barcode to it's parent.  Many keys will point to the same value.
 	 */
+	
 	private Map<String, String> collapseBarcodes(ObjectCounter<String> barcodes, boolean findIndels, int editDistance) {
-		// ComputeBarcodeEditDistances cbed = new ComputeBarcodeEditDistances();
-		List<BarcodeWithCount> barcodesWithCount=getBarcodesWithCounts(barcodes);
-		List<String> barcodeList = EDUtils.getInstance().getBarcodes(barcodesWithCount);
+		List<String> barcodeList = barcodes.getKeysOrderedByCount(true);		
 		Map<String, String> result = collapseBarcodes(barcodeList, barcodes, findIndels, editDistance);
 		return (result);
 	}
+	
 	
 	/**
 	 * Convenience method
@@ -222,6 +242,27 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 		return (collapseBarcodes(core, barcodes, findIndels, editDistance));
 	}
 	
+	
+	public Map<String, String> collapseBarcodes(List<String> coreBarcodes, ObjectCounter<String> barcodes, boolean findIndels, int editDistance) {
+		Map<String, String> result = new HashMap<String, String>();
+		
+		MapBarcodesByEditDistance med = new MapBarcodesByEditDistance(true, this.NUM_THREADS, 10000);
+		Map<String, List<String>> r = med.collapseBarcodes(coreBarcodes, barcodes, findIndels, editDistance);
+		for (String key: r.keySet()) {
+			for (String value: r.get(key)) {
+				result.put(value, key);
+			}
+		}
+		return (result);
+		
+	}
+	
+	/** Stock main method. */
+	public static void main(final String[] args) {
+		System.exit(new CollapseBarcodesInPlace().instanceMain(args));
+	}
+	
+	
 	/**
 	 * Collapses a core set of barcodes.
 	 * @param coreBarcodes
@@ -230,7 +271,12 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 	 * @param editDistance
 	 * @return
 	 */
-	private Map<String, String> collapseBarcodes(List<String> coreBarcodes, ObjectCounter<String> barcodes, boolean findIndels, int editDistance) {
+	/*
+	public Map<String, String> collapseBarcodesOld(List<String> coreBarcodes, ObjectCounter<String> barcodes, boolean findIndels, int editDistance) {
+		// don't allow side effects to modify input lists.
+		coreBarcodes = new ArrayList<String>(coreBarcodes);
+		barcodes = new ObjectCounter<String>(barcodes);
+		
 		Map<String, String> result = new HashMap<String, String>();
 		int count = 0;
 		int numBCCollapsed=0;
@@ -246,7 +292,7 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 			coreBarcodes.remove(b);
 			barcodeList.remove(b);
 			
-			Set<String> closeBC=processSingle(b, barcodeList, this.FIND_INDELS, this.EDIT_DISTANCE);
+			Set<String> closeBC=processSingle(b, barcodeList, findIndels, editDistance);
 			numBCCollapsed+=closeBC.size();
 			barcodeList.removeAll(closeBC);
 			coreBarcodes.removeAll(closeBC);	
@@ -268,74 +314,6 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 		return (result);
 	}
 	
-	/**
-	 *  loop through each core barcode  - AKA parents:
-	 *  Gather non core barcodes into the parent core, remove them from the pool of non-core barcodes
-	 *  Gather other core barcodes as children, don't remove them from the parent core barcode pool.
-	 *
-	 *  (2) loop through each core barcode parent
-	 *  (3)	loop through that parent barcode's children:
-	 *  Do any of those child barcode exactly match a different parent's child? If so, merge the two parents.
-	 *  Remove that smaller parent from the pool of parents.
-	 *  That parent now has the children from both parents.
-	 *  That parent now has the non-core barcode from both parents.
-	 *  After a parent acquires the children of another parent, those additional children have not been tested for merging.
-	 *  Those additional children must then be added to the list of children for the parent in loop 3 merged before moving on to the next parent.
-	 * @param coreBarcodes
-	 * @param barcodes
-	 * @param findIndels
-	 * @param editDistance
-	 * @return
-	 */
-	/*
-	private void collapseBarcodesFancy(List<String> coreBarcodes, boolean findIndels, int editDistance) {
-		Map<String, CoreBCContainer> firstResult = new HashMap<String, CoreBCContainer> ();
-		
-		
-		ComputeBarcodeEditDistances cbed = new ComputeBarcodeEditDistances();
-		
-		//find children.
-		for (String b: coreBarcodes) {
-			CoreBCContainer c = new CoreBCContainer(b);
-			Set<String> closeBC=cbed.processSingle(b, coreBarcodes, null, this.FIND_INDELS, this.EDIT_DISTANCE, this.THRESHOLD);
-			c.addChildCoreBarcodes(closeBC);
-			firstResult.put(b, c);
-		}
-		
-		for (String b: coreBarcodes) {
-			
-			// List<CoreBCContainer> 
-		}
-		
-		
-		//log.info("Started with core barcodes [" +coreBarcodeCount+  "] ended with [" + count + "]" +  " num collapsed [" + coreBarcodeCount-count + "]");
-		// log.info("Started with core barcodes [" +coreBarcodeCount+  "] ended with [" + count + "] num collapsed [" +  (coreBarcodeCount-count) +"]");
-		
-		// return (nonCoreMap);
-	}
-	*/
-	/*
-	private CoreBCContainer findChildOverlap(String coreBC, Map<String, CoreBCContainer> coreBarcodes) {
-		
-		
-	}
-	*/
-	
-	/**
-	 * Reads have already been filtered by getReadsForNextTag if filtering is neccesary.
-	 * @param records
-	 * @return
-	 */
-	private ObjectCounter<String> getBarcodes(List<SAMRecord> records) {
-		ObjectCounter<String> result = new ObjectCounter<String>();
-		for (SAMRecord r: records) {
-			String nextTag = r.getStringAttribute(this.PRIMARY_BARCODE);
-			if (nextTag!=null) {
-				result.increment(nextTag);
-			}
-		}
-		return (result);
-	}
 	
 	private List<BarcodeWithCount> getBarcodesWithCounts (ObjectCounter<String> barcodes) {
 		List<BarcodeWithCount> result = new ArrayList<BarcodeWithCount>();
@@ -347,12 +325,31 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 		return (result);
 	}
 	
+	
+	public Set<String> processSingle(String barcode, List<String> comparisonBarcodes, boolean findIndels, int editDistance) {
+		Set<String> closeBarcodes =null;
+		if (this.NUM_THREADS>1) {
+			closeBarcodes=cbt.getStringsWithinEditDistanceWithIndel(barcode, comparisonBarcodes, editDistance, findIndels);
+		} else {
+			// single threaded mode for now.  Maybe remove this later?  Not sure if single threaded is slower, probably is.
+			if (findIndels) {
+				closeBarcodes = EDUtils.getInstance().getStringsWithinEditDistanceWithIndel(barcode,comparisonBarcodes, editDistance);
+			} else {
+				closeBarcodes = EDUtils.getInstance().getStringsWithinEditDistance(barcode,comparisonBarcodes, editDistance);
+			}	
+		}
+		return (closeBarcodes);
+	}
+	*/	
+	
+	
 	/**
 	 * Get all the reads for 1 tag.  This assumes that whatever tag is retrieved by the call to next() on the iterator gets the correct tag.
 	 * When this method finishes, it should have peeked the next tag, but not called next to retrieve it.
 	 * @param iter A peekable iterator of reads in tag order.
 	 * @return A list of records, or null if the iterator is out.
 	 */
+	/*
 	private List<SAMRecord> getReadsForNextTag (PeekableIterator<SAMRecord> iter, String tag, int readQuality, boolean filterDuplicates) {
 		if (iter.hasNext()==false) return (null);
 		List<SAMRecord> result = new ArrayList<SAMRecord>();
@@ -397,7 +394,8 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 		}
 		
 	}
-	
+	*/
+	/*
 	public class CoreBCContainer {
 		private String barcode;
 		private List <String> childCoreBarcodes;
@@ -412,10 +410,7 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 			this.nextChildBarcodeIndex=0;
 		}
 		
-		/**
-		 * Adds a child barcode.  If that barcode already exists, only 1 copy is retained.
-		 * @param barcode
-		 */
+		
 		public void addChildCoreBarcode (String barcode) {
 			if (!childCoreBarcodes.contains(barcode)) {
 				childCoreBarcodes.add(barcode);
@@ -440,6 +435,7 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 		 * If this has not yet been called on the object, hands off the first childCoreBarcode and then subsequent barcodes.
 		 * @return the next child barcode, or null if no barcodes are left.
 		 */
+	/*
 		public String getNextChildCoreBarcode () {
 			if (!this.hasNextChildCoreBarcode()) return (null);
 			String r = this.childCoreBarcodes.get(this.nextChildBarcodeIndex);
@@ -461,6 +457,7 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 		 * @param other The list of core barcodes that were merged by this operation
 		 * @return
 		 */
+	/*
 		public Set<String> findChildOverlaps (Collection<CoreBCContainer> other) {
 			Set<String> result = new HashSet<String>();
 			// make a copy that I can safely mess with.
@@ -486,29 +483,6 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 		}
 		
 	}
-	
-	public Set<String> processSingle(String barcode, List<String> comparisonBarcodes, boolean findIndels, int editDistance) {
-		Set<String> closeBarcodes =null;
-		if (this.NUM_THREADS>1) {
-			closeBarcodes=cbt.getStringsWithinEditDistanceWithIndel(barcode, comparisonBarcodes, editDistance, findIndels);
-		} else {
-			// single threaded mode for now.  Maybe remove this later?  Not sure if single threaded is slower, probably is.
-			if (findIndels) {
-				closeBarcodes = EDUtils.getInstance().getStringsWithinEditDistanceWithIndel(barcode,comparisonBarcodes, editDistance);
-			} else {
-				closeBarcodes = EDUtils.getInstance().getStringsWithinEditDistance(barcode,comparisonBarcodes, editDistance);
-			}	
-		}
-		 
-		
-		return (closeBarcodes);
-	}
-		
-	/** Stock main method. */
-	public static void main(final String[] args) {
-		System.exit(new CollapseBarcodesInPlace().instanceMain(args));
-	}
-	
-	
+	*/
 	
 }

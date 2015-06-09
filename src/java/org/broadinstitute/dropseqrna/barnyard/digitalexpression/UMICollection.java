@@ -7,10 +7,12 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.editdistance.EDUtils;
+import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
 
 import picard.util.TabbedTextFileWithHeaderParser;
 
@@ -108,7 +110,9 @@ public class UMICollection {
 	 * @param threshold
 	 * @return
 	 */
-	private ObjectCounter<String> collapseByEditDistance (ObjectCounter<String> counts, int editDistance) {
+	
+	/*
+	private ObjectCounter<String> collapseByEditDistanceOld (ObjectCounter<String> counts, int editDistance) {
 		ObjectCounter <String> result = new ObjectCounter<String>();
 		List<String> barcodeList = counts.getKeysOrderedByCount(true);
 		
@@ -138,6 +142,32 @@ public class UMICollection {
 			}
 			result.setCount(b, totalCount);
 		}		
+		return (result);
+	}
+	*/
+	
+	/**
+	 * For a list of molecular barcodes, collapse them by edit distance.
+	 * @param counts
+	 * @param editDistance
+	 * @param threshold
+	 * @return
+	 */
+	private ObjectCounter<String> collapseByEditDistance (ObjectCounter<String> counts, int editDistance) {
+		ObjectCounter <String> result = new ObjectCounter<String>();
+		
+		MapBarcodesByEditDistance mbed = new MapBarcodesByEditDistance(false, 0);
+		Map<String, List<String>> collapseMap = mbed.collapseBarcodes(counts, false, editDistance);
+		
+		for (String key: collapseMap.keySet()) {
+			int totalCount = molecularBarcodeCounts.getCountForKey(key);
+			List<String> values = collapseMap.get(key);
+			for (String bc: values) {
+				int count = molecularBarcodeCounts.getCountForKey(bc);
+				totalCount+=count;
+			}
+			result.setCount(key, totalCount);
+		}	
 		return (result);
 	}
 	

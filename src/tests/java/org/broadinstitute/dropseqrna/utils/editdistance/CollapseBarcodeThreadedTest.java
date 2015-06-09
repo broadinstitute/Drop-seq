@@ -1,4 +1,4 @@
-package org.broadinstitute.dropseqrna.priv.utils.editdistance;
+package org.broadinstitute.dropseqrna.utils.editdistance;
 
 import java.util.ArrayList;
 import java.util.List;

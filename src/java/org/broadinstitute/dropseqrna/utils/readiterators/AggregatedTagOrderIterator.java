@@ -69,7 +69,7 @@ public class AggregatedTagOrderIterator implements
 		return tagIter.hasNext();
 	}
 
-	private List<String> getValuesForTags(List<Short> tags, SAMRecord r) {
+	public static List<String> getValuesForTags(List<Short> tags, SAMRecord r) {
 		List<String> currentValues = new ArrayList<String>();
 		for (Short t : tags) {
 			Object o = r.getAttribute(t);
@@ -79,7 +79,7 @@ public class AggregatedTagOrderIterator implements
 		return (currentValues);
 	}
 
-	private boolean tagsEqual(List<String> original, List<String> next) {
+	public static boolean tagsEqual(List<String> original, List<String> next) {
 		for (int i = 0; i < original.size(); i++) {
 			String s1 = original.get(i);
 			String s2 = next.get(i);

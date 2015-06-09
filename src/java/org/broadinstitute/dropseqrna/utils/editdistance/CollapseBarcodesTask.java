@@ -1,7 +1,4 @@
-package org.broadinstitute.dropseqrna.priv.utils.editdistance;
-
-import org.broadinstitute.dropseqrna.utils.editdistance.HammingDistance;
-import org.broadinstitute.dropseqrna.utils.editdistance.LevenshteinDistance;
+package org.broadinstitute.dropseqrna.utils.editdistance;
 
 import java.util.HashSet;
 import java.util.List;

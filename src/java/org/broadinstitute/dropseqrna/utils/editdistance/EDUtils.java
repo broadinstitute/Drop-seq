@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.broadinstitute.dropseqrna.TranscriptomeException;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 public class EDUtils {
 	
@@ -65,14 +66,13 @@ public class EDUtils {
 	}
 	
 	
-	
 	/**
 	 * 
 	 * @param aFile The input file to read.  2 columns, the number of observations of that barcode followed by the barcode sequence. Tab seperated.
 	 * @return a list of Barcodes with counts.
 	 */
-	public List<BarcodeWithCount> readBarCodeFile(File aFile) {
-		List<BarcodeWithCount> result = new ArrayList<BarcodeWithCount>();
+	public static ObjectCounter <String> readBarCodeFile(File aFile) {
+		ObjectCounter <String> result = new ObjectCounter<String>();
 
 		try {
 			BufferedReader input = new BufferedReader(new FileReader(aFile));
@@ -82,9 +82,8 @@ public class EDUtils {
 					line=line.trim();
 					String[] strLine = line.split("\t");
 					int count = Integer.parseInt(strLine[0]);
-					BarcodeWithCount bc = new BarcodeWithCount(strLine[1].toUpperCase(),
-							count);
-					result.add(bc);
+					String barcode = strLine[1].toUpperCase();
+					result.incrementByCount(barcode, count);
 				}
 			} finally {
 				input.close();
@@ -96,30 +95,6 @@ public class EDUtils {
 
 		return (result);
 	}
-
-	class BarcodeWithCountComparator implements Comparator<BarcodeWithCount> {
-		@Override
-		public int compare(BarcodeWithCount arg0, BarcodeWithCount arg1) {
-		// TODO Auto-generated method stub
-		int count =  arg1.getCount() - arg0.getCount();
-		if (count != 0)
-			return (count);
-		return (0);
-		}
-	}
-	
-	public List<String> getBarcodes(List<BarcodeWithCount> barcodes) {
-		List<String> result = new ArrayList<String>(barcodes.size());
-		for (BarcodeWithCount b : barcodes) {
-			result.add(b.getBarcode());
-		}
-		return (result);
-	}
-	
-	public List<BarcodeWithCount> sortBC (List<BarcodeWithCount> barcodes) {
-		Collections.sort(barcodes, new BarcodeWithCountComparator());
-		return (barcodes);
-	}
-	
+		
 	
 }

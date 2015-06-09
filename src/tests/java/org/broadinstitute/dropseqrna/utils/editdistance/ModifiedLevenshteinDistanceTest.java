@@ -1,4 +1,4 @@
-package org.broadinstitute.dropseqrna.priv.utils.editdistance;
+package org.broadinstitute.dropseqrna.utils.editdistance;
 
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.utils.editdistance.LevenshteinDistance;
