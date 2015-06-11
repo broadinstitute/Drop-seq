@@ -6,11 +6,7 @@ import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.OverlapDetector;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.broadinstitute.dropseqrna.annotation.GeneFromGTF.TranscriptFromGTF;
 
@@ -43,6 +39,9 @@ public class GTFReader {
 
     private final File gtfFlatFile;
     private final SAMSequenceDictionary sequenceDictionary;
+    // Keep track of errors already reported to reduce verbosity
+    private final Set<String> skippedChromosomeTranscriptDescription = new HashSet<>();
+    private final Set<String> unrecognizedSequences = new HashSet<>();
 
     public GTFReader(final File gtfFlatFile, final SAMSequenceDictionary sequenceDictionary) {
         this.gtfFlatFile = gtfFlatFile;
@@ -63,15 +62,7 @@ public class GTFReader {
         return new GTFReader(refFlatFile, sequenceDictionary).load();
     }
 	
-    /*
-    static OverlapDetector<Gene> load(final File refFlatFile, final SAMSequenceDictionary sequenceDictionary) {
-        return new GTFReader(refFlatFile, sequenceDictionary).load();
-    }
-    */
-    
-    
     public OverlapDetector<GeneFromGTF> load() {
-    	//LOG.setGlobalLogLevel(Log.LogLevel.DEBUG);
         final TabbedTextFileWithHeaderParser parser = new TabbedTextFileWithHeaderParser(gtfFlatFile, GTFColumnLabels);
         Map<String, List<GTFRecord>> gtfLinesByGene = getRecordsByGene(parser);
         final OverlapDetector<GeneFromGTF> overlapDetector =  convert(gtfLinesByGene);
@@ -90,14 +81,18 @@ public class GTFReader {
                 if (gene.length() > longestInterval) longestInterval = gene.length();
                 if (gene.length() > 1000000) ++numIntervalsOver1MB;
             } catch (AnnotationException e) {
-                LOG.debug(e.getMessage() + " -- skipping");
+                LOG.info(e.getMessage() + " -- skipping");
             }
         }
         LOG.debug("Longest gene: " + longestInterval + "; number of genes > 1MB: " + numIntervalsOver1MB);
         LOG.debug("Total number of genes loaded [" + overlapDetector.getAll().size() +"]");
         return overlapDetector;
     }
-	    
+
+    public Set<String> getUnrecognizedSequences() {
+        return unrecognizedSequences;
+    }
+
     private boolean isSequenceRecognized(final String sequence) {
         return (sequenceDictionary.getSequence(sequence) != null);
     }
@@ -209,7 +204,10 @@ public class GTFReader {
             final String transcriptDescription = r.getGeneName() + ":" + r.getTranscriptName();
             
             if (!isSequenceRecognized(r.getChromosome())) {
-                LOG.debug("Skipping " + transcriptDescription + " due to unrecognized sequence " + r.getChromosome());
+                unrecognizedSequences.add(r.getChromosome());
+                if (skippedChromosomeTranscriptDescription.add(transcriptDescription + "\t" + r.getChromosome())) {
+                    LOG.debug("Skipping " + transcriptDescription + " due to unrecognized sequence " + r.getChromosome());
+                }
             } else {
                 List<GTFRecord> transcriptRecords = gtfRecordsByGene.get(r.getGeneName());
                 if (transcriptRecords == null) {

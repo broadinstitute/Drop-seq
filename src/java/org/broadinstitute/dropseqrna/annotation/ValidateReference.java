@@ -60,7 +60,7 @@ import java.util.*;
             transcriptTypes.add(gene.getTranscriptType());
         }
         final Set<String> onlyInReference = subtract(sequencesInReference, sequencesInGtf);
-        final Set<String> onlyInGtf = subtract(sequencesInGtf, sequencesInReference);
+        final Set<String> onlyInGtf = gtfReader.getUnrecognizedSequences();
 
         System.out.println("\nSequences only in reference FASTA:");
         logCollection(onlyInReference);
