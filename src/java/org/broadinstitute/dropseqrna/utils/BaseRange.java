@@ -39,6 +39,10 @@ public class BaseRange {
 	}
 
 	public static BaseRange parseSingleBaseRange(String baseRange) {
+		// weird bug with a user getting whitespace in their string somehow.
+		baseRange.replaceAll("\\s+","");
+		// another weird bug for non-ascii characters.  Reject any character that isn't a digit or "-"
+		baseRange=sanitizeString(baseRange);
 		String [] split = baseRange.split("-");
 		BaseRange r = new BaseRange(Integer.parseInt(split[0]), Integer.parseInt(split[1]));
 		return r;
@@ -59,6 +63,15 @@ public class BaseRange {
 			result.append(s);
 		}
 		return result.toString();		
+	}
+	
+	public static String sanitizeString (String input) {
+		StringBuilder result = new StringBuilder();
+		for(char val : input.toCharArray()) {
+			// 0-9 or "-"
+		    if((val >=48 && val<=57) || val==45) result.append(val);
+		}
+		return (result.toString());
 	}
 	
 
