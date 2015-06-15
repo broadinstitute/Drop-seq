@@ -67,7 +67,7 @@ public class BAMTagHistogram extends CommandLineProgram {
 	}
 	
 	public ObjectCounter<String> getBamTagCounts (File bamFile, String tag, int readQuality, boolean filterPCRDuplicates) {
-		SamReader inputSam = SamReaderFactory.makeDefault().open(bamFile);
+		SamReader inputSam = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(bamFile);
         try {
             return getBamTagCounts(inputSam.iterator(), tag, readQuality, filterPCRDuplicates);
         } finally {
