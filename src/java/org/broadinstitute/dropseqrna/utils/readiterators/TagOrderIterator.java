@@ -104,19 +104,21 @@ public class TagOrderIterator implements CloseableIterator<SAMRecord> {
 				
 		Collection <SAMRecord> tempList = new ArrayList<SAMRecord>(10);
 		int numReadsAdded=0;
+		int newNumReads=0;
 		for (SAMRecord r: reader) {
 			prog.record(r);
 			// see if the read has all the sortings tags set and reads without them should be skipped. 
 			if (skipReadsWithoutTags  && !testAllAttributesSet(r, requiredTags)) continue;
 			tempList  = filters.processRead(r);
 			if (tempList.size()>0) numReadsAdded++;
+			newNumReads+=tempList.size();
 			for (SAMRecord rr: tempList) {
 				alignmentSorter.add(rr);
 			}
 		}
 		
-		log.info("Added " + numReadsAdded + " to iterator out of " +prog.getCount());
-		
+		log.info("From BAM file added " + numReadsAdded + " reads out of " +prog.getCount() + " to iterator");
+		log.info("New iterator has " + newNumReads + " to iterate on.");
 		if (numReadsAdded==0) log.warn("The number of reads added to the iterator was 0");
 		CloserUtil.close(reader);
 		CloseableIterator<SAMRecord> result = alignmentSorter.iterator();
