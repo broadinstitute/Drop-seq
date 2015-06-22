@@ -262,8 +262,14 @@ public class GTFReader {
                                                       ") in GTF file for gene " + geneName);
             }
             if (record.getFeatureType().equals("gene")) {
-                // Not present in all GTFs.  Should not be included in lines by transcript.
-                continue;
+                if (record.getChromosome().equals(gene.getContig()) &&
+                        record.getStart() == gene.getStart() &&
+                        record.getEnd() == gene.getEnd() &&
+                        record.isNegativeStrand() == gene.isNegativeStrand()) {
+                    continue;
+                } else {
+                    throw new RuntimeException(String.format("gene GTFRecord(%s) != GeneFromGTF(%s)", record.toString(), gene.toString()));
+                }
             }
             
             String transcriptID = record.getTranscriptID();
