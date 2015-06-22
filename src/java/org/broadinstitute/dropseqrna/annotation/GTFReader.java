@@ -261,8 +261,15 @@ public class GTFReader {
                 throw new AnnotationException("Chromosome disagreement(" + chromosome + " != " + record.getChromosome() +
                                                       ") in GTF file for gene " + geneName);
             }
+            if (record.getFeatureType().equals("gene")) {
+                // Not present in all GTFs.  Should not be included in lines by transcript.
+                continue;
+            }
             
             String transcriptID = record.getTranscriptID();
+            if (transcriptID == null) {
+                throw new RuntimeException("GTFRecord does not have transcriptID: " + record);
+            }
             //parse out the transcripts by ID and group them.
             List<GTFRecord> tl = gtfLinesByTranscript.get(transcriptID);
             if (tl == null) {
