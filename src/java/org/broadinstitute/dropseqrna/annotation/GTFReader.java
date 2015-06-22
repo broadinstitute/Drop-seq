@@ -266,6 +266,7 @@ public class GTFReader {
                         record.getStart() == gene.getStart() &&
                         record.getEnd() == gene.getEnd() &&
                         record.isNegativeStrand() == gene.isNegativeStrand()) {
+                    // Do not include this in lines by transcript.
                     continue;
                 } else {
                     throw new RuntimeException(String.format("gene GTFRecord(%s) != GeneFromGTF(%s)", record.toString(), gene.toString()));
