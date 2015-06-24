@@ -1,30 +1,22 @@
 package org.broadinstitute.dropseqrna.annotation;
 
-import htsjdk.samtools.SAMFileReader;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
-
-import java.io.File;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.cmdline.MetaData;
-
+import org.broadinstitute.dropseqrna.utils.DropSeqSamUtil;
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
-import picard.util.TabbedInputParser;
+
+import java.io.File;
+import java.io.PrintStream;
+import java.util.*;
 
 /**
  * GTF files are annoyingly complex with a poor definition of what data is in them.
@@ -43,6 +35,7 @@ public class ReduceGTF extends CommandLineProgram {
 
     private static final Log log = Log.getInstance(ReduceGTF.class);
     private static final List<String> DEFAULT_FEATURE_TYPES = CollectionUtil.makeList("gene", "transcript", "exon");
+
     private static final List<String> DEFAULT_IGNORED_FUNC_TYPES = CollectionUtil.makeList(
             "pseudogene", "polymorphic_pseudogene", "TR_J_pseudogene", "TR_V_pseudogene", "IG_C_pseudogene",
             "IG_J_pseudogene", "IG_V_pseudogene");
@@ -58,9 +51,6 @@ public class ReduceGTF extends CommandLineProgram {
 	@Option(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME,doc="The output reduced GTF file.")
 	public File OUTPUT;
 	
-	@Option(doc="The field name that contains the function of the gene/transcript")
-	public String FUNCTION_FIELD="gene_biotype";
-	
 	@Option(doc="Feature type(s) to extract. Only lines of the GTF that have these feature types will be extracted.  " +
             "This is the 3rd field of the GTF file, some examples of standard feature types are CDS, start_codon, stop_codon, and exon. ")
 	public List<String> FEATURE_TYPE = DEFAULT_FEATURE_TYPES;
@@ -71,105 +61,70 @@ public class ReduceGTF extends CommandLineProgram {
 	@Option(doc="Enhance this reduced GTF file with genes,transcripts,introns, and consensus introns.  This is real " +
             "handy when your GTF file only defines exons, but has the transcript and gene IDs they belong to.")
 	public boolean ENHANCE_GTF=true;
-	
-	@Override
-	protected int doWork() {
-		IOUtil.assertFileIsReadable(SEQUENCE_DICTIONARY);
-		IOUtil.assertFileIsReadable(GTF);
-		IOUtil.assertFileIsWritable(this.OUTPUT);
-		
-		Set<String> featureTypes = new HashSet<>(FEATURE_TYPE);
-		Set<String> ignoredFunctionalTypes = new HashSet<>(IGNORE_FUNC_TYPE);
-		
-		List<GTFRecord> records = parseGTF (this.GTF, this.SEQUENCE_DICTIONARY, featureTypes, ignoredFunctionalTypes, true );
-		
-		PrintStream out = new PrintStream(IOUtil.openFileForWriting(OUTPUT));
-		writeHeader(out);
-		
-		// if no enhancement needed, just write out the results.
-		if (!ENHANCE_GTF) {	
-			writeRecords (out, records);
-			out.close();
-			return 0;
-		}
-		
-		// enhance
-		EnhanceGTFRecords e = new EnhanceGTFRecords();
-		records = e.enhanceGTFRecords(records);
-		
-		//sort the data before writing?		
-		Collections.sort(records, new GenomicOrderComparator(getDict(this.SEQUENCE_DICTIONARY)));
-		
-		// write results
-		writeRecords(out, records);
-		
-		out.close();
-		return 0;
-	}
 
+    private SAMSequenceDictionary dict;
+    private boolean initialized = false;
+
+	@Override
+    protected int doWork() {
+        IOUtil.assertFileIsReadable(SEQUENCE_DICTIONARY);
+        IOUtil.assertFileIsReadable(GTF);
+        IOUtil.assertFileIsWritable(this.OUTPUT);
+        initialize();
+
+        FilteringGTFParser parser = parseGTF();
+
+        try {
+            PrintStream out = new PrintStream(IOUtil.openFileForWriting(OUTPUT));
+            writeHeader(out);
+
+            // if no enhancement needed, just write out the results.
+            if (!ENHANCE_GTF) {
+                writeRecords (out, parser);
+            } else {
+
+                EnhanceGTFRecords e = new EnhanceGTFRecords();
+                List<GTFRecord> records = e.enhanceGTFRecords(parser);
+                Collections.sort(records, new GenomicOrderComparator(dict));
+                writeRecords(out, records);
+            }
+            out.close();
+            return 0;
+        } finally {
+            CloserUtil.close(parser);
+        }
+    }
+
+    private void initialize() {
+        if (!initialized) {
+            dict = DropSeqSamUtil.loadSequenceDictionary(SEQUENCE_DICTIONARY);
+            initialized = true;
+        }
+    }
+
+    FilteringGTFParser parseGTF() {
+        // Need to initialize for testing.
+        initialize();
+        return new FilteringGTFParser(this.GTF);
+    }
 	
 	
+	private class FilteringGTFParser extends FilteredIterator<GTFRecord> {
+        final Set<String> featureTypes = new HashSet<>(FEATURE_TYPE);
+        final Set<String> ignoredFunctionalTypes = new HashSet<>(IGNORE_FUNC_TYPE);
+
+        private FilteringGTFParser(final File gtf) {
+            super(new GTFParser(gtf));
+        }
+
+        @Override
+        protected boolean filterOut(GTFRecord rec) {
+            return ignoredFunctionalTypes.contains(rec.getTranscriptType()) ||
+                    !featureTypes.contains(rec.getFeatureType()) ||
+                    dict.getSequence(rec.getChromosome()) == null;
+        }
+    }
 	
-	
-	
-	List<GTFRecord> parseGTF (File gtfFile, File dictFile, Set<String> featureTypes, Set<String> ignoredFunctionalTypes, boolean reportProgress ) {
-		SAMSequenceDictionary dict = getDict(dictFile);
-		TabbedInputParser parser = new TabbedInputParser(false, gtfFile);
-		List<GTFRecord> records=new ArrayList<GTFRecord>();
-		
-		int counter=0;
-		while (parser.hasNext()) {
-			if (counter%100000==0 && reportProgress) log.info("Progress [" + counter +"] lines");
-			String [] line = parser.next();
-			
-			GTFRecord r = parseLine(line, this.FUNCTION_FIELD, featureTypes, ignoredFunctionalTypes, dict);
-			
-			if (r!=null) {	
-				records.add(r);	
-			}
-							
-			counter++;
-		}
-		parser.close();
-		return (records);
-	}
-	
-	
-	private GTFRecord parseLine (String [] line, String functionField, Set<String> featureTypes, Set<String> ignoredFunctionalTypes, SAMSequenceDictionary dict) {
-		String chr = line[0];
-		SAMSequenceRecord index = dict.getSequence(chr);
-		if (index==null) {
-			return (null);
-		}
-		
-		String featureType=line[2];
-		// throw away lines that don't have the right feature type
-		if (featureTypes.contains(featureType)==false) {
-			return (null);
-		}
-		
-		int startPos=Integer.parseInt(line[3]);
-		int endPos=Integer.parseInt(line[4]);
-		String strand=line[6];
-		
-		Map<String, String> optionalAnnosMap= parseOptionalFields(line[8]);
-		
-		String geneName=optionalAnnosMap.get("gene_name");
-		String transcriptName=optionalAnnosMap.get("transcript_name");
-		String transcriptType=optionalAnnosMap.get(functionField);
-		String geneID=optionalAnnosMap.get("gene_id");
-		String transcriptID=optionalAnnosMap.get("transcript_id");
-		if (ignoredFunctionalTypes.contains(transcriptType)) {
-			return (null);
-		}
-		
-		boolean negativeStrand=false;
-		if (strand.equals("-")) negativeStrand=true;
-		
-		GTFRecord r = new GTFRecord(chr, startPos, endPos, negativeStrand, geneID, geneName, transcriptName, transcriptID, transcriptType, featureType);
-		
-		return (r);
-	}
 	
 	private void writeHeader (PrintStream out) {
 		String [] line = {"chr", "start", "end", "strand", "gene_name", "gene_id", "transcript_name", "transcript_id",
@@ -178,24 +133,10 @@ public class ReduceGTF extends CommandLineProgram {
 		out.println(h);
 	}
 	
-	private void writeRecords (PrintStream out, List<GTFRecord> records) {
+	private void writeRecords (PrintStream out, Iterable<GTFRecord> records) {
 		for (GTFRecord r: records) {
 			writeLine(r, out);
 		}
-	}
-	
-	Map<String, String> parseOptionalFields(String optional) {
-		Map<String, String> result = new HashMap<String, String>();
-		String [] o = optional.split(";");
-		for (String s: o) {
-			s=s.replaceAll("\"", "");
-			s=s.trim();
-			String [] z= s.split(" ");
-			String k = z[0];
-			String v = z[1];
-			result.put(k, v);
-		}
-		return (result);
 	}
 	
 	private void writeLine (GTFRecord r, PrintStream out) {
@@ -209,13 +150,6 @@ public class ReduceGTF extends CommandLineProgram {
         }
 		String h = StringUtils.join(line, "\t");
 		out.println(h);
-	}
-	
-	private SAMSequenceDictionary getDict (File file) {
-		final SAMFileReader r = new SAMFileReader(file);
-		SAMSequenceDictionary dict = r.getFileHeader().getSequenceDictionary();
-		r.close();
-		return (dict);
 	}
 	
 	/** Stock main method. */

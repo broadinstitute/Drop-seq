@@ -4,17 +4,20 @@ import htsjdk.samtools.util.Interval;
 
 public class GTFRecord implements Comparable<GTFRecord> {
 
-	private Interval interval;
-	private String geneID;
-	private String geneName;
-	private String transcriptName;
-	private String transcriptID;
-	private String transcriptType;
-	private String featureType;
+	private final Interval interval;
+	private final String geneID;
+	private final String geneName;
+	private final String transcriptName;
+	private final String transcriptID;
+	private final String transcriptType;
+	private final String featureType;
+    private final Integer geneVersion;
 	
 	
 	//{chr, startPos, endPos, strand,geneName,geneID,transcriptName, transcriptID,transcriptType,featureType};
-	public GTFRecord(String chromsome, int start, int end, boolean negativeStrand, String geneID, String geneName, String transcriptName, String transcriptID, String transcriptType, String featureType) {
+	public GTFRecord(String chromsome, int start, int end, boolean negativeStrand, String geneID, String geneName,
+                     String transcriptName, String transcriptID, String transcriptType, String featureType,
+                     Integer geneVersion) {
 		this.interval=new Interval(chromsome, start, end, negativeStrand, null);
 		this.geneID=geneID;
 		this.geneName=geneName;
@@ -22,6 +25,7 @@ public class GTFRecord implements Comparable<GTFRecord> {
 		this.transcriptID=transcriptID;
 		this.transcriptType=transcriptType;
 		this.featureType=featureType;
+        this.geneVersion=geneVersion;
 	}
 	
 	public Interval getInterval () {
@@ -34,7 +38,7 @@ public class GTFRecord implements Comparable<GTFRecord> {
 	}
 	
 	public String getChromosome() {
-		return this.interval.getSequence();
+		return this.interval.getContig();
 	}
 	
 	public int getStart() {
@@ -72,8 +76,10 @@ public class GTFRecord implements Comparable<GTFRecord> {
 	public String getFeatureType() {
 		return featureType;
 	}
-	
-	@Override
+
+    public Integer getGeneVersion() { return geneVersion; }
+
+    @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

@@ -1,26 +1,23 @@
 package org.broadinstitute.dropseqrna.annotation;
 
 import htsjdk.samtools.util.OverlapDetector;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+import picard.annotation.Gene;
+import picard.annotation.Gene.Transcript;
 
 import java.io.File;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
-
-import org.testng.Assert;
-import org.testng.annotations.Test;
-
-import picard.annotation.Gene;
-import picard.annotation.Gene.Transcript;
 
 
 
 public class GTFReaderTest {
-	File GTF_FILE1 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_ISG15.gtf.gz");
-	File GTF_FILE2 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_ISG15_FAM41C.gtf.gz");
-	File GTF_FILE3 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_SNORD18.gtf.gz");
-	File SD = new File("testdata/org/broadinstitute/transcriptome/annotation/human_g1k_v37_decoy_50.dict");
+	private final File GTF_FILE1 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_ISG15.gtf.gz");
+	private final File GTF_FILE2 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_ISG15_FAM41C.gtf.gz");
+	private final File GTF_FILE3 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_SNORD18.gtf.gz");
+	private final File SD = new File("testdata/org/broadinstitute/transcriptome/annotation/human_g1k_v37_decoy_50.dict");
 	
 	
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
@@ -50,7 +47,7 @@ public class GTFReaderTest {
 		OverlapDetector<Gene> od = (OverlapDetector) r.load();
 		Assert.assertNotNull(od);
 		Collection<Gene> genes = od.getAll();
-		Map<String, Gene> geneMap = new HashMap<String, Gene>(genes.size());
+		Map<String, Gene> geneMap = new HashMap<>(genes.size());
 		for (Gene g: genes) {
 			geneMap.put(g.getName(), g);
 		}
@@ -62,15 +59,13 @@ public class GTFReaderTest {
 		Assert.assertEquals(g.getStart(), 803451);
 		Assert.assertEquals(g.getEnd(), 812283);
 		Assert.assertTrue(g.isNegativeStrand());
-		Iterator<Transcript> iter = g.iterator();
-		while (iter.hasNext()) {
-			Transcript t = iter.next();
-			if (t.name.equals("FAM41C-001")) {
-				Assert.assertEquals(t.name, "FAM41C-001");
-				Assert.assertEquals(t.transcriptionStart, 803451);
-				Assert.assertEquals(t.transcriptionEnd, 812283);
-			}
-		}
+        for (Transcript t : g) {
+            if (t.name.equals("FAM41C-001")) {
+                Assert.assertEquals(t.name, "FAM41C-001");
+                Assert.assertEquals(t.transcriptionStart, 803451);
+                Assert.assertEquals(t.transcriptionEnd, 812283);
+            }
+        }
 	}
 	
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
@@ -82,7 +77,7 @@ public class GTFReaderTest {
 		OverlapDetector<Gene> od = (OverlapDetector) r.load();
 		Assert.assertNotNull(od);
 		Collection<Gene> genes = od.getAll();
-		Map<String, Gene> geneMap = new HashMap<String, Gene>(genes.size());
+		Map<String, Gene> geneMap = new HashMap<>(genes.size());
 		for (Gene g: genes) {
 			geneMap.put(g.getName(), g);
 		}

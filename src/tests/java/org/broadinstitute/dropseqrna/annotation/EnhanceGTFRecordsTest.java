@@ -1,4 +1,5 @@
 package org.broadinstitute.dropseqrna.annotation;
+import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.OverlapDetector;
 
@@ -40,13 +41,14 @@ public class EnhanceGTFRecordsTest {
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
 	public void test1Enhanced() {
 		EnhanceGTFRecords e = new EnhanceGTFRecords();
-		GTFReader r = new GTFReader(GTF_FILE1, SD);
-		OverlapDetector<GeneFromGTF> od = r.load();
-		Assert.assertNotNull(od);
-		
-		
-		List<GTFRecord> records = e.enhanceGTFRecords(od);
-		Assert.assertNotNull(records);
+		GTFParser parser = new GTFParser(GTF_FILE1);
+        List<GTFRecord> records;
+        try {
+            records = e.enhanceGTFRecords(parser);
+        } finally {
+            CloserUtil.close(parser);
+        }
+        Assert.assertNotNull(records);
 		
 	}
 	

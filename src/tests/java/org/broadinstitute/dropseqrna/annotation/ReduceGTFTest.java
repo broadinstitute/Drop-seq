@@ -1,18 +1,13 @@
 package org.broadinstitute.dropseqrna.annotation;
 
 import htsjdk.samtools.util.CollectionUtil;
-import htsjdk.samtools.util.OverlapDetector;
-
-import java.io.File;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import org.broadinstitute.dropseqrna.annotation.GTFRecord;
-import org.broadinstitute.dropseqrna.annotation.GeneFromGTF;
-import org.broadinstitute.dropseqrna.annotation.ReduceGTF;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
 
 
 public class ReduceGTFTest {
@@ -26,29 +21,27 @@ public class ReduceGTFTest {
 	File GTF_FILE5 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_APITD1_both.gtf.gz");
 	
 	File SD = new File("testdata/org/broadinstitute/transcriptome/annotation/human_g1k_v37_decoy_50.dict");
-	
+
+
+    private Iterator<GTFRecord> parseGtf(final File file) {
+        ReduceGTF r = new ReduceGTF();
+        r.SEQUENCE_DICTIONARY = SD;
+        r.GTF = file;
+        return r.parseGTF();
+    }
 	
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
 	public void test1() {
-		ReduceGTF r = new ReduceGTF();
-		Set<String> featureTypes = new HashSet<>(r.FEATURE_TYPE);
-		Set<String> ignoredFunctionalTypes = new HashSet<>(r.IGNORE_FUNC_TYPE);
-		
-		List<GTFRecord> records = r.parseGTF (GTF_FILE1, SD, featureTypes, ignoredFunctionalTypes, true);
-		Assert.assertNotNull(records);
+		Assert.assertNotNull(parseGtf(GTF_FILE1));
 		
 	}
 	
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
 	public void test2() {
-		ReduceGTF r = new ReduceGTF();
-        Set<String> featureTypes = new HashSet<>(r.FEATURE_TYPE);
-        Set<String> ignoredFunctionalTypes = new HashSet<>(r.IGNORE_FUNC_TYPE);
-		
-		List<GTFRecord> records = r.parseGTF (GTF_FILE3, SD, featureTypes, ignoredFunctionalTypes, true);
-		Assert.assertNotNull(records);
+		final Iterator<GTFRecord> gtfIterator = parseGtf(GTF_FILE3);
+		Assert.assertNotNull(gtfIterator);
 		EnhanceGTFRecords e = new EnhanceGTFRecords();
-		records = e.enhanceGTFRecords(records);
+		List<GTFRecord> records = e.enhanceGTFRecords(gtfIterator);
 		Assert.assertNotNull(records);
 		
 		for (GTFRecord a: records) {
@@ -71,45 +64,37 @@ public class ReduceGTFTest {
 	
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
 	public void testAPITD1() {
-		ReduceGTF r = new ReduceGTF();
-        Set<String> featureTypes = new HashSet<>(r.FEATURE_TYPE);
-        Set<String> ignoredFunctionalTypes = new HashSet<>(r.IGNORE_FUNC_TYPE);
-		
-		List<GTFRecord> records = r.parseGTF (GTF_FILE4, SD, featureTypes, ignoredFunctionalTypes, true);
-		Assert.assertNotNull(records);
+		Iterator<GTFRecord> gtfIterator = parseGtf(GTF_FILE4);
+		Assert.assertNotNull(gtfIterator);
+        Collection<GTFRecord> records = CollectionUtil.makeCollection(gtfIterator);
 		// gunzip -c human_APITD1.gtf.gz | grep -v CDS |grep -v start_codon |grep -v stop_codon |wc -l
 		Assert.assertEquals(records.size(),26);
-		
-		EnhanceGTFRecords e = new EnhanceGTFRecords();
-		OverlapDetector<GeneFromGTF> od = e.getOverlapDetector(records);
-		Assert.assertEquals(od.getAll().size(),1);
-		
-		records = e.enhanceGTFRecords(records);
-		Assert.assertNotNull(records);
-		
-		
-		
+
+        final GeneFromGTFBuilder geneBuilder = new GeneFromGTFBuilder(records.iterator());
+        Collection<GeneFromGTF> genes = CollectionUtil.makeCollection(geneBuilder);
+		Assert.assertEquals(genes.size(),1);
+
+        final EnhanceGTFRecords enhancer = new EnhanceGTFRecords();
+        for (final GeneFromGTF gene : genes) {
+            Assert.assertNotNull(enhancer.enhanceGene(gene));
+        }
 	}
 	
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
 	public void testAPITD1Complex() {
-		ReduceGTF r = new ReduceGTF();
-        Set<String> featureTypes = new HashSet<>(r.FEATURE_TYPE);
-        Set<String> ignoredFunctionalTypes = new HashSet<>(r.IGNORE_FUNC_TYPE);
-		
-		List<GTFRecord> records = r.parseGTF (GTF_FILE5, SD, featureTypes, ignoredFunctionalTypes, true);
-		Assert.assertNotNull(records);
+        Iterator<GTFRecord> gtfIterator = parseGtf(GTF_FILE5);
+		Assert.assertNotNull(gtfIterator);
+        Collection<GTFRecord> records = CollectionUtil.makeCollection(gtfIterator);
 		// gunzip -c human_APITD1.gtf.gz | grep -v CDS |grep -v start_codon |grep -v stop_codon |wc -l
 		Assert.assertEquals(records.size(),42);
-		
-		EnhanceGTFRecords e = new EnhanceGTFRecords();
-		OverlapDetector<GeneFromGTF> od = e.getOverlapDetector(records);
-		// this fails because the two genes share the same bounds, and one replaces the other in the OverlapDetector class.
-		Assert.assertEquals(od.getAll().size(),2);
-		
-		records = e.enhanceGTFRecords(records);
-		Assert.assertNotNull(records);
-		
-		
+
+        final GeneFromGTFBuilder geneBuilder = new GeneFromGTFBuilder(records.iterator());
+        Collection<GeneFromGTF> genes = CollectionUtil.makeCollection(geneBuilder);
+        Assert.assertEquals(genes.size(),2);
+
+        final EnhanceGTFRecords enhancer = new EnhanceGTFRecords();
+        for (final GeneFromGTF gene : genes) {
+            Assert.assertNotNull(enhancer.enhanceGene(gene));
+        }
 	}
 }

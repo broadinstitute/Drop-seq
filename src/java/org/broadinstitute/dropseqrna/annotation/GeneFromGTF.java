@@ -9,19 +9,23 @@ import picard.annotation.AnnotationException;
 import picard.annotation.Gene;
 
 
+@SuppressWarnings("Convert2Diamond")
 public class GeneFromGTF extends Gene implements Iterable<Gene.Transcript> {
 	
-	private String geneID;
-	private String transcriptType;
-	private String featureType;
+	private final String geneID;
+	private final String transcriptType;
+	private final String featureType;
+    private final Integer geneVersion;
 	
 	private final Map<String, TranscriptFromGTF> transcripts = new HashMap<String, TranscriptFromGTF>();
 	
-	public GeneFromGTF(String sequence, int start, int end, boolean negative, String name, String featureType, String geneID, String transcriptType) {
+	public GeneFromGTF(String sequence, int start, int end, boolean negative, String name, String featureType,
+                       String geneID, String transcriptType, Integer geneVersion) {
 		super(sequence, start, end, negative, name);
 		this.featureType=featureType;
 		this.geneID=geneID;
 		this.transcriptType=transcriptType;
+        this.geneVersion = geneVersion;
 	}
 	
 	
@@ -36,8 +40,10 @@ public class GeneFromGTF extends Gene implements Iterable<Gene.Transcript> {
 	public String getFeatureType() {
 		return featureType;
 	}
-	
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+
+    public Integer getGeneVersion() { return geneVersion; }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
 	@Override
 	public Iterator<Transcript> iterator() {
         return (Iterator) transcripts.values().iterator();
@@ -70,7 +76,7 @@ public class GeneFromGTF extends Gene implements Iterable<Gene.Transcript> {
          if (this.getStart() != that.getStart()) return false;
          if (this.getEnd() != that.getEnd()) return false;
          if (!this.getName().equals(that.getName())) return false;
-         if (!this.getSequence().equals(that.getSequence())) return false;
+         if (!this.getContig().equals(that.getContig())) return false;
          if (!this.getGeneID().equals(that.getGeneID())) return false;
 
          return true;
@@ -78,7 +84,7 @@ public class GeneFromGTF extends Gene implements Iterable<Gene.Transcript> {
 
      @Override
      public int hashCode() {
-         int result = this.getSequence().hashCode();
+         int result = this.getContig().hashCode();
          result = 31 * result + this.getStart();
          result = 31 * result + this.getEnd();
          result = 31 * result + this.getName().hashCode();
@@ -87,9 +93,9 @@ public class GeneFromGTF extends Gene implements Iterable<Gene.Transcript> {
 			
 	public class TranscriptFromGTF extends Gene.Transcript {
 
-		private String transcriptName;
-		private String transcriptID;
-		private String transcriptType;
+		private final String transcriptName;
+		private final String transcriptID;
+		private final String transcriptType;
 		
 		public TranscriptFromGTF(String name, int transcriptionStart, int transcriptionEnd, int codingStart, int codingEnd,
 				int numExons, String transcriptName, String transcriptID, String transcriptType) {
