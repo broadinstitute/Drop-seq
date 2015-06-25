@@ -77,7 +77,7 @@ public class TrimStartingSequence extends CommandLineProgram {
         CloserUtil.close(bamReader);
         
         writer.close();
-        log.info("Number of reads trimmed: " + this.readsTrimmed, "total reads: " + this.numReadsTotal);
+        log.info("Number of reads trimmed: " + this.readsTrimmed, " total reads: " + this.numReadsTotal);
         if (this.OUTPUT_SUMMARY!=null) writeSummary(this.numBasesTrimmed); 
         
 		return 0;
