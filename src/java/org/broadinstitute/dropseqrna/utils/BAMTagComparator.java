@@ -22,18 +22,21 @@ public class BAMTagComparator implements SAMRecordComparator {
 		this(SAMTagUtil.getSingleton().makeBinaryTag(tagName));
 	}
 	
-	public BAMTagComparator(Collection<Short> tags) {
+	public BAMTagComparator (Collection<Short> tags) {
 		this.tagNames = new ArrayList<Short>(tags.size());
 		this.tagNames.addAll(tags);
 	}
 	
-	public BAMTagComparator(List<String> tags) {
+	public BAMTagComparator (List<String> tags) {
 		tagNames = new ArrayList<Short>(tagNames.size());
 		for (String t: tags) {
 			tagNames.add(SAMTagUtil.getSingleton().makeBinaryTag(t));
 		}		
 	}
 
+	// comparator aggregater
+	// list of sam record comparators.
+	
 	/**
 	 * This only works for tags that encode Strings (for now)
 	 */
