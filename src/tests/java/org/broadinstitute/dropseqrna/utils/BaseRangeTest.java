@@ -29,7 +29,7 @@ public class BaseRangeTest {
 	@Test
 	public void parseBaseRange2() {
 		// weird error where ascii character 173 is in here.
-		String BASE_RANGE="13­-20";
+		String BASE_RANGE="13­\u00ad-20";
 		char [] foo = BASE_RANGE.toCharArray();
 		int val = (int) foo[2];
 		int val2 = (int) foo[1];
