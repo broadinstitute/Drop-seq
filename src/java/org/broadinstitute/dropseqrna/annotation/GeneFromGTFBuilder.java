@@ -75,6 +75,9 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
             addTranscriptToGeneFromGTFRecords(gene, entry.getValue());
         }
 
+        if (!gene.iterator().hasNext()) {
+            throw new AnnotationException("No transcript in GTF for gene " + gene.getName());
+        }
 
         return gene;
     }
