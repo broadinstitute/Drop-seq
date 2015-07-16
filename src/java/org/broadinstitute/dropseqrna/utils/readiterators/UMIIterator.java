@@ -11,6 +11,8 @@ import java.util.List;
 
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.ComparatorAggregator;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.StringComparator;
 
 public class UMIIterator implements CloseableIterator<UMICollection>  {
 	
@@ -45,7 +47,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		
 		UMIReadProcessor f = new UMIReadProcessor(cellBarcodeTag, cellBarcodes, geneExonTag, strandTag, readMQ, assignReadsToAllGenes, useStrandInfo);
 		
-		TagOrderIterator toi = new TagOrderIterator(bamFile, sortingTags, sortingTags, f, true);
+		ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
+		TagOrderIterator toi = new TagOrderIterator(bamFile, sortingTags, sortingTags, ag, f, true);
 		this.atoi = new AggregatedTagOrderIterator(toi);
 		
 	}

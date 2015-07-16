@@ -22,8 +22,10 @@ import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.BAMTagComparator;
 import org.broadinstitute.dropseqrna.utils.CustomBAMIterators;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.BAMTagComparator;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.ComparatorAggregator;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.StringComparator;
 
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
@@ -173,8 +175,11 @@ private static final Log log = Log.getInstance(BAMTagofTagCounts.class);
         for (SAMProgramRecord spr : programs) {
         	writerHeader.addProgramRecord(spr);
         }
+        
+        ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
+        
 		SortingCollection<SAMRecord> alignmentSorter = SortingCollection.newInstance(SAMRecord.class,
-	            new BAMRecordCodec(writerHeader), new BAMTagComparator(this.PRIMARY_TAG),
+	            new BAMRecordCodec(writerHeader), new BAMTagComparator(this.PRIMARY_TAG, ag),
 	                MAX_RECORDS_IN_RAM);
 		
 		log.info("Reading in records for TAG name sorting");

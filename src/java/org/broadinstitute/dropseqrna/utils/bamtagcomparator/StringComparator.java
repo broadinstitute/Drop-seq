@@ -4,10 +4,7 @@ import htsjdk.samtools.SAMException;
 
 public class StringComparator implements TagComparator {
 
-	private Short tagName;
-	
-	public StringComparator (Short tagName) {
-		this.tagName=tagName;
+	public StringComparator () {
 	}
 	
 	public int compare(final Object recordOneTagValue, final Object recordTwoTagValue) {
@@ -23,6 +20,6 @@ public class StringComparator implements TagComparator {
         if (val instanceof String) {
             return (String)val;
         }
-        throw new SAMException("Value for tag " + tagName + " is not a String: " + val.getClass());
+        throw new SAMException("Value for tag is not a String: " + val.getClass());
 	}
 }

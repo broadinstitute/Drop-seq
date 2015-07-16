@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.broadinstitute.dropseqrna.barnyard.Utils;
-import org.broadinstitute.dropseqrna.utils.BAMTagComparator;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.BAMTagComparator;
 
 public class DEIteratorUtils {
 

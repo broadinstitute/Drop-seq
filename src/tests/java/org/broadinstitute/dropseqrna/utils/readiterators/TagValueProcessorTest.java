@@ -8,6 +8,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.ComparatorAggregator;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.StringComparator;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
@@ -25,7 +27,8 @@ public class TagValueProcessorTest {
 	  List<String> sortingTags = new ArrayList<String>();
 	  sortingTags.add("ZC");
 	  
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, p, true);
+	  ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
+	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, ag, p, true);
 	  int counter=0;
 	  
 	  String [] cellOrder={"TGGCGAAGAGAT", "TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT"};
@@ -53,7 +56,8 @@ public class TagValueProcessorTest {
 	  List<String> sortingTags = new ArrayList<String>();
 	  sortingTags.add("ZC");
 	  
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, p, true);
+	  ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
+	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, ag, p, true);
 	  int counter=0;
 	  
 	  String [] cellOrder={"TGGCGAAGAGAT", "TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT"};

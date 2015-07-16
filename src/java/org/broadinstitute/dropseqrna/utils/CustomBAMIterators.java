@@ -16,6 +16,10 @@ import htsjdk.samtools.util.SortingCollection;
 
 import java.util.List;
 
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.BAMTagComparator;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.ComparatorAggregator;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.StringComparator;
+
 public class CustomBAMIterators {
 	
 	private static final Log log = Log.getInstance(CustomBAMIterators.class);
@@ -32,8 +36,11 @@ public class CustomBAMIterators {
         for (SAMProgramRecord spr : programs) {
         	writerHeader.addProgramRecord(spr);
         }
+        
+        ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
+        
 		SortingCollection<SAMRecord> alignmentSorter = SortingCollection.newInstance(SAMRecord.class,
-	            new BAMRecordCodec(writerHeader), new BAMTagComparator(primaryTag),
+	            new BAMRecordCodec(writerHeader), new BAMTagComparator(primaryTag, ag),
 	                MAX_RECORDS_IN_RAM);
 		
 		log.info("Reading in records for TAG name sorting");
@@ -50,7 +57,7 @@ public class CustomBAMIterators {
 		return (result);
 	}
 	
-	public static CloseableIterator<SAMRecord> getReadsInTagOrder (SamReader reader, List<String> tags) {
+	public static CloseableIterator<SAMRecord> getReadsInTagOrder (SamReader reader, List<String> tags, ComparatorAggregator ag) {
 		// SamReader reader = SamReaderFactory.makeDefault().open(bamFile);
 		
 		SAMSequenceDictionary dict= reader.getFileHeader().getSequenceDictionary();
@@ -63,7 +70,7 @@ public class CustomBAMIterators {
         	writerHeader.addProgramRecord(spr);
         }
 		SortingCollection<SAMRecord> alignmentSorter = SortingCollection.newInstance(SAMRecord.class,
-	            new BAMRecordCodec(writerHeader), new BAMTagComparator(tags),
+	            new BAMRecordCodec(writerHeader), new BAMTagComparator(tags, ag),
 	                MAX_RECORDS_IN_RAM);
 		
 		log.info("Reading in records for TAG name sorting");
@@ -88,6 +95,7 @@ public class CustomBAMIterators {
 	 * @param bamFile The BAM/SAM file to read
 	 * @return An iterator over the records in the file, in queryname order.
 	 */
+	
 	public static CloseableIterator<SAMRecord> getQuerynameSortedRecords(SamReader reader) {
 		CloseableIterator<SAMRecord> iter = null;
 		if (reader.getFileHeader().getSortOrder().equals(SortOrder.queryname)) {

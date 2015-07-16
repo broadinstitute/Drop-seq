@@ -19,7 +19,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import org.broadinstitute.dropseqrna.utils.BAMTagComparator;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.BAMTagComparator;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.ComparatorAggregator;
 
 /**
  * Given an input BAM file, a list of one or more tags, and a list of 0 or more processors
@@ -42,11 +43,11 @@ public class TagOrderIterator implements CloseableIterator<SAMRecord> {
 	 * @param filters A collection of filters that can filter or add reads to the iterator
 	 * @param skipReadsWithoutTags skip all reads that don't have a value set for all of the sorting tags.
 	 */
-	public TagOrderIterator(File inFile, List<String> sortingTags, List<String> requiredTags, ReadProcessorCollection filters, boolean skipReadsWithoutTags) {
+	public TagOrderIterator(File inFile, List<String> sortingTags, List<String> requiredTags, ComparatorAggregator ag, ReadProcessorCollection filters, boolean skipReadsWithoutTags) {
 		int maxReads=SAMFileWriterImpl.getDefaultMaxRecordsInRam();
 		this.sortingTags=DEIteratorUtils.getShortBAMTags(sortingTags);
 		this.requiredTags=DEIteratorUtils.getShortBAMTags(requiredTags);
-		this.iter = new PeekableIterator<SAMRecord>(getReadsInTagOrder(inFile, this.sortingTags, this.requiredTags, filters, maxReads, skipReadsWithoutTags));
+		this.iter = new PeekableIterator<SAMRecord>(getReadsInTagOrder(inFile, this.sortingTags, this.requiredTags, ag, filters, maxReads, skipReadsWithoutTags));
 	}
 
 	/**
@@ -56,13 +57,13 @@ public class TagOrderIterator implements CloseableIterator<SAMRecord> {
 	 * @param filters A single filter that can filter or add reads to the iterator
 	 * @param skipReadsWithoutTags skip all reads that don't have a value set for all of the sorting tags.
 	 */
-	public TagOrderIterator (File inFile, List<String> sortingTags, List<String> requiredTags, SAMReadProcessorI filter, boolean skipReadsWithoutTags) {
+	public TagOrderIterator (File inFile, List<String> sortingTags, List<String> requiredTags, ComparatorAggregator ag, SAMReadProcessorI filter, boolean skipReadsWithoutTags) {
 		int maxReads=SAMFileWriterImpl.getDefaultMaxRecordsInRam();
 		this.sortingTags=DEIteratorUtils.getShortBAMTags(sortingTags);
 		this.requiredTags=DEIteratorUtils.getShortBAMTags(requiredTags);
 		ReadProcessorCollection filters = new ReadProcessorCollection();
 		filters.addFilter (filter);
-		this.iter = new PeekableIterator<SAMRecord>(getReadsInTagOrder(inFile, this.sortingTags, this.requiredTags, filters, maxReads, skipReadsWithoutTags));
+		this.iter = new PeekableIterator<SAMRecord>(getReadsInTagOrder(inFile, this.sortingTags, this.requiredTags, ag, filters, maxReads, skipReadsWithoutTags));
 	}
 	
 	/**
@@ -89,7 +90,7 @@ public class TagOrderIterator implements CloseableIterator<SAMRecord> {
 	 * @param maxReadsInRAM
 	 * @return
 	 */
-	private static CloseableIterator<SAMRecord> getReadsInTagOrder (File inFile, List<Short> sortingTags, List<Short> requiredTags, ReadProcessorCollection filters, int maxReadsInRAM, boolean skipReadsWithoutTags) {	
+	private static CloseableIterator<SAMRecord> getReadsInTagOrder (File inFile, List<Short> sortingTags, List<Short> requiredTags, ComparatorAggregator ag, ReadProcessorCollection filters, int maxReadsInRAM, boolean skipReadsWithoutTags) {	
 		SamReader reader = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(inFile);
 		
 		SAMSequenceDictionary dict= reader.getFileHeader().getSequenceDictionary();
@@ -97,7 +98,7 @@ public class TagOrderIterator implements CloseableIterator<SAMRecord> {
         writerHeader.setSequenceDictionary(dict);
 
         SortingCollection<SAMRecord> alignmentSorter = SortingCollection.newInstance(SAMRecord.class,
-	            new BAMRecordCodec(writerHeader), new BAMTagComparator(sortingTags),
+	            new BAMRecordCodec(writerHeader), new BAMTagComparator(sortingTags, ag),
 	            maxReadsInRAM);
 		
 		log.info("Reading in records for TAG name sorting");

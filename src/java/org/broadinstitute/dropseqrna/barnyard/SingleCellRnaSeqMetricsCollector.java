@@ -29,7 +29,9 @@ import java.util.Set;
 
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.BAMTagComparator;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.BAMTagComparator;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.ComparatorAggregator;
+import org.broadinstitute.dropseqrna.utils.bamtagcomparator.StringComparator;
 
 import picard.analysis.MetricAccumulationLevel;
 import picard.analysis.RnaSeqMetrics;
@@ -168,8 +170,10 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
         	writerHeader.addProgramRecord(spr);
         }
                 
+        ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
+        
 		SortingCollection<SAMRecord> alignmentSorter = SortingCollection.newInstance(SAMRecord.class,
-	            new BAMRecordCodec(writerHeader), new BAMTagComparator(primaryTag),
+	            new BAMRecordCodec(writerHeader), new BAMTagComparator(primaryTag, ag),
 	                MAX_RECORDS_IN_RAM);
 		//log.info("Reading in records for TAG name sorting");
 		ProgressLogger p = new ProgressLogger(log, 1000000, "Preparing reads in core barcodes");

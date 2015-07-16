@@ -1,6 +1,5 @@
-package org.broadinstitute.dropseqrna.utils;
+package org.broadinstitute.dropseqrna.utils.bamtagcomparator;
 
-import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordComparator;
 import htsjdk.samtools.SAMTagUtil;
@@ -11,63 +10,61 @@ import java.util.List;
 
 public class BAMTagComparator implements SAMRecordComparator {
 
-	private List<Short> tagNames;
-
-	public BAMTagComparator(Short tagName) {
+	private final List<Short> tagNames;
+	private final ComparatorAggregator comparatorAggregator;
+	
+	public BAMTagComparator(Short tagName, ComparatorAggregator comparatorAggregator) {
 		this.tagNames=new ArrayList<Short>(1);
 		this.tagNames.add(tagName);
+		this.comparatorAggregator=comparatorAggregator;
 	}
 	
-	public BAMTagComparator (String tagName) {
-		this(SAMTagUtil.getSingleton().makeBinaryTag(tagName));
+	public BAMTagComparator (String tagName, ComparatorAggregator comparatorAggregator) {
+		this(SAMTagUtil.getSingleton().makeBinaryTag(tagName), comparatorAggregator);
 	}
 	
-	public BAMTagComparator (Collection<Short> tags) {
+	public BAMTagComparator (Collection<Short> tags, ComparatorAggregator comparatorAggregator) {
 		this.tagNames = new ArrayList<Short>(tags.size());
 		this.tagNames.addAll(tags);
+		this.comparatorAggregator=comparatorAggregator;
 	}
 	
-	public BAMTagComparator (List<String> tags) {
-		tagNames = new ArrayList<Short>(tagNames.size());
+	public BAMTagComparator (List<String> tags, ComparatorAggregator comparatorAggregator) {
+		tagNames = new ArrayList<Short>(tags.size());
 		for (String t: tags) {
 			tagNames.add(SAMTagUtil.getSingleton().makeBinaryTag(t));
 		}		
+		this.comparatorAggregator=comparatorAggregator;
 	}
 
-	// comparator aggregater
-	// list of sam record comparators.
-	
 	/**
 	 * This only works for tags that encode Strings (for now)
 	 */
 	public int compare(final SAMRecord samRecord1, final SAMRecord samRecord2) {
 		int cmp=0;
-		for (Short tagName: tagNames) {
-			
-			final String hitIndex1 = this.getTagValueAsString(tagName, samRecord1.getAttribute(tagName));
-			final String hitIndex2 = this.getTagValueAsString(tagName, samRecord2.getAttribute(tagName));
-			if (hitIndex1 != null) {
-				if (hitIndex2 == null)
+		for (int i=0; i<tagNames.size(); i++) {
+			Short tagName=tagNames.get(i);
+			TagComparator tc = this.comparatorAggregator.get(i);
+		
+			final Object o1 = samRecord1.getAttribute(tagName);
+			final Object o2 = samRecord2.getAttribute(tagName);
+							
+			if (o1 != null) {
+				if (o2 == null)
 					return 1;
 				else {
-					cmp = hitIndex1.compareTo(hitIndex2);
+					cmp = tc.compare(o1, o2);
 					if (cmp != 0)
 						return cmp;
 				}
-			} else if (hitIndex2 != null) {
+			} else if (o2 != null) {
 				return -1;
 			}	
 		}
 		return 0;
 	}
 	
-	private String getTagValueAsString(Short tag, Object val) {
-		if (val == null) return null;
-        if (val instanceof String) {
-            return (String)val;
-        }
-        throw new SAMException("Value for tag " + tag + " is not a String: " + val.getClass());
-	}
+	
 
 	/**
 	 * Less stringent compare method than the regular compare. If the two
