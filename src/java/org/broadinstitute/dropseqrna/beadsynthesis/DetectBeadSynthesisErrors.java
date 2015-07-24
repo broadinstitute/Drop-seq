@@ -46,9 +46,9 @@ import picard.cmdline.StandardOptionDefinitions;
         programGroup = DropSeq.class
 )
 
-public class GatherBeadSynthesisErrors extends CommandLineProgram {
+public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	
-	private static final Log log = Log.getInstance(GatherBeadSynthesisErrors.class);
+	private static final Log log = Log.getInstance(DetectBeadSynthesisErrors.class);
 	
 	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
 	public File INPUT;
@@ -297,6 +297,6 @@ public class GatherBeadSynthesisErrors extends CommandLineProgram {
 	
 	/** Stock main method. */
 	public static void main(final String[] args) {
-		System.exit(new GatherBeadSynthesisErrors().instanceMain(args));
+		System.exit(new DetectBeadSynthesisErrors().instanceMain(args));
 	}
 }
