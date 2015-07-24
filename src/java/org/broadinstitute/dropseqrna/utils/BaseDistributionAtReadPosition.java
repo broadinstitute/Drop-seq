@@ -154,32 +154,7 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 		
 	}
 	
-	class BaseDistributionMetricCollection {
-		Map<Integer, BaseDistributionMetric> collection = null;
-		
-		public BaseDistributionMetricCollection() {
-			collection = new HashMap<Integer, BaseDistributionMetric>();
-		}
-		
-		public void addBase (char base, int position) {
-			BaseDistributionMetric m = this.collection.get(position);
-			if (m==null) {
-				m = new BaseDistributionMetric();
-				this.collection.put(position, m);
-			}
-			m.addBase(base);
-		}
-		
-		public BaseDistributionMetric getDistributionAtPosition (int position) {
-			return this.collection.get(position);
-		}
-		
-		public List<Integer> getPositions () {
-			List<Integer> r = new ArrayList<Integer>(this.collection.keySet());
-			Collections.sort(r);
-			return (r);
-		}
-	}
+	
 	
 	
 	/** Stock main method. */

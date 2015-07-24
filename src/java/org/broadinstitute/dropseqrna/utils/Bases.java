@@ -13,7 +13,7 @@ public enum Bases {
 		this.base=base;
 	}
 	
-	Character getBase() {
+	public Character getBase() {
 		return this.base;
 	}
 	

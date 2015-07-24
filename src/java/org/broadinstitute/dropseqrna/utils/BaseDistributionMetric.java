@@ -24,8 +24,17 @@ public class BaseDistributionMetric extends MetricBase {
 		map.put(base, count);
 	}
 
-	int getCount(Character base) {
+	public int getCount(Character base) {
 		return (map.get(base));
+	}
+	
+	public int getTotalCount () {
+		int count=0;
+		for (Bases b: Bases.values()) {
+			char bb = b.getBase();
+			count+=map.get(bb);
+		}
+		return count;
 	}
 
 	public String toString() {

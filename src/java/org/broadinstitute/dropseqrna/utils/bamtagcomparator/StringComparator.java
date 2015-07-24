@@ -22,4 +22,5 @@ public class StringComparator implements TagComparator {
         }
         throw new SAMException("Value for tag is not a String: " + val.getClass());
 	}
+	
 }
