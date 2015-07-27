@@ -89,6 +89,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		
 	private Double EXTREME_BASE_RATIO=0.9;
 	private Character PAD_CHARACTER='N';
+	private Integer MAX_NUM_ERRORS=2;
 	
 	@Override
 	protected int doWork() {
@@ -152,6 +153,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	
 	/**
 	 * For each problematic cell, replace cell barcodes positions with N.
+	 * Take the replaced bases and prepend them to the UMI, and trim the last <X> bases off the end of the UMI.
 	 * @param errorBarcodesWithPositions
 	 * @param inBAM
 	 * @param outBAM
@@ -163,8 +165,11 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(h, true, outBAM);
 		ProgressLogger pl = new ProgressLogger(this.log);
 		for (SAMRecord r: reader) {
-			r=padCellBarcodeFix(r, errorBarcodesWithPositions, this.CELL_BARCODE_TAG);
-			writer.addAlignment(r);
+			r=padCellBarcodeFix(r, errorBarcodesWithPositions, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG);
+			if (r!=null) {
+				writer.addAlignment(r);
+			}
+			
 			pl.record(r);
 		}
 		CloserUtil.close(reader);
@@ -172,18 +177,59 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	}
 	
 	
-	
-	SAMRecord padCellBarcodeFix (SAMRecord r, Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions, String cellBarcodeTag) {
+	/**
+	 * Returns null if the read should not be included in the output BAM.
+	 * @param r
+	 * @param errorBarcodesWithPositions
+	 * @param cellBarcodeTag
+	 * @param molecularBarcode
+	 * @return
+	 */
+	SAMRecord padCellBarcodeFix (SAMRecord r, Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions, String cellBarcodeTag, String molecularBarcode) {
 		String cellBC=r.getStringAttribute(cellBarcodeTag);
 		BeadSynthesisErrorData bsed = errorBarcodesWithPositions.get(cellBC);
 		if (bsed==null) return (r); // no correction data, no fix.
+		
 		int errorPosition = bsed.getErrorBase(this.EXTREME_BASE_RATIO);
 		int umiLength = bsed.getBaseLength();
+		int numErrors= umiLength-errorPosition+1;
+		if (numErrors > MAX_NUM_ERRORS) {
+			return null;
+		}
 		String cellBCFixed = padCellBarcode(cellBC, errorPosition, umiLength);
+		String umi = r.getStringAttribute(molecularBarcode);
+		String umiFixed = fixUMI(cellBC, umi, errorPosition); 
 		r.setAttribute(cellBarcodeTag, cellBCFixed);
 		return r;
 	}
 	
+	/**
+	 * Take the original cell barcode and UMI, and move bases from the end of the cell barcode to the start of the UMI,
+	 * then trim an equal number of bases off the end of the UMI so the length is the same.
+	 * Example:
+	 * Cell barcode: 		ACGCTCATACAG
+	 * UMI: 				TCCTTATT
+	 * errorPosition: 		2
+	 * New Cell Barcode:	ACGCTCATACNN
+	 * New UMI:				AGTCCTTA
+	 * 
+	 * @param cellBarcode The original cell barcode
+	 * @param umi The original UMI 
+	 * @param errorPosition The position in the UMI where the error occurred.
+	 * @return
+	 */
+	String fixUMI (String cellBarcode, String umi, int errorPosition) {
+		// 0 based, from end of cell barcode.
+		int badBasesUMI=umi.length()-errorPosition;
+		int lastBase = cellBarcode.length();
+		int firstBaseToPad = lastBase-badBasesUMI-1;
+		String cellBCBases=cellBarcode.substring(firstBaseToPad, cellBarcode.length());
+		
+		
+		String umiRemaining=umi.substring(0, errorPosition-1);
+		String newUMI=cellBCBases+umiRemaining;
+		return (newUMI);
+	}
 	/**
 	 * Picks a number of bases to pad.
 	 * If errorPosition =-1, then don't pad any bases.
