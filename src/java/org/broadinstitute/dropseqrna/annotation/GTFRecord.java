@@ -2,6 +2,10 @@ package org.broadinstitute.dropseqrna.annotation;
 
 import htsjdk.samtools.util.Interval;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
 public class GTFRecord implements Comparable<GTFRecord> {
 
 	private final Interval interval;
@@ -85,16 +89,13 @@ public class GTFRecord implements Comparable<GTFRecord> {
         if (o == null || getClass() != o.getClass()) return false;
 
         final GTFRecord that = (GTFRecord) o;
-        if (!this.interval.equals(that.interval)) return false;
-        if (!this.geneID.equals(that.geneID)) return false;
-        if (!this.geneName.equals(that.geneName)) return false;
-        if (!this.transcriptName.equals(that.transcriptName)) return false;
-        if (!this.transcriptID.equals(that.transcriptID)) return false;
-        if (this.transcriptType == null) {
-            if (that.transcriptType != null) return false;
-        } else if (!this.transcriptType.equals(that.transcriptType)) return false;
-        if (!this.featureType.equals(that.featureType)) return false;
-        
+        if (!Objects.equals(this.interval, that.interval)) return false;
+        if (!Objects.equals(this.geneID, that.geneID)) return false;
+        if (!Objects.equals(this.geneName, that.geneName)) return false;
+        if (!Objects.equals(this.transcriptName, that.transcriptName)) return false;
+        if (!Objects.equals(this.transcriptID, that.transcriptID)) return false;
+        if (!Objects.equals(this.transcriptType, that.transcriptType)) return false;
+        if (!Objects.equals(this.featureType, that.featureType)) return false;
         return true;
     }
 
@@ -103,19 +104,49 @@ public class GTFRecord implements Comparable<GTFRecord> {
         int result = interval.hashCode();
         result = 31 * result + geneID.hashCode();
         result = 31 * result + geneName.hashCode();
-        result = 31 * result + transcriptName.hashCode();
-        result = 31 * result + transcriptID.hashCode();
-        if (transcriptType != null) {
-            // E.g. ERCC
-            result = 31 * result + transcriptType.hashCode();
-        }
+        result = 31 * result + hashCodeIfNotNull(transcriptName);
+        result = 31 * result + hashCodeIfNotNull(transcriptID);
+        result = 31 * result + hashCodeIfNotNull(transcriptType);
         result = 31 * result + featureType.hashCode();
         return result;
     }
     
-    
+    private int hashCodeIfNotNull(final String str) {
+        if (str == null) {
+            return 0;
+        } else {
+            return str.hashCode();
+        }
+    }
    
-    
+    public List<String> validate() {
+        // Don't allocate unless there are errors
+        List<String> ret = null;
+        ret = addErrorIfNull(ret, "Missing sequence name", interval.getContig());
+        ret = addErrorIfNull(ret, "Missing gene_id", geneID);
+        ret = addErrorIfNull(ret, "Missing gene_name", geneName);
+        ret = addErrorIfNull(ret, "Missing feature type", featureType);
+        if (featureType != null && !featureType.equals("gene")) {
+            ret = addErrorIfNull(ret, "Missing transcript_name", transcriptName);
+            ret = addErrorIfNull(ret, "Missing transcript_id", transcriptID);
+        }
+        return ret;
+    }
+
+    private List<String> addErrorIfNull(List<String> errorList, final String message, final Object value) {
+        if (value == null) {
+            return addError(errorList, message);
+        } else {
+            return errorList;
+        }
+    }
+    private List<String> addError(List<String> errorList, final String message) {
+        if (errorList == null) {
+            errorList = new ArrayList<>();
+        }
+        errorList.add(message);
+        return errorList;
+    }
    
 	@Override
 	public int compareTo(GTFRecord o) {

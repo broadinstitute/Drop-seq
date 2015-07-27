@@ -1,18 +1,14 @@
 package org.broadinstitute.dropseqrna.annotation;
+
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.OverlapDetector;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.broadinstitute.dropseqrna.annotation.EnhanceGTFRecords;
-import org.broadinstitute.dropseqrna.annotation.GTFReader;
-import org.broadinstitute.dropseqrna.annotation.GTFRecord;
-import org.broadinstitute.dropseqrna.annotation.GeneFromGTF;
-import org.testng.Assert;
-import org.testng.annotations.Test;
 
 public class EnhanceGTFRecordsTest {
 
@@ -41,7 +37,7 @@ public class EnhanceGTFRecordsTest {
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
 	public void test1Enhanced() {
 		EnhanceGTFRecords e = new EnhanceGTFRecords();
-		GTFParser parser = new GTFParser(GTF_FILE1);
+		GTFParser parser = new GTFParser(GTF_FILE1, ValidationStringency.STRICT);
         List<GTFRecord> records;
         try {
             records = e.enhanceGTFRecords(parser);

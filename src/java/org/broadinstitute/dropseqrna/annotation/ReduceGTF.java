@@ -1,6 +1,7 @@
 package org.broadinstitute.dropseqrna.annotation;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
@@ -114,7 +115,7 @@ public class ReduceGTF extends CommandLineProgram {
         final Set<String> ignoredFunctionalTypes = new HashSet<>(IGNORE_FUNC_TYPE);
 
         private FilteringGTFParser(final File gtf) {
-            super(new GTFParser(gtf));
+            super(new GTFParser(gtf, ValidationStringency.STRICT));
         }
 
         @Override

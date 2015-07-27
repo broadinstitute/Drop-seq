@@ -10,14 +10,13 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.IterableOnceIterator;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
+import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.*;
 import picard.annotation.AnnotationException;
 import picard.util.TabbedTextFileWithHeaderParser;
 
 import java.io.File;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -47,11 +46,13 @@ public class GTFParser extends IterableOnceIterator<GTFRecord> {
     private final File gtfFile;
     private final CloseableIterator<TabbedTextFileWithHeaderParser.Row> it;
     private final ProgressLogger progressLogger;
+    private final ValidationStringency validationStringency;
 
-    public GTFParser(final File gtfFile) {
+    public GTFParser(final File gtfFile, final ValidationStringency validationStringency) {
         this.gtfFile = gtfFile;
         this.it = new TabbedTextFileWithHeaderParser(gtfFile, GTFColumnLabels).iterator();
         progressLogger = new ProgressLogger(LOG, 100000, "read", "GTF records");
+        this.validationStringency = validationStringency;
     }
 
     @Override
@@ -72,6 +73,20 @@ public class GTFParser extends IterableOnceIterator<GTFRecord> {
                     row.getCurrentLine());
         }
         final GTFRecord ret = parseLine(row);
+        if (validationStringency != ValidationStringency.SILENT) {
+            final List<String> errors = ret.validate();
+            if (errors != null && !errors.isEmpty()) {
+                final String message = String.format(
+                        "Invalid GTF line: \n%s\nProblems:\n%s",
+                        row.getCurrentLine(),
+                        CollectionUtil.join(errors, "\n"));
+                if (validationStringency == ValidationStringency.STRICT) {
+                    throw new AnnotationException(message);
+                } else {
+                    LOG.warn(message);
+                }
+            }
+        }
         progressLogger.record(ret.getChromosome(), ret.getStart());
         return ret;
     }

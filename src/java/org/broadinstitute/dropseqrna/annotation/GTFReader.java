@@ -1,6 +1,7 @@
 package org.broadinstitute.dropseqrna.annotation;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.OverlapDetector;
@@ -83,7 +84,7 @@ public class GTFReader {
 
     private class FilteringGTFParser extends FilteredIterator<GTFRecord> {
         private FilteringGTFParser(final File gtf) {
-            super(new GTFParser(gtf));
+            super(new GTFParser(gtf, ValidationStringency.STRICT));
         }
 
         @Override
