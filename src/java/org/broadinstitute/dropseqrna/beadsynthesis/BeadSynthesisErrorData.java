@@ -7,7 +7,6 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetric;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
 import org.broadinstitute.dropseqrna.utils.Bases;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 public class BeadSynthesisErrorData {
 
@@ -50,6 +49,73 @@ public class BeadSynthesisErrorData {
 	
 	public int getBaseLength () {
 		return this.baseCounts.getPositions().size();
+	}
+	
+	/**
+	 * Classify the error type if any for this data.
+	 * @param threshold what fraction of the bases at a position must be all one base.  
+	 * @return The error type for the data.
+	 */
+	public BeadSynthesisErrorTypes getErrorType (double threshold) {
+		int errorPosition = getErrorBase(threshold);
+		int polyTPos = getPolyTErrorPosition(threshold);		
+		if (errorPosition==polyTPos & errorPosition!=-1) {
+			return BeadSynthesisErrorTypes.POLY_T_ERROR;				
+		}
+		if (hasSingleUMIError(threshold)) {
+			return BeadSynthesisErrorTypes.SINGLE_UMI;
+		}
+		if (errorPosition!=polyTPos) {
+			return BeadSynthesisErrorTypes.OTHER_ERROR;
+		}
+		return BeadSynthesisErrorTypes.NO_ERROR;
+	}
+	
+	/**
+	 * A special case error, the polyT error occurs when the dominant base
+	 * is T across 1 or more positions. 
+	 * @param threshold what fraction of the bases at this position must be T.
+	 * @return The base in the UMI where the error begins.  If this is the last base of an length 8 umi, the result would be 8.
+	 * If no base position is predominantly polyT, return -1;
+	 * IE: the return is 1 based.
+	 */
+	public int getPolyTErrorPosition (double threshold) {
+		double [] freq = getPolyTFrequency();
+		for (int position=0; position<freq.length; position++) { 
+			if (freq[position]>=threshold) return (position+1);
+		}
+		return -1;
+	}
+	
+	
+	
+	/**
+	 * A special case error where all bases appear fixed.
+	 * @param threshold what fraction of a base /sum(bases) must be fixed at all positions
+	 * @return if all bases are skewed to represent <threshold> fraction of bases at all positions return true.  Otherwise, return false.
+	 */
+	public boolean hasSingleUMIError (double threshold) {
+		double [] data = synthesisErrorMetric();
+		for (double d: data) {
+			if (d<threshold) return (false);
+		}
+		return (true);
+	}
+	
+	/**
+	 * A special case error, the polyT error occurs when the dominant base
+	 * Get the frequency of T at each position
+	 */
+	private double [] getPolyTFrequency () {
+		char base = Bases.T.getBase();
+		List<Integer> basePositions = baseCounts.getPositions();
+		double [] result = new double [basePositions.size()];
+		for (int position=0; position<result.length; position++) {
+			BaseDistributionMetric bdm =this.baseCounts.getDistributionAtPosition(position);
+			double freq = (double) bdm.getCount(base) / (double) bdm.getTotalCount();
+			result[position]=freq;
+		}
+		return (result);
 	}
 	
 	
@@ -114,9 +180,7 @@ public class BeadSynthesisErrorData {
 				maxFreq=freq;
 			}
 		}
-		
 		return (maxFreq);
-		 
 	}
 	
 	

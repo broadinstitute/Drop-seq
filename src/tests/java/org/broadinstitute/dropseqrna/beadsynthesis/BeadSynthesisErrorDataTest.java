@@ -45,6 +45,9 @@ public class BeadSynthesisErrorDataTest {
 		Assert.assertEquals(0.48, metric[5], 0.001);
 		Assert.assertEquals(0.40, metric[6], 0.001);
 		Assert.assertEquals(1.0, metric[7], 0.001);
+		
+		int errorBase = d.getPolyTErrorPosition(0.9);
+		Assert.assertEquals(8, errorBase);
 
 	}
 }

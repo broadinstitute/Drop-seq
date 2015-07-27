@@ -6,6 +6,8 @@ import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.metrics.MetricBase;
+import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
@@ -23,6 +25,7 @@ import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.priv.metrics.EditDistanceMetric;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetric;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
 import org.broadinstitute.dropseqrna.utils.Bases;
@@ -62,6 +65,8 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 			+ "AAAAAA	20		5|4|6|5.")
 	public File OUTPUT_STATS;
 	
+	@Option(doc="Output a summary of the error types and frequencies detected")
+	public File SUMMARY;
 	
 	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output BAM, with the synthesis error barcodes removed", optional=true)
 	public File OUT;
@@ -128,6 +133,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		errorBarcodesWithPositions = filterByNumUMis(errorBarcodesWithPositions);
 		
 		writeFile (errorBarcodesWithPositions.values(), out);
+		writeSummary(errorBarcodesWithPositions.values(), SUMMARY);
 		
 		// clean up the BAM if desired.
 		if (this.OUT!=null) {
@@ -165,12 +171,11 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(h, true, outBAM);
 		ProgressLogger pl = new ProgressLogger(this.log);
 		for (SAMRecord r: reader) {
+			pl.record(r);
 			r=padCellBarcodeFix(r, errorBarcodesWithPositions, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG);
 			if (r!=null) {
 				writer.addAlignment(r);
-			}
-			
-			pl.record(r);
+			}			
 		}
 		CloserUtil.close(reader);
 		CloserUtil.close(writer);
@@ -190,16 +195,25 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		BeadSynthesisErrorData bsed = errorBarcodesWithPositions.get(cellBC);
 		if (bsed==null) return (r); // no correction data, no fix.
 		
+		// we're only going to fix cells where the error position and the polyA error agree.
+		// Essentially, we expect to fix 1 or 2 polyT's at the end of UMIs,
+		// but other error modes should just be reported.
+		// they will have separate cleanup methods if we can figure out how to correct them.
 		int errorPosition = bsed.getErrorBase(this.EXTREME_BASE_RATIO);
+		int polyAErrorPosition = bsed.getPolyTErrorPosition(this.EXTREME_BASE_RATIO);
 		int umiLength = bsed.getBaseLength();
-		int numErrors= umiLength-errorPosition+1;
-		if (numErrors > MAX_NUM_ERRORS) {
-			return null;
+		int numErrors= umiLength-polyAErrorPosition+1;
+		// if there are too many errors, or the errors aren't all polyT, return null.
+		if (errorPosition!=polyAErrorPosition || numErrors > MAX_NUM_ERRORS) {
+			return null;			
 		}
-		String cellBCFixed = padCellBarcode(cellBC, errorPosition, umiLength);
+		
+		// apply the fix and return the fixed read.
 		String umi = r.getStringAttribute(molecularBarcode);
+		String cellBCFixed = padCellBarcode(cellBC, errorPosition, umiLength);
 		String umiFixed = fixUMI(cellBC, umi, errorPosition); 
 		r.setAttribute(cellBarcodeTag, cellBCFixed);
+		r.setAttribute(molecularBarcode, umiFixed);
 		return r;
 	}
 	
@@ -254,8 +268,39 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		return (fixedCellBarcode);
 	}
 	
+	private void writeSummary (Collection <BeadSynthesisErrorData> data, File out) {
+		// skip if no data.
+		if (data.size()==0) {
+			return;
+		}
+		
+		// gather up error types.
+		BeadSynthesisErrorsSummaryMetric m = new BeadSynthesisErrorsSummaryMetric();
+		
+		for (BeadSynthesisErrorData bsde: data) {
+			BeadSynthesisErrorTypes et = bsde.getErrorType(this.EXTREME_BASE_RATIO);
+			m.NUM_BEADS++;
+			switch (et) {
+			case POLY_T_ERROR: m.POLY_T_ERROR_COUNT++; break;
+			case SINGLE_UMI: m.SINGLE_UMI_ERROR++; break;
+			case OTHER_ERROR: m.OTHER_ERROR_COUNT++; break;
+			default:
+				m.NO_ERROR++; break; 
+			}
+			
+		}
+		
+		MetricsFile<BeadSynthesisErrorsSummaryMetric, Integer> outFile = new MetricsFile<BeadSynthesisErrorsSummaryMetric, Integer>();
+		outFile.addMetric(m);
+		outFile.write(out);
+		
+	}
+	
 	private void writeFile (Collection <BeadSynthesisErrorData> data, PrintStream out) {
-		if (data.size()==0) return;
+		if (data.size()==0) {
+			out.close();
+			return;
+		}
 		
 		// if there are records, write out the file.
 		
@@ -318,26 +363,32 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	
 	private UMIIterator checkInputsAndPrepIter () {
 		IOUtil.assertFileIsReadable(this.INPUT);
-		//IOUtil.assertFileIsWritable(this.OUT_BARCODES);
 		IOUtil.assertFileIsWritable(this.OUTPUT_STATS);
+		IOUtil.assertFileIsWritable(this.SUMMARY);
 		
 		if (OUT!=null) IOUtil.assertFileIsWritable(this.OUT);
 		log.info("Gathering barcodes for the top [" + this.NUM_BARCODES +"] cells");
 		List<String> barcodes = new BarcodeListRetrieval().getListCellBarcodesByReadCount (INPUT, this.CELL_BARCODE_TAG, this.READ_MQ, null, this.NUM_BARCODES);
 		
-		UMIIterator iter = new UMIIterator(this.INPUT, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG, this.READ_MQ, false, false, barcodes, this.MAX_RECORDS_IN_RAM);
-		
-		/*
-		List<String> l = new ArrayList<String>();
-		l.add(CELL_BARCODE_TAG);
-		l.add(MOLECULAR_BARCODE_TAG);
-		TagValueProcessor tvp = new TagValueProcessor(this.CELL_BARCODE_TAG, barcodes, true);
-		ReadProcessorCollection rpc = new ReadProcessorCollection();
-		rpc.addFilter(tvp);
-		ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
-		TagOrderIterator toi = new TagOrderIterator(INPUT, l, l, ag, rpc, true);
-		*/
+		UMIIterator iter = new UMIIterator(this.INPUT, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG, this.READ_MQ, false, false, barcodes, this.MAX_RECORDS_IN_RAM);		
 		return (iter);
+	}
+	
+	public class BeadSynthesisErrorsSummaryMetric extends MetricBase {
+		public int NUM_BEADS;
+		public int NO_ERROR;
+		public int POLY_T_ERROR_COUNT;
+		public int SINGLE_UMI_ERROR;
+		public int OTHER_ERROR_COUNT;
+		
+		public BeadSynthesisErrorsSummaryMetric () {
+			this.NUM_BEADS=0;
+			this.NO_ERROR=0;
+			this.POLY_T_ERROR_COUNT=0;
+			this.SINGLE_UMI_ERROR=0;
+			this.OTHER_ERROR_COUNT=0;
+		}
+			
 	}
 	
 	
