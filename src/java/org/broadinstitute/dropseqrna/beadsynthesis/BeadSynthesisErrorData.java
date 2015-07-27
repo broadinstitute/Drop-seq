@@ -7,21 +7,25 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetric;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
 import org.broadinstitute.dropseqrna.utils.Bases;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 public class BeadSynthesisErrorData {
 
 	private final String cellBarcode;
-	private int numUMIs;
 	private BaseDistributionMetricCollection baseCounts;
+	// private ObjectCounter<String> umiCounts;
+	private int umiCounts;
 	
 	public BeadSynthesisErrorData (String cellBarcode) {
 		this.cellBarcode=cellBarcode;
 		this.baseCounts = new BaseDistributionMetricCollection();
-		this.numUMIs=0;
+		//this.umiCounts = new ObjectCounter<String>();
+		umiCounts=0;
 	}
 	
 	public void addUMI (String umi) {
-		numUMIs++;
+		umiCounts++;
+		//this.umiCounts.increment(umi);
 		baseCounts.addBases(umi);
 	}
 	
@@ -32,7 +36,8 @@ public class BeadSynthesisErrorData {
 	}
 	
 	public int getUMICount() {
-		return this.numUMIs;
+		// return this.umiCounts.getSize();
+		return this.umiCounts;
 	}
 	
 	public String getCellBarcode() {
@@ -46,6 +51,7 @@ public class BeadSynthesisErrorData {
 	public int getBaseLength () {
 		return this.baseCounts.getPositions().size();
 	}
+	
 	
 	
 	/**
