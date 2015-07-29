@@ -7,24 +7,25 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetric;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
 import org.broadinstitute.dropseqrna.utils.Bases;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 public class BeadSynthesisErrorData {
 
 	private final String cellBarcode;
 	private BaseDistributionMetricCollection baseCounts;
-	// private ObjectCounter<String> umiCounts;
-	private int umiCounts;
+	private ObjectCounter<String> umiCounts;
+	// private int umiCounts;
 	
 	public BeadSynthesisErrorData (String cellBarcode) {
 		this.cellBarcode=cellBarcode;
 		this.baseCounts = new BaseDistributionMetricCollection();
-		//this.umiCounts = new ObjectCounter<String>();
-		umiCounts=0;
+		this.umiCounts = new ObjectCounter<String>();
+		//umiCounts=0;
 	}
 	
 	public void addUMI (String umi) {
-		umiCounts++;
-		//this.umiCounts.increment(umi);
+		//umiCounts++;
+		this.umiCounts.increment(umi);
 		baseCounts.addBases(umi);
 	}
 	
@@ -35,8 +36,8 @@ public class BeadSynthesisErrorData {
 	}
 	
 	public int getUMICount() {
-		// return this.umiCounts.getSize();
-		return this.umiCounts;
+		return this.umiCounts.getTotalCount();
+		//return this.umiCounts;
 	}
 	
 	public String getCellBarcode() {
@@ -73,7 +74,7 @@ public class BeadSynthesisErrorData {
 	
 	/**
 	 * A special case error, the polyT error occurs when the dominant base
-	 * is T across 1 or more positions. 
+	 * is T across 1 or more positions. The first base observed must be an 8, and subsequent bases must be adjacent
 	 * @param threshold what fraction of the bases at this position must be T.
 	 * @return The base in the UMI where the error begins.  If this is the last base of an length 8 umi, the result would be 8.
 	 * If no base position is predominantly polyT, return -1;
@@ -81,10 +82,17 @@ public class BeadSynthesisErrorData {
 	 */
 	public int getPolyTErrorPosition (double threshold) {
 		double [] freq = getPolyTFrequency();
-		for (int position=0; position<freq.length; position++) { 
-			if (freq[position]>=threshold) return (position+1);
+		
+		int errorBase=-2;
+		for (int position=(freq.length)-1; position>=0; position--) {
+			double v = freq[position];
+			if (v>=threshold) {
+				errorBase=position;
+			} else {
+				break;
+			}
 		}
-		return -1;
+		return errorBase+1;
 	}
 	
 	
