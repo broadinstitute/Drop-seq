@@ -2,9 +2,11 @@ package org.broadinstitute.dropseqrna.beadsynthesis;
 
 public enum BeadSynthesisErrorTypes {
 	NO_ERROR("NO_ERROR"),
-	POLY_T_ERROR("POLY_T_ERROR"),
+	SYNTH_MISSING_BASE("SYNTH_MISSING_BASE"),
 	SINGLE_UMI("SINGLE_UMI"),
+	PRIMER("PRIMER"),
 	OTHER_ERROR("OTHER_ERROR");
+	
 	
 	private final String text;
 	

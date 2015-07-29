@@ -40,6 +40,10 @@ public class BeadSynthesisErrorData {
 		//return this.umiCounts;
 	}
 	
+	public ObjectCounter<String> getUMICounts() {
+		return this.umiCounts;
+	}
+	
 	public String getCellBarcode() {
 		return this.cellBarcode;
 	}
@@ -61,7 +65,7 @@ public class BeadSynthesisErrorData {
 		int errorPosition = getErrorBase(threshold);
 		int polyTPos = getPolyTErrorPosition(threshold);		
 		if (errorPosition==polyTPos & errorPosition!=-1) {
-			return BeadSynthesisErrorTypes.POLY_T_ERROR;				
+			return BeadSynthesisErrorTypes.SYNTH_MISSING_BASE;				
 		}
 		if (hasSingleUMIError(threshold)) {
 			return BeadSynthesisErrorTypes.SINGLE_UMI;

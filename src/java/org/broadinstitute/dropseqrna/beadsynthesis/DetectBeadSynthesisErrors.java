@@ -9,6 +9,7 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
@@ -71,6 +72,12 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output BAM, with the synthesis error barcodes removed", optional=true)
 	public File OUT;
 	
+	@Option(doc="The sequence of the primer.", optional=true)
+	public String PRIMER_SEQUENCE=null;
+	
+	@Option(doc="When looking at fixed UMIs, see if the edit distance from the UMI to the primer is within this threshold.  0 indicates a perfect match between the primer and the UMI.")
+	public Integer EDIT_DISTANCE=0;
+	
 	@Option(doc="The cell barcode tag.")
 	public String CELL_BARCODE_TAG="XC";
 	
@@ -98,6 +105,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	private Double EXTREME_BASE_RATIO=0.8;
 	private Character PAD_CHARACTER='N';
 	private Integer MAX_NUM_ERRORS=2;
+	private DetectPrimerInUMI detectPrimerTool=null;
 	
 	@Override
 	protected int doWork() {
@@ -106,6 +114,10 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 			log.error("Must set either CELL_BC_FILE or NUM_BARCODES");
 			return 1;
 		}		
+		// primer detection if requested.
+		if (this.PRIMER_SEQUENCE!=null) {
+			detectPrimerTool = new DetectPrimerInUMI(this.PRIMER_SEQUENCE);
+		}
 		
 		//TagOrderIterator toi = checkInputsAndPrepIter();
 		UMIIterator iter = checkInputsAndPrepIter();
@@ -141,12 +153,15 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		}
 		
 		iter.close();
-		
+		// track how many cells are removed by filtering.
+		int numCells = errorBarcodesWithPositions.size();
 		// filter so these errors have a minimum number of UMIs.
 		errorBarcodesWithPositions = filterByNumUMis(errorBarcodesWithPositions);
+		int numCellsAfterFiltering = errorBarcodesWithPositions.size();
+		int numCellsFilteredLowUMIs = numCells - numCellsAfterFiltering;
 		
 		writeFile (errorBarcodesWithPositions.values(), out);
-		writeSummary(errorBarcodesWithPositions.values(), SUMMARY);
+		writeSummary(errorBarcodesWithPositions.values(), numCellsFilteredLowUMIs, SUMMARY);
 		
 		// clean up the BAM if desired.
 		if (this.OUT!=null) {
@@ -302,7 +317,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		return (fixedCellBarcode);
 	}
 	
-	private void writeSummary (Collection <BeadSynthesisErrorData> data, File out) {
+	private void writeSummary (Collection <BeadSynthesisErrorData> data, int numCellsFilteredLowUMIs, File out) {
 		// skip if no data.
 		if (data.size()==0) {
 			return;
@@ -312,28 +327,21 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		BeadSynthesisErrorsSummaryMetric m = new BeadSynthesisErrorsSummaryMetric();
 		
 		for (BeadSynthesisErrorData bsde: data) {
-			String eet = getEnhancedErrorType(bsde, EXTREME_BASE_RATIO);			
-			BeadSynthesisErrorTypes et = bsde.getErrorType(this.EXTREME_BASE_RATIO);
+			BeadSynthesisErrorTypes t = getEnhancedErrorType(bsde, EXTREME_BASE_RATIO); 
 			m.NUM_BEADS++;
-			if (eet.equals(BeadSynthesisErrorTypes.POLY_T_ERROR.toString())) {
-				m.POLY_T_ERROR_COUNT++;
+			switch (t) {
+				case SYNTH_MISSING_BASE: m.SYNTHESIS_MISSING_BASE++; m.incrementSynthesisMissingBase(bsde.getPolyTErrorPosition(this.EXTREME_BASE_RATIO)); break;
+				case PRIMER: m.PRIMER_MATCH++; break;
+				case SINGLE_UMI: m.SINGLE_UMI_ERROR++; break;
+				case OTHER_ERROR: m.OTHER_ERROR_COUNT++; break;
+				default: m.NO_ERROR++; break; 
 			}
-			else if (eet.equals(BeadSynthesisErrorTypes.SINGLE_UMI.toString())) {
-				m.SINGLE_UMI_ERROR++; 
-			}
-			else if (eet.equals(BeadSynthesisErrorTypes.OTHER_ERROR.toString())) {
-				m.OTHER_ERROR_COUNT++; 
-			} 
-			else if (eet.equals("PRIMER_MATCH")) {
-				m.PRIMER_MATCH++;
-			}
-			else {
-				m.NO_ERROR++;
-			}			
+						
 		}
 		
 		MetricsFile<BeadSynthesisErrorsSummaryMetric, Integer> outFile = new MetricsFile<BeadSynthesisErrorsSummaryMetric, Integer>();
 		outFile.addMetric(m);
+		outFile.addHistogram(m.getHistogram());
 		outFile.write(out);
 		
 	}
@@ -362,13 +370,13 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	 */
 	private void writeBadBarcodeStatisticsFileHeader (int umiLength, PrintStream out) {
 		List<String> header = new ArrayList<String>();
-		header.add("cell_barcode");
-		header.add("num_umi");
-		header.add("any_error_base");
-		header.add("polyT_error_base");
-		header.add("error_type");
+		header.add("CELL_BARCODE");
+		header.add("NUM_UMI");
+		header.add("FIRST_BIASED_BASE");
+		header.add(BeadSynthesisErrorTypes.SYNTH_MISSING_BASE.toString());
+		header.add("ERROR_TYPE");
 		for (int i=0; i<umiLength; i++) {
-			header.add("base_"+ Integer.toString(i+1));
+			header.add("BASE_"+ Integer.toString(i+1));
 		}
 		String h = StringUtils.join(header, "\t");
 		out.println(h);
@@ -382,7 +390,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		line.add(Integer.toString(base));
 		int polyTErrorBase = data.getPolyTErrorPosition(EXTREME_BASE_RATIO);
 		line.add(Integer.toString(polyTErrorBase));
-		line.add(getEnhancedErrorType(data, EXTREME_BASE_RATIO));
+		line.add(getEnhancedErrorType(data, EXTREME_BASE_RATIO).toString());
 		
 		
 		BaseDistributionMetricCollection bases = data.getBaseCounts();
@@ -396,9 +404,26 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		out.println(outLine);
 	}
 	
-	private String getEnhancedErrorType (BeadSynthesisErrorData data, double extremeBaseRatio) {
-		String errorType = data.getErrorType(extremeBaseRatio).toString();
+	private BeadSynthesisErrorTypes getEnhancedErrorType (BeadSynthesisErrorData data, double extremeBaseRatio) {
 		
+		BeadSynthesisErrorTypes errorType = data.getErrorType(extremeBaseRatio);
+		//base case, error is not a single UMI.
+		if (errorType!=BeadSynthesisErrorTypes.SINGLE_UMI) {
+			return errorType;
+		}
+		// if there's a primer, run detection.
+		if (this.detectPrimerTool!=null) {
+			// a single UMI-style error, does the most common UMI match the primer?
+			String singleUMI = data.getUMICounts().getKeysOrderedByCount(true).get(0);
+			boolean primerDetected = detectPrimerTool.isStringInPrimer(singleUMI, this.EDIT_DISTANCE);
+			if (primerDetected) {
+				return BeadSynthesisErrorTypes.PRIMER;
+			} else {
+				return errorType;
+			}
+		}
+		
+		 
 		return errorType;
 	}
 	
@@ -442,17 +467,32 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	public class BeadSynthesisErrorsSummaryMetric extends MetricBase {
 		public int NUM_BEADS;
 		public int NO_ERROR;
-		public int POLY_T_ERROR_COUNT;
+		public int LOW_UMI_COUNT;
+		public int SYNTHESIS_MISSING_BASE;
 		public int SINGLE_UMI_ERROR;
 		public int PRIMER_MATCH;
 		public int OTHER_ERROR_COUNT;
 		
+		/** The distribution of  SYNTHESIS_MISSING_BASE error positions */
+		private Histogram <Integer> histogram = null;
+				
 		public BeadSynthesisErrorsSummaryMetric () {
 			this.NUM_BEADS=0;
 			this.NO_ERROR=0;
-			this.POLY_T_ERROR_COUNT=0;
+			this.SYNTHESIS_MISSING_BASE=0;
 			this.SINGLE_UMI_ERROR=0;
-			this.OTHER_ERROR_COUNT=0;
+			this.PRIMER_MATCH=0;
+			this.OTHER_ERROR_COUNT=0;			
+			this.LOW_UMI_COUNT=0;
+			histogram = new Histogram<Integer>("SYNTHESIS_ERROR_BASE", "num cells");
+		}
+		
+		public void incrementSynthesisMissingBase (int position) {
+			histogram.increment(position);
+		}
+		
+		public Histogram<Integer> getHistogram() {
+			return histogram;
 		}
 			
 	}
