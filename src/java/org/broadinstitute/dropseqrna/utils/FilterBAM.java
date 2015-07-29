@@ -1,5 +1,8 @@
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
@@ -19,6 +22,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
@@ -50,6 +54,9 @@ public class FilterBAM extends CommandLineProgram{
 	
 	@Option (doc = "Retain primary reads only", optional=true)
 	public boolean RETAIN_ONLY_PRIMARY_READS=false;
+	
+	@Option (doc="Retain reads that have at least this many M bases total in the cigar string.  This sums all the M's in the cigar string.", optional=true)
+	public Integer SUM_MATCHING_BASES=null;
 	
 	@Option (doc="Soft match reference names that have this string. If multiple matches are specificed, they are OR'd together." +
 			"This is the equivilent of a hard match with wrapped with .* on either side.", optional=true)
@@ -157,6 +164,7 @@ public class FilterBAM extends CommandLineProgram{
 		if (rejectOnMapQuality(r)) return (true);
 		if (rejectPCRDuplicate(r)) return (true);
 		if (rejectNonPrimaryReads(r)) return (true);
+		if (rejectOnCigar(r)) return (true);
 		if (rejectSoftMatch(r)) return(true);
 		if (rejectHardMatch(r)) return(true);
 		if (rejectOnTags(this.TAG_REJECT, r)) return (true);
@@ -168,6 +176,27 @@ public class FilterBAM extends CommandLineProgram{
 		boolean all = sm && hm && at;
 		return (!all);
 		
+	}
+	
+	/**
+	 * Rejects reads if the sum of the cigar string bases is less than M_BASES_IN_CIGAR, reject the read.
+	 * Don't process if M_BASES_IN_CIGAR is -1.
+	 * @param r
+	 * @return return false if the sum of the matching bases in the cigar is greater than the threshold.
+	 */
+	boolean rejectOnCigar(SAMRecord r) {		
+		if (this.SUM_MATCHING_BASES==-1) return (false);
+		Cigar c = r.getCigar();
+		int count=0;
+		for (CigarElement ce: c.getCigarElements()) {
+			if (ce.getOperator()==CigarOperator.M) {
+				count+=ce.getLength();
+			}
+		}
+		if (count>=this.SUM_MATCHING_BASES) {
+			return false;
+		}
+		return true;
 	}
 	
 	boolean rejectOnMapQuality (SAMRecord r) {
