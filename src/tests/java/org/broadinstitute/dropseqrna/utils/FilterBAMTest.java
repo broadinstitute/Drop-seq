@@ -12,6 +12,47 @@ import org.testng.annotations.Test;
 public class FilterBAMTest {
 
 	@Test(enabled=true, groups = { "dropseq","transcriptome" })
+	public void testCigarFilter() {
+		FilterBAM b = new FilterBAM();
+		b.SUM_MATCHING_BASES=40;
+		
+		
+		SAMRecord r = new SAMRecord(null);
+		r.setCigarString("50M");
+		boolean rejFlag = b.rejectOnCigar(r);
+		Assert.assertFalse(rejFlag);
+		
+		boolean result = b.filterRead(r);
+		Assert.assertFalse(result);
+		
+		
+		r.setCigarString("20M");
+		rejFlag = b.rejectOnCigar(r);
+		Assert.assertTrue(rejFlag);
+		
+		result = b.filterRead(r);
+		Assert.assertTrue(result);
+		
+		r.setCigarString("20S25M30H");
+		rejFlag = b.rejectOnCigar(r);
+		Assert.assertTrue(rejFlag);
+		
+		result = b.filterRead(r);
+		Assert.assertTrue(result);
+		
+		r.setCigarString("20M10S20M");
+		rejFlag = b.rejectOnCigar(r);
+		Assert.assertFalse(rejFlag);
+		
+		result = b.filterRead(r);
+		Assert.assertFalse(result);
+		
+		
+		
+		
+	}
+	
+	@Test(enabled=true, groups = { "dropseq","transcriptome" })
 	public void testNonPrimary() {
 		FilterBAM b = new FilterBAM();
 		b.RETAIN_ONLY_PRIMARY_READS=true;

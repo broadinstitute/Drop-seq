@@ -185,7 +185,7 @@ public class FilterBAM extends CommandLineProgram{
 	 * @return return false if the sum of the matching bases in the cigar is greater than the threshold.
 	 */
 	boolean rejectOnCigar(SAMRecord r) {		
-		if (this.SUM_MATCHING_BASES==-1) return (false);
+		if (this.SUM_MATCHING_BASES==null) return (false);
 		Cigar c = r.getCigar();
 		int count=0;
 		for (CigarElement ce: c.getCigarElements()) {
