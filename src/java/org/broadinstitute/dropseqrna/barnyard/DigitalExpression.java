@@ -61,6 +61,9 @@ public class DigitalExpression extends DGECommandLineBase {
 	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of DGE Matrix.  Genes are in rows, cells in columns.  The first column contains the gene name. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
 	
+	@Option (doc="Output only genes with at least this total expression level, after summing across all cells", optional=true)
+	public Integer MIN_SUM_EXPRESSION=null;
+	
 	private boolean OUTPUT_EXPRESSED_GENES_ONLY=false;
 	
 	@Override
@@ -212,6 +215,8 @@ public class DigitalExpression extends DGECommandLineBase {
 			line.add(v);
 		}
 		if (OUTPUT_EXPRESSED_GENES_ONLY & totalCount==0) return;
+		if (MIN_SUM_EXPRESSION!=null & totalCount< MIN_SUM_EXPRESSION) return;
+		
 		String h = StringUtils.join(line, "\t");
 		out.println(h);
 		//OutputWriterUtil.writeResult(h, out);	

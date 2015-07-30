@@ -222,6 +222,22 @@ public class AnnotationUtils {
         return locusFunctions;
 	}
 	
+	public LocusFunction[] getLocusFunctionsByInterval (Interval i, Collection<Gene> genes) {
+		// Get functional class for each position in the alignment block.
+        final LocusFunction[] locusFunctions = new LocusFunction[i.length()];
+
+        // By default, if base does not overlap with rRNA or gene, it is intergenic.
+        Arrays.fill(locusFunctions, 0, locusFunctions.length, LocusFunction.INTERGENIC);
+
+        for (final Gene gene : genes) {
+            for (final Gene.Transcript transcript : gene) {
+                transcript.assignLocusFunctionForRange(i.getStart(), locusFunctions);
+            }
+        }
+        return locusFunctions;
+	}
+	
+	
 	Map<String, String> parseOptionalFields(String optional) {
 		Map<String, String> result = new HashMap<String, String>();
 		String [] o = optional.split(";");
