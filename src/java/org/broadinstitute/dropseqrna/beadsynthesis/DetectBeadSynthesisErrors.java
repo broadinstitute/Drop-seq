@@ -101,10 +101,15 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	
 	@Option(doc="Override NUM_BARCODES, and process reads that have the cell barcodes in this file instead.  The file has 1 column with no header.", optional=true)
 	public File CELL_BC_FILE=null;
-		
+	
+	@Option(doc="Repair Synthesis errors with at most this many missing bases detected.", optional=true)
+	public Integer MAX_NUM_ERRORS=1;
+	
 	private Double EXTREME_BASE_RATIO=0.8;
 	private Character PAD_CHARACTER='N';
-	private Integer MAX_NUM_ERRORS=2;
+	
+	
+	
 	private DetectPrimerInUMI detectPrimerTool=null;
 	
 	@Override
