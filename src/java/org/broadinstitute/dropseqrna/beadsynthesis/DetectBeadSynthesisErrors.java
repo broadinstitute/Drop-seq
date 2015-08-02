@@ -255,6 +255,10 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		// they will have separate cleanup methods if we can figure out how to correct them.
 		int errorPosition = bsed.getErrorBase(this.EXTREME_BASE_RATIO);
 		int polyAErrorPosition = bsed.getPolyTErrorPosition(this.EXTREME_BASE_RATIO);
+		// no errors, return read.
+		if (errorPosition==-1 && polyAErrorPosition==-1) {
+			return r;
+		}
 		int umiLength = bsed.getBaseLength();
 		int numErrors= umiLength-polyAErrorPosition+1;
 		// if there are too many errors, or the errors aren't all polyT, return null.
@@ -292,7 +296,6 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		int lastBase = cellBarcode.length();
 		int firstBaseToPad = lastBase-badBasesUMI-1;
 		String cellBCBases=cellBarcode.substring(firstBaseToPad, cellBarcode.length());
-		
 		
 		String umiRemaining=umi.substring(0, errorPosition-1);
 		String newUMI=cellBCBases+umiRemaining;
