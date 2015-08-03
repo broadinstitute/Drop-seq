@@ -14,12 +14,19 @@ public class BeadSynthesisErrorData {
 	private final String cellBarcode;
 	private BaseDistributionMetricCollection baseCounts;
 	private ObjectCounter<String> umiCounts;
+	
 	// private int umiCounts;
+	// cached results
+	private boolean dataChanged;
+	private BeadSynthesisErrorTypes errorTypeCached=null;
+	private double [] polyTFreq=null;
+	private double [] synthesisErrorMetric=null;
 	
 	public BeadSynthesisErrorData (String cellBarcode) {
 		this.cellBarcode=cellBarcode;
 		this.baseCounts = new BaseDistributionMetricCollection();
 		this.umiCounts = new ObjectCounter<String>();
+		this.dataChanged=true;
 		//umiCounts=0;
 	}
 	
@@ -27,6 +34,7 @@ public class BeadSynthesisErrorData {
 		//umiCounts++;
 		this.umiCounts.increment(umi);
 		baseCounts.addBases(umi);
+		this.dataChanged=true;
 	}
 	
 	public void addUMI (Collection <String> umis) {
@@ -61,19 +69,37 @@ public class BeadSynthesisErrorData {
 	 * @param threshold what fraction of the bases at a position must be all one base.  
 	 * @return The error type for the data.
 	 */
+	// the caching is ugly and needs to be cleaned up.
 	public BeadSynthesisErrorTypes getErrorType (double threshold) {
+		// return cached result
+		if (!this.dataChanged & this.errorTypeCached!=null) return (this.errorTypeCached);
+		this.dataChanged=false;
+		
 		int errorPosition = getErrorBase(threshold);
 		int polyTPos = getPolyTErrorPosition(threshold);		
 		if (errorPosition==polyTPos & errorPosition!=-1) {
-			return BeadSynthesisErrorTypes.SYNTH_MISSING_BASE;				
+			BeadSynthesisErrorTypes t = BeadSynthesisErrorTypes.SYNTH_MISSING_BASE;
+			this.errorTypeCached=t;
+			return t;				
 		}
-		if (hasSingleUMIError(threshold)) {
-			return BeadSynthesisErrorTypes.SINGLE_UMI;
+		else if (hasSingleUMIError(threshold)) {
+			BeadSynthesisErrorTypes t = BeadSynthesisErrorTypes.SINGLE_UMI;
+			this.errorTypeCached=t;
+			return t;
 		}
-		if (errorPosition!=polyTPos) {
-			return BeadSynthesisErrorTypes.OTHER_ERROR;
+		else if (hasFixedFirstBase(threshold)) {
+			BeadSynthesisErrorTypes t = BeadSynthesisErrorTypes.FIXED_FIRST_BASE;
+			this.errorTypeCached=t;
+			return t;
 		}
-		return BeadSynthesisErrorTypes.NO_ERROR;
+		else if (errorPosition!=polyTPos) {
+			BeadSynthesisErrorTypes t = BeadSynthesisErrorTypes.OTHER_ERROR;
+			this.errorTypeCached=t;
+			return t;
+		}
+		BeadSynthesisErrorTypes t = BeadSynthesisErrorTypes.NO_ERROR;
+		this.errorTypeCached=t;
+		return t;
 	}
 	
 	/**
@@ -115,10 +141,33 @@ public class BeadSynthesisErrorData {
 	}
 	
 	/**
+	 * Only the first base of the UMI is fixed > threshold
+	 * @param threshold
+	 * @return
+	 */
+	public boolean hasFixedFirstBase (double threshold) {
+		double [] data = synthesisErrorMetric();
+		boolean pos0Fixed=data[0]>= threshold;
+		// all positions after the first position
+		boolean otherPositionsNotFixed=true;
+		for (int i=1; i<data.length; i++) {
+			if (data[i]>threshold) {
+				otherPositionsNotFixed=false;
+				break;
+			}
+		}
+		boolean fixedFirstBase=(pos0Fixed &  otherPositionsNotFixed);
+		return fixedFirstBase;
+	}
+	
+	/**
 	 * A special case error, the polyT error occurs when the dominant base
 	 * Get the frequency of T at each position
 	 */
 	private double [] getPolyTFrequency () {
+		if (!this.dataChanged & this.polyTFreq!=null) return (this.polyTFreq);
+		this.dataChanged=false;
+		
 		char base = Bases.T.getBase();
 		List<Integer> basePositions = baseCounts.getPositions();
 		double [] result = new double [basePositions.size()];
@@ -127,6 +176,9 @@ public class BeadSynthesisErrorData {
 			double freq = (double) bdm.getCount(base) / (double) bdm.getTotalCount();
 			result[position]=freq;
 		}
+		// cache results if you needed to compute.
+		this.polyTFreq=result;
+		
 		return (result);
 	}
 	
@@ -164,12 +216,15 @@ public class BeadSynthesisErrorData {
 	 * @return
 	 */
 	public double [] synthesisErrorMetric() {
+		if (!this.dataChanged & this.synthesisErrorMetric!=null) return (this.synthesisErrorMetric);
+		this.dataChanged=false;
 		List<Integer> basePositions = baseCounts.getPositions();
 		double [] result = new double [basePositions.size()];
 		
 		for (int i: basePositions) {
 			result[i]=getMostCommonBaseFrequency(i);
 		}
+		this.synthesisErrorMetric=result;
 		return result;
 	}
 	

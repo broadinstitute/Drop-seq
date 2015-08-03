@@ -108,8 +108,6 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	private Double EXTREME_BASE_RATIO=0.8;
 	private Character PAD_CHARACTER='N';
 	
-	
-	
 	private DetectPrimerInUMI detectPrimerTool=null;
 	
 	@Override
@@ -142,7 +140,6 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		while (iter.hasNext()) {
 			UMICollection umis = iter.next();
 			String cellBC = umis.getCellBarcode();
-			
 			Collection<String> umiCol = umis.getMolecularBarcodes();
 			
 			BeadSynthesisErrorData bsed = errorBarcodesWithPositions.get(cellBC);
@@ -226,7 +223,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		ProgressLogger pl = new ProgressLogger(this.log);
 		for (SAMRecord r: reader) {
 			pl.record(r);
-			r=padCellBarcodeFix(r, errorBarcodesWithPositions, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG);
+			r=padCellBarcodeFix(r, errorBarcodesWithPositions, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.EXTREME_BASE_RATIO);
 			if (r!=null) {
 				writer.addAlignment(r);
 			}			
@@ -244,32 +241,33 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	 * @param molecularBarcode
 	 * @return
 	 */
-	SAMRecord padCellBarcodeFix (SAMRecord r, Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions, String cellBarcodeTag, String molecularBarcode) {
+	SAMRecord padCellBarcodeFix (SAMRecord r, Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions, String cellBarcodeTag, String molecularBarcode, double extremeBaseRatio) {
 		String cellBC=r.getStringAttribute(cellBarcodeTag);
+		
 		BeadSynthesisErrorData bsed = errorBarcodesWithPositions.get(cellBC);
 		if (bsed==null) return (r); // no correction data, no fix.
 		
-		// we're only going to fix cells where the error position and the polyA error agree.
-		// Essentially, we expect to fix 1 or 2 polyT's at the end of UMIs,
-		// but other error modes should just be reported.
-		// they will have separate cleanup methods if we can figure out how to correct them.
-		int errorPosition = bsed.getErrorBase(this.EXTREME_BASE_RATIO);
-		int polyAErrorPosition = bsed.getPolyTErrorPosition(this.EXTREME_BASE_RATIO);
-		// no errors, return read.
-		if (errorPosition==-1 && polyAErrorPosition==-1) {
-			return r;
+		// we're only going to fix cells where there's one or more synthesis errors
+		BeadSynthesisErrorTypes bset = getEnhancedErrorType(bsed, extremeBaseRatio);
+		if (bset==BeadSynthesisErrorTypes.NO_ERROR) return (r); // no error, return.
+		// has an error, not a synthesis error...
+		if (bset!=BeadSynthesisErrorTypes.SYNTH_MISSING_BASE) {
+			return (null);
 		}
+		
+		// has a synthesis error
+		int polyTErrorPosition = bsed.getPolyTErrorPosition(this.EXTREME_BASE_RATIO);
 		int umiLength = bsed.getBaseLength();
-		int numErrors= umiLength-polyAErrorPosition+1;
+		int numErrors= umiLength-polyTErrorPosition+1;
 		// if there are too many errors, or the errors aren't all polyT, return null.
-		if (errorPosition!=polyAErrorPosition || numErrors > MAX_NUM_ERRORS) {
+		if (numErrors > MAX_NUM_ERRORS) {
 			return null;			
 		}
 		
 		// apply the fix and return the fixed read.
 		String umi = r.getStringAttribute(molecularBarcode);
-		String cellBCFixed = padCellBarcode(cellBC, errorPosition, umiLength);
-		String umiFixed = fixUMI(cellBC, umi, errorPosition); 
+		String cellBCFixed = padCellBarcode(cellBC, polyTErrorPosition, umiLength);
+		String umiFixed = fixUMI(cellBC, umi, polyTErrorPosition); 
 		r.setAttribute(cellBarcodeTag, cellBCFixed);
 		r.setAttribute(molecularBarcode, umiFixed);
 		return r;
@@ -333,6 +331,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		
 		// gather up error types.
 		BeadSynthesisErrorsSummaryMetric m = new BeadSynthesisErrorsSummaryMetric();
+		m.LOW_UMI_COUNT=numCellsFilteredLowUMIs;
 		
 		for (BeadSynthesisErrorData bsde: data) {
 			BeadSynthesisErrorTypes t = getEnhancedErrorType(bsde, EXTREME_BASE_RATIO); 
@@ -341,6 +340,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 				case SYNTH_MISSING_BASE: m.SYNTHESIS_MISSING_BASE++; m.incrementSynthesisMissingBase(bsde.getPolyTErrorPosition(this.EXTREME_BASE_RATIO)); break;
 				case PRIMER: m.PRIMER_MATCH++; break;
 				case SINGLE_UMI: m.SINGLE_UMI_ERROR++; break;
+				case FIXED_FIRST_BASE: m.FIXED_FIRST_BASE++; break;
 				case OTHER_ERROR: m.OTHER_ERROR_COUNT++; break;
 				default: m.NO_ERROR++; break; 
 			}
@@ -413,7 +413,6 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	}
 	
 	private BeadSynthesisErrorTypes getEnhancedErrorType (BeadSynthesisErrorData data, double extremeBaseRatio) {
-		
 		BeadSynthesisErrorTypes errorType = data.getErrorType(extremeBaseRatio);
 		//base case, error is not a single UMI.
 		if (errorType!=BeadSynthesisErrorTypes.SINGLE_UMI) {
@@ -479,7 +478,9 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		public int SYNTHESIS_MISSING_BASE;
 		public int SINGLE_UMI_ERROR;
 		public int PRIMER_MATCH;
+		public int FIXED_FIRST_BASE;
 		public int OTHER_ERROR_COUNT;
+		
 		
 		/** The distribution of  SYNTHESIS_MISSING_BASE error positions */
 		private Histogram <Integer> histogram = null;

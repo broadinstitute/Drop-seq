@@ -48,6 +48,8 @@ public class BeadSynthesisErrorDataTest {
 		
 		int errorBase = d.getPolyTErrorPosition(0.9);
 		Assert.assertEquals(8, errorBase);
-
+		// for debugging to hit cache.
+		errorBase = d.getPolyTErrorPosition(0.9);
+		Assert.assertEquals(8, errorBase);
 	}
 }
