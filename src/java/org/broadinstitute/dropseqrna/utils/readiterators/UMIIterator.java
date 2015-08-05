@@ -35,23 +35,48 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.  Only reads with these values will be used.  If set to null, all cell barcodes are used. 
 	 */
 	public UMIIterator(File bamFile, String geneExonTag, String cellBarcodeTag, String molecularBarcodeTag, String strandTag, int readMQ, boolean assignReadsToAllGenes, boolean useStrandInfo, List<String> cellBarcodes, int maxRecordsInRAM) {
+		this(bamFile, geneExonTag, cellBarcodeTag, molecularBarcodeTag, strandTag, readMQ, assignReadsToAllGenes, useStrandInfo, cellBarcodes, maxRecordsInRAM, false);
+	}
+	
+	/**
+	 * Construct an object that generates UMI objects from a BAM file
+	 * @param bamFile The BAM file to extract UMIs from
+	 * @param geneExonTag The geneExon tag on BAM records
+	 * @param cellBarcodeTag The cell barcode tag on BAM records
+	 * @param molecularBarcodeTag The molecular barcode tag on BAM records
+	 * @param strandTag The strand tag on BAM records
+	 * @param maxRecordsInRAM the maximum number of records that can be stored in RAM.
+	 * @param readMQ The minimum map quality of the reads 
+	 * @param assignReadsToAllGenes Should records tagged with multiple genes be double counted, once for each gene?
+	 * @param useStrandInfo should the gene and read strand match for the read to be accepted
+	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.  Only reads with these values will be used.  If set to null, all cell barcodes are used.
+	 * @param cellFirstSort if true, then cell barcodes are sorted first, followed by gene/exon tags.  If false, then gene/exon tags are sorted first, followed by cells.  false is the default and used in the other constructor.
+	 */
+	public UMIIterator(File bamFile, String geneExonTag, String cellBarcodeTag, String molecularBarcodeTag, String strandTag, int readMQ, boolean assignReadsToAllGenes, boolean useStrandInfo, List<String> cellBarcodes, int maxRecordsInRAM, boolean cellFirstSort) {
+		List<String> sortingTags = new ArrayList<String>();
+		
+		if (cellFirstSort==true) {
+			sortingTags.add(cellBarcodeTag);
+			sortingTags.add(geneExonTag);
+		} else {
+			sortingTags.add(geneExonTag);
+			sortingTags.add(cellBarcodeTag);
+		}
+		
 		this.geneExonTag=geneExonTag;
 		this.cellBarcodeTag=cellBarcodeTag;
 		this.molecularBarcodeTag=molecularBarcodeTag;
 		
 		// assign the tags in the order you want data sorted.
-		List<String> sortingTags = new ArrayList<String>();
-		sortingTags = new ArrayList<String>();
-		sortingTags.add(geneExonTag);
-		sortingTags.add(cellBarcodeTag);
 		
 		UMIReadProcessor f = new UMIReadProcessor(cellBarcodeTag, cellBarcodes, geneExonTag, strandTag, readMQ, assignReadsToAllGenes, useStrandInfo);
 		
 		ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
 		TagOrderIterator toi = new TagOrderIterator(bamFile, sortingTags, sortingTags, ag, f, true);
 		this.atoi = new AggregatedTagOrderIterator(toi);
-		
 	}
+	
+	
 	
 	/**
 	 * Gets the next UMI Collection - all the molecular barcodes and reads on those for a particular gene/cell.
