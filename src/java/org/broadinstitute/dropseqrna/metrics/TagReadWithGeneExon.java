@@ -81,7 +81,7 @@ public class TagReadWithGeneExon extends CommandLineProgram {
 	protected int doWork() {
 		IOUtil.assertFileIsReadable(this.INPUT);
 		IOUtil.assertFileIsReadable(this.ANNOTATIONS_FILE);
-		if (this.SUMMARY!=null) IOUtil.assertFileIsReadable(this.SUMMARY);
+		if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(this.SUMMARY);
 		IOUtil.assertFileIsWritable(this.OUTPUT);
 		
 		SamReader inputSam = SamReaderFactory.makeDefault().open(INPUT);
