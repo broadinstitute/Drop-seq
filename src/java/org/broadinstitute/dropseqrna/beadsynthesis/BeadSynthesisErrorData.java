@@ -19,8 +19,8 @@ public class BeadSynthesisErrorData {
 	// cached results
 	private boolean dataChanged;
 	private BeadSynthesisErrorTypes errorTypeCached=null;
-	private double [] polyTFreq=null;
-	private double [] synthesisErrorMetric=null;
+	//private double [] polyTFreq=null;
+	//private double [] synthesisErrorMetric=null;
 	
 	public BeadSynthesisErrorData (String cellBarcode) {
 		this.cellBarcode=cellBarcode;
@@ -165,7 +165,7 @@ public class BeadSynthesisErrorData {
 	 * Get the frequency of T at each position
 	 */
 	private double [] getPolyTFrequency () {
-		if (!this.dataChanged & this.polyTFreq!=null) return (this.polyTFreq);
+		//if (!this.dataChanged & this.polyTFreq!=null) return (this.polyTFreq);
 		this.dataChanged=false;
 		
 		char base = Bases.T.getBase();
@@ -177,7 +177,7 @@ public class BeadSynthesisErrorData {
 			result[position]=freq;
 		}
 		// cache results if you needed to compute.
-		this.polyTFreq=result;
+		//this.polyTFreq=result;
 		
 		return (result);
 	}
@@ -216,7 +216,7 @@ public class BeadSynthesisErrorData {
 	 * @return
 	 */
 	public double [] synthesisErrorMetric() {
-		if (!this.dataChanged & this.synthesisErrorMetric!=null) return (this.synthesisErrorMetric);
+		//if (!this.dataChanged & this.synthesisErrorMetric!=null) return (this.synthesisErrorMetric);
 		this.dataChanged=false;
 		List<Integer> basePositions = baseCounts.getPositions();
 		double [] result = new double [basePositions.size()];
@@ -224,7 +224,7 @@ public class BeadSynthesisErrorData {
 		for (int i: basePositions) {
 			result[i]=getMostCommonBaseFrequency(i);
 		}
-		this.synthesisErrorMetric=result;
+		//this.synthesisErrorMetric=result;
 		return result;
 	}
 	

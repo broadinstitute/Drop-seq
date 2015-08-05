@@ -31,6 +31,7 @@ import org.broadinstitute.dropseqrna.utils.BaseDistributionMetric;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
 import org.broadinstitute.dropseqrna.utils.Bases;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
+import htsjdk.samtools.util.PeekableIterator;
 
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
@@ -59,6 +60,8 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	
 	//@Option(doc="A list of all barcodes that are flagged as synthesis errors.  File has 1 column and no header.")
 	//public File OUT_BARCODES;
+	
+	// THIS IS A COMMENT
 	
 	@Option(doc="Output of detailed information on each cell barcode analyzed.  Each row is a single cell barcode.  "
 			+ "The data has multiple columns: the cell barcode, the number of umis, then one column per UMI base position containing the count of the reads, with a | "
@@ -123,7 +126,8 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		}
 		
 		//TagOrderIterator toi = checkInputsAndPrepIter();
-		UMIIterator iter = checkInputsAndPrepIter();
+		// UMIIterator iter = checkInputsAndPrepIter();
+		PeekableIterator<UMICollection> iter = new PeekableIterator<UMICollection>(checkInputsAndPrepIter());
 		 
 		// initialize output writers.
 		// PrintStream outBarcodes = new PrintStream(IOUtil.openFileForWriting(OUT_BARCODES));
@@ -137,9 +141,30 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		
 		int counter=0;
 		
+		// track what cell you're on so when you switch you can evaluate the last BeadSynthesisErrorData
+		// and decide if you want to drop it because it's too small, saving some memory.
+		String currentCell = null;
+		int numCellsFilteredLowUMIs = 0;
+		if (iter.hasNext()) {
+			currentCell = iter.peek().getCellBarcode();
+		}
+		
 		while (iter.hasNext()) {
 			UMICollection umis = iter.next();
 			String cellBC = umis.getCellBarcode();
+			
+			// if the current cell is different from the next grabbed UMI/CELL barcode, check and see if the 
+			// collection of data is > the desired number of UMIs.
+			// if it isn't, discard it.
+			
+			if (!cellBC.equals(currentCell)) {
+				BeadSynthesisErrorData bsed = errorBarcodesWithPositions.get(currentCell);
+				if (bsed!=null & bsed.getUMICount()<this.MIN_UMIS_PER_CELL) {
+					errorBarcodesWithPositions.remove(currentCell);
+					numCellsFilteredLowUMIs++;
+				}
+			}
+			
 			Collection<String> umiCol = umis.getMolecularBarcodes();
 			
 			BeadSynthesisErrorData bsed = errorBarcodesWithPositions.get(cellBC);
@@ -155,12 +180,13 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		}
 		
 		iter.close();
+		
 		// track how many cells are removed by filtering.
-		int numCells = errorBarcodesWithPositions.size();
+		// int numCells = errorBarcodesWithPositions.size();
 		// filter so these errors have a minimum number of UMIs.
-		errorBarcodesWithPositions = filterByNumUMis(errorBarcodesWithPositions);
-		int numCellsAfterFiltering = errorBarcodesWithPositions.size();
-		int numCellsFilteredLowUMIs = numCells - numCellsAfterFiltering;
+		// errorBarcodesWithPositions = filterByNumUMis(errorBarcodesWithPositions);
+		// int numCellsAfterFiltering = errorBarcodesWithPositions.size();
+		// int numCellsFilteredLowUMIs = numCells - numCellsAfterFiltering;
 		
 		writeFile (errorBarcodesWithPositions.values(), out);
 		writeSummary(errorBarcodesWithPositions.values(), numCellsFilteredLowUMIs, SUMMARY);
@@ -454,7 +480,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		
 		if (OUT!=null) IOUtil.assertFileIsWritable(this.OUT);
 		List<String> barcodes=getCellBarcodes();		
-		UMIIterator iter = new UMIIterator(this.INPUT, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG, this.READ_MQ, false, false, barcodes, this.MAX_RECORDS_IN_RAM);		
+		UMIIterator iter = new UMIIterator(this.INPUT, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG, this.READ_MQ, false, false, barcodes, this.MAX_RECORDS_IN_RAM, true);		
 		return (iter);
 	}
 	
