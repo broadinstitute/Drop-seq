@@ -163,6 +163,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 					errorBarcodesWithPositions.remove(currentCell);
 					numCellsFilteredLowUMIs++;
 				}
+				currentCell=cellBC;
 			}
 			
 			Collection<String> umiCol = umis.getMolecularBarcodes();
