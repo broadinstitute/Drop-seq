@@ -53,7 +53,7 @@ public class DigitalExpression extends DGECommandLineBase {
 	private static final Log log = Log.getInstance(DigitalExpression.class);
 
 	@Option(doc="A summary of the digital expression output, containing 3 columns - the cell barcode, the #genes, and the #transcripts.", optional=true)
-	public File SUMMARY;
+	public File SUMMARY=null;
 	
 	@Option(doc="Output number of reads instead of number of unique molecular barcodes.", optional=true)
 	public boolean OUTPUT_READS_INSTEAD=false;
@@ -215,7 +215,7 @@ public class DigitalExpression extends DGECommandLineBase {
 			line.add(v);
 		}
 		if (OUTPUT_EXPRESSED_GENES_ONLY & totalCount==0) return;
-		if (MIN_SUM_EXPRESSION!=null & totalCount< MIN_SUM_EXPRESSION) return;
+		if (MIN_SUM_EXPRESSION!=null && totalCount < MIN_SUM_EXPRESSION) return;
 		
 		String h = StringUtils.join(line, "\t");
 		out.println(h);
