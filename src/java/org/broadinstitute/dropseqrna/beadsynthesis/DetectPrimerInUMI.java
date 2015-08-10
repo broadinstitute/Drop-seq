@@ -28,7 +28,7 @@ public class DetectPrimerInUMI {
 	}
 	
 	public boolean isStringInPrimer (String str, int editDistance) {
-		List<String> primerSubstrings = getSubstrings(primer, str.length());
+		List<String> primerSubstrings = getSubstrings(str.length());
 		Set<String> matchingPrimerSubstrings = EDUtils.getInstance().getStringsWithinHammingDistance(str, primerSubstrings, editDistance);
 		return !matchingPrimerSubstrings.isEmpty();
 	}
@@ -38,12 +38,12 @@ public class DetectPrimerInUMI {
 	 * @param length How long is each substring
 	 * @return A list of substrings
 	 */
-	public List<String> getSubstrings (String str, int length) {
+	public List<String> getSubstrings (int length) {
 		if (primerSubstrings.containsKey(length)) return primerSubstrings.get(length);
 		List<String> result = new ArrayList<String>();
 		
-		for (int startPos=0; startPos<(str.length()-length)+1; startPos++) {
-			String r = str.substring(startPos, startPos+length);
+		for (int startPos=0; startPos<(this.primer.length()-length)+1; startPos++) {
+			String r = this.primer.substring(startPos, startPos+length);
 			result.add(r);
 		}
 		this.primerSubstrings.put(length, result);

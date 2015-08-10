@@ -19,7 +19,7 @@ public class DetectPrimerTest {
 	@Test (enabled=true)
 	public void testGetSubstrings() {
 		DetectPrimerInUMI dpu = new DetectPrimerInUMI(this.primer);
-		List<String> substrings = dpu.getSubstrings(this.primer, 8);
+		List<String> substrings = dpu.getSubstrings(8);
 		String [] expected = {"AAGCAGTG","AGCAGTGG","GCAGTGGT","CAGTGGTA","AGTGGTAT","GTGGTATC","TGGTATCA","GGTATCAA","GTATCAAC","TATCAACG","ATCAACGC","TCAACGCA","CAACGCAG","AACGCAGA","ACGCAGAG","CGCAGAGT"};
 		Assert.assertTrue(substrings.size()==expected.length);
 		for (int i=0; i<expected.length; i++) {
