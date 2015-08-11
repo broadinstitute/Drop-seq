@@ -21,12 +21,13 @@ import htsjdk.samtools.util.SortingCollection;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.bamtagcomparator.BAMTagComparator;
@@ -112,7 +113,11 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     	
     	BufferedWriter b = IOUtil.openFileForBufferedWriting(OUTPUT);
     	file.write(b);
-    	CloserUtil.close(b);
+    	try {
+			b.close();
+		} catch (IOException io) {
+			throw new TranscriptomeException("Problem writing file", io);
+		}
     	return 0;
     }
     

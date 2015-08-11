@@ -1,17 +1,16 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.PeekableIterator;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
@@ -70,8 +69,14 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 			}
 		}
 		
+		CloserUtil.close(umiIterator);
 		
-		CloserUtil.close(out);
+		try {
+			out.close();
+		} catch (IOException io) {
+			throw new TranscriptomeException("Problem writing file", io);
+		}
+		
 		return 0;
 	}
 	

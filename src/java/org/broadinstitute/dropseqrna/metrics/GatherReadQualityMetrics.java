@@ -11,9 +11,11 @@ import htsjdk.samtools.util.ProgressLogger;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 
 import picard.cmdline.CommandLineProgram;
@@ -69,7 +71,12 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 		}
 		BufferedWriter w = IOUtil.openFileForBufferedWriting(OUTPUT);
 		outFile.write(w);
-		CloserUtil.close(w);
+		// close properly.
+		try {
+			w.close();
+		} catch (IOException io) {
+			throw new TranscriptomeException("Problem writing file", io);
+		}
 		return 0;
 	}
 

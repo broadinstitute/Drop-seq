@@ -101,8 +101,8 @@ public class TagReadWithGeneExon extends CommandLineProgram {
         	writer.addAlignment(r);
         }
         
-		CloserUtil.close((inputSam));
-		CloserUtil.close(writer);
+		CloserUtil.close(inputSam);
+		writer.close();
 		if (this.USE_STRAND_INFO) log.info(this.metrics.toString());
 		if (SUMMARY==null) return 0;
 		

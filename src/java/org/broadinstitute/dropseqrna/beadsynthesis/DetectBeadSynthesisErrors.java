@@ -12,6 +12,7 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.samtools.util.ProgressLogger;
 
 import java.io.File;
@@ -31,7 +32,6 @@ import org.broadinstitute.dropseqrna.utils.BaseDistributionMetric;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
 import org.broadinstitute.dropseqrna.utils.Bases;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
-import htsjdk.samtools.util.PeekableIterator;
 
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
@@ -256,7 +256,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 			}			
 		}
 		CloserUtil.close(reader);
-		CloserUtil.close(writer);
+		writer.close();		
 	}
 	
 	
