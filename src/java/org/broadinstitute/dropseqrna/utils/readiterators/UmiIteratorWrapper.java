@@ -1,17 +1,17 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.CloseableIterator;
+import org.broadinstitute.dropseqrna.barnyard.Utils;
+import org.broadinstitute.dropseqrna.utils.CountChangingIteratorWrapper;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-import org.broadinstitute.dropseqrna.barnyard.Utils;
-
-public class UMIReadProcessor implements SAMReadProcessorI {
+//TODO: Better name?
+public class UmiIteratorWrapper extends CountChangingIteratorWrapper<SAMRecord> {
 	
 	private String cellBarcodeTag;
 	private Set<String> cellBarcodeList;
@@ -25,7 +25,7 @@ public class UMIReadProcessor implements SAMReadProcessorI {
 	/**
 	 * Filters and copies reads for generating UMICollections.
 	 * Only accepts reads that where the read cell barcode matches a barcode in the list (if not null)
-	 * Reads that are marked as secondary or suplementary are rejected
+	 * Reads that are marked as secondary or supplementary are rejected
 	 * Filters reads based on read map quality, removing reads below that quality
 	 * Optionally filters reads where the annotated gene and the strand of the read don't match, or can clone a read and return it multiple times
 	 * if the read maps to more than one gene and <assignReadsToAllGenes> is true.
@@ -34,10 +34,18 @@ public class UMIReadProcessor implements SAMReadProcessorI {
 	 * @param geneExonTag The gene/exon tag.
 	 * @param strandTag The strand tag
 	 * @param readMQ The minimum map quality of a read to be retained.
-	 * @param assignReadsToAllGenes
-	 * @param useStrandInfo
+	 * @param assignReadsToAllGenes Clone SAMRecord for each gene
+	 * @param useStrandInfo Only queue SAMRecord if gene strand agrees with read strand.
 	 */
-	public UMIReadProcessor (String cellBarcodeTag, Collection <String> cellBarcodeList, String geneExonTag, String strandTag, int readMQ, boolean assignReadsToAllGenes, boolean useStrandInfo) {
+	public UmiIteratorWrapper(CloseableIterator<SAMRecord> underlyingIterator,
+                              String cellBarcodeTag,
+                              Collection<String> cellBarcodeList,
+                              String geneExonTag,
+                              String strandTag,
+                              int readMQ,
+                              boolean assignReadsToAllGenes,
+                              boolean useStrandInfo) {
+        super(underlyingIterator);
 		this.cellBarcodeTag = cellBarcodeTag;
 		this.cellBarcodeList = new HashSet<String>(cellBarcodeList);
 		this.geneExonTag=geneExonTag;
@@ -46,18 +54,19 @@ public class UMIReadProcessor implements SAMReadProcessorI {
 		this.assignReadsToAllGenes = assignReadsToAllGenes;
 		this.useStrandInfo = useStrandInfo;
 	}
-	@Override
-	public Collection<SAMRecord> processRead(SAMRecord r, Collection<SAMRecord> tempList) {
+
+    @Override
+    protected void processRecord(SAMRecord r) {
 		String cellBC=r.getStringAttribute(cellBarcodeTag);
 		String geneList = r.getStringAttribute(this.geneExonTag);
 		
 		// if there are cell barcodes to filter on, and this read's cell barcode isn't one of them, then move on to the next read;
 		if (this.cellBarcodeList!=null && !cellBarcodeList.contains(cellBC)) {
-			return (tempList);
+			return;
 		}
 		// if the read doesn't pass map quality, etc, more on.
 		if (r.isSecondaryOrSupplementary() || r.getMappingQuality()<this.readMQ || geneList==null) {
-			return (tempList);
+			return;
 		}
 		
 		// there's at least one good copy of the read.  Does the read match on strand/gene, or is it assigned to multiple genes?
@@ -79,13 +88,12 @@ public class UMIReadProcessor implements SAMReadProcessorI {
 					String geneStrand = strands[i];
 					String readStrandString = Utils.strandToString(!r.getReadNegativeStrandFlag());
 					if (geneStrand.equals(readStrandString)) {
-						tempList.add(rr);
+                        queueRecordForOutput(rr);
 					} else {
 						// rejected read
-						// log.info("Read wrong strand");
 					}
 				} else { // if you don't use strand info, add the read to all genes.
-					tempList.add(rr);	
+                    queueRecordForOutput(rr);
 				}
 			}
 		} 
@@ -94,10 +102,7 @@ public class UMIReadProcessor implements SAMReadProcessorI {
 			int randomNum = rand.nextInt((genes.length-1) + 1);
 			String g = genes[randomNum];
 			r.setAttribute(geneExonTag, g);
-			tempList.add(r);
+            queueRecordForOutput(r);
 		}
-		
-		return tempList;
 	}
-
 }

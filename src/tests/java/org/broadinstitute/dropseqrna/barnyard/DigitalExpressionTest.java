@@ -1,19 +1,15 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.PeekableIterator;
-
-import java.io.File;
-import java.util.Arrays;
-import java.util.List;
-
-import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
-import org.broadinstitute.dropseqrna.utils.readiterators.DEIteratorUtils;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 
 public class DigitalExpressionTest {
@@ -47,7 +43,6 @@ public class DigitalExpressionTest {
 		
 	File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.bam");
 	
-	private int MAX_RECORDS_IN_RAM=100000;
 	private String GENE_EXON_TAG="GE";
 	private String STRAND_TAG="GS";
 	private String CELL_BARCODE_TAG="ZC";
@@ -60,8 +55,9 @@ public class DigitalExpressionTest {
 		String [] barcodes ={"ATCAGGGACAGA", "AGGGAAAATTGA", "TTGCCTTACGCG", "TGGCGAAGAGAT", "TACAATTAAGGC"};
 		List<String> cellBarcodes = Arrays.asList(barcodes);
 		
-		UMIIterator iter = new UMIIterator(this.IN_FILE, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG, this.READ_MQ, 
-				true, this.USE_STRAND_INFO, cellBarcodes, this.MAX_RECORDS_IN_RAM);
+		UMIIterator iter = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.IN_FILE), false),
+                this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG, this.READ_MQ,
+				true, this.USE_STRAND_INFO, cellBarcodes);
 		
 		return (iter);
 	}

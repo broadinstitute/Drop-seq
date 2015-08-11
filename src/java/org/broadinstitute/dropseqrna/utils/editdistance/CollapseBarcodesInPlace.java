@@ -1,41 +1,27 @@
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import htsjdk.samtools.MergingSamRecordIterator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamFileHeaderMerger;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.IterableAdapter;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.PeekableIterator;
-import htsjdk.samtools.util.ProgressLogger;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.metrics.BAMTagHistogram;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import picard.PicardException;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Fold down barcodes, possibly in the context of another barcode (that has been folded down already.) 
@@ -137,34 +123,13 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 		CloserUtil.close(inputSam);
 		writer.close();
 	}
-    
-    private static class SamHeaderAndIterator {
-        public final SAMFileHeader header;
-        public final CloseableIterator<SAMRecord> iterator;
 
-        private SamHeaderAndIterator(SAMFileHeader header, CloseableIterator<SAMRecord> iterator) {
-            this.header = header;
-            this.iterator = iterator;
-        }
-    }
-    
     private SamHeaderAndIterator openInputs() {
-        final List<SamReader> readers = new ArrayList<SamReader>();
-        final List<SAMFileHeader> headers = new ArrayList<SAMFileHeader>();
-        for (final File inFile : INPUT) {
-            IOUtil.assertFileIsReadable(inFile);
-            final SamReader in = SamReaderFactory.makeDefault().open(inFile);
-            readers.add(in);
-            final SAMFileHeader header = in.getFileHeader();
-            if (SAMFileHeader.SortOrder.coordinate != header.getSortOrder()) {
-                throw new PicardException("Input file " + inFile.getAbsolutePath() + " is not coordinate sorted");
-            }
-            headers.add(header);
+        final SamHeaderAndIterator ret = SamFileMergeUtil.mergeInputs(INPUT, true);
+        if (SAMFileHeader.SortOrder.coordinate != ret.header.getSortOrder()) {
+            throw new PicardException("Input files are not coordinate sorted");
         }
-        
-        final SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(SAMFileHeader.SortOrder.coordinate, headers, false);
-        final MergingSamRecordIterator iterator = new MergingSamRecordIterator(headerMerger, readers, true);
-        return new SamHeaderAndIterator(headerMerger.getMergedHeader(), iterator);
+        return ret;
     }
 	
 	private ObjectCounter<String> filterBarcodesByNumReads (ObjectCounter<String> barcodes, int minNumReads) {

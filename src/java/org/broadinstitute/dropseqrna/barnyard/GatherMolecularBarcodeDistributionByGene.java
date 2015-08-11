@@ -7,6 +7,7 @@ import htsjdk.samtools.util.Log;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
@@ -15,6 +16,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.OutputWriterUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 
 import picard.cmdline.CommandLineProgramProperties;
@@ -54,8 +56,9 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 				this.GENE_EXON_TAG, this.STRAND_TAG, this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL, 
 				this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD, USE_STRAND_INFO);
 				
-		UMIIterator umiIterator = new UMIIterator(this.INPUT, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG, 
-				this.READ_MQ, true, this.USE_STRAND_INFO, barcodes, this.MAX_RECORDS_IN_RAM);
+		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
+                this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG,
+				this.READ_MQ, true, this.USE_STRAND_INFO, barcodes);
 				
 		
 		UMICollection batch;
@@ -118,8 +121,8 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 		
 		writePerTranscriptHeader(out);
 		
-		UMIIterator umiIterator = new UMIIterator(bamFile, geneExonTag, cellTag, molecularBarcodeTag, strandTag, 
-				mapQuality, true, useStrandInfo, null, this.MAX_RECORDS_IN_RAM);
+		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(bamFile), false),
+                geneExonTag, cellTag, molecularBarcodeTag, strandTag, mapQuality, true, useStrandInfo, null);
 		
 		
 		ObjectCounter<String> transcriptsPerCell = new ObjectCounter<String>();

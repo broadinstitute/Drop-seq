@@ -1,34 +1,23 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.PeekableIterator;
-
-import java.io.File;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.editdistance.EDUtils;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
-
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.File;
+import java.io.PrintStream;
+import java.util.*;
 
 @CommandLineProgramProperties(
         usage = "Measures the digital expression of a library.  " +
@@ -104,8 +93,9 @@ public class DigitalExpression extends DGECommandLineBase {
 		
 		writeHeader(out, cellBarcodes);
 
-		UMIIterator umiIterator = new UMIIterator(this.INPUT, this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG, 
-		this.READ_MQ, true, this.USE_STRAND_INFO, cellBarcodes, this.MAX_RECORDS_IN_RAM);
+		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
+                this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG,
+                this.READ_MQ, true, this.USE_STRAND_INFO, cellBarcodes);
 		
 		String gene = null;
 		Map<String, Integer> countMap = new HashMap<String, Integer>();

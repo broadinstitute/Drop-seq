@@ -1,8 +1,9 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.*;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -110,31 +111,48 @@ public class BarcodeListRetrieval {
 		// if the minNumReadsPerCell is not null or the numCoreBarcodes then we have all the params set correctly and we're good.
 		return true;
 	}
-	
-	
-	/**
-	 * Returns a list of cell barcodes with more at least MIN_NUM_READS_PER_CELL reads.
-	 * Or, if the numReadsCore is set, use that instead to get a list of cell barcodes.
-	 * If there are no cell barcodes, return an empty set.
-	 * @return
-	 */
-	public List<String> getListCellBarcodesByReadCount (File input, String cellBarcodeTag, int readQuality, Integer minNumReads, Integer numReadsCore) {
-		
-		BAMTagHistogram bth = new BAMTagHistogram();
-		ObjectCounter<String> cellBarcodes = bth.getBamTagCounts (input, cellBarcodeTag, readQuality, false);
-		
-		List<String> result=null;
-		
-		if (minNumReads!=null) {
-			result = getCoreBarcodesByReadCount(cellBarcodes, minNumReads);
-		} 
-		if (numReadsCore!=null) {
-			result = getTopCoreBarcodesByReadCount (cellBarcodes, numReadsCore);
-		}
-		return (result);
-	}
-	
-	public List<String> getListCellBarcodesByGeneCount(File input, String cellBarcodeTag, String geneExonTag, int readQuality, int minNumGenes) {
+
+
+    /**
+     * Returns a list of cell barcodes with more at least MIN_NUM_READS_PER_CELL reads.
+     * Or, if the numReadsCore is set, use that instead to get a list of cell barcodes.
+     * If there are no cell barcodes, return an empty set.
+     * @return
+     */
+    public List<String> getListCellBarcodesByReadCount (File input, String cellBarcodeTag, int readQuality, Integer minNumReads, Integer numReadsCore) {
+        return getListCellBarcodesByReadCount(
+                SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(input).iterator(),
+                cellBarcodeTag,
+                readQuality,
+                minNumReads,
+                numReadsCore
+        );
+    }
+
+    /**
+     * Returns a list of cell barcodes with more at least MIN_NUM_READS_PER_CELL reads.
+     * Or, if the numReadsCore is set, use that instead to get a list of cell barcodes.
+     * If there are no cell barcodes, return an empty set.
+     * Closes iterator before returning.
+     */
+    public List<String> getListCellBarcodesByReadCount(CloseableIterator<SAMRecord> input, String cellBarcodeTag, int readQuality, Integer minNumReads, Integer numReadsCore) {
+
+        BAMTagHistogram bth = new BAMTagHistogram();
+        ObjectCounter<String> cellBarcodes = bth.getBamTagCounts (input, cellBarcodeTag, readQuality, false);
+
+        List<String> result=null;
+
+        if (minNumReads!=null) {
+            result = getCoreBarcodesByReadCount(cellBarcodes, minNumReads);
+        }
+        if (numReadsCore!=null) {
+            result = getTopCoreBarcodesByReadCount (cellBarcodes, numReadsCore);
+        }
+        CloserUtil.close(input);
+        return (result);
+    }
+
+    public List<String> getListCellBarcodesByGeneCount(File input, String cellBarcodeTag, String geneExonTag, int readQuality, int minNumGenes) {
 		List<String> result = new ArrayList<String>();
 		
 		BAMTagofTagCounts tot = new BAMTagofTagCounts();
