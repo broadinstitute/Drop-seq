@@ -310,11 +310,23 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 		}
 		
 		// if there are records, write out the file.
+        final List<BeadSynthesisErrorData> dataArray = new ArrayList<>(data);
+        Collections.sort(dataArray, new Comparator<BeadSynthesisErrorData>() {
+            @Override
+            public int compare(BeadSynthesisErrorData o1, BeadSynthesisErrorData o2) {
+                // Note that this is backwards so record with largest UMICount comes first
+                int cmp = Integer.compare(o2.getUMICount(), o1.getUMICount());
+                if (cmp != 0) {
+                    return cmp;
+                }
+                return o1.getCellBarcode().compareTo(o2.getCellBarcode());
+            }
+        });
 		
-		BeadSynthesisErrorData first = data.iterator().next();
+		BeadSynthesisErrorData first = dataArray.get(0);
 		int umiLength = first.getBaseLength();
 		writeBadBarcodeStatisticsFileHeader(umiLength, out);
-		for (BeadSynthesisErrorData bsde: data) {
+		for (BeadSynthesisErrorData bsde: dataArray) {
 			writeBadBarcodeStatisticsFileEntry(bsde, out);
 		}
 		out.close();
