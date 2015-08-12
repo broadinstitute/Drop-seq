@@ -3,17 +3,15 @@ package org.broadinstitute.dropseqrna.utils.readiterators;
 import htsjdk.samtools.BAMRecordCodec;
 import htsjdk.samtools.SAMFileWriterImpl;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTagUtil;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.MultiComparator;
+import org.broadinstitute.dropseqrna.utils.StringInterner;
+import org.broadinstitute.dropseqrna.utils.StringTagComparator;
 
 import java.util.Collection;
-import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 
 public class UMIIterator implements CloseableIterator<UMICollection>  {
@@ -25,7 +23,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	private final String geneExonTag;
 	private final String cellBarcodeTag;
 	private final String molecularBarcodeTag;
-	
+    private final StringInterner stringCache = new StringInterner();
+
 	/**
 	 * Construct an object that generates UMI objects from a BAM file
      * @param headerAndIterator The BAM records to extract UMIs from
@@ -115,56 +114,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 
 		this.atoi = new GroupingIterator<>(umiIteratorWrapper, multiComparator);
 	}
-	
-	private static class StringTagComparator implements Comparator<SAMRecord> {
-        private final short tag;
 
-        StringTagComparator(String tag) {
-            this.tag = SAMTagUtil.getSingleton().makeBinaryTag(tag);
-        }
-
-        @Override
-        public int compare(SAMRecord rec1, SAMRecord rec2) {
-            final String s1 = (String)rec1.getAttribute(tag);
-            final String s2 = (String)rec2.getAttribute(tag);
-
-            if (s1 != null) {
-                if (s2 == null)
-                    return 1;
-                else {
-                    return s1.compareTo(s2);
-                }
-            } else if (s2 != null) {
-                return -1;
-            } else {
-                return 0;
-            }
-        }
-    }
-
-    private static class MissingTagFilteringIterator extends FilteredIterator<SAMRecord> {
-        final short[] requiredTags;
-
-        private MissingTagFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String...requiredTags) {
-            super(underlyingIterator);
-            this.requiredTags = new short[requiredTags.length];
-            for (int i = 0; i < requiredTags.length; ++i) {
-                this.requiredTags[i] = SAMTagUtil.getSingleton().makeBinaryTag(requiredTags[i]);
-            }
-        }
-
-        @Override
-        protected boolean filterOut(SAMRecord rec) {
-            for (final short tag : requiredTags) {
-                if (rec.getAttribute(tag) == null) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-	
-	/**
+    /**
 	 * Gets the next UMI Collection - all the molecular barcodes and reads on those for a particular gene/cell.
 	 * @return Null if there are no reads left in the iterator.  Otherwise, returns a UMICollection.
 	 */
@@ -186,7 +137,9 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		while (recordCollectionIter.hasNext()) {
 			// if there's a next read, set up the current gene/cell variables.
 			r=recordCollectionIter.next();
-			String molecularBarcode = r.getStringAttribute(this.molecularBarcodeTag);
+            // Cache the UMI.  Note that within a single (cell, gene), the ObjectCounter effectively caches the UMI string,
+            // but they are not cached *across* (cell, gene), so this should help.
+			String molecularBarcode = stringCache.intern(r.getStringAttribute(this.molecularBarcodeTag));
 			umi.incrementMolecularBarcodeCount(molecularBarcode);
 						
 		}
