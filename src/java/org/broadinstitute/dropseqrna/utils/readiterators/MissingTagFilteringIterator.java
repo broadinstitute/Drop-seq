@@ -19,10 +19,10 @@ import java.util.Iterator;
 /**
  * Iterator wrapper that emits a SAMRecord only if *all* the required tags are present.
  */
-class MissingTagFilteringIterator extends FilteredIterator<SAMRecord> {
+public class MissingTagFilteringIterator extends FilteredIterator<SAMRecord> {
     final short[] requiredTags;
 
-    MissingTagFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String... requiredTags) {
+    public MissingTagFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String... requiredTags) {
         super(underlyingIterator);
         this.requiredTags = new short[requiredTags.length];
         for (int i = 0; i < requiredTags.length; ++i) {
