@@ -1,34 +1,34 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import org.broadinstitute.dropseqrna.utils.bamtagcomparator.ComparatorAggregator;
-import org.broadinstitute.dropseqrna.utils.bamtagcomparator.StringComparator;
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
+import java.io.File;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+
+/**
+ * NOTE: TagValueProcessor no longer exists, but this tests the functionality that replaces it
+ */
 public class TagValueProcessorTest {
 	
 	File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/testTagSorting.bam");
 	
   @Test(enabled=true)
   public void testFilterKeepValues() {
-	 
-	  Set<String> values = new HashSet<String>();
-	  values.add("TGGCGAAGAGAT");
-	  TagValueProcessor p = new TagValueProcessor("ZC", values, true);
-	  
-	  List<String> sortingTags = new ArrayList<String>();
-	  sortingTags.add("ZC");
-	  
-	  ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, ag, p, true);
+
+      final Set<String> values = new HashSet<String>();
+      values.add("TGGCGAAGAGAT");
+      final Iterator<SAMRecord> it = TagOrderIteratorTest.getTagOrderIterator(IN_FILE, "ZC");
+      final Iterator<SAMRecord> toi = new FilteredIterator<SAMRecord>(it) {
+          @Override
+          protected boolean filterOut(SAMRecord rec) {
+              return !values.contains(rec.getAttribute("ZC"));
+          }
+      };
 	  int counter=0;
 	  
 	  String [] cellOrder={"TGGCGAAGAGAT", "TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT"};
@@ -36,7 +36,7 @@ public class TagValueProcessorTest {
 	  
 	  while (toi.hasNext()) {
 		  SAMRecord r = toi.next();
-		  String readName = r.getReadName();
+		  r.getReadName();
 		  String cellName = r.getStringAttribute("ZC");
 		  
 		  String expectedName = cellOrder[counter];
@@ -49,15 +49,15 @@ public class TagValueProcessorTest {
   @Test(enabled=true)
   public void testFilterRejectValues() {
 	 
-	  Set<String> values = new HashSet<String>();
+	  final Set<String> values = new HashSet<String>();
 	  values.add("ATCAGGGACAGA");
-	  TagValueProcessor p = new TagValueProcessor("ZC", values, false);
-	  
-	  List<String> sortingTags = new ArrayList<String>();
-	  sortingTags.add("ZC");
-	  
-	  ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, ag, p, true);
+      final Iterator<SAMRecord> it = TagOrderIteratorTest.getTagOrderIterator(IN_FILE, "ZC");
+      final Iterator<SAMRecord> toi = new FilteredIterator<SAMRecord>(it) {
+          @Override
+          protected boolean filterOut(SAMRecord rec) {
+              return values.contains(rec.getAttribute("ZC"));
+          }
+      };
 	  int counter=0;
 	  
 	  String [] cellOrder={"TGGCGAAGAGAT", "TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT"};
@@ -65,7 +65,7 @@ public class TagValueProcessorTest {
 	  
 	  while (toi.hasNext()) {
 		  SAMRecord r = toi.next();
-		  String readName = r.getReadName();
+		  r.getReadName();
 		  String cellName = r.getStringAttribute("ZC");
 		  
 		  String expectedName = cellOrder[counter];

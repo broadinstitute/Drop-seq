@@ -1,16 +1,22 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.broadinstitute.dropseqrna.utils.bamtagcomparator.ComparatorAggregator;
-import org.broadinstitute.dropseqrna.utils.bamtagcomparator.StringComparator;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import org.broadinstitute.dropseqrna.utils.MultiComparator;
+import org.broadinstitute.dropseqrna.utils.StringTagComparator;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+
+/**
+ * NOTE: TagOrderIterator no longer exists, but this tests the functionality of the classes that replace it.
+ */
 public class TagOrderIteratorTest {
 	
 	//File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.bam");
@@ -41,36 +47,35 @@ public class TagOrderIteratorTest {
 	
   @Test(enabled=true)
   public void testGeneSorting() {
-	  ReadProcessorCollection filters = new ReadProcessorCollection();
-	  List<String> sortingTags = new ArrayList<String>();
-	  //sortingTags.add("ZC");
-	  sortingTags.add("GE");
-	  //sortingTags.add("XM");
-	  ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, ag, filters, true);
+      final Iterator<SAMRecord> toi = getTagOrderIterator(IN_FILE, "GE");
 	  int counter=0;
 	  
 	  String [] geneOrder={"CHUK", "CHUK", "CHUK", "CHUK", "NKTR", "NKTR", "NKTR", "NKTR", "SNRPA1", "SNRPA1", "SNRPA1", "SNRPA1"};
 	  
 	  while (toi.hasNext()) {
 		  SAMRecord r = toi.next();
-		  String readName = r.getReadName();
+		  r.getReadName();
 		  String geneName = r.getStringAttribute("GE");
 		  String expectedName = geneOrder[counter];
 		  Assert.assertEquals(geneName, expectedName);
 		  counter++;
 	  }
   }
-  
-  @Test(enabled=true)
+
+    public static Iterator<SAMRecord> getTagOrderIterator(final File inFile, final String...tags) {
+        final SamReader reader = SamReaderFactory.makeDefault().open(inFile);
+        final MissingTagFilteringIterator filteringIterator = new MissingTagFilteringIterator(reader.iterator(), tags);
+        final List<Comparator<SAMRecord>> comparators = new ArrayList<>(tags.length);
+        for (final String tag : tags) {
+            comparators.add(new StringTagComparator(tag));
+        }
+        final Comparator<SAMRecord> comparator = new MultiComparator<>(comparators);
+        return SamRecordSortingIteratorFactory.create(reader.getFileHeader(), filteringIterator, comparator, null);
+    }
+
+    @Test(enabled=true)
   public void testCellSorting() {
-	  ReadProcessorCollection filters = new ReadProcessorCollection();
-	  List<String> sortingTags = new ArrayList<String>();
-	  
-	  sortingTags.add("ZC");
-	  
-	  ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, ag, filters, true);
+        final Iterator<SAMRecord> toi = getTagOrderIterator(IN_FILE, "ZC");
 	  int counter=0;
 	  
 	  String [] cellOrder={"ATCAGGGACAGA","ATCAGGGACAGA","ATCAGGGACAGA","ATCAGGGACAGA","ATCAGGGACAGA","ATCAGGGACAGA","TGGCGAAGAGAT", "TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT"};
@@ -78,7 +83,7 @@ public class TagOrderIteratorTest {
 	  
 	  while (toi.hasNext()) {
 		  SAMRecord r = toi.next();
-		  String readName = r.getReadName();
+		  r.getReadName();
 		  String cellName = r.getStringAttribute("ZC");
 		  
 		  String expectedName = cellOrder[counter];
@@ -89,20 +94,14 @@ public class TagOrderIteratorTest {
   
   @Test(enabled=true)
   public void testGeneCellSorting() {
-	  ReadProcessorCollection filters = new ReadProcessorCollection();
-	  List<String> sortingTags = new ArrayList<String>();
-	  sortingTags.add("GE");
-	  sortingTags.add("ZC");
-	  
-	  ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, ag, filters, true);
+      final Iterator<SAMRecord> toi = getTagOrderIterator(IN_FILE, "GE", "ZC");
 	  int counter=0;
 	  
 	  String [] cellOrder={"ATCAGGGACAGA", "ATCAGGGACAGA", "TGGCGAAGAGAT", "TGGCGAAGAGAT","ATCAGGGACAGA", "ATCAGGGACAGA", "TGGCGAAGAGAT", "TGGCGAAGAGAT","ATCAGGGACAGA", "ATCAGGGACAGA", "TGGCGAAGAGAT", "TGGCGAAGAGAT"};
 	  String [] geneOrder={"CHUK", "CHUK", "CHUK", "CHUK", "NKTR", "NKTR", "NKTR", "NKTR", "SNRPA1", "SNRPA1", "SNRPA1", "SNRPA1"};
 	  while (toi.hasNext()) {
 		  SAMRecord r = toi.next();
-		  String readName = r.getReadName();
+		  r.getReadName();
 		  String cellName = r.getStringAttribute("ZC");
 		  String geneName = r.getStringAttribute("GE");
 		  System.out.println("Gene [" + geneName +"] Cell [" + cellName +"]");
@@ -115,14 +114,7 @@ public class TagOrderIteratorTest {
   
   @Test(enabled=true)
   public void testCellGeneMolecularSorting() {
-	  ReadProcessorCollection filters = new ReadProcessorCollection();
-	  List<String> sortingTags = new ArrayList<String>();	  
-	  sortingTags.add("ZC");
-	  sortingTags.add("GE");
-	  sortingTags.add("XM");
-	  
-	  ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
-	  TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, ag, filters, true);
+      final Iterator<SAMRecord> toi = getTagOrderIterator(IN_FILE, "ZC", "GE", "XM");
 	  int counter=0;
 	  
 	  String [] cellOrder={"ATCAGGGACAGA", "ATCAGGGACAGA", "ATCAGGGACAGA", "ATCAGGGACAGA", "ATCAGGGACAGA", "ATCAGGGACAGA", "TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT","TGGCGAAGAGAT"};
@@ -131,7 +123,7 @@ public class TagOrderIteratorTest {
 	  
 		while (toi.hasNext()) {
 			SAMRecord r = toi.next();
-			String readName = r.getReadName();
+			r.getReadName();
 			String cellName = r.getStringAttribute("ZC");
 			String geneName = r.getStringAttribute("GE");
 			String molBC = r.getStringAttribute("XM");

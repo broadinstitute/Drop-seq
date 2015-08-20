@@ -3,19 +3,24 @@ package org.broadinstitute.dropseqrna.utils.readiterators;
 import htsjdk.samtools.SAMRecord;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import org.broadinstitute.dropseqrna.utils.GroupingIterator;
+import org.broadinstitute.dropseqrna.utils.MultiComparator;
+import org.broadinstitute.dropseqrna.utils.StringTagComparator;
 import org.broadinstitute.dropseqrna.utils.bamtagcomparator.ComparatorAggregator;
 import org.broadinstitute.dropseqrna.utils.bamtagcomparator.StringComparator;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 /**
- * 
+ * Note that class AggregatedTagOrderIterator no longer exists, but this class tests the various classes
+ * that replace the deleted class.
+ *
  * @author nemesh
  *
  */
@@ -23,15 +28,36 @@ public class AggregatedTagOrderIteratorTest {
 	// See TagOrderIteratorTest for more info about the data in the test BAM
 	File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/testTagSorting.bam");
 
-	@Test(enabled=true)
+    private Iterator<List<SAMRecord>> filterSortAndGroupByTags(final File bamFile, final String...tags) {
+        final SamReader reader = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(bamFile);
+        final Iterator<SAMRecord> filteringIterator = new MissingTagFilteringIterator(reader.iterator(), tags);
+        final List<Comparator<SAMRecord>> comparators = new ArrayList<>(tags.length);
+        for (final String tag: tags) {
+            comparators.add(new StringTagComparator(tag));
+        }
+        final MultiComparator<SAMRecord> comparator = new MultiComparator<>(comparators);
+        final CloseableIterator<SAMRecord> sortingIterator =
+                SamRecordSortingIteratorFactory.create(reader.getFileHeader(), filteringIterator, comparator, null);
+        return new GroupingIterator<>(sortingIterator, comparator);
+    }
+
+    private Iterator<List<SAMRecord>> filterSortAndGroupByTagsAndQuality(final File bamFile, final String...tags) {
+        final SamReader reader = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(bamFile);
+        // Stack the two filters
+        final Iterator<SAMRecord> filteringIterator = new MapQualityFilteredIterator(new MissingTagFilteringIterator(reader.iterator(), tags), 10, true);
+        final List<Comparator<SAMRecord>> comparators = new ArrayList<>(tags.length);
+        for (final String tag: tags) {
+            comparators.add(new StringTagComparator(tag));
+        }
+        final MultiComparator<SAMRecord> comparator = new MultiComparator<>(comparators);
+        final CloseableIterator<SAMRecord> sortingIterator =
+                SamRecordSortingIteratorFactory.create(reader.getFileHeader(), filteringIterator, comparator, null);
+        return new GroupingIterator<>(sortingIterator, comparator);
+    }
+
+    @Test(enabled=true)
 	public void testGeneSorting() {
-		ReadProcessorCollection filters = new ReadProcessorCollection();
-		List<String> sortingTags = new ArrayList<String>();
-		sortingTags.add("GE");
-		
-		ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
-		TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, ag, filters, true);
-		AggregatedTagOrderIterator atoi = new AggregatedTagOrderIterator(toi);
+        final Iterator<List<SAMRecord>> groupingIterator = filterSortAndGroupByTags(IN_FILE, "GE");
 		int counter=0;
 		
 		String [] geneOrder={"CHUK", "NKTR", "SNRPA1"};
@@ -40,8 +66,8 @@ public class AggregatedTagOrderIteratorTest {
 		geneCounts.put("NKTR", 4);
 		geneCounts.put("SNRPA1", 4);
 		
-		 while (toi.hasNext()) {
-			  Collection<SAMRecord> r = atoi.next();
+		 while (groupingIterator.hasNext()) {
+			  Collection<SAMRecord> r = groupingIterator.next();
 			  int size = r.size();
 			  SAMRecord rec = r.iterator().next();
 			  
@@ -59,14 +85,7 @@ public class AggregatedTagOrderIteratorTest {
 	
 	@Test(enabled=true)
 	public void testCellSorting() {
-		ReadProcessorCollection filters = new ReadProcessorCollection();
-		List<String> sortingTags = new ArrayList<String>();
-		sortingTags.add("ZC");
-
-		ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
-		TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags,sortingTags, ag, filters, true);
-		
-		AggregatedTagOrderIterator atoi = new AggregatedTagOrderIterator(toi);
+        final Iterator<List<SAMRecord>> groupingIterator = filterSortAndGroupByTags(IN_FILE, "ZC");
 		int counter=0;
 		
 		String [] cellOrder={"ATCAGGGACAGA", "TGGCGAAGAGAT"};
@@ -75,8 +94,8 @@ public class AggregatedTagOrderIteratorTest {
 		cellCounts.put("TGGCGAAGAGAT", 6);
 		
 		
-		 while (atoi.hasNext()) {
-			  Collection<SAMRecord> r = atoi.next();
+		 while (groupingIterator.hasNext()) {
+			  Collection<SAMRecord> r = groupingIterator.next();
 			  int size = r.size();
 			  SAMRecord rec = r.iterator().next();
 			  
@@ -94,14 +113,7 @@ public class AggregatedTagOrderIteratorTest {
 	
 	@Test(enabled=true)
 	public void testGeneCellSorting() {
-		ReadProcessorCollection filters = new ReadProcessorCollection();
-		List<String> sortingTags = new ArrayList<String>();
-		sortingTags.add("GE");
-		sortingTags.add("ZC");
-		  
-		ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
-		TagOrderIterator toi = new TagOrderIterator(IN_FILE, sortingTags, sortingTags, ag, filters, true);
-		AggregatedTagOrderIterator atoi = new AggregatedTagOrderIterator(toi);
+        final Iterator<List<SAMRecord>> groupingIterator = filterSortAndGroupByTags(IN_FILE, "GE", "ZC");
 		int counter=0;
 		  
 		
@@ -109,8 +121,8 @@ public class AggregatedTagOrderIteratorTest {
 		String [] cellOrder={"ATCAGGGACAGA", "TGGCGAAGAGAT", "ATCAGGGACAGA", "TGGCGAAGAGAT", "ATCAGGGACAGA", "TGGCGAAGAGAT"};
 		int [] expectedSize = {2,2,2,2,2,2};
 		
-		while (atoi.hasNext()) {
-			Collection<SAMRecord> r = atoi.next();
+		while (groupingIterator.hasNext()) {
+			Collection<SAMRecord> r = groupingIterator.next();
 			int size = r.size();
 			SAMRecord rec = r.iterator().next();
 			
@@ -136,18 +148,16 @@ public class AggregatedTagOrderIteratorTest {
 	@Test (enabled=true)
 	public void testGetCellGeneBatch() {
 		File f = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.bam");
-		String cellTag = "ZC";
-		String geneExonTag = "GE";
-				
+        String cellTag = "ZC";
+        String geneExonTag = "GE";
+        final Iterator<List<SAMRecord>> iter = filterSortAndGroupByTagsAndQuality(f, geneExonTag, cellTag);
+
 		List<String>sortingTags = new ArrayList<String>();
-		
+
 		sortingTags.add(geneExonTag);
 		sortingTags.add(cellTag);
-		
-		ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
-		TagOrderIterator toi = new TagOrderIterator(f, sortingTags, sortingTags, ag, new MapQualityProcessor(10, true), true);
-		AggregatedTagOrderIterator iter = new AggregatedTagOrderIterator(toi);
-		
+
+
 		while (iter.hasNext()) {
 			Collection<SAMRecord> recs=iter.next();
 			SAMRecord r = recs.iterator().next();
@@ -158,23 +168,21 @@ public class AggregatedTagOrderIteratorTest {
 			Assert.assertTrue(testAllRecordsSamTags(recs, sortingTags, expectedSize, setSize));
 			Assert.assertEquals(expectedSize, setSize);
 		}
-		iter.close();
+		CloserUtil.close(iter);
 	}
 	
 	@Test (enabled=true)
 	public void testGetCellBatch() {
 		File f = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.bam");
 		String cellTag = "ZC";
-		
+        final Iterator<List<SAMRecord>> iter = filterSortAndGroupByTagsAndQuality(f, cellTag);
+
 		List<String>sortingTags = new ArrayList<String>();
 		
 		sortingTags.add(cellTag);
-		ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);		
-		TagOrderIterator toi = new TagOrderIterator(f, sortingTags, sortingTags, ag, new MapQualityProcessor(10, true), true);
-		AggregatedTagOrderIterator atoi = new AggregatedTagOrderIterator(toi);
-		
-		while (atoi.hasNext()) {
-			List<SAMRecord> recs=atoi.next();
+
+		while (iter.hasNext()) {
+			List<SAMRecord> recs=iter.next();
 			SAMRecord r = recs.iterator().next();
 			int setSize = recs.size();
 			String cell = r.getStringAttribute(cellTag);
@@ -184,8 +192,7 @@ public class AggregatedTagOrderIteratorTest {
 			
 			Assert.assertEquals(expectedSize, setSize);
 		}
-		atoi.close();
-		
+        CloserUtil.close(iter);
 	}
 	
 	

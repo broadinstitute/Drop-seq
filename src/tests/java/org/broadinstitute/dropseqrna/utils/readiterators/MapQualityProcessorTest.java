@@ -7,6 +7,7 @@ import htsjdk.samtools.SamReaderFactory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 
 import junit.framework.Assert;
 
@@ -23,17 +24,13 @@ public class MapQualityProcessorTest {
 		SAMRecord unmapped = getRecordFromBAM(unmappedReadName);
 		SAMRecord mapped = getRecordFromBAM(mappedReadName);
 		
-		MapQualityProcessor p = new MapQualityProcessor(10, true);
-		Collection<SAMRecord> r1 = new ArrayList<SAMRecord>();
-		r1 = p.processRead(unmapped, r1);
-		Assert.assertTrue(r1.isEmpty());
+		MapQualityFilteredIterator r1 = new MapQualityFilteredIterator(Collections.singletonList(unmapped).iterator(), 10, true);
+		Assert.assertFalse(r1.hasNext());
 
-		Collection<SAMRecord> r2 = new ArrayList<SAMRecord>();
-		r2 = p.processRead(mapped,r2);
-		Assert.assertTrue(!r2.isEmpty());
-		
-		Assert.assertEquals(1, r2.size());
-		
+        MapQualityFilteredIterator r2 = new MapQualityFilteredIterator(Collections.singletonList(mapped).iterator(), 10, true);
+		Assert.assertTrue(r2.hasNext());
+		Assert.assertEquals(mapped, r2.next());
+        Assert.assertFalse(r2.hasNext());
 	}
 	
 	
