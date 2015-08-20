@@ -1,39 +1,12 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.BAMRecordCodec;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMProgramRecord;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.*;
 import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.CollectionUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.OverlapDetector;
-import htsjdk.samtools.util.ProgressLogger;
-import htsjdk.samtools.util.SortingCollection;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
+import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.bamtagcomparator.BAMTagComparator;
-import org.broadinstitute.dropseqrna.utils.bamtagcomparator.ComparatorAggregator;
-import org.broadinstitute.dropseqrna.utils.bamtagcomparator.StringComparator;
-
+import org.broadinstitute.dropseqrna.utils.StringTagComparator;
 import picard.analysis.MetricAccumulationLevel;
 import picard.analysis.RnaSeqMetrics;
 import picard.analysis.directed.RnaSeqMetricsCollector;
@@ -42,6 +15,14 @@ import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * An adaptation of the Picard RnaSeqMetricsCollector to collect per-cell data.  In particular, the exon/intron/genic/intragenic/rRNA levels.
@@ -175,10 +156,8 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
         	writerHeader.addProgramRecord(spr);
         }
                 
-        ComparatorAggregator ag = new ComparatorAggregator(new StringComparator(), true);
-        
 		SortingCollection<SAMRecord> alignmentSorter = SortingCollection.newInstance(SAMRecord.class,
-	            new BAMRecordCodec(writerHeader), new BAMTagComparator(primaryTag, ag),
+	            new BAMRecordCodec(writerHeader), new StringTagComparator(primaryTag),
 	                MAX_RECORDS_IN_RAM);
 		//log.info("Reading in records for TAG name sorting");
 		ProgressLogger p = new ProgressLogger(log, 1000000, "Preparing reads in core barcodes");

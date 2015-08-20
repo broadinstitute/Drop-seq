@@ -1,10 +1,6 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
-
-import java.io.File;
-import java.util.*;
-
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloseableIterator;
@@ -12,10 +8,11 @@ import htsjdk.samtools.util.CloserUtil;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.MultiComparator;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
-import org.broadinstitute.dropseqrna.utils.bamtagcomparator.ComparatorAggregator;
-import org.broadinstitute.dropseqrna.utils.bamtagcomparator.StringComparator;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.util.*;
 
 /**
  * Note that class AggregatedTagOrderIterator no longer exists, but this class tests the various classes
