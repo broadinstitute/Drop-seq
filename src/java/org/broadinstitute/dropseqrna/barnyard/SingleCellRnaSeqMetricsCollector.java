@@ -6,7 +6,9 @@ import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 import picard.analysis.MetricAccumulationLevel;
 import picard.analysis.RnaSeqMetrics;
 import picard.analysis.directed.RnaSeqMetricsCollector;
@@ -39,8 +41,7 @@ import java.util.Set;
 public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(SingleCellRnaSeqMetricsCollector.class);
-	private ProgressLogger progress = new ProgressLogger(log);
-	
+
 	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
 	public File INPUT;
 	
@@ -72,8 +73,6 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     
     @Option(doc="The map quality of the read to be included for determining which cells will be measured.")
 	public Integer READ_MQ=10;
-    
-    private Integer MAX_RECORDS_IN_RAM=500000;
     
     @Override
 	protected int doWork() {
@@ -131,16 +130,12 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
      * 
      * I've tried adapting this to the TagOrderIterator API, but it seems like I need to add the read groups to the header of the temporary BAM that gets
      * iterated on or this doesn't work.
-     * @param bamFile
-     * @param primaryTag
-     * @param rg
-     * @param allCellBarcodes
-     * @param mapQuality
-     * @return
      */
-    private CloseableIterator<SAMRecord> getReadsInTagOrder (File bamFile, String primaryTag, List<SAMReadGroupRecord> rg, Set<String> allCellBarcodes, int mapQuality) {
+    private CloseableIterator<SAMRecord> getReadsInTagOrder (final File bamFile, final String primaryTag,
+                                                             final List<SAMReadGroupRecord> rg,
+                                                             final Set<String> allCellBarcodes, final int mapQuality) {
     	
-		SamReader reader = SamReaderFactory.makeDefault().open(bamFile);;
+		SamReader reader = SamReaderFactory.makeDefault().open(bamFile);
 		SAMSequenceDictionary dict= reader.getFileHeader().getSequenceDictionary();
 		List<SAMProgramRecord> programs =reader.getFileHeader().getProgramRecords();
 		
@@ -155,46 +150,28 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
         for (SAMProgramRecord spr : programs) {
         	writerHeader.addProgramRecord(spr);
         }
-                
-		SortingCollection<SAMRecord> alignmentSorter = SortingCollection.newInstance(SAMRecord.class,
-	            new BAMRecordCodec(writerHeader), new StringTagComparator(primaryTag),
-	                MAX_RECORDS_IN_RAM);
-		//log.info("Reading in records for TAG name sorting");
-		ProgressLogger p = new ProgressLogger(log, 1000000, "Preparing reads in core barcodes");
-		for (SAMRecord r: reader) {
-			p.record(r);
-			String cellBarcode = r.getStringAttribute(primaryTag);
-			if (allCellBarcodes.contains(cellBarcode)  & r.getMappingQuality() >= mapQuality) {
-				r.setAttribute("RG", cellBarcode);
-				// List<SAMReadGroupRecord> readGroups= r.getHeader().getReadGroups();
-				alignmentSorter.add(r);
-			}
-			
-		}
-		CloserUtil.close(reader);
-		CloseableIterator<SAMRecord> result = alignmentSorter.iterator();
+
+        // This not only filters, but sets the RG attribute on reads it allows through.
+        final FilteredIterator<SAMRecord> rgAddingFilter = new FilteredIterator<SAMRecord>(reader.iterator()) {
+            @Override
+            protected boolean filterOut(SAMRecord r) {
+                String cellBarcode = r.getStringAttribute(primaryTag);
+                if (allCellBarcodes.contains(cellBarcode) & r.getMappingQuality() >= mapQuality) {
+                    r.setAttribute("RG", cellBarcode);
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        };
+
+        ProgressLogger p = new ProgressLogger(log, 1000000, "Preparing reads in core barcodes");
+        CloseableIterator<SAMRecord> sortedIterator = SamRecordSortingIteratorFactory.create(writerHeader, rgAddingFilter, new StringTagComparator(primaryTag), p);
+
+
 		log.info("Sorting finished.");
-		return (result);
+		return (sortedIterator);
 	}
-    
-    /**
-     * Generate an iterator over the BAM that selects for cells.
-     * @param cellBarcodes
-     * @return
-     */
-    /*
-    private TagOrderIterator getIter (Set<String> cellBarcodes ) {
-    	// iterate by cell barcodes.  Skip all the reads without cell barcodes.
-     	List<String> sortingTags = new ArrayList<String>();
-     	sortingTags.add(this.CELL_BARCODE_TAG);
-     	
-     	ReadProcessorCollection filters = new ReadProcessorCollection();
-     	filters.addFilter(new MapQualityProcessor(this.READ_MQ, true));
-     	filters.addFilter (new TagValueProcessor(this.CELL_BARCODE_TAG, cellBarcodes, true));
-    	TagOrderIterator toi = new TagOrderIterator(this.INPUT, sortingTags, filters, true);
-    	return (toi);
-    }
-    */
     
     private class CollectorFactory {
     	final OverlapDetector<Gene> geneOverlapDetector;
@@ -218,8 +195,9 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     	
     	public RnaSeqMetricsCollector getCollector(Set<String> cellBarcodes) {
     		List<SAMReadGroupRecord> readGroups =  getReadGroups(cellBarcodes);
-    		RnaSeqMetricsCollector collector = new RnaSeqMetricsCollector(CollectionUtil.makeSet(MetricAccumulationLevel.READ_GROUP), readGroups, ribosomalBasesInitialValue, geneOverlapDetector, ribosomalSequenceOverlapDetector, ignoredSequenceIndices, 500, specificity, this.rnaFragPct, false);
-    		return (collector);
+    		return new RnaSeqMetricsCollector(CollectionUtil.makeSet(MetricAccumulationLevel.READ_GROUP), readGroups,
+                    ribosomalBasesInitialValue, geneOverlapDetector, ribosomalSequenceOverlapDetector,
+                    ignoredSequenceIndices, 500, specificity, this.rnaFragPct, false);
     	}
     	
     	public List<SAMReadGroupRecord> getReadGroups(Set<String> cellBarcodes) {

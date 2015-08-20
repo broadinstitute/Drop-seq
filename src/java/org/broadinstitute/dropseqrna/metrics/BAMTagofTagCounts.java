@@ -1,34 +1,23 @@
 package org.broadinstitute.dropseqrna.metrics;
 
-import htsjdk.samtools.BAMRecordCodec;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMProgramRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
-import htsjdk.samtools.util.SortingCollection;
-
-import java.io.File;
-import java.io.PrintStream;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
+import htsjdk.samtools.*;
+import htsjdk.samtools.util.*;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.CustomBAMIterators;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
-
+import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.File;
+import java.io.PrintStream;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @CommandLineProgramProperties(
         usage = "For a given BAM tag, how many unique values of a second BAM tag are present?",
@@ -113,7 +102,7 @@ private static final Log log = Log.getInstance(BAMTagofTagCounts.class);
 			}
 					
 			// if you see a new tag.
-			if (currentTag.equals(newTag)==false) {
+			if (!currentTag.equals(newTag)) {
 				// write out tag results, if any.
 				if (!currentTag.equals("") && otherTagCollection.size()>0) {
 					result.addEntries(currentTag, otherTagCollection);	
@@ -137,9 +126,7 @@ private static final Log log = Log.getInstance(BAMTagofTagCounts.class);
 	private Set<String> addTagToCollection (String data, Set<String> collection) {
 		if (SECONDARY_DELIMITER!=null) {
 			String [] d2= data.split(this.SECONDARY_DELIMITER);
-			for (String z: d2) {
-				collection.add(z);
-			}
+            Collections.addAll(collection, d2);
 		} else {
 			collection.add(data);
 		}
@@ -173,21 +160,12 @@ private static final Log log = Log.getInstance(BAMTagofTagCounts.class);
         for (SAMProgramRecord spr : programs) {
         	writerHeader.addProgramRecord(spr);
         }
-        
-		SortingCollection<SAMRecord> alignmentSorter = SortingCollection.newInstance(SAMRecord.class,
-	            new BAMRecordCodec(writerHeader), new StringTagComparator(this.PRIMARY_TAG),
-	                MAX_RECORDS_IN_RAM);
-		
-		log.info("Reading in records for TAG name sorting");
-		int counter=0;
-		for (SAMRecord r: reader) {
-			alignmentSorter.add(r);
-			counter++;
-			if (counter%1000000==0) log.info(counter+ " records processed");
-		}
-	
-		CloserUtil.close(reader);
-		CloseableIterator<SAMRecord> result = alignmentSorter.iterator();
+
+        log.info("Reading in records for TAG name sorting");
+        final ProgressLogger progressLogger = new ProgressLogger(log, 1000000);
+        final CloseableIterator<SAMRecord> result =
+                SamRecordSortingIteratorFactory.create(writerHeader, reader.iterator(), new StringTagComparator(this.PRIMARY_TAG), progressLogger);
+
 		log.info("Sorting finished.");
 		return (result);
 	}
