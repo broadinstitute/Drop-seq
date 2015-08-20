@@ -1,7 +1,5 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import htsjdk.samtools.BAMRecordCodec;
-import htsjdk.samtools.SAMFileWriterImpl;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
@@ -92,22 +90,12 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		final MissingTagFilteringIterator filteringIterator =
                 new MissingTagFilteringIterator(headerAndIterator.iterator, cellBarcodeTag, geneExonTag);
 
-        SortingCollection<SAMRecord> alignmentSorter = SortingCollection.newInstance(SAMRecord.class,
-                new BAMRecordCodec(headerAndIterator.header), multiComparator,
-                SAMFileWriterImpl.getDefaultMaxRecordsInRam());
-
-        log.info("Reading in records for TAG name sorting");
-        while (filteringIterator.hasNext()) {
-            final SAMRecord rec = filteringIterator.next();
-            prog.record(rec);
-            alignmentSorter.add(rec);
-        }
-        filteringIterator.close();
-
+        CloseableIterator<SAMRecord> sortedAlignmentIterator = SamRecordSortingIteratorFactory.create(
+                headerAndIterator.header, filteringIterator, multiComparator, prog);
 
         // assign the tags in the order you want data sorted.
 		
-		UmiIteratorWrapper umiIteratorWrapper = new UmiIteratorWrapper(alignmentSorter.iterator(), cellBarcodeTag,
+		UmiIteratorWrapper umiIteratorWrapper = new UmiIteratorWrapper(sortedAlignmentIterator, cellBarcodeTag,
                 cellBarcodes, geneExonTag, strandTag, readMQ, assignReadsToAllGenes, useStrandInfo);
         // Not really -- merge sort is ongoing.
         log.info("Sorting finished.");
