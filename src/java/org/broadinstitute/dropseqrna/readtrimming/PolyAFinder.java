@@ -1,86 +1,51 @@
+/*
+ * The Broad Institute
+ * SOFTWARE COPYRIGHT NOTICE AGREEMENT
+ * This software and its documentation are copyright 2015 by the
+ * Broad Institute/Massachusetts Institute of Technology. All rights are reserved.
+ *
+ * This software is supplied without any warranty or guaranteed support whatsoever.
+ * Neither the Broad Institute nor MIT can be responsible for its use, misuse,
+ * or functionality.
+ */
 package org.broadinstitute.dropseqrna.readtrimming;
 
-/**
- * Finds runs of PolyAs (lots of A's in a row) in a sequence.
- * Identifies the first base of the run that is polyA.
- * @author nemesh
- *
- */
-public class PolyAFinder {
+import htsjdk.samtools.SAMRecord;
 
-	private int minNumBases;
-	private int numMismatchBases;
+public interface PolyAFinder {
+    public static int NO_MATCH = -1;
 
-	public PolyAFinder (final int minNumBases, final int numMismatchBases) {
-		this.minNumBases = minNumBases;
-		this.numMismatchBases = numMismatchBases;
-	}
-
-	/**
+    /**
 	 * Gets the first base of a polyA run in the sequence, or -1 if there is no polyA run of at least minNumBases.
-	 * @param sequence the sequence to test.
+	 * @param rec the read to test.
 	 * @return The index of the first base of the polyA run.  This is a 0 based index!
 	 */
-	public int getPolyAStart(String sequence) {
-		sequence=sequence.toUpperCase();
-		char [] seq = sequence.toCharArray();
+    PolyARun getPolyAStart(final SAMRecord rec);
 
-		boolean inRun=false;
-		int numInRun=0;
-		int numError=0;
-		int runStartPos=-1;
-		int bestRunStart=-1;
-		int bestNumInRun=-1;
-		for (int i=0; i<seq.length; i++)  {
-			char s = seq[i];
-			// keep the run going if you're in one.
-			if (s=='A' && inRun)
-				numInRun++;
+    public static class PolyARun {
+        /** 0-based start of poly A run, or NO_MATCH if none found */
+        public final int startPos;
+        public final int length;
+        /** 0-based start of adapter, or NO_MATCH if none found */
+        public final int adapterStartPos;
 
-			// Get the run going if you're starting one.
-			if (s=='A' & !inRun) {
-				numInRun++;
-				inRun=true;
-				runStartPos=i;
+        public PolyARun(int startPos, int length) {
+            this(startPos, length, -1);
+        }
 
-			}
-			// if you're in a run and this isn't an A, then you accumulate errors, and maybe leave the run if you have too many errors.
-			// if you haven't accumulated too many errors, keep the run going as if it was an OK base.
-			if (s!='A' & inRun) {
-				numError++;
-				numInRun++;
-				if (numError>this.numMismatchBases) {
-					if ((numInRun-numError)>bestNumInRun) {
-						bestRunStart=runStartPos;
-						bestNumInRun=numInRun-numError;
-					}
-					runStartPos=-1; // you have too many mismatches, end the run and reset.
-					numInRun=0;
-					numError=0;
-					inRun=false;
-				}
+        public PolyARun(int startPos, int length, int adapterStartPos) {
+            this.startPos = startPos;
+            this.length = length;
+            this.adapterStartPos = adapterStartPos;
+        }
 
+        // Inclusive end position
+        public int endPos() {return startPos + length - 1; }
 
-			}
-			if (s!='A' & !inRun) {
-				// you really don't do much here.
-			}
+        boolean isNoMatch() {
+            return this.startPos == NO_MATCH;
+        }
+        public static PolyARun NO_MATCH_RUN = new PolyARun(NO_MATCH, 0);
 
-
-		}
-
-		// finally, if you're in a run, see if that was better than the previous run when you ran out of sequence.
-		if (inRun && (numInRun-numError)>bestNumInRun) {
-			bestRunStart=runStartPos;
-			bestNumInRun=numInRun-numError;
-		}
-
-		// if you have enough bases to consider this a run, great.
-		if (bestNumInRun>=this.minNumBases) return bestRunStart;
-		// otherwise, return -1 because you don't have a start position for a run.
-		return -1;
-	}
-
-
-
+    }
 }
