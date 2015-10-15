@@ -3,7 +3,11 @@ package org.broadinstitute.dropseqrna.metrics;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.*;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.IterableAdapter;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.ProgressLogger;
 
 import java.io.File;
 import java.io.PrintStream;
@@ -30,32 +34,32 @@ import picard.cmdline.StandardOptionDefinitions;
 public class BAMTagHistogram extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(BAMTagHistogram.class);
-	
+
 	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. (???)")
 	public File INPUT;
-	
+
 	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of histogram of tag value frequencies. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
-	
+
 	@Option(doc="Tag to extract")
 	public String TAG;
-	
+
 	@Option(doc="Filter PCR Duplicates.")
 	public boolean FILTER_PCR_DUPLICATES=false;
-	
+
 	@Option(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
 	public Integer READ_QUALITY=10;
-	
+
 	@Override
 	protected int doWork() {
 		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
-		
+
 		ObjectCounter<String> counter=getBamTagCounts(INPUT, this.TAG, this.READ_QUALITY, this.FILTER_PCR_DUPLICATES);
 		List<String> tagsByCount=counter.getKeysOrderedByCount(true);
-		
+
 		PrintStream writer = new PrintStream(IOUtil.openFileForWriting(OUTPUT));
-		
+
 		for (String s: tagsByCount) {
 			int count = counter.getCountForKey(s);
 			String [] h={count+"", s};
@@ -65,8 +69,8 @@ public class BAMTagHistogram extends CommandLineProgram {
 		writer.close();
 		return 0;
 	}
-	
-	public ObjectCounter<String> getBamTagCounts (File bamFile, String tag, int readQuality, boolean filterPCRDuplicates) {
+
+	public ObjectCounter<String> getBamTagCounts (final File bamFile, final String tag, final int readQuality, final boolean filterPCRDuplicates) {
 		SamReader inputSam = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(bamFile);
         try {
             return getBamTagCounts(inputSam.iterator(), tag, readQuality, filterPCRDuplicates);
@@ -75,8 +79,8 @@ public class BAMTagHistogram extends CommandLineProgram {
         }
     }
 
-    public ObjectCounter<String> getBamTagCounts (Iterator<SAMRecord> iterator, String tag, int readQuality, boolean filterPCRDuplicates) {
-        ProgressLogger pl = new ProgressLogger(log);
+    public ObjectCounter<String> getBamTagCounts (final Iterator<SAMRecord> iterator, final String tag, final int readQuality, final boolean filterPCRDuplicates) {
+        ProgressLogger pl = new ProgressLogger(log, 10000000);
 
         ObjectCounter<String> counter = new ObjectCounter<String>();
 
@@ -92,9 +96,9 @@ public class BAMTagHistogram extends CommandLineProgram {
         }
         return (counter);
     }
-    
-	
-	public String getAnyTagAsString (SAMRecord r, String tag) {
+
+
+	public String getAnyTagAsString (final SAMRecord r, final String tag) {
 		String s = null;
 		Object o = r.getAttribute(tag);
 		if (o==null) return (s);
@@ -108,28 +112,28 @@ public class BAMTagHistogram extends CommandLineProgram {
 			return (s);
 		}
 		return (s);
-		
+
 	}
-	
-	
-	
-	
+
+
+
+
 	/** Stock main method. */
 	public static void main(final String[] args) {
 		System.exit(new BAMTagHistogram().instanceMain(args));
 	}
-	
+
 	/*
 	private class BAMTagMetric extends MetricBase {
 		Histogram <String>histogram = new Histogram<String>("tag", "count");
-		
+
 		public Histogram<String> getHistogram() {
 			return this.histogram;
 		}
-		
-		
+
+
 	}
 	*/
-	
-	
+
+
 }

@@ -51,24 +51,20 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
     		int seqIdx1 = dict.getSequenceIndex(i1.getContig());
     		int seqIdx2 = dict.getSequenceIndex(i2.getContig());
     		result = seqIdx1 - seqIdx2;
-    	} else { // same as Interval.compareTo
-    		result = i1.getContig().compareTo(i2.getContig());
-    	}
+    	} else
+			result = i1.getContig().compareTo(i2.getContig());
     	// same as Interval.compareTo
     	if (result == 0) {
-            if (i1.getStart() == i2.getStart()) {
-                result = i1.getEnd() - i2.getEnd();
-            }
-            else {
-                result = i1.getStart() - i2.getStart();
-            }
+            if (i1.getStart() == i2.getStart())
+				result = i1.getEnd() - i2.getEnd();
+			else
+				result = i1.getStart() - i2.getStart();
             // added bonus, sort on interval names to tie break, if both intervals have names.
             if (result==0) {
             	String n1 = i1.getName();
             	String n2 = i2.getName();
-            	if (n1!=null && n2!=null) {
-            		result = n1.compareTo(n2);
-            	}
+            	if (n1!=null && n2!=null)
+					result = n1.compareTo(n2);
             }
         }
     	return result;
@@ -109,30 +105,24 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
     	start=Integer.parseInt(posArray[0]);
     	// set the end = the start, this changes if there's a second position in the field.
     	end=Integer.parseInt(posArray[0]);
-    	if (posArray.length==2) {
-    		end = Integer.parseInt(posArray[1]);
-    	}
+    	if (posArray.length==2)
+			end = Integer.parseInt(posArray[1]);
     	if (s.length>2){
-    		if (s[2].equals("+")) {
+    		if (s[2].equals("+"))
 				negativeStrand=false;
-			}
-    		if (s[2].equals("-")) {
+    		if (s[2].equals("-"))
 				negativeStrand=true;
-			}
     	}
-    	if (s.length>3) {
-    		name=s[3];
-    	}
+    	if (s.length>3)
+			name=s[3];
 
     	// create the interval
     	Interval result = null;
-    	if (s.length==2) {
-    		result = new Interval(contig, start, end);
-    	}
+    	if (s.length==2)
+			result = new Interval(contig, start, end);
     	// name null by default, takes care of if name was set or not.
-    	if (s.length>2) {
-    		result = new Interval (contig, start, end, negativeStrand, name);
-    	}
+    	if (s.length>2)
+			result = new Interval (contig, start, end, negativeStrand, name);
 
     	return (result);
     }

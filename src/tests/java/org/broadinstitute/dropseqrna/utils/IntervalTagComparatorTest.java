@@ -2,6 +2,8 @@ package org.broadinstitute.dropseqrna.utils;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordSetBuilder;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.Interval;
@@ -9,6 +11,7 @@ import htsjdk.samtools.util.Interval;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -17,6 +20,52 @@ public class IntervalTagComparatorTest {
 
 	private final File dictFile = new File ("testdata/org/broadinstitute/transcriptome/utils/hg19.dict");
 	private final String intervalTag = "ZI";
+
+	@Test(enabled=true)
+	/**
+	 * For this test, we generate a lot of data, and sort it.
+	 * Since the SAMRecord doesn't really need to change, generate one static record and a LOT of intervals to tag the record with.
+	 * Size of the SAMRecord doesn't change, but the speed of the comparator should.
+	 */
+	public void testSpeed () {
+		List<SAMRecord> records = createManyIntervalTaggedSAMRecords(10);
+
+
+	}
+
+	private List<SAMRecord> createManyIntervalTaggedSAMRecords (final int desiredNumRecords) {
+		List<SAMRecord> data = new ArrayList<SAMRecord>();
+
+		SamReader inputSam = SamReaderFactory.makeDefault().open(this.dictFile);
+		SAMRecord samRecordTemplate = new SAMRecord (inputSam.getFileHeader());
+
+		SAMSequenceDictionary dict= inputSam.getFileHeader().getSequenceDictionary();
+		List<SAMSequenceRecord> recs = dict.getSequences();
+		int numRecs = recs.size();
+
+		Random randomGenerator = new Random();
+		for (int i=0; i<desiredNumRecords; i++) {
+			SAMSequenceRecord r = recs.get(randomGenerator.nextInt(numRecs+1));
+			String chr = r.getSequenceName();
+			int seqLen = r.getSequenceLength();
+			int s1 = randomGenerator.nextInt(seqLen);
+			int s2 = randomGenerator.nextInt(seqLen);
+			int s = Math.min(s1, s2);
+			int e = Math.max(s1, s2);
+			Interval interval = new Interval (chr, s1,s2);
+			try {
+				SAMRecord r1 = (SAMRecord) samRecordTemplate.clone();
+				// I realize that using encoding the full interval can be a bit heavy handed.
+				r1.setAttribute(this.intervalTag, interval.toString());
+				data.add(r1);
+			} catch (CloneNotSupportedException e1) {
+				// this should never happen, sigh.
+			}
+		}
+		return data;
+	}
+
+
 
 	@Test
 	public void testParseInterval1() {
