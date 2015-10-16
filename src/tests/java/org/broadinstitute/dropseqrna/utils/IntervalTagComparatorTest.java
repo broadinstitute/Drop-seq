@@ -1,18 +1,22 @@
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordSetBuilder;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.Interval;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
+import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -21,15 +25,111 @@ public class IntervalTagComparatorTest {
 	private final File dictFile = new File ("testdata/org/broadinstitute/transcriptome/utils/hg19.dict");
 	private final String intervalTag = "ZI";
 
-	@Test(enabled=false)
+	@Test(enabled=true)
 	/**
 	 * For this test, we generate a lot of data, and sort it.
 	 * Since the SAMRecord doesn't really need to change, generate one static record and a LOT of intervals to tag the record with.
 	 * Size of the SAMRecord doesn't change, but the speed of the comparator should.
 	 */
 	public void testSpeed () {
-		List<SAMRecord> records = createManyIntervalTaggedSAMRecords(10);
+		int numRecords = 30000000;
+		int readLength=60;
+		SamReader inputSam = SamReaderFactory.makeDefault().open(dictFile);
+		SAMSequenceDictionary dict= inputSam.getFileHeader().getSequenceDictionary();
+		dict = filterSD(dict);
 
+		long start = System.currentTimeMillis();
+
+		GenerateIntervalTaggedSAMRecords gen = new GenerateIntervalTaggedSAMRecords(dict, intervalTag, readLength, numRecords);
+		IntervalTagComparator comparator = new IntervalTagComparator(this.intervalTag);
+
+		final CloseableIterator<SAMRecord> sortingIterator =
+	            SamRecordSortingIteratorFactory.create(inputSam.getFileHeader(), gen, comparator, null);
+
+		while(sortingIterator.hasNext()) {
+			SAMRecord r = sortingIterator.next();
+			Assert.assertNotNull(r);
+		}
+		long elapsed = System.currentTimeMillis() - start;
+		System.out.println("elapsed time = " + elapsed + " ms");
+		System.out.println("elapsed time = " + Math.round(elapsed/1000) + " seconds");
+	}
+
+	/**
+	 * Make this a little more like actual sequence data, where reads mapped to GL are practically non existent.
+	 * @param dict
+	 * @return
+	 */
+	private SAMSequenceDictionary filterSD (final SAMSequenceDictionary dict) {
+		SAMSequenceDictionary result = new SAMSequenceDictionary();
+		for (SAMSequenceRecord r: dict.getSequences())
+			if (r.getSequenceLength()>10000000)
+				result.addSequence(r);
+		return result;
+	}
+
+
+	/**
+	 * Replaces reading SAMRecords from a BAM file.  All SAM records are the same, but have a different interval tag on them.
+	 * @author nemesh
+	 *
+	 */
+	private class GenerateIntervalTaggedSAMRecords implements Iterator<SAMRecord>{
+		private final SAMRecord samRecordTemplate;
+		private final List<SAMSequenceRecord> recs;
+		private final Random randomGenerator;
+		private final String intervalTag;
+		private final int readLength;
+		private final int maxNumRecords;
+		private int currentNumRecords;
+		private final int numContigs;
+
+		public GenerateIntervalTaggedSAMRecords (final SAMSequenceDictionary dict, final String intervalTag, final int readLength, final int maxNumRecords) {
+			this.intervalTag=intervalTag;
+			this.readLength=readLength;
+			this.maxNumRecords=maxNumRecords;
+			this.recs = dict.getSequences();
+			this.numContigs=recs.size();
+			randomGenerator = new Random();
+			this.currentNumRecords=0;
+
+
+			final SAMRecordSetBuilder ret = new SAMRecordSetBuilder(false, SAMFileHeader.SortOrder.coordinate);
+			ret.addUnmappedFragment("foo");
+			this.samRecordTemplate= ret.getRecords().iterator().next();
+
+		}
+
+		@Override
+		public SAMRecord next() {
+			SAMRecord result = null;
+			SAMSequenceRecord r = recs.get(randomGenerator.nextInt(this.numContigs));
+			String chr = r.getSequenceName();
+			int seqLen = r.getSequenceLength();
+			int s = randomGenerator.nextInt(seqLen);
+			int e = s+this.readLength-1;
+			Interval interval = new Interval (chr, s,e);
+			try {
+				result = (SAMRecord) samRecordTemplate.clone();
+				String tag = IntervalTagComparator.toString(interval);
+				// I realize that using encoding the full interval can be a bit heavy handed.
+				result.setAttribute(this.intervalTag, tag);
+
+			} catch (CloneNotSupportedException e1) {
+				// this should never happen, sigh.
+			}
+			this.currentNumRecords++;
+			return result;
+		}
+
+		@Override
+		public void remove() {
+		}
+
+		@Override
+		public boolean hasNext() {
+			return (this.currentNumRecords<this.maxNumRecords);
+		}
 
 	}
 

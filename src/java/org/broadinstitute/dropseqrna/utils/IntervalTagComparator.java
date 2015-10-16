@@ -4,8 +4,10 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMTagUtil;
 import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.StringUtil;
 
 import java.util.Comparator;
+import java.util.regex.Pattern;
 
 /**
  * When assigning intervals as tags to a BAM, the interval information is stored as a string.
@@ -22,6 +24,9 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
 
 	private final short tag;
 	private final SAMSequenceDictionary dict;
+	private static final Pattern colonPattern = Pattern.compile(":");
+	private static final Pattern dashPattern = Pattern.compile("-");
+
 
 	/**
 	 * Sorts the string representations of intervals
@@ -37,11 +42,82 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
     	this.dict=dict;
     }
 
-    @Override
-    public int compare(final SAMRecord rec1, final SAMRecord rec2) {
+
+    public int compareOld(final SAMRecord rec1, final SAMRecord rec2) {
     	Interval i1 = getIntervalForTag(rec1);
     	Interval i2 = getIntervalForTag(rec2);
     	return (compare(i1,i2, this.dict));
+    }
+
+    @Override
+    public int compare(final SAMRecord rec1, final SAMRecord rec2) {
+    	// instead of parsing the interval fully, parse chromosome, then start/end.
+    	String [] rec1Split = getFirstSplit(rec1);
+    	String [] rec2Split = getFirstSplit(rec2);
+
+    	String rec1Contig=rec1Split[0];
+    	String rec2Contig=rec2Split[0];
+
+    	int result = 0;
+    	// compare the contig.
+    	if (dict!=null) {
+    		int seqIdx1 = dict.getSequenceIndex(rec1Contig);
+    		int seqIdx2 = dict.getSequenceIndex(rec2Contig);
+    		result = seqIdx1 - seqIdx2;
+    	} else
+			result = rec1Contig.compareTo(rec2Contig);
+
+    	// if the contig isn't enough, parse out the start/end.
+    	if (result == 0) {
+    		String pos1= rec1Split[1];
+    		String pos2= rec2Split[1];
+
+    		int [] posArray1 = parsePosition(pos1);
+    		int [] posArray2 = parsePosition(pos2);
+
+
+            if (posArray1[0] == posArray2[0])
+				result = posArray1[1] - posArray2[1];
+			else
+				result = posArray1[0] - posArray2[0];
+
+            // added bonus, sort on interval names to tie break, if both intervals have names.
+            if (result==0) {
+            	String n1 = rec1Split[3];
+            	String n2 = rec2Split[3];
+            	if (n1!=null && n2!=null)
+					result = n1.compareTo(n2);
+            }
+        }
+
+    	return result;
+
+    }
+
+    private String [] getFirstSplit(final SAMRecord rec) {
+
+    	Object strIntervalRec = rec.getAttribute(tag);
+    	if (!(strIntervalRec instanceof String))
+			throw new IllegalArgumentException(SAMTagUtil.getSingleton().makeStringTag(this.tag) + " does not have a String value");
+    	String intervalString = (String) strIntervalRec;
+    	String [] result = new String [4];
+    	StringUtil.splitConcatenateExcessTokens(intervalString, result, ':');
+    	return (result);
+    }
+
+    // parses the start:end position
+    private int [] parsePosition (final String posString) {
+    	String [] posArray = new String [2];
+    	StringUtil.split(posString, posArray, '-');
+    	int start=Integer.parseInt(posArray[0]);
+    	// set the end = the start, this changes if there's a second position in the field.
+    	int end=Integer.parseInt(posArray[0]);
+    	if (posArray[1]!=null)
+			end = Integer.parseInt(posArray[1]);
+
+    	int [] result = {start,end};
+    	return result;
+
     }
 
     public static int compare (final Interval i1, final Interval i2, final SAMSequenceDictionary dict) {
@@ -90,7 +166,14 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
      */
     public static Interval fromString (final String intervalString) {
     	// at most there are 5 fields.  This takes care of having any characters in names.
-    	String [] s = intervalString.split(":", 4);
+
+    	// String [] s = intervalString.split(":", 4);
+
+    	// String [] s = colonPattern.split(intervalString, 4);
+
+    	String [] s = new String [4];
+    	StringUtil.splitConcatenateExcessTokens(intervalString, s, ':');
+
     	if (s.length==1)
 			throw new IllegalArgumentException("This is not an interval " + intervalString + ", as there's no ':' delimiters");
 
@@ -101,11 +184,71 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
     	String name=null;
     	// s[1] can be 1 or 2 in length depending on if end exists.
     	String pos=s[1];
-    	String [] posArray = pos.split("-");
+
+    	// String [] posArray = pos.split("-");
+
+    	// String [] posArray = dashPattern.split(pos);
+
+    	String [] posArray = new String [2];
+    	StringUtil.split(pos, posArray, '-');
+
+
     	start=Integer.parseInt(posArray[0]);
     	// set the end = the start, this changes if there's a second position in the field.
     	end=Integer.parseInt(posArray[0]);
-    	if (posArray.length==2)
+    	if (posArray[1]!=null)
+			end = Integer.parseInt(posArray[1]);
+    	if (s[2]!=null){
+    		if (s[2].equals("+"))
+				negativeStrand=false;
+    		if (s[2].equals("-"))
+				negativeStrand=true;
+    	}
+    	if (s[3]!=null)
+			name=s[3];
+
+    	// create the interval
+    	Interval result = null;
+    	if (negativeStrand==null || name==null)
+			result = new Interval(contig, start, end);
+    	// name null by default, takes care of if name was set or not.
+    	if (negativeStrand!=null && name!=null)
+			result = new Interval (contig, start, end, negativeStrand, name);
+
+    	return (result);
+    }
+
+    /**
+     * Parse the string representation of an Interval object
+     * @param intervalString the interval encoded as a string
+     * @return The Interval object represented by this string.
+     */
+    public static Interval fromStringOld (final String intervalString) {
+    	// at most there are 5 fields.  This takes care of having any characters in names.
+
+    	String [] s = intervalString.split(":", 4);
+
+    	// String [] s = colonPattern.split(intervalString, 4);
+
+    	if (s.length==1)
+			throw new IllegalArgumentException("This is not an interval " + intervalString + ", as there's no ':' delimiters");
+
+    	String contig=s[0];
+    	Integer start=null;
+    	Integer end=null;
+    	Boolean negativeStrand=null;
+    	String name=null;
+    	// s[1] can be 1 or 2 in length depending on if end exists.
+    	String pos=s[1];
+
+    	String [] posArray = pos.split("-");
+
+    	// String [] posArray = dashPattern.split(pos);
+
+    	start=Integer.parseInt(posArray[0]);
+    	// set the end = the start, this changes if there's a second position in the field.
+    	end=Integer.parseInt(posArray[0]);
+    	if (posArray[1]!=null)
 			end = Integer.parseInt(posArray[1]);
     	if (s.length>2){
     		if (s[2].equals("+"))
@@ -126,6 +269,8 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
 
     	return (result);
     }
+
+
 
     /**
      * Converts an Interval object into a string representation that can be parsed by fromString.
