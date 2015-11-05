@@ -25,7 +25,7 @@ public class IntervalTagComparatorTest {
 	private final File dictFile = new File ("testdata/org/broadinstitute/transcriptome/utils/hg19.dict");
 	private final String intervalTag = "ZI";
 
-	@Test(enabled=true)
+	@Test(enabled=false)
 	/**
 	 * For this test, we generate a lot of data, and sort it.
 	 * Since the SAMRecord doesn't really need to change, generate one static record and a LOT of intervals to tag the record with.
