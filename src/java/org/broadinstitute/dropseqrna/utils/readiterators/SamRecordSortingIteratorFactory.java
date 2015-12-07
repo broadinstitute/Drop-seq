@@ -15,13 +15,12 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriterImpl;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.ProgressLogger;
-import htsjdk.samtools.util.SortingCollection;
-import org.broadinstitute.dropseqrna.utils.SortingIteratorFactory;
 
 import java.util.Comparator;
 import java.util.Iterator;
+
+import org.broadinstitute.dropseqrna.utils.SortingIteratorFactory;
 
 public class SamRecordSortingIteratorFactory {
 
@@ -33,17 +32,16 @@ public class SamRecordSortingIteratorFactory {
                                            final Iterator<SAMRecord> underlyingIterator,
                                            final Comparator<SAMRecord> comparator,
                                            final ProgressLogger progressLogger) {
-        final SortingIteratorFactory.ProgressCallback progressCallback;
-        if (progressLogger != null) {
-            progressCallback = new SortingIteratorFactory.ProgressCallback<SAMRecord>() {
+        final SortingIteratorFactory.ProgressCallback<SAMRecord> progressCallback;
+        if (progressLogger != null)
+			progressCallback = new SortingIteratorFactory.ProgressCallback<SAMRecord>() {
                 @Override
-                public void logProgress(SAMRecord record) {
+                public void logProgress(final SAMRecord record) {
                     progressLogger.record(record);
                 }
             };
-        } else {
-            progressCallback = null;
-        }
+		else
+			progressCallback = null;
         return SortingIteratorFactory.create(SAMRecord.class,
                 underlyingIterator, comparator, new BAMRecordCodec(header),
                 SAMFileWriterImpl.getDefaultMaxRecordsInRam(),
