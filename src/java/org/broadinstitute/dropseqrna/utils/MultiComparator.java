@@ -10,7 +10,6 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -22,21 +21,20 @@ public class MultiComparator<T> implements Comparator<T> {
 
     private final Comparator<T>[] comparators;
 
-    public MultiComparator(List<Comparator<T>> comparators) {
+    public MultiComparator(final List<Comparator<T>> comparators) {
         this.comparators = comparators.toArray(new Comparator[comparators.size()]);
     }
 
-    public MultiComparator(Comparator<T>...comparators) {
+    public MultiComparator(final Comparator<T>...comparators) {
         this.comparators = comparators;
     }
 
     @Override
-    public int compare(T o1, T o2) {
+    public int compare(final T o1, final T o2) {
         for (final Comparator<T> comparator : comparators) {
             final int cmp = comparator.compare(o1, o2);
-            if (cmp != 0) {
-                return cmp;
-            }
+            if (cmp != 0)
+				return cmp;
         }
         return 0;
     }

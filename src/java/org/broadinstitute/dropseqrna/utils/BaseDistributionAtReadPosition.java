@@ -10,15 +10,11 @@ import htsjdk.samtools.util.ProgressLogger;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
-
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
@@ -36,46 +32,45 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 
 	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
 	public File OUTPUT;
-	
+
 	@Option(doc="Read to gather statistics on [1/2].  If this is set, the tag is ignored.", optional=true)
 	public Integer READ_NUMBER=null;
-	
+
 	@Option(doc="Tag to gather statistics on.  If this is set, the read number is ignored.", optional=true)
 	public String TAG = null;
-	
+
 	//@Option(doc = "Minimum mapping quality to consider the read")
 	// public int MINIMUM_MAPPING_QUALITY = 0;
-	
+
 	@Override
 	protected int doWork() {
 		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
 		BaseDistributionMetricCollection result=null;
-		
-		if (this.TAG!=null) {
+
+		if (this.TAG!=null)
 			result = gatherBaseQualities(INPUT, this.TAG);
-		} else {
+		else
 			result = gatherBaseQualities(INPUT);
-		}
-		
+
 		writeOutput(result, OUTPUT);
 		return (0);
 	}
-	
-	
-	void writeOutput (BaseDistributionMetricCollection result, File output) {
+
+
+	void writeOutput (final BaseDistributionMetricCollection result, final File output) {
 		BufferedWriter writer = OutputWriterUtil.getWriter(output);
 		String [] header = {"position", "A", "C","G", "T", "N"};
 		String h = StringUtils.join(header, "\t");
 		OutputWriterUtil.writeResult(h, writer);
-		
+
 		List<Integer> sortedKeys = result.getPositions();
-		
+
 		for (Integer i: sortedKeys) {
 			BaseDistributionMetric brd=result.getDistributionAtPosition(i);
-			 
-			String [] l={i+"", 
-					brd.getCount(Bases.A.getBase())+"", brd.getCount(Bases.C.getBase())+"", 
+
+			String [] l={i+"",
+					brd.getCount(Bases.A.getBase())+"", brd.getCount(Bases.C.getBase())+"",
 					brd.getCount(Bases.G.getBase())+"",brd.getCount(Bases.T.getBase())+"",
 					brd.getCount(Bases.N.getBase())+""};
 			String line = StringUtils.join(l, "\t");
@@ -83,64 +78,61 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 		}
 		OutputWriterUtil.closeWriter(writer);
 	}
-	
-	
-	BaseDistributionMetricCollection gatherBaseQualities (File input) {
+
+
+	BaseDistributionMetricCollection gatherBaseQualities (final File input) {
 		ProgressLogger p = new ProgressLogger(this.log);
-		
+
 		SamReader inputSam = SamReaderFactory.makeDefault().open(input);
 		BaseDistributionMetricCollection c = new BaseDistributionMetricCollection();
-		
-		
-		
+
+
+
 		MAIN_LOOP:
 		for (final SAMRecord samRecord : inputSam) {
-			
+
 			p.record(samRecord);
 			if (samRecord.isSecondaryOrSupplementary()) continue;
 			boolean readPaired = samRecord.getReadPairedFlag();
-			
+
 			boolean firstRead=false;
-			if (!readPaired & this.READ_NUMBER==2) {
+			if (!readPaired & this.READ_NUMBER==2)
 				continue;
-			}
-			else if (!readPaired & this.READ_NUMBER==1) {
+			else if (!readPaired & this.READ_NUMBER==1)
 				firstRead=true;
-			} 
-			else {
+			else
 				firstRead = samRecord.getFirstOfPairFlag();
-			}
-			
+
 			// if you're looking for the first read and this isn't, or looking for the 2nd read and this isn't, then go to the next read.
 			if ((firstRead && this.READ_NUMBER!=1) || (!firstRead && this.READ_NUMBER==1)) continue MAIN_LOOP;
-			
+
 			byte [] bases = samRecord.getReadBases();
-			
+
 			for (int i=0; i<bases.length; i++) {
 				char base = (char) (bases[i]);
 				int idx=i+1;
 				c.addBase(base, idx);
 			}
 		}
-		
+
 		CloserUtil.close(inputSam);
 		return (c);
-		
-		
+
+
 	}
-	
-	BaseDistributionMetricCollection gatherBaseQualities (File input, String tag) {
-		ProgressLogger pl = new ProgressLogger(this.log);		
+
+	BaseDistributionMetricCollection gatherBaseQualities (final File input, final String tag) {
+		ProgressLogger pl = new ProgressLogger(this.log);
 		SamReader inputSam = SamReaderFactory.makeDefault().open(input);
-		
+
 		BaseDistributionMetricCollection c = new BaseDistributionMetricCollection();
-		
+
 		// MAIN_LOOP:
 		for (final SAMRecord samRecord : inputSam) {
 			pl.record(samRecord);
 			String b = samRecord.getStringAttribute(tag);
 			if (b==null) continue;
-			
+
 			byte [] bases = b.getBytes();
 			for (int i=0; i<bases.length; i++) {
 				char base = (char) (bases[i]);
@@ -148,15 +140,15 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 				c.addBase(base, idx);
 			}
 		}
-		
+
 		CloserUtil.close(inputSam);
 		return (c);
-		
+
 	}
-	
-	
-	
-	
+
+
+
+
 	/** Stock main method. */
 	public static void main(final String[] args) {
 		System.exit(new BaseDistributionAtReadPosition().instanceMain(args));

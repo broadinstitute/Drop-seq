@@ -10,12 +10,8 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.BAMRecordCodec;
-import htsjdk.samtools.SAMFileWriterImpl;
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.SortingCollection;
 
 import java.util.Comparator;
@@ -53,9 +49,8 @@ public class SortingIteratorFactory {
 
         while (underlyingIterator.hasNext()) {
             final T rec = underlyingIterator.next();
-            if (progressLogger != null) {
-                progressLogger.logProgress(rec);
-            }
+            if (progressLogger != null)
+				progressLogger.logProgress(rec);
             sortingCollection.add(rec);
         }
         CloseableIterator<T> ret = sortingCollection.iterator();
