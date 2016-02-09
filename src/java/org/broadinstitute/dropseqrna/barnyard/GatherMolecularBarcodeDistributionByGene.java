@@ -25,11 +25,11 @@ import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
         usage = "For each gene, count the number of times each molecular barcode is observed [The UMI]" +
-			"Similar to digital expression, reads are filtered on map quality, and must overlap exons as well as genes. "+ 
+			"Similar to digital expression, reads are filtered on map quality, and must overlap exons as well as genes. "+
 			"This program requires a tag for what gene a read is on, a molecular barcode tag, and a exon tag.  The exon and gene tags may not be present on every read." +
 			"When filtering the data for a set of barcodes to use, the data is filtered by ONE of the following methods (and if multiple params are filled in, the top one takes precidence):\n" +
-			"1) CELL_BC_FILE, to filter by the some fixed list of cell barcodes" + 
-			"2) MIN_NUM_GENES_PER_CELL " + 
+			"1) CELL_BC_FILE, to filter by the some fixed list of cell barcodes" +
+			"2) MIN_NUM_GENES_PER_CELL " +
 			"3) MIN_NUM_TRANSCRIPTS_PER_CELL " +
 			"4) NUM_CORE_BARCODES " +
 			"5) MIN_NUM_READS_PER_CELL",
@@ -37,54 +37,52 @@ import picard.cmdline.StandardOptionDefinitions;
         programGroup = DropSeq.class
 )
 public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase {
-	
+
 	private static final Log log = Log.getInstance(GatherMolecularBarcodeDistributionByGene.class);
-	
+
 	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of with 4 columns: CELL, GENE, MOLECULAR BC, #Observations. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
-	
+
 	@Override
 	protected int doWork() {
-				
+
 		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
 		BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT);
-		
+
 		writePerTranscriptHeader(out);
-		
-		List<String> barcodes=new BarcodeListRetrieval().getCellBarcodes(this.INPUT, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, 
-				this.GENE_EXON_TAG, this.STRAND_TAG, this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL, 
+
+		List<String> barcodes=new BarcodeListRetrieval().getCellBarcodes(this.INPUT, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+				this.GENE_EXON_TAG, this.STRAND_TAG, this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
 				this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD, USE_STRAND_INFO);
-				
+
 		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
                 this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG,
 				this.READ_MQ, true, this.USE_STRAND_INFO, barcodes);
-				
-		
+
+
 		UMICollection batch;
-		
-		while ((batch=umiIterator.next())!=null) {
+
+		while ((batch=umiIterator.next())!=null)
 			if (batch.isEmpty()==false) {
 				String cellTag = batch.getCellBarcode();
-				if (barcodes.contains(cellTag) || barcodes.isEmpty()) {
+				if (barcodes.contains(cellTag) || barcodes.isEmpty())
 					writePerTranscriptStats (batch.getGeneName(), batch.getCellBarcode(), batch.getMolecularBarcodeCountsCollapsed(this.EDIT_DISTANCE), out);
-				}
 			}
-		}
-		
+
 		CloserUtil.close(umiIterator);
-		
+
 		try {
 			out.close();
 		} catch (IOException io) {
 			throw new TranscriptomeException("Problem writing file", io);
 		}
-		
+
 		return 0;
 	}
-	
-		
-	private void writePerTranscriptStats (String gene, String cellBarcode, ObjectCounter<String> counts, BufferedWriter out) {
+
+
+	private void writePerTranscriptStats (final String gene, final String cellBarcode, final ObjectCounter<String> counts, final BufferedWriter out) {
 		for (String key: counts.getKeys()) {
 			int value = counts.getCountForKey(key);
 			String [] line ={cellBarcode, gene, key, value+""};
@@ -92,17 +90,19 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 			OutputWriterUtil.writeResult(h, out);
 		}
 	}
-	
-	
-	private void writePerTranscriptHeader(BufferedWriter out) {
+
+
+	private void writePerTranscriptHeader(final BufferedWriter out) {
 		String [] header = {"Cell Barcode", "Gene", "Molecular_Barcode", "Num_Obs"};
 		String h = StringUtils.join(header, "\t");
 		OutputWriterUtil.writeResult(h, out);
 	}
-	
-	
-	
+
+
+
 	/**
+	 * I think this might still be horribly inefficient for some tasks - it calculates the number of UMIs for every cell, doing collapse along the way.
+	 * This works on even cells that have a single molecular barcode, meaning that if you're using this to find cells with > 1000 UMis (for example), it could be pretty slow.
 	 * Get the number of transcripts for each cell barcode.
 	 * @param bamFile The input BAM file
 	 * @param cellTag the tag for the cell barcode
@@ -112,32 +112,26 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	 * @param useStrandInfo
 	 * @return
 	 */
-	public ObjectCounter<String> getNumTranscriptsPerCell (File bamFile, String cellTag, String molecularBarcodeTag, 
-			String geneExonTag, String strandTag, Integer mapQuality, int editDistance, int minNumReadsMolBarcode, boolean useStrandInfo) {
-		
-		IOUtil.assertFileIsReadable(INPUT);
-		IOUtil.assertFileIsWritable(OUTPUT);
-		BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT);
-		
-		writePerTranscriptHeader(out);
-		
+	public ObjectCounter<String> getNumTranscriptsPerCell (final File bamFile, final String cellTag, final String molecularBarcodeTag,
+			final String geneExonTag, final String strandTag, final Integer mapQuality, final int editDistance, final int minNumReadsMolBarcode, final boolean useStrandInfo) {
+
+
 		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(bamFile), false),
                 geneExonTag, cellTag, molecularBarcodeTag, strandTag, mapQuality, true, useStrandInfo, null);
-		
-		
+
 		ObjectCounter<String> transcriptsPerCell = new ObjectCounter<String>();
-		
+
 		UMICollection batch;
-		while ((batch=umiIterator.next())!=null) {
+		while ((batch=umiIterator.next())!=null)
 			if (batch.isEmpty()==false) {
-				int numTranscripts = batch.getMolecularBarcodeCounts().getSize();
+				int numTranscripts = batch.getMolecularBarcodeCountsCollapsed(editDistance).getSize();
 				transcriptsPerCell.incrementByCount(batch.getCellBarcode(), numTranscripts);
 			}
-		}
+		umiIterator.close();
 		return (transcriptsPerCell);
-		
+
 	}
-	
+
 	/** Stock main method. */
 	public static void main(final String[] args) {
 		System.exit(new GatherMolecularBarcodeDistributionByGene().instanceMain(args));
