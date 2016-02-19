@@ -80,7 +80,7 @@ public class TagReadWithInterval extends CommandLineProgram {
 		CloserUtil.close(inputSam);
 		writer.close();
 		
-		return(1);
+		return(0);
 		
 		
 	}
