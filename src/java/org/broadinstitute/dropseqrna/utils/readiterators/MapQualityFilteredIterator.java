@@ -19,7 +19,8 @@ public class MapQualityFilteredIterator extends FilteredIterator<SAMRecord> {
 
     @Override
     protected boolean filterOut(final SAMRecord r) {
-        return (rejectNonPrimaryReads && r.isSecondaryOrSupplementary()) ||
-                (this.mapQuality!=null && r.getMappingQuality() < this.mapQuality);
+    	boolean flag=(rejectNonPrimaryReads && r.isSecondaryOrSupplementary()) ||
+        (this.mapQuality!=null && r.getMappingQuality() < this.mapQuality);
+        return flag;
     }
 }
