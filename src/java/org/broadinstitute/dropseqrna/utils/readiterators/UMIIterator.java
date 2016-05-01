@@ -92,7 +92,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 			multiComparator = new MultiComparator<>(geneExonTagComparator, cellBarcodeTagComparator);
         // Filter records before sorting, to reduce I/O
 		final MissingTagFilteringIterator filteringIterator =
-                new MissingTagFilteringIterator(headerAndIterator.iterator, cellBarcodeTag, geneExonTag);
+                new MissingTagFilteringIterator(headerAndIterator.iterator, cellBarcodeTag, geneExonTag, molecularBarcodeTag);
 
 		// assign the tags in the order you want data sorted.
 		UmiIteratorWrapper umiIteratorWrapper = new UmiIteratorWrapper(filteringIterator.iterator(), cellBarcodeTag,
