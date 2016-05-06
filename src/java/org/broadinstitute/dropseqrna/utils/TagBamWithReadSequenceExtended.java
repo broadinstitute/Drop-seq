@@ -59,6 +59,10 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 	@Option(doc = "Discard the read the sequence came from?.  If this is true, then the remaining read is marked as unpaired.  If the read is unpaired, then you can't discard a read.")
 	public Boolean DISCARD_READ=false;
 
+	@Option (doc="Should the bases selected for the tag be hard clipped from the read?  BE VERY CAREFUL WITH THIS FEATURE, FOR EXPERTS ONLY.  NOT NEEDED FOR STANDARD DROPSEQ DATA PROCESSING." +
+	"Don't use on aligned data, does NOT change cigar strings")
+	public Boolean HARD_CLIP_BASES=false;
+
 	@Option (doc="Minimum base quality required for barcode")
 	public Integer BASE_QUALITY=10;
 
@@ -71,6 +75,8 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 	private String TAG_QUALITY="XQ";
 
 	private FailedBaseMetric metric = null;
+
+
 
 	@Override
 	protected int doWork() {
@@ -89,6 +95,7 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(h, true, OUTPUT);
 
 		List<BaseRange> baseRanges = BaseRange.parseBaseRange(this.BASE_RANGE);
+
 		this.metric = new FailedBaseMetric(BaseRange.getTotalRangeSize(this.BASE_RANGE));
 
 		ProgressLogger progress = new ProgressLogger(this.log);
@@ -104,7 +111,7 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 				sameName=r1.getReadName().equals(r2.getReadName());
 
 			if (!sameName) {
-				processSingleRead(r1, baseRanges, writer);
+				processSingleRead(r1, baseRanges, writer, this.HARD_CLIP_BASES);
 				continue;
 			}
 
@@ -134,7 +141,7 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		return (0);
 	}
 
-	void processSingleRead(final SAMRecord barcodedRead, final List<BaseRange> baseRanges, final SAMFileWriter writer) {
+	void processSingleRead(final SAMRecord barcodedRead, final List<BaseRange> baseRanges, final SAMFileWriter writer, final boolean hardClipBases) {
 		int numBadBases=scoreBaseQuality(barcodedRead, baseRanges);
 		String seq = barcodedRead.getReadString();
 		// does this have an off by 1 error?  I think it's 0 based so should be ok.
@@ -153,8 +160,22 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 			barcodedRead.setAttribute(this.TAG_QUALITY, numBadBases);
 		}
 		barcodedRead.setAttribute(TAG_NAME, seq);
-		writer.addAlignment(barcodedRead);
+		SAMRecord result = barcodedRead;
+		if (hardClipBases) result = hardClipBasesFromRead(barcodedRead, baseRanges);
+		writer.addAlignment(result);
+	}
 
+	static SAMRecord hardClipBasesFromRead (final SAMRecord r, final List<BaseRange> baseRanges) {
+
+		int readLength=r.getReadLength();
+
+		List<BaseRange> basesToKeep = BaseRange.invert(baseRanges, readLength);
+		byte [] newSequence = BaseRange.getBytesForBaseRange(basesToKeep,  r.getReadBases());
+		byte [] newBaseQualities = BaseRange.getBytesForBaseRange(basesToKeep,  r.getBaseQualities());
+
+		r.setReadBases(newSequence);
+		r.setBaseQualities(newBaseQualities);
+		return r;
 	}
 
 	private SAMRecord setTagsOnRead (final SAMRecord r, int numBadBases, final String seq) {
