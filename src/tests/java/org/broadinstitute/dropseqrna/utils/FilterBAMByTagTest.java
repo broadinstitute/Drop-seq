@@ -1,4 +1,4 @@
-package org.broadinstitute.dropseqrna.priv.utils;
+package org.broadinstitute.dropseqrna.utils;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordSetBuilder;
@@ -11,6 +11,7 @@ import java.util.Set;
 
 import junit.framework.Assert;
 
+import org.broadinstitute.dropseqrna.utils.FilterBAMByTag;
 import org.testng.annotations.Test;
 
 public class FilterBAMByTagTest {

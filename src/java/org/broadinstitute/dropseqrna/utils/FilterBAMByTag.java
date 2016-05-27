@@ -1,4 +1,4 @@
-package org.broadinstitute.dropseqrna.priv.utils;
+package org.broadinstitute.dropseqrna.utils;
 
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
@@ -17,7 +17,6 @@ import java.util.Set;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.priv.utils.modularfileparser.DelimiterParser;
 import org.broadinstitute.dropseqrna.priv.utils.modularfileparser.ModularFileParser;
-import org.broadinstitute.dropseqrna.utils.CustomBAMIterators;
 import org.broadinstitute.sv.util.PeekableIterator;
 
 import picard.cmdline.CommandLineProgram;
