@@ -15,8 +15,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.priv.utils.modularfileparser.DelimiterParser;
-import org.broadinstitute.dropseqrna.priv.utils.modularfileparser.ModularFileParser;
+import org.broadinstitute.dropseqrna.utils.modularfileparser.DelimiterParser;
+import org.broadinstitute.dropseqrna.utils.modularfileparser.ModularFileParser;
 import org.broadinstitute.sv.util.PeekableIterator;
 
 import picard.cmdline.CommandLineProgram;
@@ -28,7 +28,7 @@ import picard.cmdline.StandardOptionDefinitions;
 public class FilterBAMByTag extends CommandLineProgram {
 
 	private final Log log = Log.getInstance(FilterBAMByTag.class);
-	
+
 	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
 	public File INPUT;
 
@@ -46,13 +46,11 @@ public class FilterBAMByTag extends CommandLineProgram {
 
 	@Option(doc = "If having a tag value matches the values in the file, accept the read.  If set to false, reject the read.")
 	public Boolean ACCEPT_TAG = true;
-		
+
 	@Option(doc = "In Paired Read Mode if the tag value is on either read the pair of reads is kept or discarded. This is slower when turned on because "
 			+ "of the need to queryname sort the data, so only turn it on if you need it!")
 	public Boolean PAIRED_MODE=false;
-	
-	
-	
+
 	@Override
 	protected int doWork() {
 		if (TAG_VALUES_FILE == null && TAG == null) {
@@ -76,51 +74,49 @@ public class FilterBAMByTag extends CommandLineProgram {
 		SamReader in = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(INPUT);
 		SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(
 				in.getFileHeader(), true, OUTPUT);
-		
-		if (!this.PAIRED_MODE) {
+
+		if (!this.PAIRED_MODE)
 			processUnpairedMode(in, out, values);
-		} else {
+		else
 			processPairedMode(in, out, values);
-		}
-		
+
 		return 0;
 	}
-	
+
 	/**
 	 * Just work through the reads one at a time.
 	 * @param in
 	 * @param out
 	 */
-	void processUnpairedMode (SamReader in, SAMFileWriter out, Set<String> values) {
+	void processUnpairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values) {
 		ProgressLogger progLog = new ProgressLogger(log);
 		for (final SAMRecord r : in) {
 			progLog.record(r);
 			boolean filterFlag = filterRead(r, this.TAG, values, this.ACCEPT_TAG);
-			if (!filterFlag) {
+			if (!filterFlag)
 				out.addAlignment(r);
-			}
 		}
 		CloserUtil.close(in);
 		out.close();
 	}
-	
+
 	/**
-	 * 
+	 *
 	 * @param in
 	 * @param out
 	 * @param values
 	 */
-	void processPairedMode (SamReader in, SAMFileWriter out, Set<String> values) {
+	void processPairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values) {
 		ProgressLogger progLog = new ProgressLogger(log);
 		PeekableIterator<SAMRecord>  iter = new PeekableIterator<SAMRecord>(CustomBAMIterators.getQuerynameSortedRecords(in));
 		while (iter.hasNext()) {
 			SAMRecord r1 = iter.next();
 			progLog.record(r1);
 			boolean filterFlag1 = filterRead(r1, this.TAG, values, this.ACCEPT_TAG);
-			
+
 			SAMRecord r2 = null;
-			if (iter.hasNext()) r2 = iter.peek();			
-			
+			if (iter.hasNext()) r2 = iter.peek();
+
 			// check for r2 being null in case the last read is unpaired.
 			if (r2!=null && r1.getReadName().equals(r2.getReadName())) {
 				// paired read found.
@@ -131,31 +127,27 @@ public class FilterBAMByTag extends CommandLineProgram {
 					out.addAlignment(r1);
 					out.addAlignment(r2);
 				}
-			} else { // single read
-				if (!filterFlag1) {
-					out.addAlignment(r1);
-				}
-			}			
+			} else if (!filterFlag1)
+				out.addAlignment(r1);
 		}
 		CloserUtil.close(in);
 		out.close();
 	}
-	
-	boolean retainByReadNumber (SAMRecord r, int desiredReadNumber) {
+
+	boolean retainByReadNumber (final SAMRecord r, final int desiredReadNumber) {
 		boolean readPaired = r.getReadPairedFlag();
 		// if the read isn't paired, then there's no read number, so keep it.
-		if (!readPaired) {
+		if (!readPaired)
 			return true;
-		}
 		// read is paired, is it the first of pair?
-		boolean firstRead = r.getFirstOfPairFlag();		
+		boolean firstRead = r.getFirstOfPairFlag();
 		// if you're looking for the first read and this isn't, or looking for the 2nd read and this isn't, then go to the next read.
 		if ((firstRead && desiredReadNumber!=1) || (!firstRead && desiredReadNumber==1)) return (false);
 		return true;
 	}
 
-	boolean filterRead(SAMRecord r, String tag, Set<String> values,
-			boolean acceptFlag) {
+	boolean filterRead(final SAMRecord r, final String tag, final Set<String> values,
+			final boolean acceptFlag) {
 		Object v = r.getAttribute(tag);
 		// if the tag is not set, and you need a TAG set, then filter the read.
 		if (v == null && acceptFlag)
@@ -170,40 +162,35 @@ public class FilterBAMByTag extends CommandLineProgram {
 		if (v instanceof Integer) {
 			Integer o = (Integer) v;
 			vv = Integer.toString(o);
-		} else if (v instanceof String) {
+		} else if (v instanceof String)
 			vv = (String) v;
-		} else {
+		else
 			log.info("WHAT ELSE");
-		}
 
 		// if there are no values to scan, it's a match. Start with that.
 		boolean hasElement = true;
 
 		// if there are values, check to see if this tag matches one.
-		if (values != null && values.size() > 0) {
+		if (values != null && values.size() > 0)
 			hasElement = values.contains(vv);
-		}
 
 		if ((hasElement & acceptFlag)
-				| (hasElement == false & acceptFlag == false)) {
+				| (hasElement == false & acceptFlag == false))
 			return false;
-		}
 		if ((hasElement == false & acceptFlag)
-				| (hasElement & acceptFlag == false)) {
+				| (hasElement & acceptFlag == false))
 			return true;
-		}
 
 		return false;
 	}
 
-	private Set<String> readValues(File f) {
+	private Set<String> readValues(final File f) {
 		Set<String> result = new HashSet<String>();
 		ModularFileParser p = new ModularFileParser(new DelimiterParser(","),
 				f, 0);
 		String[] line = null;
-		while ((line = p.readNextLine()) != null) {
+		while ((line = p.readNextLine()) != null)
 			result.add(line[0]);
-		}
 		p.close();
 		return result;
 	}
