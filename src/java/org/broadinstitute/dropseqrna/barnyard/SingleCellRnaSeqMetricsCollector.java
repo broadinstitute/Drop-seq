@@ -86,7 +86,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     @Option(doc="Number of cells that you think are in the library. The top NUM_CORE_BARCODES will be reported in the output.", mutex={"CELL_BC_FILE"})
 	public Integer NUM_CORE_BARCODES=null;
 
-    @Option(doc="Override NUM_CORE_BARCODES, and process reads that have the cell barcodes in this file instead.  When supplied, output is ordered to match the input barcode ordering. The file has 1 column with no header.", mutex={"NUM_BARCODES"})
+    @Option(doc="Override NUM_CORE_BARCODES, and process reads that have the cell barcodes in this file instead.  When supplied, output is ordered to match the input barcode ordering. The file has 1 column with no header.", mutex={"NUM_CORE_BARCODES"})
 	public File CELL_BC_FILE=null;
 
     @Option(doc="The map quality of the read to be included for determining which cells will be measured.")
