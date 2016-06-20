@@ -24,6 +24,7 @@ import java.util.Set;
 
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 
+import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
@@ -57,8 +58,9 @@ public class TagReadWithInterval extends CommandLineProgram {
 		SamReader inputSam = SamReaderFactory.makeDefault().open(INPUT);
 		SAMFileHeader header = inputSam.getFileHeader();
         header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-        
-        SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(header, true, OUTPUT);
+		SamHeaderUtil.addPgRecord(header, this);
+
+		SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(header, true, OUTPUT);
         
 		IntervalList loci = IntervalList.fromFile(this.LOCI);
 		OverlapDetector<Interval> od =getOverlapDetector (loci);

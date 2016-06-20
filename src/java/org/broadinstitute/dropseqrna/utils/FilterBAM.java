@@ -1,13 +1,6 @@
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
@@ -107,8 +100,10 @@ public class FilterBAM extends CommandLineProgram{
 		buildPatterns();
 		
 		SamReader in = SamReaderFactory.makeDefault().open(INPUT);
-		
-        SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(in.getFileHeader(), true, OUTPUT);
+
+		SAMFileHeader fileHeader = in.getFileHeader();
+		SamHeaderUtil.addPgRecord(fileHeader, this);
+		SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(fileHeader, true, OUTPUT);
 		ProgressLogger progLog=new ProgressLogger(log);
 		
 		

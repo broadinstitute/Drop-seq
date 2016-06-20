@@ -19,6 +19,7 @@ import java.util.Arrays;
 
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 
+import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
@@ -64,6 +65,7 @@ public class TrimStartingSequence extends CommandLineProgram {
 
 		SamReader bamReader = SamReaderFactory.makeDefault().open(this.INPUT);
 		SAMFileHeader header = bamReader.getFileHeader();
+		SamHeaderUtil.addPgRecord(header, this);
         SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(header, true, OUTPUT);
 
         TrimSequenceTemplate t = new TrimSequenceTemplate(this.SEQUENCE);

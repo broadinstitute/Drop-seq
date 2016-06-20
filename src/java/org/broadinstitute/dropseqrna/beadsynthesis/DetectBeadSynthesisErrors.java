@@ -28,11 +28,7 @@ import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.BaseDistributionMetric;
-import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
-import org.broadinstitute.dropseqrna.utils.Bases;
-import org.broadinstitute.dropseqrna.utils.GroupingIterator;
-import org.broadinstitute.dropseqrna.utils.StringInterner;
+import org.broadinstitute.dropseqrna.utils.*;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
@@ -193,6 +189,8 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram {
 	private void cleanBAM (final Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions) {
 		log.info("Cleaning BAM");
         final SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(INPUT, true);
+		SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
+
 		SAMFileWriter writer= new SAMFileWriterFactory().setCreateIndex(CREATE_INDEX).makeSAMOrBAMWriter(headerAndIterator.header, true, OUTPUT);
 		ProgressLogger pl = new ProgressLogger(log);
 		for (SAMRecord r: new IterableAdapter<>(headerAndIterator.iterator)) {

@@ -5,6 +5,7 @@ import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
@@ -87,6 +88,7 @@ public class PolyATrimmer extends CommandLineProgram {
 
 		final SamReader bamReader = SamReaderFactory.makeDefault().open(INPUT);
 		final SAMFileHeader header = bamReader.getFileHeader();
+        SamHeaderUtil.addPgRecord(header, this);
         final SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(header, true, OUTPUT);
         PolyAFinder simplePolyAFinder = new SimplePolyAFinder(this.NUM_BASES, this.MISMATCHES);
         PolyAFinder polyAWithAdapterFinder = new PolyAWithAdapterFinder(

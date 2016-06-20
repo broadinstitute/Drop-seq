@@ -92,6 +92,7 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		SAMFileHeader h= inputSam.getFileHeader();
 		PeekableIterator<SAMRecord> iter = new PeekableIterator<SAMRecord>(CustomBAMIterators.getQuerynameSortedRecords(inputSam));
 
+		SamHeaderUtil.addPgRecord(h, this);
 		SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(h, true, OUTPUT);
 
 		List<BaseRange> baseRanges = BaseRange.parseBaseRange(this.BASE_RANGE);

@@ -28,6 +28,7 @@ import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 
+import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 import picard.annotation.Gene;
 import picard.annotation.LocusFunction;
 import picard.cmdline.CommandLineProgram;
@@ -86,6 +87,7 @@ public class TagReadWithGeneExon extends CommandLineProgram {
 		SamReader inputSam = SamReaderFactory.makeDefault().open(INPUT);
 
 		SAMFileHeader header = inputSam.getFileHeader();
+		SamHeaderUtil.addPgRecord(header, this);
 		SAMSequenceDictionary bamDict = header.getSequenceDictionary();
 
         final OverlapDetector<Gene> geneOverlapDetector = GeneAnnotationReader.loadAnnotationsFile(ANNOTATIONS_FILE, bamDict);
