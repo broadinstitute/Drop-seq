@@ -49,6 +49,12 @@ public class DigitalExpression extends DGECommandLineBase {
 	
 	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of DGE Matrix.  Genes are in rows, cells in columns.  The first column contains the gene name. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
+
+	@Option(shortName = "H", doc="If true, write a header in the DGE file")
+    public boolean OUTPUT_HEADER=true;
+
+    @Option(shortName = "UEI", doc="If OUTPUT_HEADER=true, this is required", optional = true)
+    public String UNIQUE_EXPERIMENT_ID;
 	
 	@Option (doc="Output only genes with at least this total expression level, after summing across all cells", optional=true)
 	public Integer MIN_SUM_EXPRESSION=null;
@@ -85,11 +91,30 @@ public class DigitalExpression extends DGECommandLineBase {
 			
 		return 0;
 	}
-	
 
-	
-	private void digitalExpression(List<String> cellBarcodes) {
+    @Override
+    protected String[] customCommandLineValidation() {
+        final String[] superErrors = super.customCommandLineValidation();
+        if (UNIQUE_EXPERIMENT_ID != null || !OUTPUT_HEADER) {
+            return superErrors;
+        } else {
+            final ArrayList<String> list = new ArrayList<>(1);
+            if (superErrors != null) {
+                for (final String msg: superErrors) {
+                    list.add(msg);
+                }
+            }
+            list.add("If OUTPUT_HEADER==true, UNIQUE_EXPERIMENT_ID must be set");
+            return list.toArray(new String[list.size()]);
+        }
+    }
+
+    private void digitalExpression(List<String> cellBarcodes) {
 		PrintStream out = new PrintStream(IOUtil.openFileForWriting(OUTPUT));
+
+        if (OUTPUT_HEADER) {
+            writeDgeHeader(out);
+        }
 		
 		writeHeader(out, cellBarcodes);
 
@@ -142,10 +167,13 @@ public class DigitalExpression extends DGECommandLineBase {
 		
 		
 	}
-	 
-	
-	
-	/**
+
+    private void writeDgeHeader(PrintStream out) {
+
+    }
+
+
+    /**
 	 * Collapses a bunch of strings by the edit distance.
 	 * If edit distance computations indicate it's greater than threshold edit distance, then the threshold is returned.
 	 * This is to avoid hard work on indel calculations when edit distance between two strings is high.
