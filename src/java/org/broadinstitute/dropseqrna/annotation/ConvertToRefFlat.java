@@ -2,18 +2,17 @@ package org.broadinstitute.dropseqrna.annotation;
 
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.OverlapDetector;
-
-import java.io.File;
-import java.io.PrintStream;
-
 import org.broadinstitute.dropseqrna.cmdline.MetaData;
-
+import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import picard.annotation.Gene;
 import picard.annotation.Gene.Transcript.Exon;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.File;
+import java.io.PrintStream;
 
 
 /**
@@ -48,7 +47,7 @@ public class ConvertToRefFlat extends CommandLineProgram {
 		
 		OverlapDetector<Gene> od = GeneAnnotationReader.loadAnnotationsFile(this.ANNOTATIONS_FILE, this.SEQUENCE_DICTIONARY);
 		
-		PrintStream out = new PrintStream(IOUtil.openFileForWriting(OUTPUT));
+		PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
 		
 		for (Gene g: od.getAll()) {
 			for (Gene.Transcript t: g) {

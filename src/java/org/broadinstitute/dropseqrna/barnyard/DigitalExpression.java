@@ -9,6 +9,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.editdistance.EDUtils;
+import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 import picard.cmdline.CommandLineProgramProperties;
@@ -110,7 +111,7 @@ public class DigitalExpression extends DGECommandLineBase {
     }
 
     private void digitalExpression(List<String> cellBarcodes) {
-		PrintStream out = new PrintStream(IOUtil.openFileForWriting(OUTPUT));
+		PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
 
         if (OUTPUT_HEADER) {
             writeDgeHeader(out);

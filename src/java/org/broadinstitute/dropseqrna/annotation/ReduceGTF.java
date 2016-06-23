@@ -10,6 +10,7 @@ import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.cmdline.MetaData;
 import org.broadinstitute.dropseqrna.utils.DropSeqSamUtil;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
@@ -17,7 +18,10 @@ import picard.cmdline.StandardOptionDefinitions;
 
 import java.io.File;
 import java.io.PrintStream;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * GTF files are annoyingly complex with a poor definition of what data is in them.
@@ -76,7 +80,7 @@ public class ReduceGTF extends CommandLineProgram {
         FilteringGTFParser parser = parseGTF();
 
         try {
-            PrintStream out = new PrintStream(IOUtil.openFileForWriting(OUTPUT));
+            PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
             writeHeader(out);
 
             // if no enhancement needed, just write out the results.

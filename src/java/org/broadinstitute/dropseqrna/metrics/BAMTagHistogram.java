@@ -3,25 +3,20 @@ package org.broadinstitute.dropseqrna.metrics;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.IterableAdapter;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
+import htsjdk.samtools.util.*;
+import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+import picard.cmdline.CommandLineProgram;
+import picard.cmdline.CommandLineProgramProperties;
+import picard.cmdline.Option;
+import picard.cmdline.StandardOptionDefinitions;
 
 import java.io.File;
 import java.io.PrintStream;
 import java.util.Iterator;
 import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
-import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-
-import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
-import picard.cmdline.StandardOptionDefinitions;
 
 /**
  * For a bam file, generate the histogram of values for a particular BAM tag.
@@ -58,7 +53,7 @@ public class BAMTagHistogram extends CommandLineProgram {
 		ObjectCounter<String> counter=getBamTagCounts(INPUT, this.TAG, this.READ_QUALITY, this.FILTER_PCR_DUPLICATES);
 		List<String> tagsByCount=counter.getKeysOrderedByCount(true);
 
-		PrintStream writer = new PrintStream(IOUtil.openFileForWriting(OUTPUT));
+		PrintStream writer = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
 
 		for (String s: tagsByCount) {
 			int count = counter.getCountForKey(s);
