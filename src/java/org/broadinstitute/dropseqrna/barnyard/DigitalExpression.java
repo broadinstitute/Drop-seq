@@ -5,6 +5,9 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeader;
+import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderCodec;
+import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderLibrary;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
@@ -17,6 +20,8 @@ import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.util.*;
 
@@ -51,14 +56,17 @@ public class DigitalExpression extends DGECommandLineBase {
 	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of DGE Matrix.  Genes are in rows, cells in columns.  The first column contains the gene name. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
 
-	@Option(shortName = "H", doc="If true, write a header in the DGE file")
+    @Option (doc="Output only genes with at least this total expression level, after summing across all cells", optional=true)
+    public Integer MIN_SUM_EXPRESSION=null;
+
+    @Option(shortName = "H", doc="If true, write a header in the DGE file")
     public boolean OUTPUT_HEADER=true;
 
     @Option(shortName = "UEI", doc="If OUTPUT_HEADER=true, this is required", optional = true)
     public String UNIQUE_EXPERIMENT_ID;
-	
-	@Option (doc="Output only genes with at least this total expression level, after summing across all cells", optional=true)
-	public Integer MIN_SUM_EXPRESSION=null;
+
+    @Option(shortName = "R", optional = true, doc="Reference to which BAM is aligned.  This is only used to put into DGE header, if OUTPUT_HEADER=true")
+    public File REFERENCE;
 	
 	private boolean OUTPUT_EXPRESSED_GENES_ONLY=false;
 	
@@ -170,7 +178,43 @@ public class DigitalExpression extends DGECommandLineBase {
 	}
 
     private void writeDgeHeader(PrintStream out) {
+        DgeHeader header = new DgeHeader();
+        header.setExpressionFormat(DgeHeader.ExpressionFormat.raw);
+        DgeHeaderLibrary lib = new DgeHeaderLibrary(UNIQUE_EXPERIMENT_ID);
+        if (REFERENCE != null) {
+            lib.setReference(REFERENCE.getAbsoluteFile());
+        }
+        lib.setInput(INPUT.getAbsoluteFile());
+        setDgeHeaderLibraryField(lib, "OUTPUT_READS_INSTEAD", OUTPUT_READS_INSTEAD);
+        setDgeHeaderLibraryField(lib, "MIN_SUM_EXPRESSION", MIN_SUM_EXPRESSION);
+        setDgeHeaderLibraryField(lib, "EDIT_DISTANCE", EDIT_DISTANCE);
+        setDgeHeaderLibraryField(lib, "READ_MQ", READ_MQ);
+        setDgeHeaderLibraryField(lib, "MIN_BC_READ_THRESHOLD", MIN_BC_READ_THRESHOLD);
+        setDgeHeaderLibraryField(lib, "MIN_NUM_READS_PER_CELL", MIN_NUM_READS_PER_CELL);
+        setDgeHeaderLibraryField(lib, "MIN_NUM_GENES_PER_CELL", MIN_NUM_GENES_PER_CELL);
+        setDgeHeaderLibraryField(lib, "MIN_NUM_TRANSCRIPTS_PER_CELL", MIN_NUM_TRANSCRIPTS_PER_CELL);
+        setDgeHeaderLibraryField(lib, "NUM_CORE_BARCODES", NUM_CORE_BARCODES);
+        setDgeHeaderLibraryField(lib, "CELL_BC_FILE", CELL_BC_FILE.getAbsoluteFile());
+        setDgeHeaderLibraryField(lib, "USE_STRAND_INFO", USE_STRAND_INFO);
+        setDgeHeaderLibraryField(lib, "RARE_UMI_FILTER_THRESHOLD", RARE_UMI_FILTER_THRESHOLD);
+        header.addLibrary(lib);
+        final OutputStreamWriter writer = new OutputStreamWriter(out);
+        new DgeHeaderCodec().encode(writer, header);
+        try {
+            writer.flush();
+        } catch (IOException e) {
+            throw new RuntimeException("Exception writing " + OUTPUT, e);
+        }
+    }
 
+    private <T> void setDgeHeaderLibraryField(final DgeHeaderLibrary lib, final String key, final T value) {
+        String stringValue;
+        if (value != null) {
+            stringValue = value.toString();
+        } else {
+            stringValue = "NULL";
+        }
+        lib.setTag(key, stringValue);
     }
 
 

@@ -1,12 +1,14 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
+import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintWriter;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -49,10 +51,10 @@ public class DigitalExpressionTest {
 	private String MOLECULAR_BARCODE_TAG = "XM";
 	private int READ_MQ=10;
 	private Boolean USE_STRAND_INFO=true;
-	
+    private final String [] barcodes ={"ATCAGGGACAGA", "AGGGAAAATTGA", "TTGCCTTACGCG", "TGGCGAAGAGAT", "TACAATTAAGGC"};
+
 	
 	private UMIIterator getUMIIterator () {
-		String [] barcodes ={"ATCAGGGACAGA", "AGGGAAAATTGA", "TTGCCTTACGCG", "TGGCGAAGAGAT", "TACAATTAAGGC"};
 		List<String> cellBarcodes = Arrays.asList(barcodes);
 		
 		UMIIterator iter = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.IN_FILE), false),
@@ -140,6 +142,25 @@ public class DigitalExpressionTest {
 	}
 	
 	
-	
+	@Test
+	public void testDigitalExpression() throws IOException {
+		final File outFile = File.createTempFile("testDigitalExpression.", ".digital_expression.txt.gz");
+		final File summaryFile = File.createTempFile("testDigitalExpression.", ".digital_expression_summary.txt");
+        final File cellBarcodesFile = File.createTempFile("testDigitalExpression.", ".selectedCellBarcodes.txt");
+		outFile.deleteOnExit();
+		summaryFile.deleteOnExit();
+        cellBarcodesFile.deleteOnExit();
+        final ErrorCheckingPrintWriter writer = new ErrorCheckingPrintWriter(cellBarcodesFile);
+        for (final String cellBarcode : barcodes) {
+            writer.println(cellBarcode);
+        }
+        writer.close();
+        final DigitalExpression de = new DigitalExpression();
+		de.INPUT = IN_FILE;
+		de.OUTPUT = outFile;
+		de.SUMMARY = summaryFile;
+        de.CELL_BC_FILE = cellBarcodesFile;
+        de.doWork();
+	}
 	
 }
