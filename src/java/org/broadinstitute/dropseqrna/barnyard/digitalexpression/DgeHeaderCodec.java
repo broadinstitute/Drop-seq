@@ -31,8 +31,8 @@ public class DgeHeaderCodec {
     private static String FIELD_SEPARATOR = "\t";
     private static String DGE_RECORD_LABEL = "DGE";
     private static String LIBRARY_RECORD_LABEL = "LIBRARY";
-    private enum DgeRecordTag {Version, ExpressionFormat}
-    private enum LibraryRecordTag {Input, InputDge, Reference, Uei, Prefix}
+    private enum DgeRecordTag {VERSION, EXPRESSION_FORMAT}
+    private enum LibraryRecordTag {INPUT, INPUT_DGE, REFERENCE, UEI, PREFIX}
 
     public void encode(final Writer writer, final DgeHeader header) {
         writeLine(writer, buildFirstLine(header));
@@ -51,18 +51,18 @@ public class DgeHeaderCodec {
     }
     private String buildFirstLine(final DgeHeader header) {
         final OutputRecordBuilder dgeRecord = new OutputRecordBuilder(DGE_RECORD_LABEL);
-        dgeRecord.addFieldIfNotNull(DgeRecordTag.Version, header.getVersion());
-        dgeRecord.addFieldIfNotNull(DgeRecordTag.ExpressionFormat, header.getExpressionFormat());
+        dgeRecord.addFieldIfNotNull(DgeRecordTag.VERSION, header.getVersion());
+        dgeRecord.addFieldIfNotNull(DgeRecordTag.EXPRESSION_FORMAT, header.getExpressionFormat());
         return dgeRecord.build();
     }
 
     private String buildLibraryLine(final DgeHeaderLibrary library) {
         final OutputRecordBuilder dgeRecord = new OutputRecordBuilder(LIBRARY_RECORD_LABEL);
-        dgeRecord.addFieldIfNotNull(LibraryRecordTag.Input, library.getInput());
-        dgeRecord.addFieldIfNotNull(LibraryRecordTag.InputDge, library.getInputDge());
-        dgeRecord.addFieldIfNotNull(LibraryRecordTag.Reference, library.getReference());
-        dgeRecord.addFieldIfNotNull(LibraryRecordTag.Uei, library.getUei());
-        dgeRecord.addFieldIfNotNull(LibraryRecordTag.Prefix, library.getPrefix());
+        dgeRecord.addFieldIfNotNull(LibraryRecordTag.INPUT, library.getInput());
+        dgeRecord.addFieldIfNotNull(LibraryRecordTag.INPUT_DGE, library.getInputDge());
+        dgeRecord.addFieldIfNotNull(LibraryRecordTag.REFERENCE, library.getReference());
+        dgeRecord.addFieldIfNotNull(LibraryRecordTag.UEI, library.getUei());
+        dgeRecord.addFieldIfNotNull(LibraryRecordTag.PREFIX, library.getPrefix());
         for (final Map.Entry<String, String> entry: new IterableAdapter<>(library.iterateOtherTags())) {
             dgeRecord.addFieldIfNotNull(entry.getKey(), entry.getValue());
         }
@@ -145,9 +145,9 @@ public class DgeHeaderCodec {
         for (final Map.Entry<String, String> entry: fields.entrySet()) {
             final String key = entry.getKey();
             final String value = entry.getValue();
-            if (key.equals(DgeRecordTag.Version.name())) {
+            if (key.equals(DgeRecordTag.VERSION.name())) {
                 header.setVersion(value);
-            } else if (key.equals(DgeRecordTag.ExpressionFormat.name())) {
+            } else if (key.equals(DgeRecordTag.EXPRESSION_FORMAT.name())) {
                 try {
                     header.setExpressionFormat(DgeHeader.ExpressionFormat.valueOf(value));
                 } catch (IllegalArgumentException e) {
@@ -161,9 +161,9 @@ public class DgeHeaderCodec {
 
     private DgeHeaderLibrary parseLibrary(final String line, final String inputName) {
         final LinkedHashMap<String, String> fields = parseLine(line, LIBRARY_RECORD_LABEL, inputName);
-        final String uei = fields.get(LibraryRecordTag.Uei.name());
+        final String uei = fields.get(LibraryRecordTag.UEI.name());
         if (uei == null) {
-            log.warn("Ignoring DGE @LIBRARY line missing Uei tag in " + inputName + ";" + line);
+            log.warn("Ignoring DGE @LIBRARY line missing UEI tag in " + inputName + ";" + line);
             return null;
         }
         final DgeHeaderLibrary ret = new DgeHeaderLibrary(uei);
@@ -172,11 +172,11 @@ public class DgeHeaderCodec {
             final String value = entry.getValue();
             try {
                 switch (LibraryRecordTag.valueOf(key)) {
-                    case Input:         ret.setInput(new File(value));    break;
-                    case InputDge:      ret.setInputDge(new File(value)); break;
-                    case Prefix:        ret.setPrefix(value);             break;
-                    case Reference:     ret.setReference(new File(value));break;
-                    case Uei:           break; // set in ctor
+                    case INPUT:         ret.setInput(new File(value));    break;
+                    case INPUT_DGE:      ret.setInputDge(new File(value)); break;
+                    case PREFIX:        ret.setPrefix(value);             break;
+                    case REFERENCE:     ret.setReference(new File(value));break;
+                    case UEI:           break; // set in ctor
                 }
             } catch (IllegalArgumentException e) {
                 ret.setTag(key, value);
