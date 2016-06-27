@@ -14,7 +14,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 
 public class DgeHeader {
-    public enum ExpressionFormat {raw,log10, log10_normalized}
+    public enum ExpressionFormat {raw,log10, log10_normalized, unknown}
     public static String CURRENT_VERSION = "1.1";
 
     private String version = CURRENT_VERSION;

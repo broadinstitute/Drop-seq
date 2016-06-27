@@ -111,7 +111,7 @@ public class DgeHeaderCodec {
     private DgeHeader decode(final DgeHeaderLineReader reader, final String inputName) {
         try {
             final DgeHeader ret = new DgeHeader();
-            ret.setExpressionFormat(null);
+            ret.setExpressionFormat(DgeHeader.ExpressionFormat.unknown);
             ret.setVersion(null);
             boolean first = true;
             String line;

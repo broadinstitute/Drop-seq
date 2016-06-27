@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 
 public class DigitalExpressionTest {
@@ -43,7 +44,7 @@ public class DigitalExpressionTest {
 	 * 
 	 */
 		
-	File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.bam");
+	private static final File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.bam");
 	
 	private String GENE_EXON_TAG="GE";
 	private String STRAND_TAG="GS";
@@ -51,7 +52,7 @@ public class DigitalExpressionTest {
 	private String MOLECULAR_BARCODE_TAG = "XM";
 	private int READ_MQ=10;
 	private Boolean USE_STRAND_INFO=true;
-    private final String [] barcodes ={"ATCAGGGACAGA", "AGGGAAAATTGA", "TTGCCTTACGCG", "TGGCGAAGAGAT", "TACAATTAAGGC"};
+    private static final String [] barcodes ={"ATCAGGGACAGA", "AGGGAAAATTGA", "TTGCCTTACGCG", "TGGCGAAGAGAT", "TACAATTAAGGC"};
 
 	
 	private UMIIterator getUMIIterator () {
@@ -144,6 +145,13 @@ public class DigitalExpressionTest {
 	
 	@Test
 	public void testDigitalExpression() throws IOException {
+		makeDigitalExpressionFile(true);
+	}
+
+	/**
+	 * @return A digital expression file, which is marked as deleteOnExit
+     */
+    public static File makeDigitalExpressionFile(final boolean outputHeader) throws IOException {
 		final File outFile = File.createTempFile("testDigitalExpression.", ".digital_expression.txt.gz");
 		final File summaryFile = File.createTempFile("testDigitalExpression.", ".digital_expression_summary.txt");
         final File cellBarcodesFile = File.createTempFile("testDigitalExpression.", ".selectedCellBarcodes.txt");
@@ -160,7 +168,10 @@ public class DigitalExpressionTest {
 		de.OUTPUT = outFile;
 		de.SUMMARY = summaryFile;
         de.CELL_BC_FILE = cellBarcodesFile;
-        de.doWork();
+        de.OUTPUT_HEADER = outputHeader;
+        de.UNIQUE_EXPERIMENT_ID = "UIE" + new Random().nextInt();
+        Assert.assertEquals(de.doWork(), 0);
+        return outFile;
 	}
 	
 }

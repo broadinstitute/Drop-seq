@@ -70,7 +70,7 @@ public class DgeHeaderCodecTest {
         final DgeHeader header = new DgeHeader();
         // Clear default values so the header looks like a codec not finding a header
         header.setVersion(null);
-        header.setExpressionFormat(null);
+        header.setExpressionFormat(DgeHeader.ExpressionFormat.unknown);
 
         final StringWriter writer = new StringWriter();
         final String contentAfterHeader = "Goodbye, cruel world!";
@@ -125,7 +125,7 @@ public class DgeHeaderCodecTest {
         final DgeHeader header = new DgeHeader();
         // Clear default values so the header looks like a codec not finding a header
         header.setVersion(null);
-        header.setExpressionFormat(null);
+        header.setExpressionFormat(DgeHeader.ExpressionFormat.unknown);
 
         final StringWriter writer = new StringWriter();
         final String contentAfterHeader = "Goodbye, cruel world!";
