@@ -14,10 +14,7 @@ import htsjdk.samtools.util.IterableAdapter;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.StringUtil;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.Writer;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -87,21 +84,38 @@ public class DgeHeaderCodec {
         }
     }
 
+
     /**
      *
      * @param reader When method returns, reader is positioned at start of first line after header
      */
     public DgeHeader decode(final BufferedReader reader, final String inputName) {
+        if (!reader.markSupported()) {
+            throw new IllegalArgumentException("reader.markSupported == false");
+        }
+        return decode(new DgeBufferedReader(reader), inputName);
+    }
+    /**
+     *
+     * @param inputStream When method returns, input stream is positioned at start of first line after header
+     */
+    public DgeHeader decode(final BufferedInputStream inputStream, final String inputName) {
+        if (!inputStream.markSupported()) {
+            throw new IllegalArgumentException("reader.markSupported == false");
+        }
+        return decode(new DgeBufferedInputStream(inputStream), inputName);
+    }
+
+
+
+    private DgeHeader decode(final DgeHeaderLineReader reader, final String inputName) {
         try {
-            if (!reader.markSupported()) {
-                throw new IllegalArgumentException("reader.markSupported == false");
-            }
             final DgeHeader ret = new DgeHeader();
             ret.setExpressionFormat(null);
             ret.setVersion(null);
             boolean first = true;
-            while (isHeaderLine(reader)) {
-                final String line = reader.readLine();
+            String line;
+            while ((line = reader.readHeaderLine()) != null) {
                 if (line.startsWith(DGE_RECORD_LABEL + FIELD_SEPARATOR)) {
                     if (first) {
                         parseFirstLine(ret, line, inputName);
@@ -121,6 +135,106 @@ public class DgeHeaderCodec {
             return ret;
         } catch (IOException e) {
             throw new RuntimeException("Problem parsing " + inputName, e);
+        }
+    }
+
+    private interface DgeHeaderLineReader {
+        /**
+         * @return next header line, without leading '@', or null if no more header lines
+         */
+        String readHeaderLine() throws IOException;
+    }
+
+    private class DgeBufferedReader implements DgeHeaderLineReader {
+        private final BufferedReader reader;
+
+        public DgeBufferedReader(BufferedReader reader) {
+            this.reader = reader;
+        }
+
+        @Override
+        public String readHeaderLine() throws IOException {
+            reader.mark(1);
+            int c = reader.read();
+            if (c == RECORD_START) {
+                return reader.readLine();
+            } else {
+                reader.reset();
+                return null;
+            }
+        }
+    }
+
+    private class DgeBufferedInputStream implements DgeHeaderLineReader {
+        private final BufferedInputStream inputStream;
+        // Could be local to readHeaderLine, but time is saved by allocating once.
+        private char[] lineBuffer = new char[10000];;
+
+        public DgeBufferedInputStream(BufferedInputStream inputStream) {
+            this.inputStream = inputStream;
+        }
+        @Override
+        public String readHeaderLine() throws IOException {
+            inputStream.mark(1);
+            int c = inputStream.read();
+            if (c == RECORD_START) {
+                return readToEndOfLine();
+            } else {
+                inputStream.reset();
+                return null;
+            }
+        }
+
+        private static final int BUFFER_OVERFLOW_INCREASE_FACTOR = 2;
+        private static final byte LINEFEED = (byte) ('\n' & 0xff);
+        private static final byte CARRIAGE_RETURN = (byte) ('\r' & 0xff);
+
+        // Cribbed from Picard AsciiLineReader
+        private String readToEndOfLine() throws IOException {
+            int linePosition = 0;
+
+            while (true) {
+                final int b = inputStream.read();
+
+                if (b == -1) {
+                    // eof reached.  Return the last line, or null if this is a new line
+                    if (linePosition > 0) {
+                        return new String(lineBuffer, 0, linePosition);
+                    } else {
+                        return null;
+                    }
+                }
+
+                final char c = (char) (b & 0xFF);
+                if (c == LINEFEED || c == CARRIAGE_RETURN) {
+                    if (c == CARRIAGE_RETURN && peek() == LINEFEED) {
+                        inputStream.read(); // <= skip the trailing \n in case of \r\n termination
+                    }
+
+                    return new String(lineBuffer, 0, linePosition);
+                } else {
+                    // Expand line buffer size if neccessary.  Reserve at least 2 characters
+                    // for potential line-terminators in return string
+
+                    if (linePosition > (lineBuffer.length - 3)) {
+                        final char[] temp = new char[BUFFER_OVERFLOW_INCREASE_FACTOR * lineBuffer.length];
+                        System.arraycopy(lineBuffer, 0, temp, 0, lineBuffer.length);
+                        lineBuffer = temp;
+                    }
+
+                    lineBuffer[linePosition++] = c;
+                }
+            }
+
+        }
+
+        private int peek() throws IOException {
+            inputStream.mark(1);
+            try {
+                return inputStream.read();
+            } finally {
+                inputStream.reset();
+            }
         }
     }
 

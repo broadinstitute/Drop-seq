@@ -83,6 +83,61 @@ public class DgeHeaderCodecTest {
     }
 
 
+    @Test(dataProvider = "numberOfLibrariesDataProvider")
+    public void testBasicInputStream(final Integer numberOfLibraries) {
+        final DgeHeader header = makeDgeHeader(numberOfLibraries);
+
+        final StringWriter writer = new StringWriter();
+        final DgeHeaderCodec codec = new DgeHeaderCodec();
+        codec.encode(writer, header);
+        System.out.print(writer.toString());
+
+        final BufferedInputStream inputStream = new BufferedInputStream(new ByteArrayInputStream(writer.toString().getBytes()));
+        final DgeHeader decodedHeader = codec.decode(inputStream, "test input");
+        Assert.assertEquals(decodedHeader, header);
+    }
+
+    /**
+     * Confirm that position of reader is immediately after header, after header is decoded.
+     */
+    @Test(dataProvider = "numberOfLibrariesDataProvider")
+    public void testHeaderWithTrailingContentsInputStream(final Integer numberOfLibraries) throws IOException {
+        final DgeHeader header = makeDgeHeader(numberOfLibraries);
+
+        final StringWriter writer = new StringWriter();
+        final DgeHeaderCodec codec = new DgeHeaderCodec();
+        codec.encode(writer, header);
+        final String contentAfterHeader = "Goodbye, cruel world!";
+        writer.append(contentAfterHeader);
+        System.out.print(writer.toString());
+        final BufferedInputStream inputStream = new BufferedInputStream(new ByteArrayInputStream(writer.toString().getBytes()));
+        final DgeHeader decodedHeader = codec.decode(inputStream, "test input");
+        Assert.assertEquals(decodedHeader, header);
+        final String actualContentAfterHeader = new BufferedReader(new InputStreamReader(inputStream)).readLine();
+        Assert.assertEquals(actualContentAfterHeader, contentAfterHeader);
+    }
+
+    /**
+     * Confirm that position of reader is correct after looking for a header and finding none.
+     */
+    @Test
+    public void testNoHeaderWithTrailingContentsInputStream() throws IOException {
+        final DgeHeader header = new DgeHeader();
+        // Clear default values so the header looks like a codec not finding a header
+        header.setVersion(null);
+        header.setExpressionFormat(null);
+
+        final StringWriter writer = new StringWriter();
+        final String contentAfterHeader = "Goodbye, cruel world!";
+        writer.append(contentAfterHeader);
+        final BufferedInputStream inputStream = new BufferedInputStream(new ByteArrayInputStream(writer.toString().getBytes()));
+        final DgeHeader decodedHeader = new DgeHeaderCodec().decode(inputStream, "test input");
+        Assert.assertEquals(decodedHeader, header);
+        final String actualContentAfterHeader = new BufferedReader(new InputStreamReader(inputStream)).readLine();
+        Assert.assertEquals(actualContentAfterHeader, contentAfterHeader);
+    }
+
+
     private DgeHeader makeDgeHeader(final int numLibraries) {
         final DgeHeader header = new DgeHeader();
         final String testVersion = "1234";
