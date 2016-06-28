@@ -10,9 +10,7 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
-import htsjdk.samtools.util.IterableAdapter;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.StringUtil;
+import htsjdk.samtools.util.*;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -35,6 +33,16 @@ public class DgeHeaderCodec {
         writeLine(writer, buildFirstLine(header));
         for (final String uei : new IterableAdapter<>(header.iterateLibraries())) {
             writeLine(writer, buildLibraryLine(header.getLibrary(uei)));
+        }
+    }
+
+    public void encode(final File file, final DgeHeader header) {
+        final Writer writer = IOUtil.openFileForBufferedWriting(file);
+        encode(writer, header);
+        try {
+            writer.close();
+        } catch (IOException e) {
+            throw new RuntimeIOException("Exception writing " + file.getAbsolutePath(), e);
         }
     }
 

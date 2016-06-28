@@ -53,9 +53,33 @@ public class DgeHeader {
         return libraries.get(uei);
     }
 
+    public DgeHeaderLibrary getLibrary(int i) {
+        if (libraries.size() <= i) {
+            throw new IllegalArgumentException("Requested library " + i + " but there are only " + libraries.size() +
+            " libraries in DgeHeader");
+        }
+        final Iterator<DgeHeaderLibrary> it = libraries.values().iterator();
+        while (i-- > 0) {it.next();}
+        return it.next();
+    }
+
     public DgeHeaderLibrary removeLibrary(final String uei) {
         return libraries.remove(uei);
     }
+
+    public DgeHeaderLibrary removeLibrary(int i) {
+        if (libraries.size() <= i) {
+            throw new IllegalArgumentException("Requested library " + i + " but there are only " + libraries.size() +
+                    " libraries in DgeHeader");
+        }
+        final Iterator<DgeHeaderLibrary> it = libraries.values().iterator();
+        while (i-- > 0) {it.next();}
+        final DgeHeaderLibrary ret = it.next();
+        it.remove();
+        return ret;
+    }
+
+    public int getNumLibraries() { return libraries.size(); }
 
     public Iterator<String> iterateLibraries() {
         return libraries.keySet().iterator();
