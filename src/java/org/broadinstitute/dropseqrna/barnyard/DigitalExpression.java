@@ -296,7 +296,7 @@ public class DigitalExpression extends DGECommandLineBase {
 		out.println(h);
 	}
 	
-	public class DESummary extends MetricBase {
+	public static class DESummary extends MetricBase {
 		
 		public String CELL_BARCODE;
 		public int NUM_GENES;
@@ -316,7 +316,7 @@ public class DigitalExpression extends DGECommandLineBase {
 		}
 };
 	
-	public Map<String, DESummary> initializeSummary(Collection<String> cellBarcodes) {
+	public static Map<String, DESummary> initializeSummary(Collection<String> cellBarcodes) {
 		Map<String, DESummary> map = new HashMap<String, DESummary>();
 		
 		for (String s: cellBarcodes) {
@@ -326,7 +326,7 @@ public class DigitalExpression extends DGECommandLineBase {
 		return (map);
 	}
 	
-	public Map<String, DESummary> addToSummary(Map<String, Integer> countMap, Map<String, DESummary> summaryMap) {
+	public static Map<String, DESummary> addToSummary(Map<String, Integer> countMap, Map<String, DESummary> summaryMap) {
 		for (String cellBC: countMap.keySet()) {
 			DESummary sum = summaryMap.get(cellBC);
 			// for genes, it doesn't matter what the count is as long as it's > 0.  Increment by 1.
@@ -337,7 +337,7 @@ public class DigitalExpression extends DGECommandLineBase {
 		return (summaryMap);
 	}
 	
-	public void writeSummary(Collection<DESummary> summaryCollection, File outFile) {
+	public static void writeSummary(Collection<DESummary> summaryCollection, File outFile) {
 		MetricsFile<DESummary, Integer> out = new MetricsFile<DESummary, Integer>();
 		List<DESummary> sc = new ArrayList<DESummary>(summaryCollection);
 		Collections.sort(sc, DigitalExpression.TRANSCRIPT_ORDER_DESCENDING);
