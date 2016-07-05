@@ -56,8 +56,8 @@ public class DigitalExpression extends DGECommandLineBase {
     @Option (doc="Output only genes with at least this total expression level, after summing across all cells", optional=true)
     public Integer MIN_SUM_EXPRESSION=null;
 
-    @Option(shortName = "H", doc="If true, write a header in the DGE file")
-    public boolean OUTPUT_HEADER=true;
+    @Option(shortName = "H", doc="If true, write a header in the DGE file.  If not specified, and UEI is specified, it is set to true", optional = true)
+    public Boolean OUTPUT_HEADER;
 
     @Option(shortName = "UEI", doc="If OUTPUT_HEADER=true, this is required", optional = true)
     public String UNIQUE_EXPERIMENT_ID;
@@ -101,6 +101,9 @@ public class DigitalExpression extends DGECommandLineBase {
     @Override
     protected String[] customCommandLineValidation() {
         final String[] superErrors = super.customCommandLineValidation();
+		if (OUTPUT_HEADER == null) {
+            OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
+        }
         if (UNIQUE_EXPERIMENT_ID != null || !OUTPUT_HEADER) {
             return superErrors;
         } else {
