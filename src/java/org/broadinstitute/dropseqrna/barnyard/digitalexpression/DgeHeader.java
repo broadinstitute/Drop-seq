@@ -10,6 +10,7 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 
@@ -21,6 +22,7 @@ public class DgeHeader {
     private ExpressionFormat expressionFormat = ExpressionFormat.raw;
 
     private LinkedHashMap<String, DgeHeaderLibrary> libraries = new LinkedHashMap<>();
+    private ArrayList<DgeHeaderCommand> commands = new ArrayList<>();
 
     public DgeHeader() {
     }
@@ -84,6 +86,32 @@ public class DgeHeader {
     public Iterator<String> iterateLibraries() {
         return libraries.keySet().iterator();
     }
+
+    public void addCommand(final DgeHeaderCommand command) {
+        commands.add(command);
+    }
+
+    /**
+     * If a CLP is invoked in a testing context, there may be no command line
+     * @param maybeNullCommandLine If null, no DgeHeaderCommand record is added
+     */
+    public void addCommand(final String maybeNullCommandLine) {
+        if (maybeNullCommandLine != null) {
+            addCommand(new DgeHeaderCommand(maybeNullCommandLine));
+        }
+    }
+
+    public DgeHeaderCommand getCommand(final int i) {
+        return commands.get(i);
+    }
+
+    public DgeHeaderCommand removeCommand(final int i) {
+        return commands.remove(i);
+    }
+
+    public int getNumCommands() { return commands.size(); }
+
+    public Iterator<DgeHeaderCommand> iterateCommands() { return commands.iterator(); }
 
     @Override
     public boolean equals(Object o) {

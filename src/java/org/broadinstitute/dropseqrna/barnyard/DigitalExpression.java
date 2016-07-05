@@ -5,10 +5,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.commons.lang.StringUtils;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeader;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderCodec;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderLibrary;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
+import org.broadinstitute.dropseqrna.barnyard.digitalexpression.*;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.editdistance.EDUtils;
@@ -198,6 +195,7 @@ public class DigitalExpression extends DGECommandLineBase {
         setDgeHeaderLibraryField(lib, "USE_STRAND_INFO", USE_STRAND_INFO);
         setDgeHeaderLibraryField(lib, "RARE_UMI_FILTER_THRESHOLD", RARE_UMI_FILTER_THRESHOLD);
         header.addLibrary(lib);
+		header.addCommand(getCommandLine());
         final OutputStreamWriter writer = new OutputStreamWriter(out);
         new DgeHeaderCodec().encode(writer, header);
         try {

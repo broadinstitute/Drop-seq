@@ -26,13 +26,18 @@ public class DgeHeaderCodec {
     private static String FIELD_SEPARATOR = "\t";
     private static String DGE_RECORD_LABEL = "DGE";
     private static String LIBRARY_RECORD_LABEL = "LIBRARY";
+    private static String COMMAND_RECORD_LABEL = "COMMAND";
     private enum DgeRecordTag {VERSION, EXPRESSION_FORMAT}
     private enum LibraryRecordTag {INPUT, INPUT_DGE, REFERENCE, UEI, PREFIX}
+    private enum CommandRecordTag {CL};
 
     public void encode(final Writer writer, final DgeHeader header) {
         writeLine(writer, buildFirstLine(header));
         for (final String uei : new IterableAdapter<>(header.iterateLibraries())) {
             writeLine(writer, buildLibraryLine(header.getLibrary(uei)));
+        }
+        for (final DgeHeaderCommand command: new IterableAdapter<>(header.iterateCommands())) {
+            writeLine(writer, buildCommandLine(command));
         }
     }
 
@@ -71,6 +76,12 @@ public class DgeHeaderCodec {
         for (final Map.Entry<String, String> entry: new IterableAdapter<>(library.iterateOtherTags())) {
             dgeRecord.addFieldIfNotNull(entry.getKey(), entry.getValue());
         }
+        return dgeRecord.build();
+    }
+
+    private String buildCommandLine(final DgeHeaderCommand command) {
+        final OutputRecordBuilder dgeRecord = new OutputRecordBuilder(COMMAND_RECORD_LABEL);
+        dgeRecord.addFieldIfNotNull(CommandRecordTag.CL, command.getCommandLine());
         return dgeRecord.build();
     }
 
@@ -134,6 +145,11 @@ public class DgeHeaderCodec {
                     DgeHeaderLibrary library = parseLibrary(line, inputName);
                     if (library != null) {
                         ret.addLibrary(library);
+                    }
+                } else if (line.startsWith(COMMAND_RECORD_LABEL + FIELD_SEPARATOR)) {
+                    DgeHeaderCommand command = parseCommand(line, inputName);
+                    if (command != null) {
+                        ret.addCommand(command);
                     }
                 } else {
                     log.warn("Strange DGE header line seen in " + inputName + ";" + line);
@@ -307,6 +323,18 @@ public class DgeHeaderCodec {
         }
         return ret;
     }
+
+    private DgeHeaderCommand parseCommand(String line, String inputName) {
+        final LinkedHashMap<String, String> fields = parseLine(line, COMMAND_RECORD_LABEL, inputName);
+        final String commandLine = fields.get(CommandRecordTag.CL.name());
+        if (commandLine == null) {
+            log.warn("Ignoring DGE @COMMAND line missing CL tag in " + inputName + ";" + line);
+            return null;
+        }
+        return new DgeHeaderCommand(commandLine);
+    }
+
+
 
     private LinkedHashMap<String, String> parseLine(final String line, final String recordType, final String inputName) {
         final String[] fields = line.split(FIELD_SEPARATOR);
