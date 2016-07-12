@@ -119,12 +119,6 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     /**
      * If there's a cell barcode file that is non-null, use that to get a list of cell barcodes.
      * Otherwise, gather up the top <numCoreBarcodes> cells ordered by number of reads.
-     * @param cellBCFile
-     * @param bamFile
-     * @param cellBarcodeTag
-     * @param readMQ
-     * @param numCoreBarcodes
-     * @return
      */
     private List<String> getCellBarcodes(final File cellBCFile, final File bamFile, final String cellBarcodeTag, final int readMQ, final Integer numCoreBarcodes) {
     	if (cellBCFile!=null) {
@@ -133,8 +127,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     		return cellBarcodes;
     	}
     	BarcodeListRetrieval u = new BarcodeListRetrieval();
-    	List<String> cellBarcodes = u.getListCellBarcodesByReadCount (bamFile, cellBarcodeTag, readMQ, null, numCoreBarcodes);
-    	return cellBarcodes;
+        return u.getListCellBarcodesByReadCount (bamFile, cellBarcodeTag, readMQ, null, numCoreBarcodes);
 
     }
 
@@ -149,10 +142,12 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
         // iterate by cell barcodes.  Skip all the reads without cell barcodes.
 		CloseableIterator<SAMRecord> iter = getReadsInTagOrder (inBAM, cellBarcodeTag, rg, cellBarcodes, readMQ);
 
+        ProgressLogger p = new ProgressLogger(log, 1000000, "Accumulating metrics");
 		while (iter.hasNext()) {
 			SAMRecord r = iter.next();
 			String cellBarcode = r.getStringAttribute(cellBarcodeTag);
 			r.setAttribute("RG", cellBarcode);
+            p.record(r);
 	    	collector.acceptRecord(r, null);
 		}
 
