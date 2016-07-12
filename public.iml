@@ -17,10 +17,9 @@
         </CLASSES>
         <JAVADOC />
         <SOURCES>
-          <root url="file://$PICARD$/Picard-public/src/java" />
-          <root url="file://$PICARD$/Picard-public/htsjdk/src/java" />
           <root url="file://$USER_HOME$/Development/la4j/src/main/java" />
           <root url="file://$USER_HOME$/Development/snakeyaml/src/main/java" />
+          <root url="file://$MODULE_DIR$/../../../git-picard/src/main/java" />
         </SOURCES>
         <jarDirectory url="file://$MODULE_DIR$/../lib" recursive="false" />
       </library>
@@ -37,4 +36,3 @@
     </orderEntry>
   </component>
 </module>
-
