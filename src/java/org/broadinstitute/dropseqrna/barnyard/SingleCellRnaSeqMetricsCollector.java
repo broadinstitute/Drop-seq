@@ -40,6 +40,7 @@ import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.metrics.PerUnitMetricCollector;
 
 /**
  * An adaptation of the Picard RnaSeqMetricsCollector to collect per-cell data.  In particular, the exon/intron/genic/intragenic/rRNA levels.
@@ -92,6 +93,9 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     @Option(doc="The map quality of the read to be included for determining which cells will be measured.")
 	public Integer READ_MQ=10;
 
+    @Option
+    public String MT_SEQUENCE;
+
     @Override
 	protected int doWork() {
     	IOUtil.assertFileIsReadable(INPUT);
@@ -99,7 +103,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 
 		List<String> cellBarcodes = getCellBarcodes(this.CELL_BC_FILE, this.INPUT, this.CELL_BARCODE_TAG, this.READ_MQ, this.NUM_CORE_BARCODES);
 		RnaSeqMetricsCollector collector = getRNASeqMetricsCollector(this.CELL_BARCODE_TAG, cellBarcodes, this.INPUT, this.STRAND_SPECIFICITY, this.RRNA_FRAGMENT_PERCENTAGE, this.READ_MQ, this.ANNOTATIONS_FILE, this.RIBOSOMAL_INTERVALS);
-		final MetricsFile<RnaSeqMetrics, Integer> file = new MetricsFile<RnaSeqMetrics, Integer>();
+		final MetricsFile<RnaSeqMetrics, Integer> file = getMetricsFile();
     	collector.addAllLevelsToFile(file);
 
     	BufferedWriter b = IOUtil.openFileForBufferedWriting(OUTPUT);
@@ -227,7 +231,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 
     	public RnaSeqMetricsCollector getCollector(final List<String> cellBarcodes) {
     		List<SAMReadGroupRecord> readGroups =  getReadGroups(cellBarcodes);
-    		return new RnaSeqMetricsCollector(CollectionUtil.makeSet(MetricAccumulationLevel.READ_GROUP), readGroups,
+    		return new RnaSeqMtMetricsCollector(CollectionUtil.makeSet(MetricAccumulationLevel.READ_GROUP), readGroups,
                     ribosomalBasesInitialValue, geneOverlapDetector, ribosomalSequenceOverlapDetector,
                     ignoredSequenceIndices, 500, specificity, this.rnaFragPct, false);
     	}
@@ -246,6 +250,68 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 
 
     	}
+    }
+
+    public static class RnaSeqMtMetrics
+            extends RnaSeqMetrics {
+        public long MT_BASES;
+        public double PCT_MT_BASES;
+    }
+
+	private class RnaSeqMtMetricsCollector extends RnaSeqMetricsCollector {
+        public RnaSeqMtMetricsCollector(Set<MetricAccumulationLevel> accumulationLevels,
+                                        List<SAMReadGroupRecord> samRgRecords,
+                                        Long ribosomalBasesInitialValue,
+                                        OverlapDetector<Gene> geneOverlapDetector,
+                                        OverlapDetector<Interval> ribosomalSequenceOverlapDetector,
+                                        HashSet<Integer> ignoredSequenceIndices, int minimumLength,
+                                        StrandSpecificity strandSpecificity,
+                                        double rrnaFragmentPercentage,
+                                        boolean collectCoverageStatistics) {
+            super(accumulationLevels, samRgRecords, ribosomalBasesInitialValue, geneOverlapDetector,
+                    ribosomalSequenceOverlapDetector, ignoredSequenceIndices, minimumLength, strandSpecificity,
+                    rrnaFragmentPercentage, collectCoverageStatistics);
+        }
+
+        @Override
+        protected PerUnitMetricCollector<RnaSeqMetrics, Integer, SAMRecord> makeChildCollector(final String sample, final String library, final String readGroup) {
+            // TODO: Fix last argument
+            return new PerUnitRnaSeqMtMetricsCollector(sample, library, readGroup, this.ribosomalInitialValue);
+        }
+
+        private class PerUnitRnaSeqMtMetricsCollector extends PerUnitRnaSeqMetricsCollector {
+
+            public PerUnitRnaSeqMtMetricsCollector(String sample, String library, String readGroup, Long ribosomalBasesInitialValue) {
+                super(new RnaSeqMtMetrics(), sample, library, readGroup, ribosomalBasesInitialValue);
+            }
+
+			private RnaSeqMtMetrics castMetrics() {
+				return (RnaSeqMtMetrics)metrics;
+			}
+
+            @Override
+            public void acceptRecord(SAMRecord rec) {
+                if (MT_SEQUENCE != null && !rec.getReadFailsVendorQualityCheckFlag() && !rec.isSecondaryOrSupplementary() &&
+                        rec.getReferenceName().equals(MT_SEQUENCE) && !rec.getReadUnmappedFlag()) {
+
+                    metrics.PF_BASES += rec.getReadLength();
+                    final int numAlignedBases = getNumAlignedBases(rec);
+                    castMetrics().MT_BASES += numAlignedBases;
+                    metrics.PF_ALIGNED_BASES += numAlignedBases;
+                } else {
+                    super.acceptRecord(rec);
+                }
+            }
+
+            @Override
+            public void finish() {
+                super.finish();
+                if (metrics.PF_ALIGNED_BASES > 0) {
+                    castMetrics().PCT_MT_BASES = castMetrics().MT_BASES / (double) metrics.PF_ALIGNED_BASES;
+                }
+            }
+
+        }
     }
 
     /** Stock main method. */
