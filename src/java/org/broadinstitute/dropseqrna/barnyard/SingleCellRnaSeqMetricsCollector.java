@@ -1,12 +1,6 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMProgramRecord;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.*;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
@@ -100,6 +94,14 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 	protected int doWork() {
     	IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
+
+        if (MT_SEQUENCE != null) {
+            final SAMSequenceRecord samSequenceRecord =
+                    SamReaderFactory.makeDefault().open(INPUT).getFileHeader().getSequence(MT_SEQUENCE);
+            if (samSequenceRecord == null) {
+                throw new RuntimeException("MT_SEQUENCE '" + MT_SEQUENCE + "' is not found in sequence dictionary in " + INPUT.getAbsolutePath());
+            }
+        }
 
 		List<String> cellBarcodes = getCellBarcodes(this.CELL_BC_FILE, this.INPUT, this.CELL_BARCODE_TAG, this.READ_MQ, this.NUM_CORE_BARCODES);
 		RnaSeqMetricsCollector collector = getRNASeqMetricsCollector(this.CELL_BARCODE_TAG, cellBarcodes, this.INPUT, this.STRAND_SPECIFICITY, this.RRNA_FRAGMENT_PERCENTAGE, this.READ_MQ, this.ANNOTATIONS_FILE, this.RIBOSOMAL_INTERVALS);
