@@ -87,21 +87,21 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     @Option(doc="The map quality of the read to be included for determining which cells will be measured.")
 	public Integer READ_MQ=10;
 
-    @Option
-    public String MT_SEQUENCE;
+    @Option(doc="If specified, count bases that align to this sequence separately from other categories")
+    public List<String> MT_SEQUENCE;
 
     @Override
 	protected int doWork() {
-    	IOUtil.assertFileIsReadable(INPUT);
+		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
 
-        if (MT_SEQUENCE != null) {
-            final SAMSequenceRecord samSequenceRecord =
-                    SamReaderFactory.makeDefault().open(INPUT).getFileHeader().getSequence(MT_SEQUENCE);
-            if (samSequenceRecord == null) {
-                throw new RuntimeException("MT_SEQUENCE '" + MT_SEQUENCE + "' is not found in sequence dictionary in " + INPUT.getAbsolutePath());
-            }
-        }
+		for (final String mtSequence : MT_SEQUENCE) {
+			final SAMSequenceRecord samSequenceRecord =
+					SamReaderFactory.makeDefault().open(INPUT).getFileHeader().getSequence(mtSequence);
+			if (samSequenceRecord == null) {
+				throw new RuntimeException("MT_SEQUENCE '" + mtSequence + "' is not found in sequence dictionary in " + INPUT.getAbsolutePath());
+			}
+		}
 
 		List<String> cellBarcodes = getCellBarcodes(this.CELL_BC_FILE, this.INPUT, this.CELL_BARCODE_TAG, this.READ_MQ, this.NUM_CORE_BARCODES);
 		RnaSeqMetricsCollector collector = getRNASeqMetricsCollector(this.CELL_BARCODE_TAG, cellBarcodes, this.INPUT, this.STRAND_SPECIFICITY, this.RRNA_FRAGMENT_PERCENTAGE, this.READ_MQ, this.ANNOTATIONS_FILE, this.RIBOSOMAL_INTERVALS);
@@ -288,8 +288,8 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 
             @Override
             public void acceptRecord(SAMRecord rec) {
-                if (MT_SEQUENCE != null && !rec.getReadFailsVendorQualityCheckFlag() && !rec.isSecondaryOrSupplementary() &&
-                        rec.getReferenceName().equals(MT_SEQUENCE) && !rec.getReadUnmappedFlag()) {
+                if (MT_SEQUENCE.contains(rec.getReferenceName()) && !rec.getReadFailsVendorQualityCheckFlag() &&
+                        !rec.isSecondaryOrSupplementary() && !rec.getReadUnmappedFlag()) {
 
                     metrics.PF_BASES += rec.getReadLength();
                     final int numAlignedBases = getNumAlignedBases(rec);
