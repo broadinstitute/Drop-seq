@@ -25,6 +25,8 @@ import picard.cmdline.StandardOptionDefinitions;
 import picard.util.TabbedTextFileWithHeaderParser;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 @CommandLineProgramProperties(
         usage = "Create standard Drop-seq intervals files: consensus_introns, genes, rRNA, exons, intergenic",
@@ -44,6 +46,9 @@ import java.io.File;
 
     @Option(doc="intervals files are named using this prefix")
     public String PREFIX;
+
+    @Option(doc="Name(s) of MT reference sequence, for creating mt.intervals file")
+    public List<String> MT_SEQUENCE;
 
     public static void main(final String[] args) {
         new CreateIntervalsFiles().instanceMainWithExit(args);
@@ -70,6 +75,14 @@ import java.io.File;
         final IntervalList exons = new IntervalList(samHeader);
         final IntervalList consensusIntrons = new IntervalList(samHeader);
         final IntervalList rRNA = new IntervalList(samHeader);
+        final IntervalList mtIntervals;
+
+        if (MT_SEQUENCE.isEmpty()) {
+            mtIntervals = null;
+        } else {
+            mtIntervals = new IntervalList(createMtSamHeader(samHeader));
+        }
+
 
         final TabbedTextFileWithHeaderParser parser = new TabbedTextFileWithHeaderParser(REDUCED_GTF);
         for (TabbedTextFileWithHeaderParser.Row row : parser) {
@@ -94,6 +107,9 @@ import java.io.File;
                     if (transcriptType.contains(TranscriptType.rRNA.name())) {
                         // e.g. transcriptType "Mt_rRNA" is considered rRNA
                         rRNA.add(interval);
+                    }
+                    if (MT_SEQUENCE.contains(chr)) {
+                        mtIntervals.add(interval);
                     }
                 } else if (annotationType.equals(AnnotationType.exon.name())) {
                     exons.add(interval);
@@ -123,8 +139,25 @@ import java.io.File;
         write(consensusIntrons, "consensus_introns");
         write(rRNA, "rRNA");
         write(intergenic, "intergenic");
+        if (mtIntervals != null) {
+            write(mtIntervals, "mt");
+        }
 
         return 0;
+    }
+
+    private SAMFileHeader createMtSamHeader(final SAMFileHeader samHeader) {
+        final SAMFileHeader mtHeader = samHeader.clone();
+        final List<SAMSequenceRecord> mtSequences = new ArrayList<>(MT_SEQUENCE.size());
+        for (final String mtSequence: MT_SEQUENCE) {
+            final SAMSequenceRecord sequenceRecord = mtHeader.getSequence(mtSequence);
+            if (sequenceRecord == null) {
+                throw new RuntimeException("MT sequence '" + mtSequence + "' not found in sequence dictionary");
+            }
+            mtSequences.add(sequenceRecord);
+        }
+        mtHeader.getSequenceDictionary().setSequences(mtSequences);
+        return mtHeader;
     }
 
     private String makeIntervalName(final String chr, final int start, final int end) {
