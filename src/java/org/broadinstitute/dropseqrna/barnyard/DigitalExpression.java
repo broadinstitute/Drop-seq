@@ -360,8 +360,8 @@ public class DigitalExpression extends DGECommandLineBase {
         return (summaryMap);
     }
 
-    public static void writeSummary(Collection<DESummary> summaryCollection, File outFile) {
-        MetricsFile<DESummary, Integer> out = new MetricsFile<DESummary, Integer>();
+    void writeSummary(Collection<DESummary> summaryCollection, File outFile) {
+        MetricsFile<DESummary, Integer> out = getMetricsFile();
         List<DESummary> sc = new ArrayList<DESummary>(summaryCollection);
         Collections.sort(sc, DigitalExpression.TRANSCRIPT_ORDER_DESCENDING);
         for (DESummary z: sc) {
