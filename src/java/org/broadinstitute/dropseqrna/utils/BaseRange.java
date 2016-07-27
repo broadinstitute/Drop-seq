@@ -45,6 +45,8 @@ public class BaseRange {
 		// another weird bug for non-ascii characters.  Reject any character that isn't a digit or "-"
 		baseRange=sanitizeString(baseRange);
 		String [] split = baseRange.split("-");
+		if (split.length!=2)
+			throw new IllegalArgumentException("Unable to split input base range into a start and end location: " + baseRange+ " Please format your base range input properly.");
 		BaseRange r = new BaseRange(Integer.parseInt(split[0]), Integer.parseInt(split[1]));
 		return r;
 	}

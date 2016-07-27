@@ -40,6 +40,19 @@ public class BaseRangeTest {
 
 	}
 
+	@Test(expectedExceptions=IllegalArgumentException.class)
+	public void parseBaseRangeBAD() {
+		// weird error where ascii character 173 is in here.
+		String BASE_RANGE="13\u00ad20";
+		char [] foo = BASE_RANGE.toCharArray();
+		int val = foo[2];
+		int val2 = foo[1];
+
+		List<BaseRange> baseRanges = BaseRange.parseBaseRange(BASE_RANGE);
+		Assert.assertNotNull(baseRanges);
+
+	}
+
 	@Test(enabled=true, groups = { "dropseq", "transcriptome"})
 	public void testParseBaseRange() {
 		String test = "1-4:17-22";
