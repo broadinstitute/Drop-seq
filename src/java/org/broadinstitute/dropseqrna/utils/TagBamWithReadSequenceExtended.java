@@ -84,7 +84,7 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 			log.error("If TAG_BARCODED_READ=true and DISCARD_READ=true, you're throwing away the tag with the read. Stopping");
 			System.exit(1);
 		}
-		IOUtil.assertFileIsWritable(INPUT);
+		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
 
 		// get the header.
