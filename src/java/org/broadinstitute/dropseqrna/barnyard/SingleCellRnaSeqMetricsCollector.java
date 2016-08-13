@@ -106,6 +106,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 		List<String> cellBarcodes = getCellBarcodes(this.CELL_BC_FILE, this.INPUT, this.CELL_BARCODE_TAG, this.READ_MQ, this.NUM_CORE_BARCODES);
 		RnaSeqMetricsCollector collector = getRNASeqMetricsCollector(this.CELL_BARCODE_TAG, cellBarcodes, this.INPUT, this.STRAND_SPECIFICITY, this.RRNA_FRAGMENT_PERCENTAGE, this.READ_MQ, this.ANNOTATIONS_FILE, this.RIBOSOMAL_INTERVALS);
 		final MetricsFile<RnaSeqMetrics, Integer> file = getMetricsFile();
+		log.info("Adding metrics to file.  This may take a while, with no progress messages.");
     	collector.addAllLevelsToFile(file);
 
     	BufferedWriter b = IOUtil.openFileForBufferedWriting(OUTPUT);
