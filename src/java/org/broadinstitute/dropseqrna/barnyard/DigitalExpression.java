@@ -7,6 +7,20 @@ import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeader;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderCodec;
@@ -18,15 +32,10 @@ import org.broadinstitute.dropseqrna.utils.editdistance.EDUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
+
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintStream;
-import java.util.*;
 
 @CommandLineProgramProperties(
         usage = "Measures the digital expression of a library.  " +
@@ -93,9 +102,8 @@ public class DigitalExpression extends DGECommandLineBase {
                 String uri = sequence.getAttribute(SAMSequenceRecord.URI_TAG);
                 if (uri != null) {
                     final String filePrefix = "file:";
-                    if (uri.startsWith(filePrefix)) {
-                        uri = uri.substring(filePrefix.length());
-                    }
+                    if (uri.startsWith(filePrefix))
+						uri = uri.substring(filePrefix.length());
                     REFERENCE = new File(uri);
                 }
             }
@@ -123,29 +131,25 @@ public class DigitalExpression extends DGECommandLineBase {
     @Override
     protected String[] customCommandLineValidation() {
         final String[] superErrors = super.customCommandLineValidation();
-        if (OUTPUT_HEADER == null) {
-            OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
-        }
-        if (UNIQUE_EXPERIMENT_ID != null || !OUTPUT_HEADER) {
-            return superErrors;
-        } else {
+        if (OUTPUT_HEADER == null)
+			OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
+        if (UNIQUE_EXPERIMENT_ID != null || !OUTPUT_HEADER)
+			return superErrors;
+		else {
             final ArrayList<String> list = new ArrayList<>(1);
-            if (superErrors != null) {
-                for (final String msg: superErrors) {
-                    list.add(msg);
-                }
-            }
+            if (superErrors != null)
+				for (final String msg: superErrors)
+					list.add(msg);
             list.add("If OUTPUT_HEADER==true, UNIQUE_EXPERIMENT_ID must be set");
             return list.toArray(new String[list.size()]);
         }
     }
 
-    private void digitalExpression(List<String> cellBarcodes) {
+    private void digitalExpression(final List<String> cellBarcodes) {
         PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
 
-        if (OUTPUT_HEADER) {
-            writeDgeHeader(out);
-        }
+        if (OUTPUT_HEADER)
+			writeDgeHeader(out);
 
         writeHeader(out, cellBarcodes);
 
@@ -160,9 +164,8 @@ public class DigitalExpression extends DGECommandLineBase {
 
         UMICollection batch;
         while ((batch=umiIterator.next())!=null) {
-            if (batch==null || batch.isEmpty()){
-                continue;
-            }
+            if (batch==null || batch.isEmpty())
+				continue;
             String currentGene = batch.getGeneName();
             // if just starting the loop
             if (gene==null) gene=currentGene;
@@ -192,20 +195,18 @@ public class DigitalExpression extends DGECommandLineBase {
             addToSummary(countMap, summaryMap);
         }
         out.close();
-        if (this.SUMMARY!=null) {
-            writeSummary(summaryMap.values(), this.SUMMARY);
-        }
+        if (this.SUMMARY!=null)
+			writeSummary(summaryMap.values(), this.SUMMARY);
 
 
     }
 
-    private void writeDgeHeader(PrintStream out) {
+    private void writeDgeHeader(final PrintStream out) {
         DgeHeader header = new DgeHeader();
         header.setExpressionFormat(DgeHeader.ExpressionFormat.raw);
         DgeHeaderLibrary lib = new DgeHeaderLibrary(UNIQUE_EXPERIMENT_ID);
-        if (REFERENCE != null) {
-            lib.setReference(REFERENCE.getAbsoluteFile());
-        }
+        if (REFERENCE != null)
+			lib.setReference(REFERENCE.getAbsoluteFile());
         lib.setInput(INPUT.getAbsoluteFile());
         setDgeHeaderLibraryField(lib, "OUTPUT_READS_INSTEAD", OUTPUT_READS_INSTEAD);
         setDgeHeaderLibraryField(lib, "MIN_SUM_EXPRESSION", MIN_SUM_EXPRESSION);
@@ -216,7 +217,11 @@ public class DigitalExpression extends DGECommandLineBase {
         setDgeHeaderLibraryField(lib, "MIN_NUM_GENES_PER_CELL", MIN_NUM_GENES_PER_CELL);
         setDgeHeaderLibraryField(lib, "MIN_NUM_TRANSCRIPTS_PER_CELL", MIN_NUM_TRANSCRIPTS_PER_CELL);
         setDgeHeaderLibraryField(lib, "NUM_CORE_BARCODES", NUM_CORE_BARCODES);
-        setDgeHeaderLibraryField(lib, "CELL_BC_FILE", CELL_BC_FILE.getAbsoluteFile());
+        // if the file is null, don't try to get the absolute file, because that's...uncomfortable.
+        if (this.CELL_BC_FILE!=null)
+			setDgeHeaderLibraryField(lib, "CELL_BC_FILE", CELL_BC_FILE.getAbsoluteFile());
+		else
+			setDgeHeaderLibraryField(lib, "CELL_BC_FILE", null);
         setDgeHeaderLibraryField(lib, "USE_STRAND_INFO", USE_STRAND_INFO);
         setDgeHeaderLibraryField(lib, "RARE_UMI_FILTER_THRESHOLD", RARE_UMI_FILTER_THRESHOLD);
         header.addLibrary(lib);
@@ -232,11 +237,10 @@ public class DigitalExpression extends DGECommandLineBase {
 
     private <T> void setDgeHeaderLibraryField(final DgeHeaderLibrary lib, final String key, final T value) {
         String stringValue;
-        if (value != null) {
-            stringValue = value.toString();
-        } else {
-            stringValue = "NULL";
-        }
+        if (value != null)
+			stringValue = value.toString();
+		else
+			stringValue = "NULL";
         lib.setTag(key, stringValue);
     }
 
@@ -251,7 +255,7 @@ public class DigitalExpression extends DGECommandLineBase {
      * @param threshold
      * @return
      */
-    public ObjectCounter <String> collapseByEditDistance (ObjectCounter<String> barcodes, int editDistance, int threshold) {
+    public ObjectCounter <String> collapseByEditDistance (final ObjectCounter<String> barcodes, final int editDistance, final int threshold) {
         // map the barcode to the object so I can look up counts
 
 
@@ -286,7 +290,7 @@ public class DigitalExpression extends DGECommandLineBase {
     }
 
 
-    private void writeStats (String gene, Map<String, Integer> countMap, List<String> cellBarcodes, PrintStream out) {
+    private void writeStats (final String gene, final Map<String, Integer> countMap, final List<String> cellBarcodes, final PrintStream out) {
 
         int totalCount=0;
         List<String> line = new ArrayList<String>(cellBarcodes.size()+1);
@@ -309,12 +313,11 @@ public class DigitalExpression extends DGECommandLineBase {
     }
 
 
-    private void writeHeader(PrintStream out, List<String> cellBarcodes) {
+    private void writeHeader(final PrintStream out, final List<String> cellBarcodes) {
         List<String> header = new ArrayList<String>(cellBarcodes.size()+1);
         header.add("GENE");
-        for (String c: cellBarcodes) {
-            header.add(c);
-        }
+        for (String c: cellBarcodes)
+			header.add(c);
         String h = StringUtils.join(header, "\t");
         out.println(h);
     }
@@ -325,7 +328,7 @@ public class DigitalExpression extends DGECommandLineBase {
         public int NUM_GENES;
         public int NUM_TRANSCRIPTS;
 
-        public DESummary (String cellBarcode) {
+        public DESummary (final String cellBarcode) {
             this.CELL_BARCODE=cellBarcode;
             this.NUM_GENES=0;
             this.NUM_TRANSCRIPTS=0;
@@ -334,12 +337,13 @@ public class DigitalExpression extends DGECommandLineBase {
     }
 
     static final Comparator<DESummary> TRANSCRIPT_ORDER_DESCENDING =  new Comparator<DESummary>() {
-        public int compare(DESummary e1, DESummary e2) {
+        @Override
+		public int compare(final DESummary e1, final DESummary e2) {
             return (e1.NUM_TRANSCRIPTS > e2.NUM_TRANSCRIPTS ? -1 : e1.NUM_TRANSCRIPTS == e2.NUM_TRANSCRIPTS ? 0 : 1);
         }
     };
 
-    public static Map<String, DESummary> initializeSummary(Collection<String> cellBarcodes) {
+    public static Map<String, DESummary> initializeSummary(final Collection<String> cellBarcodes) {
         Map<String, DESummary> map = new HashMap<String, DESummary>();
 
         for (String s: cellBarcodes) {
@@ -349,7 +353,7 @@ public class DigitalExpression extends DGECommandLineBase {
         return (map);
     }
 
-    public static Map<String, DESummary> addToSummary(Map<String, Integer> countMap, Map<String, DESummary> summaryMap) {
+    public static Map<String, DESummary> addToSummary(final Map<String, Integer> countMap, final Map<String, DESummary> summaryMap) {
         for (String cellBC: countMap.keySet()) {
             DESummary sum = summaryMap.get(cellBC);
             // for genes, it doesn't matter what the count is as long as it's > 0.  Increment by 1.
@@ -360,13 +364,12 @@ public class DigitalExpression extends DGECommandLineBase {
         return (summaryMap);
     }
 
-    void writeSummary(Collection<DESummary> summaryCollection, File outFile) {
+    void writeSummary(final Collection<DESummary> summaryCollection, final File outFile) {
         MetricsFile<DESummary, Integer> out = getMetricsFile();
         List<DESummary> sc = new ArrayList<DESummary>(summaryCollection);
         Collections.sort(sc, DigitalExpression.TRANSCRIPT_ORDER_DESCENDING);
-        for (DESummary z: sc) {
-            out.addMetric(z);
-        }
+        for (DESummary z: sc)
+			out.addMetric(z);
         out.write(outFile);
     }
 
