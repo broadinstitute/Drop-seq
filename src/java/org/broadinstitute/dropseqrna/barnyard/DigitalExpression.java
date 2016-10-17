@@ -93,6 +93,9 @@ public class DigitalExpression extends DGECommandLineBase {
 
         IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
+        if (OUTPUT_HEADER == null) {
+            OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
+        }
         if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(this.SUMMARY);
         if (this.UNIQUE_EXPERIMENT_ID==null) this.OUTPUT_HEADER=true;
 
@@ -127,23 +130,6 @@ public class DigitalExpression extends DGECommandLineBase {
         }
 
         return 0;
-    }
-
-    @Override
-    protected String[] customCommandLineValidation() {
-        final String[] superErrors = super.customCommandLineValidation();
-        if (OUTPUT_HEADER == null)
-			OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
-        if (UNIQUE_EXPERIMENT_ID != null || !OUTPUT_HEADER)
-			return superErrors;
-		else {
-            final ArrayList<String> list = new ArrayList<>(1);
-            if (superErrors != null)
-				for (final String msg: superErrors)
-					list.add(msg);
-            list.add("If OUTPUT_HEADER==true, UNIQUE_EXPERIMENT_ID must be set");
-            return list.toArray(new String[list.size()]);
-        }
     }
 
     private void digitalExpression(final List<String> cellBarcodes) {

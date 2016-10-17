@@ -148,21 +148,31 @@ public class DigitalExpressionTest {
 		makeDigitalExpressionFile(true);
 	}
 
+    /**
+     * Have to go through CLP in order to make sure this works, because UEI check was in CLP validation.
+     */
+    @Test
+    public void testDigitalExpressionWithHeaderButNoUei() throws IOException {
+        final File[] tempFiles = prepareToDigitalExpression();
+        final String[] dgeArgs = new String[]{
+                "INPUT=" + IN_FILE.getAbsolutePath(),
+                "OUTPUT=" + tempFiles[1].getAbsolutePath(),
+                "SUMMARY=" + tempFiles[2].getAbsolutePath(),
+                "CELL_BC_FILE=" + tempFiles[0].getAbsolutePath(),
+                "OUTPUT_HEADER=true"
+        };
+        Assert.assertEquals(new DigitalExpression().instanceMain(dgeArgs), 0);
+    }
+
 	/**
 	 * @return A digital expression file, which is marked as deleteOnExit
      */
     public static File makeDigitalExpressionFile(final boolean outputHeader) throws IOException {
-		final File outFile = File.createTempFile("testDigitalExpression.", ".digital_expression.txt.gz");
-		final File summaryFile = File.createTempFile("testDigitalExpression.", ".digital_expression_summary.txt");
-        final File cellBarcodesFile = File.createTempFile("testDigitalExpression.", ".selectedCellBarcodes.txt");
-		outFile.deleteOnExit();
-		summaryFile.deleteOnExit();
-        cellBarcodesFile.deleteOnExit();
-        final ErrorCheckingPrintWriter writer = new ErrorCheckingPrintWriter(cellBarcodesFile);
-        for (final String cellBarcode : barcodes) {
-            writer.println(cellBarcode);
-        }
-        writer.close();
+        final File[] tempFiles = prepareToDigitalExpression();
+		final File outFile = tempFiles[1];
+		final File summaryFile = tempFiles[2];
+        final File cellBarcodesFile = tempFiles[0];
+
         final DigitalExpression de = new DigitalExpression();
 		de.INPUT = IN_FILE;
 		de.OUTPUT = outFile;
@@ -173,5 +183,26 @@ public class DigitalExpressionTest {
         Assert.assertEquals(de.doWork(), 0);
         return outFile;
 	}
-	
+
+
+    /**
+     * Creates barcodes file, DGE outfile (empty) and DGE summary file (empty), in temp directory and marked as
+     * deleteOnExit().
+     * @return [cellBarcodeFile, DgeOutFile, DgeSummaryFile]
+     * @throws IOException
+     */
+    private static File[] prepareToDigitalExpression() throws IOException {
+        final File outFile = File.createTempFile("testDigitalExpression.", ".digital_expression.txt.gz");
+        final File summaryFile = File.createTempFile("testDigitalExpression.", ".digital_expression_summary.txt");
+        final File cellBarcodesFile = File.createTempFile("testDigitalExpression.", ".selectedCellBarcodes.txt");
+        outFile.deleteOnExit();
+        summaryFile.deleteOnExit();
+        cellBarcodesFile.deleteOnExit();
+        final ErrorCheckingPrintWriter writer = new ErrorCheckingPrintWriter(cellBarcodesFile);
+        for (final String cellBarcode : barcodes) {
+            writer.println(cellBarcode);
+        }
+        writer.close();
+        return new File[]{cellBarcodesFile, outFile, summaryFile};
+    }
 }
