@@ -97,7 +97,6 @@ public class DigitalExpression extends DGECommandLineBase {
             OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
         }
         if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(this.SUMMARY);
-        if (this.UNIQUE_EXPERIMENT_ID==null) this.OUTPUT_HEADER=true;
 
         if (REFERENCE == null && OUTPUT_HEADER) {
             final SAMFileHeader header = SamReaderFactory.makeDefault().open(INPUT).getFileHeader();
