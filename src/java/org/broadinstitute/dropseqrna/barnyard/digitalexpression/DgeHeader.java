@@ -21,6 +21,7 @@ public class DgeHeader {
     private String version = CURRENT_VERSION;
     private ExpressionFormat expressionFormat = ExpressionFormat.raw;
 
+    /** key: prefix */
     private LinkedHashMap<String, DgeHeaderLibrary> libraries = new LinkedHashMap<>();
     private ArrayList<DgeHeaderCommand> commands = new ArrayList<>();
 
@@ -48,11 +49,11 @@ public class DgeHeader {
      * @return previous library with same UEI, or null if there wasn't one.
      */
     public DgeHeaderLibrary addLibrary(final DgeHeaderLibrary library) {
-        return libraries.put(library.getUei(), library);
+        return libraries.put(library.getPrefix(), library);
     }
 
-    public DgeHeaderLibrary getLibrary(final String uei) {
-        return libraries.get(uei);
+    public DgeHeaderLibrary getLibrary(final String prefix) {
+        return libraries.get(prefix);
     }
 
     public DgeHeaderLibrary getLibrary(int i) {
@@ -65,8 +66,8 @@ public class DgeHeader {
         return it.next();
     }
 
-    public DgeHeaderLibrary removeLibrary(final String uei) {
-        return libraries.remove(uei);
+    public DgeHeaderLibrary removeLibrary(final String prefix) {
+        return libraries.remove(prefix);
     }
 
     public DgeHeaderLibrary removeLibrary(int i) {

@@ -33,8 +33,8 @@ public class DgeHeaderCodec {
 
     public void encode(final Writer writer, final DgeHeader header) {
         writeLine(writer, buildFirstLine(header));
-        for (final String uei : new IterableAdapter<>(header.iterateLibraries())) {
-            writeLine(writer, buildLibraryLine(header.getLibrary(uei)));
+        for (final String prefix : new IterableAdapter<>(header.iterateLibraries())) {
+            writeLine(writer, buildLibraryLine(header.getLibrary(prefix)));
         }
         for (final DgeHeaderCommand command: new IterableAdapter<>(header.iterateCommands())) {
             writeLine(writer, buildCommandLine(command));
