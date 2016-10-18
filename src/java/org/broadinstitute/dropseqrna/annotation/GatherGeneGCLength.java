@@ -72,6 +72,10 @@ public class GatherGeneGCLength extends CommandLineProgram {
         ReferenceSequenceFileWalker refFileWalker = new ReferenceSequenceFileWalker(REFERENCE);
 
         SAMSequenceDictionary dict= refFileWalker.getSequenceDictionary();
+        if (dict==null) {
+        	CloserUtil.close(refFileWalker);
+        	throw new IllegalArgumentException("Reference file" + this.REFERENCE.getAbsolutePath()+" is missing a dictionary file [.dict].  Please make one!");
+        }
 
         OverlapDetector<Gene> geneOverlapDetector= GeneAnnotationReader.loadAnnotationsFile(GTF, dict);
 
