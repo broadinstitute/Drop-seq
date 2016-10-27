@@ -11,16 +11,18 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.samtools.util.SequenceUtil;
 
 import java.io.File;
 import java.io.PrintStream;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.broadinstitute.dropseqrna.cmdline.MetaData;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
@@ -49,8 +51,11 @@ public class GatherGeneGCLength extends CommandLineProgram {
     @Option(doc="The GTF file containing gene models to generate length and GC metrics from")
 	public File GTF;
 
-	@Option(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME,doc="The output report containg the genes and GC/Length metrics.")
+	@Option(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME,doc="The output report containg the genes and GC/Length metrics.  Output at the gene level, using the median values across transcripts.")
 	public File OUTPUT;
+
+	@Option(doc="The output report containg the genes and GC/Length metrics at the transcript level.", optional=true)
+	public File OUTPUT_TRANSCRIPT_LEVEL;
 
 	@Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="The reference fasta")
     public File REFERENCE;
@@ -69,6 +74,11 @@ public class GatherGeneGCLength extends CommandLineProgram {
         PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
         writeHeader(out);
 
+        PrintStream outTranscript = null;
+        if (this.OUTPUT_TRANSCRIPT_LEVEL!=null) {
+			outTranscript = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT_TRANSCRIPT_LEVEL));
+			writeHeaderTranscript(outTranscript);
+        }
         ReferenceSequenceFileWalker refFileWalker = new ReferenceSequenceFileWalker(REFERENCE);
 
         SAMSequenceDictionary dict= refFileWalker.getSequenceDictionary();
@@ -90,17 +100,21 @@ public class GatherGeneGCLength extends CommandLineProgram {
 			Interval i = new Interval(seqName, 1, record.getSequenceLength());
 			Collection< Gene> genes = geneOverlapDetector.getOverlaps(i);
 			for (Gene g: genes) {
-				GCResult gc = calculateGCContent(g, fastaRef, dict);
-				int medianLength = getMedianTranscriptLength(g);
-				writeResult(g, gc, medianLength, out);
+				List<GCResult> gcList = calculateGCContentGene(g, fastaRef, dict);
+				if (this.OUTPUT_TRANSCRIPT_LEVEL!=null)
+					writeResultTranscript(gcList, outTranscript);
+				GCIsoformSummary summary = new GCIsoformSummary(g, gcList);
+
+				GCResult gc = calculateGCContentUnionExons(g, fastaRef, dict);
+
+				writeResult(gc, summary, out);
 			}
 		}
 		CloserUtil.close(refFileWalker);
 		CloserUtil.close(out);
+		if (this.OUTPUT_TRANSCRIPT_LEVEL!=null) CloserUtil.close(outTranscript);
         return 0;
 	}
-
-
 
 	/**
 	 * For a GC record and a fasta sequence, calculate the GC content.
@@ -109,7 +123,7 @@ public class GatherGeneGCLength extends CommandLineProgram {
 	 * @param fastaRef
 	 * @return
 	 */
-	private GCResult calculateGCContent(final Gene gene, final ReferenceSequence fastaRef, final SAMSequenceDictionary dict) {
+	private GCResult calculateGCContentUnionExons(final Gene gene, final ReferenceSequence fastaRef, final SAMSequenceDictionary dict) {
 		// make an interval list.
 		SAMFileHeader h = new SAMFileHeader();
 		h.setSequenceDictionary(dict);
@@ -123,21 +137,302 @@ public class GatherGeneGCLength extends CommandLineProgram {
 		List<Interval> uniqueIntervals = IntervalList.getUniqueIntervals(intervalList, false);
 
 		// track aggregated GC.
-		GCResult result = new GCResult(0, 0);
+		GCResult result = new GCResult(0, 0, 0);
 
 		for (Interval i: uniqueIntervals) {
-			GCResult gcResultInterval = calculateGCContent(i, fastaRef);
-			result.incrementGCCount(gcResultInterval.getGcCount());
-			result.incrementRegionLength(gcResultInterval.getRegionLength());
+			GCResult gcResultInterval = calculateGCContentExon(i, fastaRef);
+			result.increment(gcResultInterval);
 		}
 		return result;
 	}
+
+
+	private List<GCResult> calculateGCContentGene (final Gene gene, final ReferenceSequence fastaRef, final SAMSequenceDictionary dict) {
+		List<GCResult> result = new ArrayList<GCResult>();
+
+		for (Transcript t : gene) {
+			String seq=getTranscriptSequence(t, fastaRef, dict);
+			GCResult gc = new GCResult(seq);
+			gc.setTranscript(t);
+
+			// check for GQuadruplexes.
+			List<GQuadruplex> gq = GQuadruplex.find(t.name, seq);
+			/*
+			if (gq.size()>0) {
+				log.info(t.name + ":" +seq);
+				for (GQuadruplex r: gq)
+					log.info(r);
+			}
+			*/
+			gc.incrementGQuadruplexCount(gq.size());
+			result.add(gc);
+		}
+		return (result);
+	}
+
+
+	public static double getMedian (final double [] data) {
+		Arrays.sort(data);
+		int numTranscripts=data.length;
+		int middle = numTranscripts/2;
+		if (numTranscripts%2==1) {
+			double result = data[middle];
+			return (result);
+
+		}
+		else {
+			double result = (data[middle-1] + data[middle])/2;
+			return result;
+
+		}
+	}
+
+	/**
+	 * For a given transcript model, gather up the exons in genomic order, get their sequences, stitch them together,
+	 * upper case them, then reverse compliment if the gene this transcript belongs to is on the negative strand.
+	 * @param transcript
+	 * @param fastaRef
+	 * @param dict
+	 * @return
+	 */
+	public String getTranscriptSequence (final Transcript transcript, final ReferenceSequence fastaRef, final SAMSequenceDictionary dict) {
+
+		StringBuilder b = new StringBuilder();
+
+		for (Exon e: transcript.exons) {
+			Interval i= new Interval ( transcript.getGene().getContig(), e.start, e.end, transcript.getGene().isNegativeStrand(), transcript.getGene().getName());
+			String seq=ReferenceUtils.getSequence (fastaRef.getBases(), i);
+			b.append(seq);
+		}
+		// build the sequence in genomic order, upper case, reverse compliment if needed.
+		String finalSeq = b.toString();
+		finalSeq=finalSeq.toUpperCase();
+		// if the sequence is on the negative strand, reverse compliemnt.
+		if (transcript.getGene().isNegativeStrand()) finalSeq=SequenceUtil.reverseComplement(finalSeq);
+		// log.info(">" + transcript.name + "\n" + finalSeq);
+		return (finalSeq);
+	}
+
+
+	private GCResult calculateGCContentExon (final Interval interval, final ReferenceSequence fastaRef) {
+		//ensure that the start and end positions occur within the genome.
+		String seq=ReferenceUtils.getSequence (fastaRef.getBases(), interval);
+		// if the sequence is on the negative strand, reverse compliemnt.
+		if (interval.isNegativeStrand()) seq=SequenceUtil.reverseComplement(seq);
+		GCResult result = new GCResult(seq);
+		return (result);
+	}
+
+
+	public class GCIsoformSummary {
+
+		private List<GCResult> transcriptGCList;
+		private Gene gene;
+
+		public GCIsoformSummary (final Gene gene, final List<GCResult> transcriptGCList) {
+			this.transcriptGCList=transcriptGCList;
+			this.gene=gene;
+		}
+
+		public double getMedianGC () {
+			double result = getMedian(transcriptGCList.stream().mapToDouble(GCResult::getGCPercent).toArray());
+			return (result);
+		}
+
+		public double getMedianG () {
+			double result = getMedian(transcriptGCList.stream().mapToDouble(GCResult::getGPercent).toArray());
+			return (result);
+		}
+
+		public double getMedianC () {
+			double result = getMedian(transcriptGCList.stream().mapToDouble(GCResult::getCPercent).toArray());
+			return (result);
+		}
+
+		public int getMedianTranscriptLength() {
+			double result = getMedian(transcriptGCList.stream().mapToDouble(GCResult::getRegionLength).toArray());
+			return (int) Math.round(result);
+		}
+
+		public int getMedianGQuadruplexes() {
+			return (int) Math.round(getMedian(transcriptGCList.stream().mapToDouble(GCResult::getNumGQuadruplexesObserved).toArray()));
+		}
+
+		public int getNumTranscripts () {
+			return this.transcriptGCList.size();
+		}
+
+		public Gene getGene () {
+			return this.gene;
+		}
+
+		@Override
+		public String toString () {
+			StringBuilder b = new StringBuilder();
+			b.append(this.gene.toString());
+			b.append(" %GC [" + percentageFormat.format(this.getMedianGC())+"]");
+			b.append(" %G [" + percentageFormat.format(this.getMedianG())+"]");
+			b.append(" %C [" + percentageFormat.format(this.getMedianC())+"]");
+			b.append(" median GQuadruplex [" + this.getMedianGQuadruplexes() +"]");
+			b.append(" Length [" + this.getMedianTranscriptLength()+"]");
+
+			return b.toString();
+		}
+
+	}
+
+	public class GCResult {
+		private int regionLength=0;
+		private Transcript transcript=null;
+
+		private int gCount=0;
+		private int cCount=0;
+		private int numGQuadruplexesObserved=0;
+
+		public GCResult (final String sequence) {
+			String seq=sequence.toUpperCase();
+			char [] seqArray=seq.toCharArray();
+			regionLength=seqArray.length;
+			for (char c: seqArray) {
+				if (c=='C') this.incrementC(1);
+				if (c=='G') this.incrementG(1);
+			}
+		}
+
+		public GCResult (final int regionLength, final int cCount, final int gCount) {
+			this.regionLength=regionLength;
+			this.cCount+=cCount;
+			this.gCount+=gCount;
+		}
+
+		public int getRegionLength() {
+			return regionLength;
+		}
+
+		public int getGcCount() {
+			return gCount+cCount;
+		}
+
+		public double getGCPercent() {
+			double result = (this.getGcCount() / (double) this.regionLength)*100;
+			return (result);
+		}
+
+		public double getCPercent () {
+			double result = ((double) this.cCount / (double) this.regionLength)*100;
+			return (result);
+		}
+
+		public double getGPercent () {
+			double result = ((double) this.gCount / (double) this.regionLength)*100;
+			return (result);
+		}
+
+		public void incrementRegionLength(final int length) {
+			this.regionLength+=length;
+		}
+
+		public void incrementG (final int count) {
+			this.gCount+=count;
+		}
+
+		public void incrementC (final int count) {
+			this.cCount+=count;
+		}
+
+		public void increment(final GCResult other) {
+			this.cCount+=other.cCount;
+			this.gCount+=other.gCount;
+			this.regionLength+=other.regionLength;
+		}
+
+		public void incrementGQuadruplexCount(final int count) {
+			this.numGQuadruplexesObserved+=count;
+		}
+
+		public int getNumGQuadruplexesObserved() {
+			return this.numGQuadruplexesObserved;
+		}
+
+		public Transcript getTranscript() {
+			return transcript;
+		}
+
+		public void setTranscript(final Transcript transcript) {
+			this.transcript = transcript;
+		}
+
+
+		@Override
+		public boolean equals(final Object obj) {
+			   if (obj == null)
+				return false;
+			   if (obj == this)
+				return true;
+			   if (obj.getClass() != getClass())
+				return false;
+			   GCResult rhs = (GCResult) obj;
+			   return new EqualsBuilder()
+			                 .appendSuper(super.equals(obj))
+			                 .append(gCount, rhs.gCount)
+			                 .append(cCount, rhs.cCount)
+			                 .append(regionLength, rhs.regionLength)
+			                 .append(numGQuadruplexesObserved, rhs.numGQuadruplexesObserved)
+			                 .isEquals();
+		}
+
+		@Override
+		public String toString() {
+			return "Length [" +this.regionLength +"] %G [" +percentageFormat.format(this.getGPercent()) +"] %C [" + percentageFormat.format(this.getCPercent()) +"] %GC ["+percentageFormat.format(this.getGCPercent()) +"]" + "G-Quadruplexes [" + this.numGQuadruplexesObserved +"]";
+		}
+	}
+
+
+
+	 private void writeHeader(final PrintStream out) {
+		 String [] header = {"GENE", "CHR", "START", "END", "PCT_GC_UNIQUE_EXON_BASES", "PCT_GC_ISOFORM_AVERAGE", "PCT_C_ISOFORM_AVERAGE", "PCT_G_ISOFORM_AVERAGE", "MEDIAN_TRANSCRIPT_LENGTH", "NUM_TRANSCRIPTS", "MEDIAN_GQUADRUPLEXES"};
+		 String h = StringUtils.join(header, "\t");
+		 out.println(h);
+	 }
+
+	private void writeResult(final GCResult gc, final GCIsoformSummary summary, final PrintStream out) {
+
+		Gene gene = summary.getGene();
+		String[] line = {gene.getName(), gene.getContig(), Integer.toString(gene.getStart()), Integer.toString(gene.getEnd()), percentageFormat.format(gc.getGCPercent()),
+				percentageFormat.format(summary.getMedianGC()), percentageFormat.format(summary.getMedianC()), percentageFormat.format(summary.getMedianG()),
+				Integer.toString(summary.getMedianTranscriptLength()), Integer.toString(summary.getNumTranscripts()), Integer.toString(summary.getMedianGQuadruplexes())};
+		String h = StringUtils.join(line, "\t");
+		out.println(h);
+	}
+
+	private void writeHeaderTranscript(final PrintStream out) {
+		 String [] header = {"TRANSCRIPT", "CHR", "START", "END", "PCT_GC", "PCT_C", "PCT_G", "TRANSCRIPT_LENGTH", "NUM_GQUADRUPLEXES"};
+		 String h = StringUtils.join(header, "\t");
+		 out.println(h);
+	 }
+
+	public void writeResultTranscript (final List<GCResult> gcList, final PrintStream out) {
+		for (GCResult gc: gcList)
+			writeResultTranscript(gc, out);
+	}
+
+	public void writeResultTranscript(final GCResult gc, final PrintStream out) {
+		String [] line = {gc.getTranscript().name, gc.getTranscript().getGene().getContig(), Integer.toString(gc.getTranscript().start()), Integer.toString(gc.getTranscript().end()),
+				percentageFormat.format(gc.getGCPercent()), percentageFormat.format(gc.getCPercent()), percentageFormat.format(gc.getGPercent()),
+				Integer.toString(gc.getRegionLength()), Integer.toString(gc.getNumGQuadruplexesObserved())};
+
+		String h = StringUtils.join(line, "\t");
+		out.println(h);
+
+	}
+
 
 	/**
 	 * Get the median transcript length fromt the gene model.
 	 * @param gene
 	 * @return
 	 */
+	/*
 	private int getMedianTranscriptLength (final Gene gene) {
 		List<Double> transcriptLengths= new ArrayList<Double>();
 
@@ -147,85 +442,28 @@ public class GatherGeneGCLength extends CommandLineProgram {
 		}
 
 		// calculate the median.
-		Collections.sort(transcriptLengths);
-		int numTranscripts=transcriptLengths.size();
+		double median = getMedian(transcriptLengths);
+		return (int) Math.round(median);
+
+	}
+	*/
+	/*
+	private double getMedian (final List<Double> data) {
+		Collections.sort(data);
+		int numTranscripts=data.size();
 		int middle = numTranscripts/2;
-		if (numTranscripts%2==1)
-			return (int) Math.round(transcriptLengths.get(middle));
-		else {
-			double result = (transcriptLengths.get(middle-1) + transcriptLengths.get(middle))/2;
-			return (int) Math.round(result);
-		}
-
-	}
-
-
-	private GCResult calculateGCContent (final Interval interval, final ReferenceSequence fastaRef) {
-		//ensure that the start and end positions occur within the genome.
-		String seq=ReferenceUtils.getSequence (fastaRef.getBases(), interval);
-		seq=seq.toUpperCase();
-		char [] seqArray=seq.toCharArray();
-		int gcCount=0;
-		int length=0;
-		for (char c: seqArray) {
-			length++;
-			if (c=='G' || c=='C')
-				gcCount++;
-		}
-		GCResult result = new GCResult(length, gcCount);
-
-		return (result);
-	}
-
-	private class GCResult {
-		private int regionLength=0;
-		private int gcCount=0;
-
-		public GCResult (final int regionLength, final int gcCount) {
-			this.regionLength=regionLength;
-			this.gcCount=gcCount;
-		}
-
-		public int getRegionLength() {
-			return regionLength;
-		}
-
-		public int getGcCount() {
-			return gcCount;
-		}
-
-		public double getGCPercent() {
-			double result = ((double) this.gcCount / (double) this.regionLength)*100;
+		if (numTranscripts%2==1) {
+			double result = data.get(middle);
 			return (result);
+			//return (int) Math.round();
 		}
-
-		public void incrementRegionLength(final int length) {
-			this.regionLength+=length;
-		}
-
-		public void incrementGCCount (final int count) {
-			this.gcCount+=count;
-		}
-
-		@Override
-		public String toString() {
-			return "";
+		else {
+			double result = (data.get(middle-1) + data.get(middle))/2;
+			return result;
+			//return (int) Math.round(result);
 		}
 	}
-
-	 private void writeHeader(final PrintStream out) {
-		 String [] header = {"GENE", "CHR", "START", "END", "PCT_GC_UNIQUE_EXON_BASES", "MEDIAN_TRANSCRIPT_LENGTH"};
-		 String h = StringUtils.join(header, "\t");
-		 out.println(h);
-	 }
-
-	private void writeResult(final Gene gene, final GCResult gc,
-			final int medianTranscriptLength, final PrintStream out) {
-
-		String[] line = {gene.getName(), gene.getContig(), Integer.toString(gene.getStart()), Integer.toString(gene.getEnd()), percentageFormat.format(gc.getGCPercent()), Integer.toString(medianTranscriptLength)};
-		String h = StringUtils.join(line, "\t");
-		out.println(h);
-	}
+	*/
 
 
 	/** Stock main method. */
