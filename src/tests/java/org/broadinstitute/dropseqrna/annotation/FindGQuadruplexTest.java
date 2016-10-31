@@ -15,8 +15,6 @@ public class FindGQuadruplexTest {
 
 	@Test
 	public void findSimple () {
-		FindGQuadruplex finder = new FindGQuadruplex();
-
 		String t1 = "GGGCCTGGGGCTGGGCCTGGG";
 		List<GQuadruplex> r1 = GQuadruplex.find("t1", t1);
 		Assert.assertEquals(1, r1.size());

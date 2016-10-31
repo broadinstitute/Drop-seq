@@ -36,6 +36,8 @@ import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
 
+
+
 @CommandLineProgramProperties(
         usage = "Given a GTF file and a reference sequence, produce a report containing the %GC and length of each gene.  "
         		+ "GC is calculated for each gene by finding the unique set of base positions overlapping an exon and counting [G/C] bases compared to the total number of bases."
