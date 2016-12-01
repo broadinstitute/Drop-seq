@@ -78,8 +78,8 @@ public class TagMetaGenes extends CommandLineProgram{
 	@Option(doc="The maximum map quality of the read to get a metatag.")
 	public Integer MAX_READ_MQ=3;
 
-	@Option(doc="Only consider reads that are within <MAXIMUM_READ_EDIT_DISTANCE> of the place they are mapped to on the reference. ", optional=true)
-	public Integer MAXIMUM_READ_EDIT_DISTANCE=null;
+	// @Option(doc="Only consider reads that are within <MAXIMUM_READ_EDIT_DISTANCE> of the place they are mapped to on the reference. ", optional=true)
+	private Integer MAXIMUM_READ_EDIT_DISTANCE=null;
 
 	@Option(doc="The map quality of uniquely mapped reads.")
 	public Integer UNIQUE_READ_MQ=255;
@@ -233,6 +233,21 @@ public class TagMetaGenes extends CommandLineProgram{
 	}
 
 	private GroupingIterator<SAMRecord> getGroupedReadNameIterator (final SamReader reader) {
+		Iterator<SAMRecord> iter = CustomBAMIterators.getQuerynameSortedRecords(reader);
+		GroupingIterator<SAMRecord> gIter = new GroupingIterator<>(iter, new ReadNameComparator());
+		return (gIter);
+	}
+
+	/**
+	 * A faster iterator that throws out more reads before queryname sorting.  This does not return all reads.
+	 * Reads are removed if they have a map quality below MIN_READ_MQ or above
+	 * @param reader
+	 * @return
+	 */
+	private GroupingIterator<SAMRecord> getGroupedReadNameIteratorFaster (final SamReader reader) {
+		// if the SamReader is in queryName order, then wrap the iterator in filters and grouping and return.
+		// MapQualityFilteredIterator
+
 		Iterator<SAMRecord> iter = CustomBAMIterators.getQuerynameSortedRecords(reader);
 		GroupingIterator<SAMRecord> gIter = new GroupingIterator<>(iter, new ReadNameComparator());
 		return (gIter);
