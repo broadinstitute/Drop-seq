@@ -1,12 +1,13 @@
 package org.broadinstitute.dropseqrna.annotation;
 
-import htsjdk.samtools.SAMException;
-import htsjdk.samtools.SAMFileReader;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.OverlapDetector;
-
 import java.io.File;
 
+import htsjdk.samtools.SAMException;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.OverlapDetector;
 import picard.annotation.Gene;
 
 /**
@@ -16,43 +17,42 @@ import picard.annotation.Gene;
  */
 public class GeneAnnotationReader {
 
-	public static OverlapDetector<Gene> loadAnnotationsFile(File annotationFile, SAMSequenceDictionary sequenceDictionary) {
-		
+	public static OverlapDetector<Gene> loadAnnotationsFile(final File annotationFile, final SAMSequenceDictionary sequenceDictionary) {
+
 		// trim off the potential compression tags on the file.
 		String f = annotationFile.getName();
 		if (f.endsWith(".bz2")) f=f.replaceAll("\\.bz2", "");
 		if (f.endsWith(".gz")) f=f.replaceAll("\\.gz", "");
-		
-		if (f.endsWith(".gtf")) {
+
+		if (f.endsWith(".gtf"))
 			return loadGTFFile(annotationFile, sequenceDictionary);
-		} else if (f.endsWith(".refFlat")) {
+		else if (f.endsWith(".refFlat"))
 			return loadRefFlat(annotationFile, sequenceDictionary);
-		} 
-		
-		throw new SAMException("Unable to determine file format for gene annotation file.  Expect [.gtf | .refFlat]");        
+
+		throw new SAMException("Unable to determine file format for gene annotation file.  Expect [.gtf | .refFlat]");
 	}
 
-	
-	public static OverlapDetector<Gene> loadAnnotationsFile(File annotationFile, File sequenceDictionary) {
+
+	public static OverlapDetector<Gene> loadAnnotationsFile(final File annotationFile, final File sequenceDictionary) {
 		SAMSequenceDictionary sd = getSequenceDictionary(sequenceDictionary);
 		return (loadAnnotationsFile(annotationFile, sd));
 	}
-	
-	
-	private static OverlapDetector<Gene> loadGTFFile(File gtfFile, SAMSequenceDictionary sequenceDictionary) {
+
+
+	private static OverlapDetector<Gene> loadGTFFile(final File gtfFile, final SAMSequenceDictionary sequenceDictionary) {
 		@SuppressWarnings({ "rawtypes", "unchecked" })
 		OverlapDetector<Gene> result = (OverlapDetector) GTFReader.load(gtfFile, sequenceDictionary);
 		return result;
 	}
-	
-	private static OverlapDetector<Gene> loadRefFlat(File refFlatFile, SAMSequenceDictionary sequenceDictionary) {
+
+	private static OverlapDetector<Gene> loadRefFlat(final File refFlatFile, final SAMSequenceDictionary sequenceDictionary) {
 		return picard.annotation.GeneAnnotationReader.loadRefFlat(refFlatFile, sequenceDictionary);
     }
-	
-	private static SAMSequenceDictionary getSequenceDictionary (File sd) {
-		final SAMFileReader r = new SAMFileReader(sd);
-    	SAMSequenceDictionary dict = r.getFileHeader().getSequenceDictionary();
-    	r.close();
+
+	private static SAMSequenceDictionary getSequenceDictionary (final File sd) {
+		SamReader reader = SamReaderFactory.makeDefault().open(sd);
+		SAMSequenceDictionary dict = reader.getFileHeader().getSequenceDictionary();
+		CloserUtil.close(reader);
     	return dict;
 	}
 }
