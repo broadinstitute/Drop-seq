@@ -25,11 +25,15 @@ import org.broadinstitute.dropseqrna.utils.ReadNameComparator;
 import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 import org.broadinstitute.dropseqrna.utils.StringInterner;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+import org.broadinstitute.dropseqrna.utils.readiterators.MapQualityFilteredIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordQueryNameComparator;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloserUtil;
@@ -41,6 +45,7 @@ import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.util.MathUtil;
 
 @CommandLineProgramProperties(
         usage = "A special case tagger.  Using primary and secondary alignments, try to discover genes that have high homology, where reads map to both genes consistently.",
@@ -100,7 +105,11 @@ public class TagMetaGenes extends CommandLineProgram{
 
 		SamReader reader = SamReaderFactory.makeDefault().open(INPUT);
 
-		GroupingIterator<SAMRecord> iter = getGroupedReadNameIterator(reader);
+		// time: 92.69 minutes
+		// GroupingIterator<SAMRecord> iter = getGroupedReadNameIterator(reader);
+
+		// time: 77.70 minutes
+		GroupingIterator<SAMRecord> iter = getGroupedReadNameIteratorFaster(reader);
 
 		SAMFileHeader header = reader.getFileHeader();
 		SamHeaderUtil.addPgRecord(header, this);
@@ -192,7 +201,10 @@ public class TagMetaGenes extends CommandLineProgram{
 	}
 
 	private ObjectCounter<String> populateUniqueMapperGenes (final List<SAMRecord> records, final ObjectCounter<String> uniqueGeneCounter) {
-		Iterator<SAMRecord> filteredReads =  new MapQualityFilteringIterator(records.iterator(), this.UNIQUE_READ_MQ, this.UNIQUE_READ_MQ);
+		Iterator<SAMRecord> filteredReads = new MapQualityFilteredIterator(records.iterator(), this.UNIQUE_READ_MQ, false);
+
+		// Iterator<SAMRecord> filteredReads =  new MapQualityFilteringIterator(records.iterator(), this.UNIQUE_READ_MQ, this.UNIQUE_READ_MQ);
+
 		List<String> geneList = getGeneList(filteredReads);
 		if (geneList.size()>1)
 			log.warn("More than 1 gene for a unique read?  Impossible?");
@@ -239,16 +251,22 @@ public class TagMetaGenes extends CommandLineProgram{
 	}
 
 	/**
-	 * A faster iterator that throws out more reads before queryname sorting.  This does not return all reads.
-	 * Reads are removed if they have a map quality below MIN_READ_MQ or above
+	 * A faster iterator that throws out more reads by filtering to a minimum read quality before queryname sorting.
+	 * Queryname sorting is ignored if the BAM is already in queryname order.
+	 * This iterator does not return all reads in the BAM.
 	 * @param reader
-	 * @return
+	 * @return An iterator of reads with that have a minimum map quality of at least MIN_READ_MQ, in queryname order.
 	 */
+	@SuppressWarnings("resource")
 	private GroupingIterator<SAMRecord> getGroupedReadNameIteratorFaster (final SamReader reader) {
-		// if the SamReader is in queryName order, then wrap the iterator in filters and grouping and return.
-		// MapQualityFilteredIterator
 
-		Iterator<SAMRecord> iter = CustomBAMIterators.getQuerynameSortedRecords(reader);
+		// MapQualityFilteredIterator
+		Iterator<SAMRecord> iter = new MapQualityFilteredIterator(reader.iterator(), this.MIN_READ_MQ, false);
+
+		// if the SamReader is NOT in queryName order, then wrap the iterator in a query name ordering iter.
+		if (!reader.getFileHeader().getSortOrder().equals(SortOrder.queryname))
+			iter = SamRecordSortingIteratorFactory.create(reader.getFileHeader(), iter, new SAMRecordQueryNameComparator(), this.pl);
+
 		GroupingIterator<SAMRecord> gIter = new GroupingIterator<>(iter, new ReadNameComparator());
 		return (gIter);
 	}
@@ -265,8 +283,8 @@ public class TagMetaGenes extends CommandLineProgram{
 		@Override
 	    protected boolean filterOut(final SAMRecord r) {
 			int mq= r.getMappingQuality();
-	    	if (mq<this.maxMapQuality || mq>this.minMapQuality) return true;
-	    	return false;
+	    	if (mq<=this.maxMapQuality && mq>=this.minMapQuality) return false;
+	    	return true;
 	    }
 	}
 
@@ -388,8 +406,10 @@ public class TagMetaGenes extends CommandLineProgram{
 	private static final Comparator<MetaGene> PCT_MULTIMAP_NAME = new Comparator<MetaGene>() {
 		@Override
 		public int compare(final MetaGene o1, final MetaGene o2) {
+			double p1=MathUtil.round(o1.getPercentMultiMappedReads(true), 1);
+			double p2=MathUtil.round(o2.getPercentMultiMappedReads(true), 1);
 		return new CompareToBuilder()
-				.append(o2.getPercentMultiMappedReads(true), o1.getPercentMultiMappedReads(true))
+				.append(p2, p1)
 				.append(o2.getMetaGeneReadCount(), o1.getMetaGeneReadCount())
 				.append(o1.metaGeneName, o2.metaGeneName)
 				.toComparison();
