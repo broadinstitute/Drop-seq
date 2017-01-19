@@ -10,24 +10,36 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
+
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.RuntimeIOException;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
 
 @CommandLineProgramProperties(
         usage = "Determine the cell barcodes that have a minimum number of transcripts.  For a multi-species BAM, " +
@@ -86,20 +98,17 @@ public class SelectCellsByNumTranscripts
     @Override
     protected int doWork() {
         IOUtil.assertFileIsWritable(OUTPUT);
-        if (MIN_READS_PER_CELL == null || MIN_READS_PER_CELL < MIN_TRANSCRIPTS_PER_CELL) {
-            MIN_READS_PER_CELL = MIN_TRANSCRIPTS_PER_CELL;
-        }
+        if (MIN_READS_PER_CELL == null || MIN_READS_PER_CELL < MIN_TRANSCRIPTS_PER_CELL)
+			MIN_READS_PER_CELL = MIN_TRANSCRIPTS_PER_CELL;
         final List<String> cellBarcodes;
-        if (INPUT_INTERIM_CELLS == null) {
-            cellBarcodes = new BarcodeListRetrieval().getListCellBarcodesByReadCount(
+        if (INPUT_INTERIM_CELLS == null)
+			cellBarcodes = new BarcodeListRetrieval().getListCellBarcodesByReadCount(
                     this.INPUT, this.CELL_BARCODE_TAG, this.READ_MQ, this.MIN_READS_PER_CELL, null);
-        } else {
-            cellBarcodes = readBarcodes(INPUT_INTERIM_CELLS);
-        }
+		else
+			cellBarcodes = readBarcodes(INPUT_INTERIM_CELLS);
 
-        if (OUTPUT_INTERIM_CELLS != null) {
-            writeBarcodes(OUTPUT_INTERIM_CELLS, cellBarcodes);
-        }
+        if (OUTPUT_INTERIM_CELLS != null)
+			writeBarcodes(OUTPUT_INTERIM_CELLS, cellBarcodes);
 
         SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false);
 
@@ -107,9 +116,8 @@ public class SelectCellsByNumTranscripts
         if (!ORGANISM.isEmpty()) {
             headerAndIterator = new SamHeaderAndIterator(headerAndIterator.header, new PrefixGeneWithOrganismIterator(headerAndIterator.iterator));
             mapContainer = new MultiOrganismMapContainer(cellBarcodes);
-        } else {
-            mapContainer = new SingleOrganismMapContainer(cellBarcodes);
-        }
+        } else
+			mapContainer = new SingleOrganismMapContainer(cellBarcodes);
 
         // gene/exon tags are sorted first, followed by cells
         UMIIterator umiIterator = new UMIIterator(headerAndIterator,
@@ -121,19 +129,17 @@ public class SelectCellsByNumTranscripts
 
         UMICollection batch;
         while ((batch=umiIterator.next())!=null) {
-            if (batch.isEmpty()){
-                continue;
-            }
+            if (batch.isEmpty())
+				continue;
             String currentGene = batch.getGeneName();
             // if just starting the loop
             if (gene==null) gene=currentGene;
             // you've gathered all the data for the gene, write it out and start on the next.
-            if (!gene.equals(currentGene)) {
-                mapContainer.addToSummary(gene);
-            }
+            if (!gene.equals(currentGene))
+				mapContainer.addToSummary(gene);
             // Accumulate this gene
             gene=currentGene;
-            mapContainer.countExpression(gene, batch.getCellBarcode(), batch.getDigitalExpression(0, this.EDIT_DISTANCE, false));
+            mapContainer.countExpression(gene, batch.getCellBarcode(), batch.getDigitalExpression(0, this.EDIT_DISTANCE, true));
 
         }
         // write out remainder
@@ -147,9 +153,8 @@ public class SelectCellsByNumTranscripts
         Arrays.sort(transcriptsPerCellArray, new EntryComparator());
 
         final List<String> finalBarcodes = new ArrayList<>(transcriptsPerCellArray.length);
-        for (final Map.Entry<String, Integer> entry: transcriptsPerCellArray) {
-            finalBarcodes.add(entry.getKey());
-        }
+        for (final Map.Entry<String, Integer> entry: transcriptsPerCellArray)
+			finalBarcodes.add(entry.getKey());
 
         writeBarcodes(OUTPUT, finalBarcodes);
         log.info("Wrote cell barcodes to " + OUTPUT.getAbsolutePath());
@@ -165,7 +170,7 @@ public class SelectCellsByNumTranscripts
         private final String[] referenceSequencePrefix = new String[ORGANISM.size()];
         private final String[] genePrefix = new String[ORGANISM.size()];
 
-        public PrefixGeneWithOrganismIterator(CloseableIterator<SAMRecord> it) {
+        public PrefixGeneWithOrganismIterator(final CloseableIterator<SAMRecord> it) {
             this.it = it;
             for (int i = 0; i < ORGANISM.size(); ++i) {
                 referenceSequencePrefix[i] = ORGANISM.get(i) + "_";
@@ -183,15 +188,14 @@ public class SelectCellsByNumTranscripts
         public SAMRecord next() {
             final SAMRecord rec = it.next();
             final String reference = rec.getReferenceName();
-            for (int i = 0; i < referenceSequencePrefix.length; ++i) {
-                if (reference.startsWith(referenceSequencePrefix[i])) {
+            for (int i = 0; i < referenceSequencePrefix.length; ++i)
+				if (reference.startsWith(referenceSequencePrefix[i])) {
                     final String geneExon = rec.getStringAttribute(GENE_EXON_TAG);
                     if (geneExon != null) {
                         rec.setAttribute(GENE_EXON_TAG, genePrefix[i] + geneExon);
                         break;
                     }
                 }
-            }
             return rec;
         }
 
@@ -207,7 +211,8 @@ public class SelectCellsByNumTranscripts
 
     private class SingleOrganismMapContainer
             implements MapContainer {
-        final Map<String, Integer> countMap = new HashMap<String, Integer>();
+        final Map<String, Integer> countMap = new HashMap<>();
+
         final Map<String, DigitalExpression.DESummary> summaryMap;
 
         public SingleOrganismMapContainer(final List<String> cellBarcodes) {
@@ -215,24 +220,22 @@ public class SelectCellsByNumTranscripts
         }
 
         @Override
-        public void addToSummary(String gene) {
-            DigitalExpression.addToSummary(countMap, summaryMap);
+        public void addToSummary(final String gene) {
+            DigitalExpression.addToSummary(Collections.emptyMap(), countMap, summaryMap);
             countMap.clear();
         }
 
         @Override
-        public void countExpression(final String gene, String cellBarcode, int molBCCount) {
+        public void countExpression(final String gene, final String cellBarcode, final int molBCCount) {
             countMap.put(cellBarcode, molBCCount);
         }
 
         @Override
         public Map<String, Integer> getTranscriptCountForCellBarcodesOverTranscriptThreshold(final int minNumTranscripts) {
             final Map<String, Integer> ret = new HashMap<>();
-            for (final DigitalExpression.DESummary summary : summaryMap.values()) {
-                if (summary.NUM_TRANSCRIPTS >= minNumTranscripts) {
-                    ret.put(summary.CELL_BARCODE, summary.NUM_TRANSCRIPTS);
-                }
-            }
+            for (final DigitalExpression.DESummary summary : summaryMap.values())
+				if (summary.NUM_TRANSCRIPTS >= minNumTranscripts)
+					ret.put(summary.CELL_BARCODE, summary.NUM_TRANSCRIPTS);
             return ret;
         }
     }
@@ -250,57 +253,50 @@ public class SelectCellsByNumTranscripts
         }
 
         private int getOrganismIndex(final String gene) {
-            for (int i = 0; i < genePrefixes.length; ++i) {
-                if (gene.startsWith(genePrefixes[i])) {
-                    return i;
-                }
-            }
+            for (int i = 0; i < genePrefixes.length; ++i)
+				if (gene.startsWith(genePrefixes[i]))
+					return i;
             return -1;
         }
 
         private SingleOrganismMapContainer getInnerMapContainer(final String gene) {
             final int index = getOrganismIndex(gene);
-            if (index < 0) {
-                throw new IllegalArgumentException("Gene '" + gene + "' is not countable");
-            }
+            if (index < 0)
+				throw new IllegalArgumentException("Gene '" + gene + "' is not countable");
             return innerMapContainer[index];
         }
 
-        private boolean countableGene(String gene) {
+        private boolean countableGene(final String gene) {
             return getOrganismIndex(gene) >= 0;
         }
 
         @Override
-        public void addToSummary(String gene) {
-            if (countableGene(gene)) {
-                getInnerMapContainer(gene).addToSummary(gene);
-            }
+        public void addToSummary(final String gene) {
+            if (countableGene(gene))
+				getInnerMapContainer(gene).addToSummary(gene);
         }
 
         @Override
-        public void countExpression(final String gene, String cellBarcode, int molBCCount) {
-            if (countableGene(gene)) {
-                getInnerMapContainer(gene).countExpression(gene, cellBarcode, molBCCount);
-            }
+        public void countExpression(final String gene, final String cellBarcode, final int molBCCount) {
+            if (countableGene(gene))
+				getInnerMapContainer(gene).countExpression(gene, cellBarcode, molBCCount);
         }
 
         @Override
-        public Map<String, Integer> getTranscriptCountForCellBarcodesOverTranscriptThreshold(int minNumTranscripts) {
+        public Map<String, Integer> getTranscriptCountForCellBarcodesOverTranscriptThreshold(final int minNumTranscripts) {
             Map<String, Integer> ret = null;
             for (SingleOrganismMapContainer somc : innerMapContainer) {
                 final Map<String, Integer> organismSet = somc.getTranscriptCountForCellBarcodesOverTranscriptThreshold(minNumTranscripts);
-                if (ret == null) {
-                    ret = organismSet;
-                } else {
-                    for (final Map.Entry<String, Integer> entry : organismSet.entrySet()) {
+                if (ret == null)
+					ret = organismSet;
+				else
+					for (final Map.Entry<String, Integer> entry : organismSet.entrySet()) {
                         final String cellBarcode = entry.getKey();
                         final Integer numTranscripts = ret.get(cellBarcode);
                         final Integer newNumTranscripts = entry.getValue();
-                        if (numTranscripts == null || numTranscripts < newNumTranscripts) {
-                            ret.put(cellBarcode, newNumTranscripts);
-                        }
+                        if (numTranscripts == null || numTranscripts < newNumTranscripts)
+							ret.put(cellBarcode, newNumTranscripts);
                     }
-                }
             }
             return ret;
         }
@@ -311,7 +307,7 @@ public class SelectCellsByNumTranscripts
      */
     private class EntryComparator implements Comparator<Map.Entry<String, Integer>> {
         @Override
-        public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2) {
+        public int compare(final Map.Entry<String, Integer> o1, final Map.Entry<String, Integer> o2) {
             return o2.getValue().compareTo(o1.getValue());
         }
     }
@@ -335,11 +331,9 @@ public class SelectCellsByNumTranscripts
             final BufferedReader reader = IOUtil.openFileForBufferedReading(file);
             final List<String> ret = new ArrayList<>();
             String barcode;
-            while ((barcode = reader.readLine()) != null) {
-                if (!barcode.isEmpty()) {
-                    ret.add(barcode);
-                }
-            }
+            while ((barcode = reader.readLine()) != null)
+				if (!barcode.isEmpty())
+					ret.add(barcode);
             CloserUtil.close(reader);
             return ret;
         } catch (IOException e) {
@@ -350,15 +344,12 @@ public class SelectCellsByNumTranscripts
     @Override
     protected String[] customCommandLineValidation() {
         List<String> thisErrors = null;
-        if (ORGANISM.size() != new HashSet<>(ORGANISM).size()) {
-            thisErrors = Arrays.asList("Duplicates not allow in ORGANISM argument");
-        } else {
-            for (final String organism : ORGANISM) {
-                if (organism.contains(ORGANISM_SEPARATOR)) {
-                    thisErrors = Arrays.asList("'" + ORGANISM_SEPARATOR + "' not allowed in ORGANISM argument");
-                }
-            }
-        }
+        if (ORGANISM.size() != new HashSet<>(ORGANISM).size())
+			thisErrors = Arrays.asList("Duplicates not allow in ORGANISM argument");
+		else
+			for (final String organism : ORGANISM)
+				if (organism.contains(ORGANISM_SEPARATOR))
+					thisErrors = Arrays.asList("'" + ORGANISM_SEPARATOR + "' not allowed in ORGANISM argument");
         return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), thisErrors);
     }
 

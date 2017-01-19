@@ -1,13 +1,5 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.metrics.MetricBase;
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -33,6 +25,14 @@ import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.metrics.MetricBase;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
@@ -93,9 +93,8 @@ public class DigitalExpression extends DGECommandLineBase {
 
         IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
-        if (OUTPUT_HEADER == null) {
-            OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
-        }
+        if (OUTPUT_HEADER == null)
+			OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
         if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(this.SUMMARY);
 
         if (REFERENCE == null && OUTPUT_HEADER) {
@@ -144,7 +143,8 @@ public class DigitalExpression extends DGECommandLineBase {
                 this.READ_MQ, true, this.USE_STRAND_INFO, cellBarcodes);
 
         String gene = null;
-        Map<String, Integer> countMap = new HashMap<String, Integer>();
+        Map<String, Integer> transcriptCountMap = new HashMap<>();
+        Map<String, Integer> readCountMap = new HashMap<>();
         Map<String, DESummary> summaryMap = initializeSummary(cellBarcodes);
 
 
@@ -160,30 +160,32 @@ public class DigitalExpression extends DGECommandLineBase {
 
                 if (this.RARE_UMI_FILTER_THRESHOLD>0) batch.filterByUMIFrequency(this.RARE_UMI_FILTER_THRESHOLD);
                 int molBCCount = batch.getDigitalExpression(this.MIN_BC_READ_THRESHOLD, this.EDIT_DISTANCE, this.OUTPUT_READS_INSTEAD);
-                countMap.put(batch.getCellBarcode(), molBCCount);
+                transcriptCountMap.put(batch.getCellBarcode(), molBCCount);
+                readCountMap.put(batch.getCellBarcode(), batch.getDigitalExpression(this.MIN_BC_READ_THRESHOLD, this.EDIT_DISTANCE, true));
             }
             // you've gathered all the data for the gene, write it out and start on the next.
             if (!gene.equals(currentGene)) {
-                writeStats (gene, countMap, cellBarcodes, out);
-                addToSummary(countMap, summaryMap);
-                countMap.clear();
+                writeStats (gene, transcriptCountMap, cellBarcodes, out);
+                addToSummary(readCountMap, transcriptCountMap, summaryMap);
+                transcriptCountMap.clear();
                 // start the next gene
                 if (this.RARE_UMI_FILTER_THRESHOLD>0) batch.filterByUMIFrequency(this.RARE_UMI_FILTER_THRESHOLD);
                 int molBCCount = batch.getDigitalExpression(this.MIN_BC_READ_THRESHOLD, this.EDIT_DISTANCE, this.OUTPUT_READS_INSTEAD);
-                countMap.put(batch.getCellBarcode(), molBCCount);
+                transcriptCountMap.put(batch.getCellBarcode(), molBCCount);
 
                 gene=currentGene;
             }
         }
         // write out remainder
-        if (countMap.isEmpty()==false) {
-            writeStats (gene, countMap, cellBarcodes, out);
-            addToSummary(countMap, summaryMap);
+        if (transcriptCountMap.isEmpty()==false) {
+            writeStats (gene, transcriptCountMap, cellBarcodes, out);
+            addToSummary(readCountMap, transcriptCountMap, summaryMap);
         }
         out.close();
         if (this.SUMMARY!=null)
 			writeSummary(summaryMap.values(), this.SUMMARY);
 
+        CloserUtil.close(umiIterator);
 
     }
 
@@ -245,7 +247,7 @@ public class DigitalExpression extends DGECommandLineBase {
         // map the barcode to the object so I can look up counts
 
 
-        ObjectCounter <String> result = new ObjectCounter<String>();
+        ObjectCounter <String> result = new ObjectCounter<>();
         List<String> barcodeList = barcodes.getKeysOrderedByCount(true);
 
         // short circuit for ED=0
@@ -279,7 +281,7 @@ public class DigitalExpression extends DGECommandLineBase {
     private void writeStats (final String gene, final Map<String, Integer> countMap, final List<String> cellBarcodes, final PrintStream out) {
 
         int totalCount=0;
-        List<String> line = new ArrayList<String>(cellBarcodes.size()+1);
+        List<String> line = new ArrayList<>(cellBarcodes.size()+1);
         line.add(gene);
         for (String b: cellBarcodes) {
             Integer count = countMap.get(b);
@@ -300,7 +302,7 @@ public class DigitalExpression extends DGECommandLineBase {
 
 
     private void writeHeader(final PrintStream out, final List<String> cellBarcodes) {
-        List<String> header = new ArrayList<String>(cellBarcodes.size()+1);
+        List<String> header = new ArrayList<>(cellBarcodes.size()+1);
         header.add("GENE");
         for (String c: cellBarcodes)
 			header.add(c);
@@ -311,13 +313,15 @@ public class DigitalExpression extends DGECommandLineBase {
     public static class DESummary extends MetricBase {
 
         public String CELL_BARCODE;
-        public int NUM_GENES;
+        public int NUM_GENIC_READS;
         public int NUM_TRANSCRIPTS;
+        public int NUM_GENES;
 
         public DESummary (final String cellBarcode) {
             this.CELL_BARCODE=cellBarcode;
             this.NUM_GENES=0;
             this.NUM_TRANSCRIPTS=0;
+            this.NUM_GENIC_READS=0;
         }
 
     }
@@ -330,7 +334,7 @@ public class DigitalExpression extends DGECommandLineBase {
     };
 
     public static Map<String, DESummary> initializeSummary(final Collection<String> cellBarcodes) {
-        Map<String, DESummary> map = new HashMap<String, DESummary>();
+        Map<String, DESummary> map = new HashMap<>();
 
         for (String s: cellBarcodes) {
             DESummary des = new DESummary(s);
@@ -339,20 +343,20 @@ public class DigitalExpression extends DGECommandLineBase {
         return (map);
     }
 
-    public static Map<String, DESummary> addToSummary(final Map<String, Integer> countMap, final Map<String, DESummary> summaryMap) {
-        for (String cellBC: countMap.keySet()) {
+    public static Map<String, DESummary> addToSummary(final Map<String, Integer> readCountMap, final Map<String, Integer> transcriptCountMap, final Map<String, DESummary> summaryMap) {
+        for (String cellBC: transcriptCountMap.keySet()) {
             DESummary sum = summaryMap.get(cellBC);
             // for genes, it doesn't matter what the count is as long as it's > 0.  Increment by 1.
             sum.NUM_GENES++;
             // for transcripts, increment by the count.
-            sum.NUM_TRANSCRIPTS+=countMap.get(cellBC);
+            sum.NUM_TRANSCRIPTS+=transcriptCountMap.get(cellBC);
         }
         return (summaryMap);
     }
 
     void writeSummary(final Collection<DESummary> summaryCollection, final File outFile) {
         MetricsFile<DESummary, Integer> out = getMetricsFile();
-        List<DESummary> sc = new ArrayList<DESummary>(summaryCollection);
+        List<DESummary> sc = new ArrayList<>(summaryCollection);
         Collections.sort(sc, DigitalExpression.TRANSCRIPT_ORDER_DESCENDING);
         for (DESummary z: sc)
 			out.addMetric(z);
