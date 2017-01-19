@@ -161,7 +161,8 @@ public class DigitalExpression extends DGECommandLineBase {
                 if (this.RARE_UMI_FILTER_THRESHOLD>0) batch.filterByUMIFrequency(this.RARE_UMI_FILTER_THRESHOLD);
                 int molBCCount = batch.getDigitalExpression(this.MIN_BC_READ_THRESHOLD, this.EDIT_DISTANCE, this.OUTPUT_READS_INSTEAD);
                 transcriptCountMap.put(batch.getCellBarcode(), molBCCount);
-                readCountMap.put(batch.getCellBarcode(), batch.getDigitalExpression(this.MIN_BC_READ_THRESHOLD, this.EDIT_DISTANCE, true));
+                int readCount = batch.getDigitalExpression(this.MIN_BC_READ_THRESHOLD, this.EDIT_DISTANCE, true);
+                readCountMap.put(batch.getCellBarcode(), readCount);
             }
             // you've gathered all the data for the gene, write it out and start on the next.
             if (!gene.equals(currentGene)) {
@@ -172,7 +173,8 @@ public class DigitalExpression extends DGECommandLineBase {
                 if (this.RARE_UMI_FILTER_THRESHOLD>0) batch.filterByUMIFrequency(this.RARE_UMI_FILTER_THRESHOLD);
                 int molBCCount = batch.getDigitalExpression(this.MIN_BC_READ_THRESHOLD, this.EDIT_DISTANCE, this.OUTPUT_READS_INSTEAD);
                 transcriptCountMap.put(batch.getCellBarcode(), molBCCount);
-
+                int readCount = batch.getDigitalExpression(this.MIN_BC_READ_THRESHOLD, this.EDIT_DISTANCE, true);
+                readCountMap.put(batch.getCellBarcode(), readCount);
                 gene=currentGene;
             }
         }
@@ -350,6 +352,7 @@ public class DigitalExpression extends DGECommandLineBase {
             sum.NUM_GENES++;
             // for transcripts, increment by the count.
             sum.NUM_TRANSCRIPTS+=transcriptCountMap.get(cellBC);
+            sum.NUM_GENIC_READS+=readCountMap.get(cellBC);
         }
         return (summaryMap);
     }

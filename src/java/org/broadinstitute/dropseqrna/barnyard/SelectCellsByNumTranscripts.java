@@ -139,7 +139,7 @@ public class SelectCellsByNumTranscripts
 				mapContainer.addToSummary(gene);
             // Accumulate this gene
             gene=currentGene;
-            mapContainer.countExpression(gene, batch.getCellBarcode(), batch.getDigitalExpression(0, this.EDIT_DISTANCE, true));
+            mapContainer.countExpression(gene, batch.getCellBarcode(), batch.getDigitalExpression(0, this.EDIT_DISTANCE, false));
 
         }
         // write out remainder
@@ -221,8 +221,20 @@ public class SelectCellsByNumTranscripts
 
         @Override
         public void addToSummary(final String gene) {
-            DigitalExpression.addToSummary(Collections.emptyMap(), countMap, summaryMap);
+            DigitalExpression.addToSummary(getZeroValueMap(), countMap, summaryMap);
             countMap.clear();
+        }
+
+        /**
+         * A bit of a work around for DESummary requiring a map of read counts that we don't record here because we don't use it.
+         * This creates a map with all cell barcode keys, with all values set to 0.
+         * Collections.emptyMap() wasn't cutting it, and changing DESummary to take null values seemed like a bad idea.
+         */
+        private Map<String, Integer> getZeroValueMap() {
+        	Map<String, Integer> result = new HashMap<>();
+        	for (String k: countMap.keySet())
+				result.put(k, 0);
+        	return result;
         }
 
         @Override
