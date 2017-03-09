@@ -1,15 +1,5 @@
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
-
 import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
@@ -19,6 +9,15 @@ import org.broadinstitute.dropseqrna.utils.modularfileparser.DelimiterParser;
 import org.broadinstitute.dropseqrna.utils.modularfileparser.ModularFileParser;
 import org.broadinstitute.sv.util.PeekableIterator;
 
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
@@ -66,7 +65,7 @@ public class FilterBAMByTag extends CommandLineProgram {
 			IOUtil.assertFileIsReadable(TAG_VALUES_FILE);
 			values = readValues(this.TAG_VALUES_FILE);
 		} else {
-			values = new HashSet<String>();
+			values = new HashSet<>();
 			if (this.TAG_VALUE!=null)
 				values.add(this.TAG_VALUE);
 		}
@@ -108,7 +107,7 @@ public class FilterBAMByTag extends CommandLineProgram {
 	 */
 	void processPairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values) {
 		ProgressLogger progLog = new ProgressLogger(log);
-		PeekableIterator<SAMRecord>  iter = new PeekableIterator<SAMRecord>(CustomBAMIterators.getQuerynameSortedRecords(in));
+		PeekableIterator<SAMRecord>  iter = new PeekableIterator<>(CustomBAMIterators.getQuerynameSortedRecords(in));
 		while (iter.hasNext()) {
 			SAMRecord r1 = iter.next();
 			progLog.record(r1);
@@ -116,14 +115,14 @@ public class FilterBAMByTag extends CommandLineProgram {
 
 			SAMRecord r2 = null;
 			if (iter.hasNext()) r2 = iter.peek();
-
 			// check for r2 being null in case the last read is unpaired.
 			if (r2!=null && r1.getReadName().equals(r2.getReadName())) {
 				// paired read found.
 				progLog.record(r2);
 				r2=iter.next();
 				boolean filterFlag2 = filterRead(r2, this.TAG, values, this.ACCEPT_TAG);
-				if (!filterFlag1 || !filterFlag2) {
+				// if either read is filtered, reject the read pair.
+				if (!filterFlag1 && !filterFlag2) {
 					out.addAlignment(r1);
 					out.addAlignment(r2);
 				}
@@ -185,7 +184,7 @@ public class FilterBAMByTag extends CommandLineProgram {
 	}
 
 	private Set<String> readValues(final File f) {
-		Set<String> result = new HashSet<String>();
+		Set<String> result = new HashSet<>();
 		ModularFileParser p = new ModularFileParser(new DelimiterParser(","),
 				f, 0);
 		String[] line = null;
