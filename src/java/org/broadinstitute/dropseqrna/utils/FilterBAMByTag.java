@@ -121,8 +121,9 @@ public class FilterBAMByTag extends CommandLineProgram {
 				progLog.record(r2);
 				r2=iter.next();
 				boolean filterFlag2 = filterRead(r2, this.TAG, values, this.ACCEPT_TAG);
-				// if either read is filtered, reject the read pair.
-				if (!filterFlag1 && !filterFlag2) {
+				// if in accept tag mode, if either read shouldn't be filterd accept the pair
+				// if in reject mode, if both reads shouldn't be filtered to accept the pair.
+				if ((!filterFlag1 || !filterFlag2 & this.ACCEPT_TAG) || (!filterFlag1 && !filterFlag2 & !this.ACCEPT_TAG)) {
 					out.addAlignment(r1);
 					out.addAlignment(r2);
 				}
