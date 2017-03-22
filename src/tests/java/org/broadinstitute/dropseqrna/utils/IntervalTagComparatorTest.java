@@ -1,15 +1,5 @@
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordSetBuilder;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.Interval;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -19,6 +9,16 @@ import java.util.Random;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordSetBuilder;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.Interval;
 
 public class IntervalTagComparatorTest {
 
@@ -134,7 +134,7 @@ public class IntervalTagComparatorTest {
 	}
 
 	private List<SAMRecord> createManyIntervalTaggedSAMRecords (final int desiredNumRecords) {
-		List<SAMRecord> data = new ArrayList<SAMRecord>();
+		List<SAMRecord> data = new ArrayList<>();
 
 		SamReader inputSam = SamReaderFactory.makeDefault().open(this.dictFile);
 		SAMRecord samRecordTemplate = new SAMRecord (inputSam.getFileHeader());
@@ -166,6 +166,13 @@ public class IntervalTagComparatorTest {
 	}
 
 
+	@Test
+	public void testParseIntervalWithContigContainingDelimiter() {
+		Interval i = new Interval ("HLA-A*02:43N", 1205, 1205, false, "foo");
+		String s = IntervalTagComparator.toString(i);
+		Interval f = IntervalTagComparator.fromString(s);
+		Assert.assertEquals(f, i);
+	}
 
 	@Test
 	public void testParseInterval1() {
@@ -188,7 +195,7 @@ public class IntervalTagComparatorTest {
 	public void testParseInterval3() {
 		// a slightly more ghetto string that's outside the classic interval spec.
 		Interval i = new Interval ("chr3", 10, 10);
-		String s="chr3:10";
+		String s="chr3|10";
 		Interval f = IntervalTagComparator.fromString(s);
 		Assert.assertEquals(f, i);
 	}
@@ -269,7 +276,7 @@ public class IntervalTagComparatorTest {
 		Interval i2 = new Interval("10", 1, 10, true, null);
 		r2.setAttribute(this.intervalTag, IntervalTagComparator.toString(i2));
 
-		List<SAMRecord> result = new ArrayList<SAMRecord>();
+		List<SAMRecord> result = new ArrayList<>();
 		result.add(r1);
 		result.add(r2);
 		return result;

@@ -1,13 +1,13 @@
 package org.broadinstitute.dropseqrna.utils;
 
+import java.util.Comparator;
+import java.util.regex.Pattern;
+
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMTagUtil;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.StringUtil;
-
-import java.util.Comparator;
-import java.util.regex.Pattern;
 
 /**
  * When assigning intervals as tags to a BAM, the interval information is stored as a string.
@@ -26,6 +26,8 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
 	private final SAMSequenceDictionary dict;
 	private static final Pattern colonPattern = Pattern.compile(":");
 	private static final Pattern dashPattern = Pattern.compile("-");
+
+	public static final char ENCODE_DELIMITER='|';
 
 
 	/**
@@ -101,7 +103,7 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
 			throw new IllegalArgumentException(SAMTagUtil.getSingleton().makeStringTag(this.tag) + " does not have a String value");
     	String intervalString = (String) strIntervalRec;
     	String [] result = new String [4];
-    	StringUtil.splitConcatenateExcessTokens(intervalString, result, ':');
+    	StringUtil.splitConcatenateExcessTokens(intervalString, result, ENCODE_DELIMITER);
     	return (result);
     }
 
@@ -165,17 +167,13 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
      * @return The Interval object represented by this string.
      */
     public static Interval fromString (final String intervalString) {
-    	// at most there are 5 fields.  This takes care of having any characters in names.
-
-    	// String [] s = intervalString.split(":", 4);
-
-    	// String [] s = colonPattern.split(intervalString, 4);
 
     	String [] s = new String [4];
-    	StringUtil.splitConcatenateExcessTokens(intervalString, s, ':');
+
+    	StringUtil.splitConcatenateExcessTokens(intervalString, s, ENCODE_DELIMITER);
 
     	if (s.length==1)
-			throw new IllegalArgumentException("This is not an interval " + intervalString + ", as there's no ':' delimiters");
+			throw new IllegalArgumentException("This is not an interval " + intervalString + ", as there's no '" + ENCODE_DELIMITER+ "' delimiters");
 
     	String contig=s[0];
     	Integer start=null;
@@ -275,13 +273,13 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
     /**
      * Converts an Interval object into a string representation that can be parsed by fromString.
      * Not using the Interval.toString method, because it has tabs, which might really screw up something else...
-     * Instead, use ":" as a delimiter for all fields except the range fields start-end.
+     * Instead, use ENCODE_DELIMITER as a delimiter for all fields except the range fields start-end.
      * @param i The interval to parse
      * @return A string representation of the interval.
      */
     public static String toString (final Interval i) {
     	// chr1:1-10	+	foo
-    	String result = i.getContig() + ":" + i.getStart() + "-" + i.getEnd() + ":" + (i.isNegativeStrand() ? '-' : '+') + ":" + ((null == i.getName()) ? '.' : i.getName());
+    	String result = i.getContig() + ENCODE_DELIMITER + i.getStart() + "-" + i.getEnd() + ENCODE_DELIMITER + (i.isNegativeStrand() ? '-' : '+') + ENCODE_DELIMITER + ((null == i.getName()) ? '.' : i.getName());
     	return result;
     }
 
