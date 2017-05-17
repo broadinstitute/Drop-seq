@@ -54,8 +54,7 @@ import picard.util.MathUtil;
 )
 public class TagMetaGenes extends CommandLineProgram{
 
-
-	private final Log log = Log.getInstance(TagReadWithGeneExon.class);
+	private final Log log = Log.getInstance(TagMetaGenes.class);
 	private ProgressLogger pl = new ProgressLogger(log);
 
 	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze")
@@ -308,6 +307,7 @@ public class TagMetaGenes extends CommandLineProgram{
 
 
 	}
+
 
 	private List<MetaGene> buildMetaGenes (final ObjectCounter<String> geneClusterCounter, final ObjectCounter<String> uniqueGeneCounter) {
 		StringInterner i = new StringInterner();
