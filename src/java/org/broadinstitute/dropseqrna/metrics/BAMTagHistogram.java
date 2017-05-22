@@ -1,22 +1,28 @@
 package org.broadinstitute.dropseqrna.metrics;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.*;
+import java.io.File;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.IterableAdapter;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.File;
-import java.io.PrintStream;
-import java.util.Iterator;
-import java.util.List;
 
 /**
  * For a bam file, generate the histogram of values for a particular BAM tag.
@@ -65,6 +71,17 @@ public class BAMTagHistogram extends CommandLineProgram {
 		return 0;
 	}
 
+	public void writeHeader (final PrintStream writer) {
+		List<String> header = new ArrayList<>();
+		header.add("INPUT="+this.INPUT.getAbsolutePath());
+		header.add("TAG="+this.TAG);
+		header.add("FILTER_PCR_DUPLICATES="+this.FILTER_PCR_DUPLICATES);
+		header.add("READ_QUALITY="+this.READ_QUALITY);
+		String h = StringUtils.join(header, "\t");
+		writer.print("#");
+		writer.println(h);
+	}
+
 	public ObjectCounter<String> getBamTagCounts (final File bamFile, final String tag, final int readQuality, final boolean filterPCRDuplicates) {
 		SamReader inputSam = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(bamFile);
         try {
@@ -77,7 +94,7 @@ public class BAMTagHistogram extends CommandLineProgram {
     public ObjectCounter<String> getBamTagCounts (final Iterator<SAMRecord> iterator, final String tag, final int readQuality, final boolean filterPCRDuplicates) {
         ProgressLogger pl = new ProgressLogger(log, 10000000);
 
-        ObjectCounter<String> counter = new ObjectCounter<String>();
+        ObjectCounter<String> counter = new ObjectCounter<>();
 
         for (final SAMRecord r : new IterableAdapter<>(iterator)) {
             pl.record(r);
