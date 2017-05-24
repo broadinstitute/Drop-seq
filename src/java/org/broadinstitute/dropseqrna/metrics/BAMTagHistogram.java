@@ -60,12 +60,14 @@ public class BAMTagHistogram extends CommandLineProgram {
 		List<String> tagsByCount=counter.getKeysOrderedByCount(true);
 
 		PrintStream writer = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
+		writeHeader(writer);
 
 		for (String s: tagsByCount) {
 			int count = counter.getCountForKey(s);
 			String [] h={count+"", s};
 			String result = StringUtils.join(h, "\t");
 			writer.println(result);
+			writer.flush();
 		}
 		writer.close();
 		return 0;
