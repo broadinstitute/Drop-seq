@@ -17,6 +17,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.dropseqrna.cmdline.MetaData;
+import picard.annotation.Gene;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
@@ -24,9 +25,7 @@ import picard.cmdline.StandardOptionDefinitions;
 import picard.sam.CreateSequenceDictionary;
 
 import java.io.File;
-import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
 
 @CommandLineProgramProperties(
         usage = "Validate reference fasta and GTF for use in Drop-Seq, and display sequences that appear in one but " +
@@ -35,6 +34,7 @@ import java.util.Set;
         programGroup = MetaData.class
 )public class ValidateReference extends CommandLineProgram {
 
+    @SuppressWarnings("WeakerAccess")
     @Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="The reference fasta")
     public File REFERENCE;
 
@@ -73,9 +73,25 @@ import java.util.Set;
         final Collection<GeneFromGTF> geneAnnotations = gtfReader.load().getAll();
         final Set<String> sequencesInGtf = new LinkedHashSet<>();
         final Set<String> transcriptTypes = new LinkedHashSet<>();
+
+        final List<String> transcriptsWithNoExons = new ArrayList<>();
+
         for (final GeneFromGTF gene : geneAnnotations) {
             sequencesInGtf.add(gene.getContig());
             transcriptTypes.add(gene.getTranscriptType());
+            for (final Gene.Transcript transcript : gene) {
+                if (transcript.exons.length == 0) {
+                    transcriptsWithNoExons.add(String.format("Gene %s, Transcript %s on sequence %s has no exons",
+                            gene.getGeneID(), transcript.name, gene.getContig()));
+                }
+            }
+        }
+
+        if (!transcriptsWithNoExons.isEmpty()) {
+            System.out.println(transcriptsWithNoExons.size() + "  transcript(s) have no exons");
+            for (int i = 0; i < Math.min(100, transcriptsWithNoExons.size()); ++i) {
+                System.out.println(transcriptsWithNoExons.get(i));
+            }
         }
 
         validateReferenceBases(REFERENCE);
