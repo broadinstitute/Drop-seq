@@ -50,6 +50,9 @@ import java.util.List;
     @Option(doc="Name(s) of MT reference sequence, for creating mt.intervals file")
     public List<String> MT_SEQUENCE;
 
+    @Option(doc="Name(s) of non-autosome reference sequences, for creating non_autosomes.intervals file")
+    public List<String> NON_AUTOSOME_SEQUENCE;
+
     public static void main(final String[] args) {
         new CreateIntervalsFiles().instanceMainWithExit(args);
     }
@@ -76,11 +79,18 @@ import java.util.List;
         final IntervalList consensusIntrons = new IntervalList(samHeader);
         final IntervalList rRNA = new IntervalList(samHeader);
         final IntervalList mtIntervals;
+        final IntervalList nonAutosomeIntervals;
 
         if (MT_SEQUENCE.isEmpty()) {
             mtIntervals = null;
         } else {
-            mtIntervals = new IntervalList(createMtSamHeader(samHeader));
+            mtIntervals = new IntervalList(createSubsetSamHeader(samHeader, MT_SEQUENCE));
+        }
+
+        if (NON_AUTOSOME_SEQUENCE.isEmpty()) {
+            nonAutosomeIntervals = null;
+        } else {
+            nonAutosomeIntervals = new IntervalList(createSubsetSamHeader(samHeader, NON_AUTOSOME_SEQUENCE));
         }
 
 
@@ -143,6 +153,10 @@ import java.util.List;
             write(mtIntervals, "mt");
         }
 
+        if (nonAutosomeIntervals != null) {
+            write(nonAutosomeIntervals, "non_autosomes");
+        }
+
         return 0;
     }
 
@@ -158,6 +172,26 @@ import java.util.List;
         }
         mtHeader.getSequenceDictionary().setSequences(mtSequences);
         return mtHeader;
+    }
+
+    /**
+     * Create a SAM header with a subset of the sequences
+     * @param samHeader header to be subsetted
+     * @param sequenceNames sequences to include
+     * @return clone of the original header, but with only the named sequences
+     */
+    private static SAMFileHeader createSubsetSamHeader(final SAMFileHeader samHeader, final List<String> sequenceNames) {
+        final SAMFileHeader ret = samHeader.clone();
+        final List<SAMSequenceRecord> sequenceRecords = new ArrayList<>(sequenceNames.size());
+        for (final String sequence: sequenceNames) {
+            final SAMSequenceRecord sequenceRecord = ret.getSequence(sequence);
+            if (sequenceRecord == null) {
+                throw new RuntimeException("Sequence '" + sequence + "' specified on command line but not found in sequence dictionary");
+            }
+            sequenceRecords.add(sequenceRecord);
+        }
+        ret.getSequenceDictionary().setSequences(sequenceRecords);
+        return ret;
     }
 
     private String makeIntervalName(final String chr, final int start, final int end) {
