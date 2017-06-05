@@ -162,6 +162,7 @@ public class TagMetaGenes extends CommandLineProgram{
 		return (r);
 	}
 
+	@SuppressWarnings("unused")
 	private int [] getUniqueGeneCounts (final String concatonatedGeneList, final String delimiter, final ObjectCounter<String> uniqueGeneCounter) {
 		// get the individual gene counts.
     	String [] genes = StringUtils.split(concatonatedGeneList, delimiter);
