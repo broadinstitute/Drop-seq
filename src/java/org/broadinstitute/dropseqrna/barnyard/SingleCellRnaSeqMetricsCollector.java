@@ -222,7 +222,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     		geneOverlapDetector = GeneAnnotationReader.loadAnnotationsFile(annotationsFile, reader.getFileHeader().getSequenceDictionary());
             log.info("Loaded " + geneOverlapDetector.getAll().size() + " genes.");
             ribosomalBasesInitialValue = ribosomalIntervals != null ? 0L : null;
-            ribosomalSequenceOverlapDetector = RnaSeqMetricsCollector.makeOverlapDetector(bamFile, reader.getFileHeader(), ribosomalIntervals);
+            ribosomalSequenceOverlapDetector = RnaSeqMetricsCollector.makeOverlapDetector(bamFile, reader.getFileHeader(), ribosomalIntervals, log);
             ignoredSequenceIndices = RnaSeqMetricsCollector.makeIgnoredSequenceIndicesSet(reader.getFileHeader(), new HashSet<String>());
             CloserUtil.close(reader);
     	}
