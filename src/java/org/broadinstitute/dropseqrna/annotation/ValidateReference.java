@@ -17,6 +17,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.dropseqrna.cmdline.MetaData;
+import picard.PicardException;
 import picard.annotation.Gene;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
@@ -61,8 +62,7 @@ import java.util.*;
     protected int doWork() {
         // LinkedHashSets used to preserve insertion order, which presumably has some intuitive meaning.
 
-        final CreateSequenceDictionary sequenceDictionaryCreator = new CreateSequenceDictionary();
-        final SAMSequenceDictionary sequenceDictionary = sequenceDictionaryCreator.makeSequenceDictionary(REFERENCE);
+        final SAMSequenceDictionary sequenceDictionary = makeSequenceDictionary(REFERENCE);
         final GTFReader gtfReader = new GTFReader(GTF, sequenceDictionary);
         // Use
         final Set<String> sequencesInReference = new LinkedHashSet<>();
@@ -121,6 +121,23 @@ import java.util.*;
 
         return 0;
     }
+
+    private SAMSequenceDictionary makeSequenceDictionary(final File referenceFile) {
+        final ReferenceSequenceFile refSeqFile =
+                ReferenceSequenceFileFactory.getReferenceSequenceFile(referenceFile, true);
+        ReferenceSequence refSeq;
+        final List<SAMSequenceRecord> ret = new ArrayList<>();
+        final Set<String> sequenceNames = new HashSet<>();
+        while ((refSeq = refSeqFile.nextSequence()) != null) {
+            if (sequenceNames.contains(refSeq.getName())) {
+                throw new PicardException("Sequence name appears more than once in reference: " + refSeq.getName());
+            }
+            sequenceNames.add(refSeq.getName());
+            ret.add(new SAMSequenceRecord(refSeq.getName(), refSeq.length()));
+        }
+        return new SAMSequenceDictionary(ret);
+    }
+
 
     private void validateReferenceBases(File referenceFile) {
         final ReferenceSequenceFile refSeqFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(referenceFile, true);

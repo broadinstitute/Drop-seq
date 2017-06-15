@@ -21,6 +21,7 @@ public class MultiComparator<T> implements Comparator<T> {
 
     private final Comparator<T>[] comparators;
 
+    @SuppressWarnings("unchecked")
     public MultiComparator(final List<Comparator<T>> comparators) {
         this.comparators = comparators.toArray(new Comparator[comparators.size()]);
     }

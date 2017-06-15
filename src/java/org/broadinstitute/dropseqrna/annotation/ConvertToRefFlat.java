@@ -64,7 +64,7 @@ public class ConvertToRefFlat extends CommandLineProgram {
 	RefFlatRecord convertTranscript (Gene.Transcript t) {
 		Gene g = t.getGene();
 		
-		RefFlatRecord r = new RefFlatRecord(g.getName(), t.name, g.getSequence(), g.isNegativeStrand(), t.transcriptionStart, 
+		RefFlatRecord r = new RefFlatRecord(g.getName(), t.name, g.getContig(), g.isNegativeStrand(), t.transcriptionStart,
 				t.transcriptionEnd, t.codingStart, t.codingEnd);
 		
 		for (Exon e: t.exons) {

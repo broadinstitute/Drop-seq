@@ -30,7 +30,7 @@ public class ReferenceUtils {
 	public static List<Interval> getIntervalsForChr (IntervalList intervals, String chromosome) {
 		List<Interval> result = new ArrayList<Interval>();
 		for (Interval i: intervals) {
-			if (i.getSequence().equals(chromosome)) {
+			if (i.getContig().equals(chromosome)) {
 				result.add(i);
 			}
 		}
