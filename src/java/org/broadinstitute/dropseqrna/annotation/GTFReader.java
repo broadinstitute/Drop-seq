@@ -1,17 +1,18 @@
 package org.broadinstitute.dropseqrna.annotation;
 
+import java.io.File;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.broadinstitute.dropseqrna.utils.DropSeqSamUtil;
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.OverlapDetector;
-import org.broadinstitute.dropseqrna.utils.DropSeqSamUtil;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import picard.annotation.AnnotationException;
-
-import java.io.File;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Loads gene annotations from a GTF file into an OverlapDetector<Gene>.  Discards annotations that are not
@@ -22,10 +23,10 @@ import java.util.Set;
  * @see <a href="http://www.sanger.ac.uk/resources/software/gff/spec.html#t_2">http://www.sanger.ac.uk/resources/software/gff/spec.html#t_2</a>
  */
 public class GTFReader {
-	
+
     private static final Log LOG = Log.getInstance(GTFReader.class);
-    
-    
+
+
     private final File gtfFlatFile;
     private final SAMSequenceDictionary sequenceDictionary;
     // Keep track of errors already reported to reduce verbosity
@@ -36,17 +37,17 @@ public class GTFReader {
         this.gtfFlatFile = gtfFlatFile;
         this.sequenceDictionary = sequenceDictionary;
     }
-    
+
     public GTFReader (final File gtfFlatFile, final File sequenceDictionary) {
         this(gtfFlatFile, DropSeqSamUtil.loadSequenceDictionary(sequenceDictionary));
     }
-    
-    
-    
+
+
+
     static OverlapDetector<GeneFromGTF> load(final File refFlatFile, final SAMSequenceDictionary sequenceDictionary) {
         return new GTFReader(refFlatFile, sequenceDictionary).load();
     }
-	
+
     public OverlapDetector<GeneFromGTF> load() {
         final FilteringGTFParser parser = new FilteringGTFParser(gtfFlatFile);
         final GeneFromGTFBuilder geneBuilder = new GeneFromGTFBuilder(parser);
@@ -56,8 +57,8 @@ public class GTFReader {
         int longestInterval = 0;
         int numIntervalsOver1MB = 0;
 
-        while (geneBuilder.hasNext()) {
-            try {
+        while (geneBuilder.hasNext())
+			try {
                 // Can throw AnnotationException
                 GeneFromGTF gene = geneBuilder.next();
                 overlapDetector.addLhs(gene, gene);
@@ -66,12 +67,11 @@ public class GTFReader {
             } catch (AnnotationException e) {
                 LOG.info(e.getMessage() + " -- skipping");
             }
-        }
         LOG.debug("Longest gene: " + longestInterval + "; number of genes > 1MB: " + numIntervalsOver1MB);
         LOG.debug("Total number of genes loaded [" + overlapDetector.getAll().size() +"]");
         return overlapDetector;
     }
-    
+
     public Set<String> getUnrecognizedSequences() {
         return unrecognizedSequences;
     }
@@ -88,17 +88,15 @@ public class GTFReader {
         }
 
         @Override
-        protected boolean filterOut(GTFRecord rec) {
+        public boolean filterOut(final GTFRecord rec) {
             if (!isSequenceRecognized(rec.getChromosome())) {
                 unrecognizedSequences.add(rec.getChromosome());
                 final String transcriptDescription = rec.getGeneName() + ":" + rec.getTranscriptName();
-                if (skippedChromosomeTranscriptDescription.add(transcriptDescription + "\t" + rec.getChromosome())) {
-                    LOG.debug("Skipping " + transcriptDescription + " due to unrecognized sequence " + rec.getChromosome());
-                }
+                if (skippedChromosomeTranscriptDescription.add(transcriptDescription + "\t" + rec.getChromosome()))
+					LOG.debug("Skipping " + transcriptDescription + " due to unrecognized sequence " + rec.getChromosome());
                 return true;
-            } else {
-                return false;
-            }
+            } else
+				return false;
         }
     }
 }

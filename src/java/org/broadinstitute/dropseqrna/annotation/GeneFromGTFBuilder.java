@@ -10,14 +10,20 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.Log;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import picard.annotation.AnnotationException;
-import com.google.common.collect.Streams;
-
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Convert a collection of GTFRecords into a collection of GeneFromGTF objects.
@@ -29,10 +35,10 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
 
     private final Log LOG = Log.getInstance(GeneFromGTFBuilder.class);
 
-    final Iterator<List<GTFRecord>> gtfRecordsByGeneIterator;
+    final Iterator<Collection<GTFRecord>> gtfRecordsByGeneIterator;
 
     public GeneFromGTFBuilder(final Iterator<GTFRecord> gtfRecords) {
-        final Map<String, List<GTFRecord>> gatheredByGene = gatherByGeneName(gtfRecords);
+        final Map<String, Collection<GTFRecord>> gatheredByGene = gatherByGeneName(gtfRecords);
         gtfRecordsByGeneIterator = gatheredByGene.values().iterator();
     }
 
@@ -56,7 +62,7 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
     }
 
     private GeneFromGTF makeGeneFromMultiVersionGTFRecords(final Collection<GTFRecord> gtfRecords) {
-        final Map<Integer, List<GTFRecord>> gtfRecordsByGeneVersion = gatherByGeneVersion(gtfRecords);
+        final Map<Integer, Collection<GTFRecord>> gtfRecordsByGeneVersion = gatherByGeneVersion(gtfRecords);
         final List<Integer> versions = new ArrayList<>(gtfRecordsByGeneVersion.keySet());
         Collections.sort(versions);
         final int highestVersion = versions.get(versions.size() - 1);
@@ -68,18 +74,16 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
         // Remove featureType==gene before making transcripts
         final Collection<GTFRecord> nonGeneGTFRecords = CollectionUtil.makeCollection(new GeneAnnotationFilter(gtfRecords.iterator()));
 
-        final Map<String, List<GTFRecord>> gtfLinesByTranscript = gatherByTranscriptId(nonGeneGTFRecords);
-        for (final Map.Entry<String, List<GTFRecord>> entry : gtfLinesByTranscript.entrySet()) {
-            if (entry.getKey() == null) {
-                // Skip gene entries
+        final Map<String, Collection<GTFRecord>> gtfLinesByTranscript = gatherByTranscriptId(nonGeneGTFRecords);
+        for (final Map.Entry<String, Collection<GTFRecord>> entry : gtfLinesByTranscript.entrySet()) {
+            if (entry.getKey() == null)
+				// Skip gene entries
                 continue;
-            }
             addTranscriptToGeneFromGTFRecords(gene, entry.getValue());
         }
 
-        if (!gene.iterator().hasNext()) {
-            throw new AnnotationException("No transcript in GTF for gene " + gene.getName());
-        }
+        if (!gene.iterator().hasNext())
+			throw new AnnotationException("No transcript in GTF for gene " + gene.getName());
 
         return gene;
     }
@@ -102,21 +106,17 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
             geneIds.add(r.getGeneID());
             chromosomes.add(r.getChromosome());
         }
-        if (chromosomes.size() > 1) {
-            throw new AnnotationException("Chromosome disagreement(" + CollectionUtil.join(chromosomes, ", ") +
+        if (chromosomes.size() > 1)
+			throw new AnnotationException("Chromosome disagreement(" + CollectionUtil.join(chromosomes, ", ") +
                     ") in GTF file for gene " + geneName);
-
-        }
         final GeneFromGTF gene = new GeneFromGTF(lineOne.getChromosome(), start, end, transcriptNegStrand, geneName, lineOne.getFeatureType(),
                 lineOne.getGeneID(), lineOne.getTranscriptType(), lineOne.getGeneVersion());
 
-        for (final GTFRecord gtfRecord : gtfRecords) {
-            validateGTFRecord(gtfRecord, gene);
-        }
+        for (final GTFRecord gtfRecord : gtfRecords)
+			validateGTFRecord(gtfRecord, gene);
 
-        if (geneIds.size() > 1) {
-            throw new AnnotationException(String.format("Multiple gene IDs for gene %s: %s", geneName, CollectionUtil.join(geneIds, ", ")));
-        }
+        if (geneIds.size() > 1)
+			throw new AnnotationException(String.format("Multiple gene IDs for gene %s: %s", geneName, CollectionUtil.join(geneIds, ", ")));
 
         return gene;
     }
@@ -167,12 +167,10 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
 
         for (int i = 0; i < exons.size(); ++i) {
             Exon e = exons.get(i);
-            if (e.start > e.end) {
-                throw new AnnotationException("Exon has 0 or negative extent for " + transcriptDescription);
-            }
-            if (i > 0 && exons.get(i-1).end >= exons.get(i).start) {
-                throw new AnnotationException("Exons overlap for " + transcriptDescription);
-            }
+            if (e.start > e.end)
+				throw new AnnotationException("Exon has 0 or negative extent for " + transcriptDescription);
+            if (i > 0 && exons.get(i-1).end >= exons.get(i).start)
+				throw new AnnotationException("Exons overlap for " + transcriptDescription);
             tx.addExon(e.start, e.end);
         }
 
@@ -184,48 +182,52 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
 
 
     private void validateGTFRecord(final GTFRecord gtfRecord, final GeneFromGTF gene) {
-            if (gene.isPositiveStrand()==gtfRecord.isNegativeStrand()) {
-                throw new AnnotationException("Strand disagreement in GTF file for gene " + gene.getName());
-            }
-            if (!gene.getContig().equals(gtfRecord.getChromosome())) {
-                throw new AnnotationException("Chromosome disagreement(" + gene.getContig() + " != " + gtfRecord.getChromosome() +
+            if (gene.isPositiveStrand()==gtfRecord.isNegativeStrand())
+				throw new AnnotationException("Strand disagreement in GTF file for gene " + gene.getName());
+            if (!gene.getContig().equals(gtfRecord.getChromosome()))
+				throw new AnnotationException("Chromosome disagreement(" + gene.getContig() + " != " + gtfRecord.getChromosome() +
                         ") in GTF file for gene " + gene.getName());
-            }
-            if (gtfRecord.getFeatureType().equals(GTFParser.GTFFeature.gene.name())) {
-                if (gtfRecord.getStart() != gene.getStart() ||
-                        gtfRecord.getEnd() != gene.getEnd()) {
-                    throw new AnnotationException(String.format("gene GTFRecord(%s) != GeneFromGTF(%s)", gtfRecord.toString(), gene.toString()));
-                }
-            }
+            if (gtfRecord.getFeatureType().equals(GTFParser.GTFFeature.gene.name()))
+				if (gtfRecord.getStart() != gene.getStart() ||
+                        gtfRecord.getEnd() != gene.getEnd())
+					throw new AnnotationException(String.format("gene GTFRecord(%s) != GeneFromGTF(%s)", gtfRecord.toString(), gene.toString()));
 
         }
 
-    private Map<String, List<GTFRecord>> gatherByGeneName(final Iterator<GTFRecord> gtfRecords) {
-        return Streams.stream(gtfRecords).collect(Collectors.groupingBy(GTFRecord::getGeneName));
+    private Map<String, Collection<GTFRecord>> gatherByGeneName(final Iterator<GTFRecord> gtfRecords) {
+        return CollectionUtil.partition(CollectionUtil.makeCollection(gtfRecords),
+                new CollectionUtil.Partitioner<GTFRecord, String>() {
+                    @Override
+                    public String getPartition(final GTFRecord gtfRecord) {
+                        return gtfRecord.getGeneName();
+                    }
+                });
     }
 
-    private Map<Integer, List<GTFRecord>> gatherByGeneVersion(Collection<GTFRecord> gtfRecords) {
-        return gtfRecords.stream().collect(Collectors.groupingBy(
-                (gtfRecord) -> {
-                    if (gtfRecord.getGeneVersion()!= null) {
-                        return gtfRecord.getGeneVersion();
-                    } else {
-                        return Integer.MIN_VALUE;
+    private Map<Integer, Collection<GTFRecord>> gatherByGeneVersion(final Collection<GTFRecord> gtfRecords) {
+        return CollectionUtil.partition(gtfRecords,
+                new CollectionUtil.Partitioner<GTFRecord, Integer>() {
+                    @Override
+                    public Integer getPartition(final GTFRecord gtfRecord) {
+                        if (gtfRecord.getGeneVersion() != null)
+							return gtfRecord.getGeneVersion();
+						else
+							return Integer.MIN_VALUE;
                     }
                 }
-        ));
+        );
     }
 
-    private Map<String, List<GTFRecord>> gatherByTranscriptId(Collection<GTFRecord> gtfRecords) {
-        return gtfRecords.stream().collect(Collectors.groupingBy(
-                (gtfRecord) -> {
-                    if (gtfRecord.getTranscriptID() == null) {
-                        throw new RuntimeException("GTFRecord does not have transcriptID: " + gtfRecord);
-                    } else {
+    private Map<String, Collection<GTFRecord>> gatherByTranscriptId(final Collection<GTFRecord> gtfRecords) {
+        return CollectionUtil.partition(gtfRecords,
+                new CollectionUtil.Partitioner<GTFRecord, String>() {
+                    @Override
+                    public String getPartition(final GTFRecord gtfRecord) {
+                        if (gtfRecord.getTranscriptID() == null)
+							throw new RuntimeException("GTFRecord does not have transcriptID: " + gtfRecord);
                         return gtfRecord.getTranscriptID();
                     }
-                }
-        ));
+                });
     }
 
     private static class Exon implements Comparable<Exon> {
@@ -238,22 +240,21 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
         }
 
         @Override
-        public int compareTo(Exon o) {
+        public int compareTo(final Exon o) {
             int ret = Integer.compare(this.start, o.start);
-            if (ret != 0) {
-                return ret;
-            }
+            if (ret != 0)
+				return ret;
             return Integer.compare(this.end, o.end);
         }
     }
 
     private static class GeneAnnotationFilter extends FilteredIterator<GTFRecord> {
-        private GeneAnnotationFilter(Iterator<GTFRecord> underlyingIterator) {
+        private GeneAnnotationFilter(final Iterator<GTFRecord> underlyingIterator) {
             super(underlyingIterator);
         }
 
         @Override
-        protected boolean filterOut(GTFRecord rec) {
+        public boolean filterOut(final GTFRecord rec) {
             return GTFParser.GTFFeature.gene.name().equals(rec.getFeatureType());
         }
     }

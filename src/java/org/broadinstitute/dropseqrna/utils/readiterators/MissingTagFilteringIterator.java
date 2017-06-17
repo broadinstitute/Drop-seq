@@ -10,11 +10,12 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTagUtil;
+import java.util.Iterator;
+
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
-import java.util.Iterator;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTagUtil;
 
 /**
  * Iterator wrapper that emits a SAMRecord only if *all* the required tags are present.
@@ -25,18 +26,15 @@ public class MissingTagFilteringIterator extends FilteredIterator<SAMRecord> {
     public MissingTagFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String... requiredTags) {
         super(underlyingIterator);
         this.requiredTags = new short[requiredTags.length];
-        for (int i = 0; i < requiredTags.length; ++i) {
-            this.requiredTags[i] = SAMTagUtil.getSingleton().makeBinaryTag(requiredTags[i]);
-        }
+        for (int i = 0; i < requiredTags.length; ++i)
+			this.requiredTags[i] = SAMTagUtil.getSingleton().makeBinaryTag(requiredTags[i]);
     }
 
     @Override
-    protected boolean filterOut(SAMRecord rec) {
-        for (final short tag : requiredTags) {
-            if (rec.getAttribute(tag) == null) {
-                return true;
-            }
-        }
+    public boolean filterOut(final SAMRecord rec) {
+        for (final short tag : requiredTags)
+			if (rec.getAttribute(tag) == null)
+				return true;
         return false;
     }
 }

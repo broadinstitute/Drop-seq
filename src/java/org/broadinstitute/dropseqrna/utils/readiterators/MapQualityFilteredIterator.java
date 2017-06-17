@@ -1,10 +1,10 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import htsjdk.samtools.SAMRecord;
-
 import java.util.Iterator;
 
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+
+import htsjdk.samtools.SAMRecord;
 
 public class MapQualityFilteredIterator extends FilteredIterator<SAMRecord> {
 
@@ -18,7 +18,7 @@ public class MapQualityFilteredIterator extends FilteredIterator<SAMRecord> {
 	}
 
     @Override
-    protected boolean filterOut(final SAMRecord r) {
+    public boolean filterOut(final SAMRecord r) {
     	boolean flag=(rejectNonPrimaryReads && r.isSecondaryOrSupplementary()) ||
         (this.mapQuality!=null && r.getMappingQuality() < this.mapQuality);
         return flag;

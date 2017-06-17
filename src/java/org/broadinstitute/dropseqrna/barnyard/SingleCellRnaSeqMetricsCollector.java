@@ -1,16 +1,5 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.CollectionUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.OverlapDetector;
-import htsjdk.samtools.util.ProgressLogger;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
@@ -26,6 +15,23 @@ import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMProgramRecord;
+import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.CollectionUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.samtools.util.ProgressLogger;
 import picard.analysis.MetricAccumulationLevel;
 import picard.analysis.RnaSeqMetrics;
 import picard.analysis.directed.RnaSeqMetricsCollector;
@@ -98,9 +104,8 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 		for (final String mtSequence : MT_SEQUENCE) {
 			final SAMSequenceRecord samSequenceRecord =
 					SamReaderFactory.makeDefault().open(INPUT).getFileHeader().getSequence(mtSequence);
-			if (samSequenceRecord == null) {
+			if (samSequenceRecord == null)
 				throw new RuntimeException("MT_SEQUENCE '" + mtSequence + "' is not found in sequence dictionary in " + INPUT.getAbsolutePath());
-			}
 		}
 
 		List<String> cellBarcodes = getCellBarcodes(this.CELL_BC_FILE, this.INPUT, this.CELL_BARCODE_TAG, this.READ_MQ, this.NUM_CORE_BARCODES);
@@ -174,7 +179,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 		SAMSequenceDictionary dict= reader.getFileHeader().getSequenceDictionary();
 		List<SAMProgramRecord> programs =reader.getFileHeader().getProgramRecords();
 
-		final Set<String> cellBarcodeSet = new HashSet<String> (allCellBarcodes);
+		final Set<String> cellBarcodeSet = new HashSet<> (allCellBarcodes);
 
 		final SAMFileHeader writerHeader = new SAMFileHeader();
 		// reader.getFileHeader().setReadGroups(rg);
@@ -190,7 +195,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
         // This not only filters, but sets the RG attribute on reads it allows through.
         final FilteredIterator<SAMRecord> rgAddingFilter = new FilteredIterator<SAMRecord>(reader.iterator()) {
             @Override
-            protected boolean filterOut(final SAMRecord r) {
+            public boolean filterOut(final SAMRecord r) {
                 String cellBarcode = r.getStringAttribute(primaryTag);
                 if (cellBarcodeSet.contains(cellBarcode) & r.getMappingQuality() >= mapQuality) {
                     r.setAttribute("RG", cellBarcode);
@@ -235,7 +240,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     	}
 
     	public List<SAMReadGroupRecord> getReadGroups(final List<String> cellBarcodes) {
-    		List<SAMReadGroupRecord> g = new ArrayList<SAMReadGroupRecord>(cellBarcodes.size());
+    		List<SAMReadGroupRecord> g = new ArrayList<>(cellBarcodes.size());
     		for (String id: cellBarcodes) {
     			SAMReadGroupRecord rg = new SAMReadGroupRecord(id);
     			rg.setLibrary(id);
@@ -257,15 +262,15 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     }
 
 	private class RnaSeqMtMetricsCollector extends RnaSeqMetricsCollector {
-        public RnaSeqMtMetricsCollector(Set<MetricAccumulationLevel> accumulationLevels,
-                                        List<SAMReadGroupRecord> samRgRecords,
-                                        Long ribosomalBasesInitialValue,
-                                        OverlapDetector<Gene> geneOverlapDetector,
-                                        OverlapDetector<Interval> ribosomalSequenceOverlapDetector,
-                                        HashSet<Integer> ignoredSequenceIndices, int minimumLength,
-                                        StrandSpecificity strandSpecificity,
-                                        double rrnaFragmentPercentage,
-                                        boolean collectCoverageStatistics) {
+        public RnaSeqMtMetricsCollector(final Set<MetricAccumulationLevel> accumulationLevels,
+                                        final List<SAMReadGroupRecord> samRgRecords,
+                                        final Long ribosomalBasesInitialValue,
+                                        final OverlapDetector<Gene> geneOverlapDetector,
+                                        final OverlapDetector<Interval> ribosomalSequenceOverlapDetector,
+                                        final HashSet<Integer> ignoredSequenceIndices, final int minimumLength,
+                                        final StrandSpecificity strandSpecificity,
+                                        final double rrnaFragmentPercentage,
+                                        final boolean collectCoverageStatistics) {
             super(accumulationLevels, samRgRecords, ribosomalBasesInitialValue, geneOverlapDetector,
                     ribosomalSequenceOverlapDetector, ignoredSequenceIndices, minimumLength, strandSpecificity,
                     rrnaFragmentPercentage, collectCoverageStatistics);
@@ -279,7 +284,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 
         private class PerUnitRnaSeqMtMetricsCollector extends PerUnitRnaSeqMetricsCollector {
 
-            public PerUnitRnaSeqMtMetricsCollector(String sample, String library, String readGroup, Long ribosomalBasesInitialValue) {
+            public PerUnitRnaSeqMtMetricsCollector(final String sample, final String library, final String readGroup, final Long ribosomalBasesInitialValue) {
                 super(new RnaSeqMtMetrics(), sample, library, readGroup, ribosomalBasesInitialValue);
             }
 
@@ -288,7 +293,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 			}
 
             @Override
-            public void acceptRecord(SAMRecord rec) {
+            public void acceptRecord(final SAMRecord rec) {
                 if (MT_SEQUENCE.contains(rec.getReferenceName()) && !rec.getReadFailsVendorQualityCheckFlag() &&
                         !rec.isSecondaryOrSupplementary() && !rec.getReadUnmappedFlag()) {
 
@@ -296,17 +301,15 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
                     final int numAlignedBases = getNumAlignedBases(rec);
                     castMetrics().MT_BASES += numAlignedBases;
                     metrics.PF_ALIGNED_BASES += numAlignedBases;
-                } else {
-                    super.acceptRecord(rec);
-                }
+                } else
+					super.acceptRecord(rec);
             }
 
             @Override
             public void finish() {
                 super.finish();
-                if (metrics.PF_ALIGNED_BASES > 0) {
-                    castMetrics().PCT_MT_BASES = castMetrics().MT_BASES / (double) metrics.PF_ALIGNED_BASES;
-                }
+                if (metrics.PF_ALIGNED_BASES > 0)
+					castMetrics().PCT_MT_BASES = castMetrics().MT_BASES / (double) metrics.PF_ALIGNED_BASES;
             }
 
         }

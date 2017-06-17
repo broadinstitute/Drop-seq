@@ -27,7 +27,7 @@ public class CellBarcodeFilteringIterator extends FilteredIterator<SAMRecord> {
 	}
 
 	@Override
-	protected boolean filterOut(final SAMRecord rec) {
+	public boolean filterOut(final SAMRecord rec) {
 		if (cellBarcodes==null) return false;
 		String cellBarcode = rec.getStringAttribute(this.cellBarcodeTag);
 		if (cellBarcode==null) return true;
