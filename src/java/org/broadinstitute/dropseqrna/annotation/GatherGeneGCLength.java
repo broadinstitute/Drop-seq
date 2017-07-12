@@ -1,18 +1,5 @@
 package org.broadinstitute.dropseqrna.annotation;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.reference.ReferenceSequence;
-import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.OverlapDetector;
-import htsjdk.samtools.util.SequenceUtil;
-
 import java.io.File;
 import java.io.PrintStream;
 import java.text.DecimalFormat;
@@ -25,9 +12,22 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.broadinstitute.dropseqrna.cmdline.MetaData;
+import org.broadinstitute.dropseqrna.priv.utils.referencetools.FastaSequenceFileWriter;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.referencetools.ReferenceUtils;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.samtools.util.SequenceUtil;
 import picard.annotation.Gene;
 import picard.annotation.Gene.Transcript;
 import picard.annotation.Gene.Transcript.Exon;
@@ -59,6 +59,9 @@ public class GatherGeneGCLength extends CommandLineProgram {
 	@Option(doc="The output report containg the genes and GC/Length metrics at the transcript level.", optional=true)
 	public File OUTPUT_TRANSCRIPT_LEVEL;
 
+	@Option(doc="The sequences of each transcript", optional=true)
+	public File OUTPUT_TRANSCRIPT_SEQUENCES;
+
 	@Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="The reference fasta")
     public File REFERENCE;
 
@@ -80,6 +83,13 @@ public class GatherGeneGCLength extends CommandLineProgram {
         if (this.OUTPUT_TRANSCRIPT_LEVEL!=null) {
 			outTranscript = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT_TRANSCRIPT_LEVEL));
 			writeHeaderTranscript(outTranscript);
+        }
+
+        FastaSequenceFileWriter  outSequence = null;
+
+        if (this.OUTPUT_TRANSCRIPT_SEQUENCES!=null) {
+        	IOUtil.assertFileIsWritable(this.OUTPUT_TRANSCRIPT_SEQUENCES);
+			outSequence = new FastaSequenceFileWriter (this.OUTPUT_TRANSCRIPT_SEQUENCES);
         }
         ReferenceSequenceFileWalker refFileWalker = new ReferenceSequenceFileWalker(REFERENCE);
 
@@ -106,6 +116,8 @@ public class GatherGeneGCLength extends CommandLineProgram {
 				if (this.OUTPUT_TRANSCRIPT_LEVEL!=null)
 					writeResultTranscript(gcList, outTranscript);
 				GCIsoformSummary summary = new GCIsoformSummary(g, gcList);
+				if (this.OUTPUT_TRANSCRIPT_SEQUENCES!=null)
+					writeTranscriptSequence(g, fastaRef, dict, outSequence);
 
 				GCResult gc = calculateGCContentUnionExons(g, fastaRef, dict);
 
@@ -115,6 +127,7 @@ public class GatherGeneGCLength extends CommandLineProgram {
 		CloserUtil.close(refFileWalker);
 		CloserUtil.close(out);
 		if (this.OUTPUT_TRANSCRIPT_LEVEL!=null) CloserUtil.close(outTranscript);
+		if (this.OUTPUT_TRANSCRIPT_SEQUENCES!=null) CloserUtil.close(outSequence);
         return 0;
 	}
 
@@ -150,7 +163,7 @@ public class GatherGeneGCLength extends CommandLineProgram {
 
 
 	private List<GCResult> calculateGCContentGene (final Gene gene, final ReferenceSequence fastaRef, final SAMSequenceDictionary dict) {
-		List<GCResult> result = new ArrayList<GCResult>();
+		List<GCResult> result = new ArrayList<>();
 
 		for (Transcript t : gene) {
 			String seq=getTranscriptSequence(t, fastaRef, dict);
@@ -159,13 +172,6 @@ public class GatherGeneGCLength extends CommandLineProgram {
 
 			// check for GQuadruplexes.
 			List<GQuadruplex> gq = GQuadruplex.find(t.name, seq);
-			/*
-			if (gq.size()>0) {
-				log.info(t.name + ":" +seq);
-				for (GQuadruplex r: gq)
-					log.info(r);
-			}
-			*/
 			gc.incrementGQuadruplexCount(gq.size());
 			result.add(gc);
 		}
@@ -186,6 +192,15 @@ public class GatherGeneGCLength extends CommandLineProgram {
 			double result = (data[middle-1] + data[middle])/2;
 			return result;
 
+		}
+	}
+
+	public void writeTranscriptSequence (final Gene gene, final ReferenceSequence fastaRef, final SAMSequenceDictionary dict, final FastaSequenceFileWriter outSequence ) {
+
+		for (Transcript t : gene) {
+			String seqName=gene.getName()+" " + t.name;
+			String sequence=getTranscriptSequence(t, fastaRef, dict);
+			outSequence.writeSequence(seqName, sequence);
 		}
 	}
 
