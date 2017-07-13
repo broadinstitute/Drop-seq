@@ -1,13 +1,5 @@
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.util.List;
@@ -15,6 +7,13 @@ import java.util.List;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
@@ -126,10 +125,10 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 		SamReader inputSam = SamReaderFactory.makeDefault().open(input);
 
 		BaseDistributionMetricCollection c = new BaseDistributionMetricCollection();
-
 		// MAIN_LOOP:
 		for (final SAMRecord samRecord : inputSam) {
 			pl.record(samRecord);
+			if (samRecord.isSecondaryOrSupplementary()) continue;
 			String b = samRecord.getStringAttribute(tag);
 			if (b==null) continue;
 
