@@ -32,6 +32,10 @@ public class MissingTagFilteringIterator extends FilteredIterator<SAMRecord> {
 
     @Override
     public boolean filterOut(final SAMRecord rec) {
+    	/*
+    	if (rec.getReadName().equals("HN7TNBGXX:4:11609:2753:3252"))
+			System.out.println("STOP");
+		*/
         for (final short tag : requiredTags)
 			if (rec.getAttribute(tag) == null)
 				return true;

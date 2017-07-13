@@ -19,6 +19,10 @@ public class MapQualityFilteredIterator extends FilteredIterator<SAMRecord> {
 
     @Override
     public boolean filterOut(final SAMRecord r) {
+    	/*
+    	if (r.getReadName().equals("HN7TNBGXX:4:11609:2753:3252"))
+			System.out.println("STOP");
+		*/
     	boolean flag=(rejectNonPrimaryReads && r.isSecondaryOrSupplementary()) ||
         (this.mapQuality!=null && r.getMappingQuality() < this.mapQuality);
         return flag;
