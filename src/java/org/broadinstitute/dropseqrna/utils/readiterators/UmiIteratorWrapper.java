@@ -1,7 +1,5 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import htsjdk.samtools.SAMRecord;
-
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -10,6 +8,8 @@ import java.util.Set;
 
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.utils.CountChangingIteratorWrapper;
+
+import htsjdk.samtools.SAMRecord;
 
 //TODO: Better name?
 public class UmiIteratorWrapper extends CountChangingIteratorWrapper<SAMRecord> {
@@ -48,7 +48,7 @@ public class UmiIteratorWrapper extends CountChangingIteratorWrapper<SAMRecord> 
                               final boolean useStrandInfo) {
         super(underlyingIterator);
 		this.cellBarcodeTag = cellBarcodeTag;
-		this.cellBarcodeList = new HashSet<String>(cellBarcodeList);
+		this.cellBarcodeList = new HashSet<>(cellBarcodeList);
 		this.geneExonTag=geneExonTag;
 		this.strandTag= strandTag;
 		this.readMQ = readMQ;
@@ -72,8 +72,13 @@ public class UmiIteratorWrapper extends CountChangingIteratorWrapper<SAMRecord> 
 		String [] genes = geneList.split(",");
 		String [] strands = null;
 
-		if (this.useStrandInfo)
+		if (this.useStrandInfo) {
 			strands = r.getStringAttribute(strandTag).split(",");
+			if (strands==null)
+				throw new IllegalStateException("For read [" + r.getReadName()+"] gene tags found [" + geneList +" but no strand info set when strand use was requested.");
+			if (genes.length!=strands.length)
+				throw new IllegalStateException("For read [" + r.getReadName()+"] gene tags found [" + geneList +"] but a different number of strand tags were set [" + r.getStringAttribute(strandTag) +"]");
+		}
 
 		if (this.assignReadsToAllGenes)
 			for (int i=0; i<genes.length; i++) {
