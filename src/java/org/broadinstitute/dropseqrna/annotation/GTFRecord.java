@@ -1,10 +1,10 @@
 package org.broadinstitute.dropseqrna.annotation;
 
-import htsjdk.samtools.util.Interval;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import htsjdk.samtools.util.Interval;
 
 public class GTFRecord implements Comparable<GTFRecord> {
 
@@ -16,12 +16,12 @@ public class GTFRecord implements Comparable<GTFRecord> {
 	private final String transcriptType;
 	private final String featureType;
     private final Integer geneVersion;
-	
-	
+
+
 	//{chr, startPos, endPos, strand,geneName,geneID,transcriptName, transcriptID,transcriptType,featureType};
-	public GTFRecord(String chromsome, int start, int end, boolean negativeStrand, String geneID, String geneName,
-                     String transcriptName, String transcriptID, String transcriptType, String featureType,
-                     Integer geneVersion) {
+	public GTFRecord(final String chromsome, final int start, final int end, final boolean negativeStrand, final String geneID, final String geneName,
+                     final String transcriptName, final String transcriptID, final String transcriptType, final String featureType,
+                     final Integer geneVersion) {
 		this.interval=new Interval(chromsome, start, end, negativeStrand, null);
 		this.geneID=geneID;
 		this.geneName=geneName;
@@ -31,32 +31,32 @@ public class GTFRecord implements Comparable<GTFRecord> {
 		this.featureType=featureType;
         this.geneVersion=geneVersion;
 	}
-	
+
 	public Interval getInterval () {
 		return this.interval;
 	}
-	
+
 	public String getStrandAsString() {
 		if (interval.isNegativeStrand()) return ("-");
 		return ("+");
 	}
-	
+
 	public String getChromosome() {
 		return this.interval.getContig();
 	}
-	
+
 	public int getStart() {
 		return this.interval.getStart();
 	}
-	
+
 	public int getEnd() {
 		return this.interval.getEnd();
 	}
-	
+
 	public boolean isNegativeStrand() {
 		return this.interval.isNegativeStrand();
 	}
-	
+
 	public String getGeneID() {
 		return geneID;
 	}
@@ -110,15 +110,14 @@ public class GTFRecord implements Comparable<GTFRecord> {
         result = 31 * result + featureType.hashCode();
         return result;
     }
-    
+
     private int hashCodeIfNotNull(final String str) {
-        if (str == null) {
-            return 0;
-        } else {
-            return str.hashCode();
-        }
+        if (str == null)
+			return 0;
+		else
+			return str.hashCode();
     }
-   
+
     public List<String> validate() {
         // Don't allocate unless there are errors
         List<String> ret = null;
@@ -130,31 +129,33 @@ public class GTFRecord implements Comparable<GTFRecord> {
             ret = addErrorIfNull(ret, "Missing transcript_name", transcriptName);
             ret = addErrorIfNull(ret, "Missing transcript_id", transcriptID);
         }
+        // check for comma in gene name
+        if (geneName.contains(","))
+        	ret = addError(ret, "Reserved character ',' in gene name ["+ geneName +"]");
         return ret;
     }
 
-    private List<String> addErrorIfNull(List<String> errorList, final String message, final Object value) {
-        if (value == null) {
-            return addError(errorList, message);
-        } else {
-            return errorList;
-        }
+    private List<String> addErrorIfNull(final List<String> errorList, final String message, final Object value) {
+        if (value == null)
+			return addError(errorList, message);
+		else
+			return errorList;
     }
     private List<String> addError(List<String> errorList, final String message) {
-        if (errorList == null) {
-            errorList = new ArrayList<>();
-        }
+        if (errorList == null)
+			errorList = new ArrayList<>();
         errorList.add(message);
         return errorList;
     }
-   
+
 	@Override
-	public int compareTo(GTFRecord o) {
+	public int compareTo(final GTFRecord o) {
 		return this.interval.compareTo(o.getInterval());
 	}
-	
+
+	@Override
 	public String toString () {
 		return (this.interval.toString() +" [" + this.geneName + " " + this.featureType+ "]");
 	}
-	
+
 }
