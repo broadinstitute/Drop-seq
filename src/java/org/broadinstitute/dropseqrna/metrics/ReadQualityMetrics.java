@@ -38,8 +38,11 @@ public class ReadQualityMetrics extends MetricBase {
 			histogram = new Histogram<Integer>("read quality", "num reads");
 		}
 	}
-	
-	
+
+	/** No-arg ctor needed for instantiating with MetricsFile.read */
+	public ReadQualityMetrics() {
+	}
+
 	public Histogram<Integer> getHistogram() {
 		return histogram;
 	}
