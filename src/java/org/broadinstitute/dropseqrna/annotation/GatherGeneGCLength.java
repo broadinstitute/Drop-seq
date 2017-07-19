@@ -12,7 +12,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.broadinstitute.dropseqrna.cmdline.MetaData;
-import org.broadinstitute.dropseqrna.priv.utils.referencetools.FastaSequenceFileWriter;
+import org.broadinstitute.dropseqrna.utils.FastaSequenceFileWriter;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.referencetools.ReferenceUtils;
 
