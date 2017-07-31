@@ -10,16 +10,16 @@ public class ReadQualityMetrics extends MetricBase {
 	public String aggregate="";
 	
 	/** The total number of reads */
-	public int totalReads;
+	public long totalReads;
 	
 	/** The count of mapped reads */
-	public int mappedReads;
+	public long mappedReads;
 	
 	/** The count of high quality mapped reads - HQ is a score of 10 or more. */
-	public int hqMappedReads;
+	public long hqMappedReads;
 	
 	/** The number of high quality mapped reads that are not PCR duplicates */
-	public int hqMappedReadsNoPCRDupes;
+	public long hqMappedReadsNoPCRDupes;
 	
 	/** The distribution of high quality mapped reads that are not PCR duplicates */
 	private Histogram <Integer>histogram = null;
