@@ -1,15 +1,19 @@
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import htsjdk.samtools.util.Log;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
+import java.util.stream.Collectors;
 
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+
+import htsjdk.samtools.util.Log;
 
 /**
  * A utility class that takes a list of strings (ordered by prevalence to determine which barcodes are merged into which)
@@ -25,13 +29,15 @@ public class MapBarcodesByEditDistance {
 	private final int REPORT_PROGRESS_INTERVAL;
 	private int threadedBlockSize=20000;
 	private final boolean verbose;
+	private ForkJoinPool forkJoinPool;
 
-
+    // https://blog.krecan.net/2014/03/18/how-to-specify-thread-pool-for-java-8-parallel-streams/
 	public MapBarcodesByEditDistance (final boolean verbose, final int numThreads, final int reportProgressInterval) {
 		this.verbose=verbose;
 		this.NUM_THREADS=numThreads;
 		this.REPORT_PROGRESS_INTERVAL=reportProgressInterval;
 		if (this.NUM_THREADS>1) cbt= new CollapseBarcodeThreaded(this.threadedBlockSize, this.NUM_THREADS);
+		forkJoinPool = new ForkJoinPool(numThreads);
 	}
 
 	public MapBarcodesByEditDistance (final boolean verbose, final int reportProgressInterval) {
@@ -72,10 +78,10 @@ public class MapBarcodesByEditDistance {
 	 */
 	public Map<String, List<String>> collapseBarcodes(List<String> coreBarcodes, ObjectCounter<String> barcodes, final boolean findIndels, final int editDistance) {
 		// don't allow side effects to modify input lists.
-		coreBarcodes = new ArrayList<String>(coreBarcodes);
-		barcodes = new ObjectCounter<String>(barcodes);
+		coreBarcodes = new ArrayList<>(coreBarcodes);
+		barcodes = new ObjectCounter<>(barcodes);
 
-		Map<String, List<String>> result = new HashMap<String, List<String>>();
+		Map<String, List<String>> result = new HashMap<>();
 		int count = 0;
 		int numBCCollapsed=0;
 
@@ -100,7 +106,7 @@ public class MapBarcodesByEditDistance {
 			if (result.containsKey(b))
 				log.error("Result should never have core barcode");
 
-			List<String> closeBCList = new ArrayList<String>(closeBC);
+			List<String> closeBCList = new ArrayList<>(closeBC);
 			Collections.sort(closeBCList);
 			result.put(b, closeBCList);
 
@@ -120,27 +126,50 @@ public class MapBarcodesByEditDistance {
 		return (result);
 	}
 
-
-
-
-
-
-
 	private Set<String> processSingleBarcode(final String barcode, final List<String> comparisonBarcodes, final boolean findIndels, final int editDistance) {
 		Set<String> closeBarcodes =null;
-		if (this.NUM_THREADS>1 )
-			closeBarcodes=cbt.getStringsWithinEditDistanceWithIndel(barcode, comparisonBarcodes, editDistance, findIndels);
-		else // single threaded mode for now.  Maybe remove this later?  Not sure if single threaded is slower, probably is.
+
+		// Replaced with java 8 lambda method. woot?
+		if (this.NUM_THREADS>1 ) {
+			// closeBarcodes=cbt.getStringsWithinEditDistanceWithIndel(barcode, comparisonBarcodes, editDistance, findIndels);
+			 closeBarcodes=processSingleBarcodeMultithreaded(barcode, comparisonBarcodes, findIndels, editDistance);
+			 return closeBarcodes;
+		}
+		// single threaded mode for now.  Maybe remove this later?  Not sure if single threaded is slower, probably is.
 		// would need to implement the multi-threaded indel sensitive barcode collapse.
 		if (findIndels)
 			closeBarcodes = EDUtils.getInstance().getStringsWithinEditDistanceWithIndel(barcode,comparisonBarcodes, editDistance);
 		else
 			closeBarcodes = EDUtils.getInstance().getStringsWithinEditDistance(barcode,comparisonBarcodes, editDistance);
+
 		return (closeBarcodes);
 	}
 
+	/**
+	 * The Java lambda way.
+	 * @param barcode
+	 * @param comparisonBarcodes
+	 * @param findIndels
+	 * @param editDistance
+	 * @return
+	 */
+	private Set<String> processSingleBarcodeMultithreaded(final String barcode, final List<String> comparisonBarcodes, final boolean findIndels, final int editDistance) {
+		Set<String> result = new HashSet<>();
+		try {
+			if (findIndels)
+				result = forkJoinPool.submit(() -> comparisonBarcodes.parallelStream().filter(x -> LevenshteinDistance.getIndelSlidingWindowEditDistance(barcode, x) <= editDistance).collect(Collectors.toSet())).get();
+			else
+				result = forkJoinPool.submit(() -> comparisonBarcodes.stream().filter(x -> HammingDistance.getHammingDistance(barcode, x) <= editDistance).collect(Collectors.toSet())).get();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
+
 	private List<BarcodeWithCount> getBarcodesWithCounts (final ObjectCounter<String> barcodes) {
-		List<BarcodeWithCount> result = new ArrayList<BarcodeWithCount>();
+		List<BarcodeWithCount> result = new ArrayList<>();
 		List<String> keys = barcodes.getKeysOrderedByCount(true);
 		for (String k: keys) {
 			BarcodeWithCount b = new BarcodeWithCount(k, barcodes.getCountForKey(k));
