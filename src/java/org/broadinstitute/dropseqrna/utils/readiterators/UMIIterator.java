@@ -1,14 +1,6 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.PeekableIterator;
-import htsjdk.samtools.util.ProgressLogger;
-
 import java.util.Collection;
-import java.util.List;
 
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
@@ -16,6 +8,13 @@ import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.MultiComparator;
 import org.broadinstitute.dropseqrna.utils.StringInterner;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
+
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.samtools.util.ProgressLogger;
 
 public class UMIIterator implements CloseableIterator<UMICollection>  {
 
@@ -49,7 +48,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final int readMQ,
                        final boolean assignReadsToAllGenes,
                        final boolean useStrandInfo,
-                       final List<String> cellBarcodes) {
+                       final Collection <String> cellBarcodes) {
 		this(headerAndIterator, geneExonTag, cellBarcodeTag, molecularBarcodeTag, strandTag, readMQ, assignReadsToAllGenes, useStrandInfo, cellBarcodes, false);
 	}
 
@@ -76,7 +75,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final int readMQ,
                        final boolean assignReadsToAllGenes,
                        final boolean useStrandInfo,
-                       final List<String> cellBarcodes,
+                       final Collection <String> cellBarcodes,
                        final boolean cellFirstSort) {
 
         this.geneExonTag=geneExonTag;
@@ -117,7 +116,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 			return null;
 
 		Collection<SAMRecord> records = this.atoi.next();
-		PeekableIterator<SAMRecord> recordCollectionIter = new PeekableIterator<SAMRecord>(records.iterator());
+		PeekableIterator<SAMRecord> recordCollectionIter = new PeekableIterator<>(records.iterator());
 
 		// the next record is the first of the "batch"
 		SAMRecord r = recordCollectionIter.peek();

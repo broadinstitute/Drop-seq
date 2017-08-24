@@ -1,14 +1,11 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
@@ -19,6 +16,9 @@ import org.broadinstitute.dropseqrna.utils.OutputWriterUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
@@ -52,14 +52,14 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 
 		writePerTranscriptHeader(out);
 
-		List<String> barcodes=new BarcodeListRetrieval().getCellBarcodes(this.INPUT, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+		// use a set instead of a list because list.contains is terrrrible.
+		Set<String> barcodes=new HashSet<> (new BarcodeListRetrieval().getCellBarcodes(this.INPUT, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
 				this.GENE_EXON_TAG, this.STRAND_TAG, this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
-				this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD, USE_STRAND_INFO);
+				this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD, USE_STRAND_INFO));
 
 		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
                 this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG,
 				this.READ_MQ, true, this.USE_STRAND_INFO, barcodes);
-
 
 		UMICollection batch;
 
@@ -119,7 +119,7 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(bamFile), false),
                 geneExonTag, cellTag, molecularBarcodeTag, strandTag, mapQuality, true, useStrandInfo, null);
 
-		ObjectCounter<String> transcriptsPerCell = new ObjectCounter<String>();
+		ObjectCounter<String> transcriptsPerCell = new ObjectCounter<>();
 
 		UMICollection batch;
 		while ((batch=umiIterator.next())!=null)
