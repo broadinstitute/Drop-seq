@@ -23,11 +23,11 @@ import htsjdk.samtools.util.Log;
  */
 public class MapBarcodesByEditDistance {
 
-	private CollapseBarcodeThreaded cbt=null;
+	// private CollapseBarcodeThreaded cbt=null;
 	private final int NUM_THREADS;
 	private final Log log = Log.getInstance(MapBarcodesByEditDistance.class);
 	private final int REPORT_PROGRESS_INTERVAL;
-	private int threadedBlockSize=20000;
+	// private int threadedBlockSize=20000;
 	private final boolean verbose;
 	private ForkJoinPool forkJoinPool;
 
@@ -36,8 +36,8 @@ public class MapBarcodesByEditDistance {
 		this.verbose=verbose;
 		this.NUM_THREADS=numThreads;
 		this.REPORT_PROGRESS_INTERVAL=reportProgressInterval;
-		if (this.NUM_THREADS>1) cbt= new CollapseBarcodeThreaded(this.threadedBlockSize, this.NUM_THREADS);
-		forkJoinPool = new ForkJoinPool(numThreads);
+		// if (this.NUM_THREADS>1) cbt= new CollapseBarcodeThreaded(this.threadedBlockSize, this.NUM_THREADS);
+		if (this.NUM_THREADS>1) forkJoinPool = new ForkJoinPool(numThreads);
 	}
 
 	public MapBarcodesByEditDistance (final boolean verbose, final int reportProgressInterval) {
@@ -135,8 +135,6 @@ public class MapBarcodesByEditDistance {
 			 closeBarcodes=processSingleBarcodeMultithreaded(barcode, comparisonBarcodes, findIndels, editDistance);
 			 return closeBarcodes;
 		}
-		// single threaded mode for now.  Maybe remove this later?  Not sure if single threaded is slower, probably is.
-		// would need to implement the multi-threaded indel sensitive barcode collapse.
 		if (findIndels)
 			closeBarcodes = EDUtils.getInstance().getStringsWithinEditDistanceWithIndel(barcode,comparisonBarcodes, editDistance);
 		else
