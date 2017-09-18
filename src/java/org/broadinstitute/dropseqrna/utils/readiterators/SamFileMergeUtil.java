@@ -10,6 +10,8 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
+import com.google.common.collect.Interner;
+import com.google.common.collect.Interners;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.IOUtil;
 import picard.PicardException;
@@ -20,12 +22,14 @@ import java.util.List;
 
 /**
  * Utilities for creating a single stream of SAMRecords from multiple input files.
- * @param maintainSort If true, all inputs must be sorted the same way, and they are merge sorted.  If false, inputs
- *                     are merged in arbitrary order.
  */
 public class SamFileMergeUtil {
 
-    /** Use this overload if you want to override defaults in SamReaderFactory, e.g. eager decode */
+    /**
+     * Use this overload if you want to override defaults in SamReaderFactory, e.g. eager decode
+     * @param maintainSort If true, all inputs must be sorted the same way, and they are merge sorted.  If false, inputs
+     *                     are merged in arbitrary order.
+     */
     public static SamHeaderAndIterator mergeInputs(final List<File> inputs,
                                                    final boolean maintainSort,
                                                    final SamReaderFactory samReaderFactory) {
@@ -34,12 +38,14 @@ public class SamFileMergeUtil {
         }
         final List<SamReader> readers = new ArrayList<SamReader>(inputs.size());
         final List<SAMFileHeader> headers = new ArrayList<SAMFileHeader>(inputs.size());
+        final Interner<SAMSequenceDictionary> sequenceDictionaryInterner =Interners.newStrongInterner();
         SAMFileHeader.SortOrder inputSortOrder = null;
         for (final File inFile : inputs) {
             IOUtil.assertFileIsReadable(inFile);
             final SamReader in = samReaderFactory.open(inFile);
             readers.add(in);
             final SAMFileHeader header = in.getFileHeader();
+            header.setSequenceDictionary(sequenceDictionaryInterner.intern(header.getSequenceDictionary()));
             if (maintainSort) {
                 if (inputSortOrder == null) {
                     inputSortOrder = header.getSortOrder();
@@ -66,6 +72,11 @@ public class SamFileMergeUtil {
         }
     }
 
+    /**
+     *
+     * @param maintainSort If true, all inputs must be sorted the same way, and they are merge sorted.  If false, inputs
+     *                     are merged in arbitrary order.
+     */
     public static SamHeaderAndIterator mergeInputs(final List<File> inputs,
                                                    final boolean maintainSort) {
         return mergeInputs(inputs, maintainSort, SamReaderFactory.makeDefault());
