@@ -7,10 +7,7 @@ import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -51,12 +48,12 @@ public class FilterBAM extends CommandLineProgram{
 	@Option (doc="Retain reads that have at least this many M bases total in the cigar string.  This sums all the M's in the cigar string.", optional=true)
 	public Integer SUM_MATCHING_BASES=null;
 	
-	@Option (doc="Soft match reference names that have this string. If multiple matches are specificed, they are OR'd together." +
-			"This is the equivilent of a hard match with wrapped with .* on either side.", optional=true)
+	@Option (doc="Soft match reference names that have this string. If multiple matches are specified, they are OR'd together." +
+			"This is the equivalent of a hard match with wrapped with .* on either side.", optional=true)
 	public List<String> REF_SOFT_MATCHED_RETAINED=null;
 	
 	@Option (doc="Soft match and reject reference names that have this string.  If multiple matches are specified, they are OR'd together. " +
-			"This is the equivilent of a hard match with wrapped with .* on either side. ", optional=true)
+			"This is the equivalent of a hard match with wrapped with .* on either side. ", optional=true)
 	public List<String> REF_SOFT_MATCHED_REJECTED=null;
 		
 	@Option (doc="Exact match reference names that have this string.  If multiple matches are specified, they are OR'd together." +
@@ -78,11 +75,19 @@ public class FilterBAM extends CommandLineProgram{
 	
 	@Option(doc="If multiple TAG_REJECT flags are set, should the result be the union of the filters, or the intersect?  [UNION/INTERSECT].", optional=true)
 	public String TAG_REJECT_COMBINE_FLAG=null;
+
+	@Option(doc="Edit contig names so that a contig that starts with one of these prefixes has the prefix stripped.", optional = true)
+    public List<String> STRIP_REF_PREFIX;
+
+	@Option(doc="Edit sequence dictionary and remove any contig that has been filtered by reference name filtering. " +
+            "A read with mate alignment info in which mate is aligned to a contig that has been removed will be changed " +
+            "to have an unmapped mate.")
+    public boolean DROP_REJECTED_REF = false;
 	
 	//@Option (doc="File with one or more TAG:Value combinations, for example ZC:Z:AAACCCTTGGG.  Any read with any of the tags in the file will be retained.")
 	
-	private String UNION="UNION";
-	private String INTERSECT="INTERSECT";
+	private static final String UNION="UNION";
+	private static final String INTERSECT="INTERSECT";
 	
 	private Map<MatchTypes, List<Pattern>> patterns;
 	
@@ -101,15 +106,43 @@ public class FilterBAM extends CommandLineProgram{
 		
 		SamReader in = SamReaderFactory.makeDefault().open(INPUT);
 
-		SAMFileHeader fileHeader = in.getFileHeader();
+		SAMFileHeader fileHeader = editSequenceDictionary(in.getFileHeader().clone());
 		SamHeaderUtil.addPgRecord(fileHeader, this);
 		SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(fileHeader, true, OUTPUT);
 		ProgressLogger progLog=new ProgressLogger(log);
-		
+
+		final boolean sequencesRemoved = fileHeader.getSequenceDictionary().getSequences().size() != in.getFileHeader().getSequenceDictionary().getSequences().size();
 		
 		for (final SAMRecord r : in) {
 			progLog.record(r);
-			if (filterRead (r)==false) {
+			if (!filterRead(r)) {
+                String sequenceName = stripReferencePrefix(r.getReferenceName());
+                String mateSequenceName = null;
+                if (r.getMateReferenceIndex() != -1) {
+                    mateSequenceName = stripReferencePrefix(r.getMateReferenceName());
+                }
+			    if (sequencesRemoved || sequenceName != null) {
+			        if (sequenceName == null) {
+			            sequenceName = r.getReferenceName();
+                    }
+                    // Even if sequence name has not been edited, if sequences have been removed, need to set
+                    // reference name again to invalidate reference index cache.
+                    r.setReferenceName(sequenceName);
+                }
+                if (r.getMateReferenceIndex() != -1 && (sequencesRemoved || mateSequenceName != null)) {
+                    if (mateSequenceName == null) {
+                        mateSequenceName = r.getMateReferenceName();
+                    }
+                    // It's possible that the mate was mapped to a reference sequence that has been dropped from
+                    // the sequence dictionary.  If so, set the mate to be unmapped.
+                    if (fileHeader.getSequenceDictionary().getSequence(mateSequenceName) != null) {
+                        r.setMateReferenceName(mateSequenceName);
+                    } else {
+                        r.setMateUnmappedFlag(true);
+                        r.setMateReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
+                        r.setMateAlignmentStart(0);
+                    }
+                }
 				out.addAlignment(r);
 			}
 		}
@@ -117,8 +150,54 @@ public class FilterBAM extends CommandLineProgram{
 		out.close();
 		return (0);
 	}
-	
-	void buildPatterns () {
+
+    private SAMFileHeader editSequenceDictionary(SAMFileHeader fileHeader) {
+	    if (DROP_REJECTED_REF || !STRIP_REF_PREFIX.isEmpty()) {
+	        // Make mutable copy of sequence list
+            final ArrayList<SAMSequenceRecord> sequences = new ArrayList<>(fileHeader.getSequenceDictionary().getSequences());
+            final ListIterator<SAMSequenceRecord> it = sequences.listIterator();
+            while (it.hasNext()) {
+                final SAMSequenceRecord sequence = it.next();
+                if (DROP_REJECTED_REF && filterReference(sequence.getSequenceName())) {
+                    it.remove();
+                } else {
+                    final String editedSequenceName = stripReferencePrefix(sequence.getSequenceName());
+                    if (editedSequenceName != null) {
+                        it.set(cloneWithNewName(sequence, editedSequenceName));
+                    }
+                }
+            }
+            fileHeader.getSequenceDictionary().setSequences(sequences);
+        }
+	    return fileHeader;
+    }
+
+    private SAMSequenceRecord cloneWithNewName(SAMSequenceRecord sequence, String editedSequenceName) {
+        final SAMSequenceRecord ret = new SAMSequenceRecord(editedSequenceName, sequence.getSequenceLength());
+        for (Map.Entry<String, String> entry : sequence.getAttributes()) {
+            if (entry.getKey().equals(SAMSequenceRecord.SEQUENCE_NAME_TAG)) {
+                ret.setAttribute(SAMSequenceRecord.SEQUENCE_NAME_TAG, editedSequenceName);
+            } else {
+                ret.setAttribute(entry.getKey(), entry.getValue());
+            }
+        }
+        return ret;
+    }
+
+    /**
+     * @param refName sequence name which may have a prefix stripped from it
+     * @return edited refName, or null if no edit was done.
+     */
+    private String stripReferencePrefix(final String refName) {
+        for (final String prefix : STRIP_REF_PREFIX) {
+            if (refName.startsWith(prefix)) {
+                return refName.substring(prefix.length());
+            }
+        }
+        return null;
+    }
+
+    void buildPatterns () {
 		this.patterns = new HashMap<MatchTypes, List<Pattern>>();
 		if (REF_SOFT_MATCHED_RETAINED!=null) {
 			List<Pattern> p = buildPatterns(this.REF_SOFT_MATCHED_RETAINED, true);
@@ -141,7 +220,7 @@ public class FilterBAM extends CommandLineProgram{
 	private List<Pattern> buildPatterns (List<String> matches, boolean soft) {
 		List<Pattern> result = new ArrayList<Pattern>();
 		for (String s: matches) {
-			Pattern pattern=null;
+			final Pattern pattern;
 			if (soft) {
 				pattern=Pattern.compile(".*"+s+".*");
 			} else {
@@ -160,23 +239,20 @@ public class FilterBAM extends CommandLineProgram{
 		if (rejectPCRDuplicate(r)) return (true);
 		if (rejectNonPrimaryReads(r)) return (true);
 		if (rejectOnCigar(r)) return (true);
-		if (rejectSoftMatch(r)) return(true);
-		if (rejectHardMatch(r)) return(true);
+		if (filterReference(r.getReferenceName())) return(true);
 		if (rejectOnTags(this.TAG_REJECT, r)) return (true);
 
-		// process all the accept filters.  All must pass.
-		boolean sm=acceptSoftMatch(r);
-		boolean hm=acceptHardMatch(r);
-		boolean at=acceptOnTags(this.TAG_RETAIN, r);
-		boolean all = sm && hm && at;
-		return (!all);
-		
+		if (!acceptOnTags(this.TAG_RETAIN, r)) return true;
+		return false;
 	}
+
+	private boolean filterReference(final String refName) {
+        return (rejectSoftMatch(refName) || rejectHardMatch(refName) || (!acceptSoftMatch(refName)) || (!acceptHardMatch(refName)));
+    }
 	
 	/**
 	 * Rejects reads if the sum of the cigar string bases is less than M_BASES_IN_CIGAR, reject the read.
 	 * Don't process if M_BASES_IN_CIGAR is -1.
-	 * @param r
 	 * @return return false if the sum of the matching bases in the cigar is greater than the threshold.
 	 */
 	boolean rejectOnCigar(SAMRecord r) {		
@@ -193,14 +269,14 @@ public class FilterBAM extends CommandLineProgram{
 		}
 		return true;
 	}
-	
-	boolean rejectOnMapQuality (SAMRecord r) {
+
+    private boolean rejectOnMapQuality (SAMRecord r) {
 		if (this.MINIMUM_MAPPING_QUALITY==null) return (false);
 		if (r.getMappingQuality() < this.MINIMUM_MAPPING_QUALITY) return (true);
 		return (false);
 	}
-	
-	boolean rejectPCRDuplicate (SAMRecord r) {
+
+    private boolean rejectPCRDuplicate (SAMRecord r) {
 		if (this.FILTER_PCR_DUPES && r.getDuplicateReadFlag()) return (true);
 		return (false);
 	}
@@ -209,32 +285,32 @@ public class FilterBAM extends CommandLineProgram{
 		if (this.RETAIN_ONLY_PRIMARY_READS && r.isSecondaryOrSupplementary()) return (true);
 		return (false);
 	}
-	
-	boolean rejectSoftMatch(SAMRecord r) {
+
+    private boolean rejectSoftMatch(final String refName) {
 		if (this.REF_SOFT_MATCHED_REJECTED==null || this.REF_SOFT_MATCHED_REJECTED.isEmpty()) return false;
-		boolean hasMatch = matchReference(this.patterns.get(MatchTypes.REF_SOFT_MATCHED_REJECTED), r);
+		boolean hasMatch = matchReference(this.patterns.get(MatchTypes.REF_SOFT_MATCHED_REJECTED), refName);
 		//boolean hasMatch = softMatchReference(this.REF_SOFT_MATCHED_REJECTED, r);
 		return (hasMatch);
 	}
-	
-	boolean rejectHardMatch(SAMRecord r) {
+
+    private boolean rejectHardMatch(final String refName) {
 		if (this.REF_HARD_MATCHED_REJECTED==null || this.REF_HARD_MATCHED_REJECTED.isEmpty()) return false;
 		//boolean hasMatch = exactMatchReference(this.REF_HARD_MATCHED_REJECTED, r);
-		boolean hasMatch = matchReference(this.patterns.get(MatchTypes.REF_HARD_MATCHED_REJECTED), r);
+		boolean hasMatch = matchReference(this.patterns.get(MatchTypes.REF_HARD_MATCHED_REJECTED), refName);
 		return (hasMatch);
 	}
-	
-	boolean acceptSoftMatch(SAMRecord r) {
+
+    private boolean acceptSoftMatch(final String refName) {
 		if (this.REF_SOFT_MATCHED_RETAINED==null || this.REF_SOFT_MATCHED_RETAINED.isEmpty()) return true;
 		//boolean hasMatch = softMatchReference(this.REF_SOFT_MATCHED_RETAINED, r);
-		boolean hasMatch = matchReference(this.patterns.get(MatchTypes.REF_SOFT_MATCHED_RETAINED), r);
+		boolean hasMatch = matchReference(this.patterns.get(MatchTypes.REF_SOFT_MATCHED_RETAINED), refName);
 		return (hasMatch);
 	}
-	
-	boolean acceptHardMatch(SAMRecord r) {
+
+    private boolean acceptHardMatch(final String refName) {
 		if (this.REF_HARD_MATCHED_RETAINED==null || this.REF_HARD_MATCHED_RETAINED.isEmpty()) return true;
 		//boolean hasMatch = exactMatchReference(this.REF_HARD_MATCHED_RETAINED, r);
-		boolean hasMatch = matchReference(this.patterns.get(MatchTypes.REF_HARD_MATCHED_RETAINED), r);
+		boolean hasMatch = matchReference(this.patterns.get(MatchTypes.REF_HARD_MATCHED_RETAINED), refName);
 		return (hasMatch);
 	}
 	
@@ -248,8 +324,9 @@ public class FilterBAM extends CommandLineProgram{
 	boolean softMatchReference (List<String> matches, SAMRecord r) {
 		String refName = r.getReferenceName();
 		for (String match: matches) {
-			boolean m = refName.matches(".*"+match+".*");
-			if (m) return (m);
+			if (refName.matches(".*"+match+".*")) {
+                return true;
+            }
 		}
 		return (false);
 		
@@ -257,12 +334,8 @@ public class FilterBAM extends CommandLineProgram{
 	
 	/**
 	 * For matching, using patterns instead of string regex.
-	 * @param patterns
-	 * @param r
-	 * @return
 	 */
-	boolean matchReference(List<Pattern> patterns, SAMRecord r) {
-		String refName = r.getReferenceName();
+    private boolean matchReference(List<Pattern> patterns, final String refName) {
 		for (Pattern p: patterns) {
 			Matcher m = p.matcher(refName);
 			if (m.find()) {
@@ -283,8 +356,9 @@ public class FilterBAM extends CommandLineProgram{
 	boolean exactMatchReference (List<String> matches, SAMRecord r) {
 		String refName = r.getReferenceName();
 		for (String match: matches) {
-			boolean m = refName.matches(match);
-			if (m) return (m);
+			if (refName.matches(match)) {
+                return true;
+            }
 		}
 		return (false);
 		
@@ -292,9 +366,6 @@ public class FilterBAM extends CommandLineProgram{
 	
 	/**
 	 * Reject on any of the tags if they are set.
-	 * @param tags
-	 * @param r
-	 * @return
 	 */
 	boolean rejectOnTags (List<String> tags, SAMRecord r) {
 		if (tags==null || tags.isEmpty()) return(false);
@@ -302,29 +373,23 @@ public class FilterBAM extends CommandLineProgram{
 		for (String tag: tags) {
 			Object v = r.getAttribute(tag);
 			// if not null and union, return true if any are true.
-			if (v!=null && this.TAG_REJECT_COMBINE_FLAG!=null && this.TAG_REJECT_COMBINE_FLAG.equals(this.UNION)) return true;
+			if (v!=null && this.TAG_REJECT_COMBINE_FLAG!=null && this.TAG_REJECT_COMBINE_FLAG.equals(UNION)) return true;
 			// if null and intersect, return false
-			if (v==null && this.TAG_REJECT_COMBINE_FLAG!=null && this.TAG_REJECT_COMBINE_FLAG.equals(this.INTERSECT)) return false;
+			if (v==null && this.TAG_REJECT_COMBINE_FLAG!=null && this.TAG_REJECT_COMBINE_FLAG.equals(INTERSECT)) return false;
 			// if not null and single iteration, return true
 			if (v!=null && this.TAG_REJECT_COMBINE_FLAG==null) return true;
 		}
 		return (false);
 	}
-	
-	/**
-	 * 
-	 * @param tags
-	 * @param r
-	 * @return
-	 */
-	boolean acceptOnTags (List<String> tags, SAMRecord r) {
+
+    private boolean acceptOnTags (List<String> tags, SAMRecord r) {
 		if (tags==null || tags.isEmpty()) return(true);
 		for (String tag: tags) {
 			Object v = r.getAttribute(tag);
 			// if not null and union, return true if any are true.
-			if (v!=null && this.TAG_RETAIN_COMBINE_FLAG!=null && this.TAG_RETAIN_COMBINE_FLAG.equals(this.UNION)) return true;
+			if (v!=null && this.TAG_RETAIN_COMBINE_FLAG!=null && this.TAG_RETAIN_COMBINE_FLAG.equals(UNION)) return true;
 			// if null and intersect, return false
-			if (v==null && this.TAG_RETAIN_COMBINE_FLAG!=null && this.TAG_RETAIN_COMBINE_FLAG.equals(this.INTERSECT)) return false;
+			if (v==null && this.TAG_RETAIN_COMBINE_FLAG!=null && this.TAG_RETAIN_COMBINE_FLAG.equals(INTERSECT)) return false;
 			// if not null and single iteration, return true
 			if (v!=null && this.TAG_RETAIN_COMBINE_FLAG==null) return true;
 		}
