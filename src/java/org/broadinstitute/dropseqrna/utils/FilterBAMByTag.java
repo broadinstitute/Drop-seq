@@ -27,20 +27,16 @@ import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 
+import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.modularfileparser.DelimiterParser;
 import org.broadinstitute.dropseqrna.utils.modularfileparser.ModularFileParser;
-import org.broadinstitute.sv.util.PeekableIterator;
 
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
@@ -130,7 +126,7 @@ public class FilterBAMByTag extends CommandLineProgram {
 	 */
 	void processPairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values) {
 		ProgressLogger progLog = new ProgressLogger(log);
-		PeekableIterator<SAMRecord>  iter = new PeekableIterator<>(CustomBAMIterators.getQuerynameSortedRecords(in));
+		PeekableIterator<SAMRecord> iter = new PeekableIterator<>(CustomBAMIterators.getQuerynameSortedRecords(in));
 		while (iter.hasNext()) {
 			SAMRecord r1 = iter.next();
 			progLog.record(r1);

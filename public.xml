@@ -1,0 +1,199 @@
+<?xml version="1.0"?>
+<!--
+  ~ The MIT License
+  ~
+  ~ Copyright (c) 2017 The Broad Institute
+  ~
+  ~ Permission is hereby granted, free of charge, to any person obtaining a copy
+  ~ of this software and associated documentation files (the "Software"), to deal
+  ~ in the Software without restriction, including without limitation the rights
+  ~ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the Software is
+  ~ furnished to do so, subject to the following conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be included in
+  ~ all copies or substantial portions of the Software.
+  ~
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  ~ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  ~ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  ~ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  ~ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  ~ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  ~ THE SOFTWARE.
+  -->
+
+<project name="Drop-seq" basedir="." default="all">
+
+    <property name="src.public" value="public/src/java"/>
+    <property name="src.public.test" value="public/src/tests/java"/>
+    <property name="lib" value="jar/lib"/>
+    <property name="picard.executable.dir" value="../3rdParty/picard"/>
+    <property name="dist" value="dist"/>
+    <property name="classes.public" value="public_classes"/>
+    <property name="classes.public.test" value="public_testclasses"/>
+    <property name="test.public.output" value="dist/test/public"/>
+    <property name="Drop-seq.version" value="1.13"/>
+    <property name="javac.debug" value="true"/>
+    <property name="javac.target" value="1.8"/>
+    <property name="javac.debug" value="true"/>
+    <property name="testng.verbosity" value="2"/>
+    <property name="repository.version" value="experimental"/>
+
+    <property environment="env"/>
+
+    <!-- INIT -->
+    <path id="public.classpath">
+        <fileset dir="${lib}">
+            <include name="*.jar"/>
+        </fileset>
+    </path>
+    <path id="test.classpath">
+        <pathelement location="${classes.public}"/>
+        <path refid="public.classpath"/>
+        <fileset dir="${lib}/test">
+            <include name="*.jar"/>
+        </fileset>
+    </path>
+
+    <!-- CLEAN -->
+    <target name="clean">
+        <delete dir="${classes.public}"/>
+        <delete dir="${classes.public.test}"/>
+        <delete dir="${test.public.output}"/>
+        <delete  dir="${dist}"/>
+        <delete  dir="javadoc"/>
+    </target>
+
+    <!-- COMPILE -->
+    <macrodef name="compile">
+        <attribute name="destdir"/>
+        <attribute name="src"/>
+        <attribute name="classpathrefid"/>
+        <sequential>
+            <mkdir dir="@{destdir}"/>
+            <javac destdir="@{destdir}"
+                   optimize="${javac.opt}"
+                   includes ="org/broadinstitute/dropseqrna/**/*.*"
+                   debug="${javac.debug}">
+                <src path="@{src}"/>
+                <classpath refid="@{classpathrefid}"/>
+            </javac>
+        </sequential>
+    </macrodef>
+
+    <target name="compile" depends="compile-tests"
+            description="Compile files without cleaning">
+    </target>
+
+    <target name="compile-public-src" description="Compile files without cleaning">
+        <compile src="${src.public}" destdir="${classes.public}" classpathrefid="public.classpath"/>
+    </target>
+
+    <target name="compile-tests" depends="compile-public-tests" description="Compile test files without cleaning"/>
+
+    <target name="compile-public-tests" depends="compile-public-src">
+        <compile src="${src.public.test}" destdir="${classes.public.test}" classpathrefid="test.classpath"/>
+    </target>
+
+
+    <!-- TEST -->
+    <macrodef name="test">
+        <attribute name="destdir"/>
+        <attribute name="classpathrefid"/>
+        <attribute name="classes"/>
+        <sequential>
+            <taskdef resource="testngtasks" classpathref="test.classpath"/>
+            <testng suitename="Drop-seq-tests" classpathref="@{classpathrefid}" outputdir="@{destdir}"
+                    failureproperty="tests.failed" excludedgroups="slow" workingDir="${basedir}"
+                    verbose="${testng.verbosity}">
+                <classpath>
+                    <pathelement path="@{classes}"/>
+                </classpath>
+                <classfileset dir="@{classes}">
+                    <include name="**/Test*.class"/>
+                    <include name="**/*Test.class"/>
+                </classfileset>
+                <jvmarg value="-Xmx1G"/>
+            </testng>
+            <fail if="tests.failed" message="There were failed unit tests"/>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="single-test">
+        <attribute name="destdir"/>
+        <attribute name="classpathrefid"/>
+        <attribute name="classes"/>
+        <sequential>
+            <taskdef resource="testngtasks" classpathref="public.classpath"/>
+            <fail unless="test.name" message="Please provide input test: -Dtest.name=..." />
+            <testng suitename="Drop-seq-tests" classpathref="@{classpathrefid}" outputdir="@{destdir}"
+                    failureproperty="tests.failed" excludedgroups="slow" workingDir="${basedir}"
+                    verbose="${testng.verbosity}">
+                <classpath>
+                    <pathelement path="@{classes}"/>
+                </classpath>
+                <classfileset dir="@{classes}">
+                    <include name="**/Test*.class"/>
+                    <include name="**/${test.name}.class"/>
+                </classfileset>
+                <jvmarg value="-Xmx1G"/>
+            </testng>
+            <fail if="tests.failed" message="There were failed unit tests"/>
+        </sequential>
+    </macrodef>
+
+    <target name="test" depends="test-public" description="Run unit tests">
+    </target>
+
+    <target name="test-public" depends="compile-public-tests">
+        <test classes="${classes.public.test}" classpathrefid="test.classpath" destdir="${test.public.output}"/>
+    </target>
+
+    <target name="single-test-public" depends="compile-public-tests">
+        <single-test classes="${classes.public.test}" classpathrefid="test.classpath" destdir="${test.public.output}"/>
+    </target>
+
+
+    <target name="javadoc-public" description="Generates the public javadoc.">
+        <javadoc
+                sourcepath="${src.public}"
+                destdir="javadoc/public"
+                packagenames="org.broadinstitute.dropseqrna.*"
+                windowtitle="SAM JDK API Documentation"
+                doctitle="&lt;h1&gt;SAM JDK API Documentation&lt;/h1&gt;"
+                author="true"
+                protected="true"
+                use="true"
+                version="true"
+                classpathref="public.classpath">
+            <link href="http://docs.oracle.com/javase/7/docs/api/"/>
+        </javadoc>
+    </target>
+
+    <target name="jar-public-executable" depends="compile-public-src">
+        <mkdir dir="${dist}"/>
+        <pathconvert property="classpath.manifest" refid="public.classpath" pathsep=" ">
+            <chainedmapper>
+                <flattenmapper/>
+                <globmapper from="*.jar" to="lib/*.jar"/>
+            </chainedmapper>
+        </pathconvert>
+        <delete file="${dist}/dropseq.jar"/>
+        <jar destfile="${dist}/dropseq.jar" compress="no">
+            <fileset dir="${classes.public}" includes="org/broadinstitute/dropseqrna/**/*.*"/>
+            <manifest>
+                <attribute name="Implementation-Version" value="${Drop-seq.version}(${repository.revision})"/>
+                <attribute name="Implementation-Vendor" value="Broad Institute"/>
+                <attribute name="Main-Class" value="org.broadinstitute.dropseqrna.cmdline.DropSeqMain"/>
+                <attribute name="Implementation-Title" value="Drop-seq tools"/>
+                <attribute name="Class-Path" value="${classpath.manifest}"/>
+            </manifest>
+        </jar>
+    </target>
+
+
+
+    <target name="all" depends="compile, jar-public-executable" description="Default build target"/>
+
+</project>
