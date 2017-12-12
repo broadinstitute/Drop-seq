@@ -12,8 +12,6 @@ package org.broadinstitute.dropseqrna.utils.alignmentcomparison;
 
 import java.util.List;
 
-import org.broadinstitute.dropseqrna.priv.barnyard.digitalallelecounts.sampleassignment.VCFPileupJointIterator;
-
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordQueryNameComparator;
 import htsjdk.samtools.util.Log;
@@ -29,7 +27,7 @@ import htsjdk.samtools.util.PeekableIterator;
  */
 public class QueryNameJointIterator {
 
-	private static final Log log = Log.getInstance(VCFPileupJointIterator.class);
+	private static final Log log = Log.getInstance(QueryNameJointIterator.class);
 
 	private final PeekableIterator<List<SAMRecord>> iterOne;
 	private final PeekableIterator<List<SAMRecord>> iterTwo;
