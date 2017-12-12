@@ -43,6 +43,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderLibrary
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.StringInterner;
 import org.broadinstitute.dropseqrna.utils.editdistance.EDUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
@@ -56,6 +57,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.StringUtil;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
 import picard.cmdline.StandardOptionDefinitions;
@@ -91,6 +93,9 @@ public class DigitalExpression extends DGECommandLineBase {
     @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of DGE Matrix.  Genes are in rows, cells in columns.  The first column contains the gene name. This supports zipped formats like gz and bz2.")
     public File OUTPUT;
 
+    @Option (doc="An alternate output of expression where each row represents a cell, gene, and count of UMIs.  Cell/Gene pairings with 0 UMIs are not emitted.", optional=true)
+    public File OUTPUT_LONG_FORMAT;
+
     @Option (doc="Output only genes with at least this total expression level, after summing across all cells", optional=true)
     public Integer MIN_SUM_EXPRESSION=null;
 
@@ -105,6 +110,7 @@ public class DigitalExpression extends DGECommandLineBase {
     public File REFERENCE;
 
     private boolean OUTPUT_EXPRESSED_GENES_ONLY=false;
+    private StringInterner interner = new StringInterner();
 
     @Override
     /**
@@ -116,6 +122,7 @@ public class DigitalExpression extends DGECommandLineBase {
 
         IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
+        if (OUTPUT_LONG_FORMAT!=null) IOUtil.assertFileIsWritable(OUTPUT_LONG_FORMAT);
         if (OUTPUT_HEADER == null)
 			OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
         if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(this.SUMMARY);
@@ -170,12 +177,16 @@ public class DigitalExpression extends DGECommandLineBase {
         Map<String, Integer> readCountMap = new HashMap<>();
         Map<String, DESummary> summaryMap = initializeSummary(cellBarcodes);
 
+    	// key: cell barcode.  value: counts of UMIs per gene.
+        Map<String,ObjectCounter<String>> resultsPerCell=null;
+        if (this.OUTPUT_LONG_FORMAT!=null)
+             resultsPerCell = new HashMap<>();
 
         UMICollection batch;
         while ((batch=umiIterator.next())!=null) {
             if (batch==null || batch.isEmpty())
 				continue;
-            String currentGene = batch.getGeneName();
+            String currentGene = interner.intern(batch.getGeneName());
             // if just starting the loop
             if (gene==null) gene=currentGene;
             // if the gene is the same, you're still gathering expression on that gene.
@@ -186,6 +197,10 @@ public class DigitalExpression extends DGECommandLineBase {
                 transcriptCountMap.put(batch.getCellBarcode(), molBCCount);
                 int readCount = batch.getDigitalExpression(this.MIN_BC_READ_THRESHOLD, this.EDIT_DISTANCE, true);
                 readCountMap.put(batch.getCellBarcode(), readCount);
+
+                // if you're gather the long file format, do it here.
+                if (resultsPerCell!=null)
+                	updateResultsPerCell(currentGene, molBCCount, resultsPerCell, batch);
             }
             // you've gathered all the data for the gene, write it out and start on the next.
             if (!gene.equals(currentGene)) {
@@ -199,6 +214,9 @@ public class DigitalExpression extends DGECommandLineBase {
                 int readCount = batch.getDigitalExpression(this.MIN_BC_READ_THRESHOLD, this.EDIT_DISTANCE, true);
                 readCountMap.put(batch.getCellBarcode(), readCount);
                 gene=currentGene;
+                // if you're gather the long file format, do it here.
+                if (resultsPerCell!=null)
+                	updateResultsPerCell(currentGene, molBCCount, resultsPerCell, batch);
             }
         }
         // write out remainder
@@ -210,8 +228,56 @@ public class DigitalExpression extends DGECommandLineBase {
         if (this.SUMMARY!=null)
 			writeSummary(summaryMap.values(), this.SUMMARY);
 
+        if (this.OUTPUT_LONG_FORMAT!=null)
+			writeLongOutputFormat(cellBarcodes, resultsPerCell, this.OUTPUT_LONG_FORMAT);
         CloserUtil.close(umiIterator);
 
+    }
+
+    /**
+     * Updates the per-cell counts of UMIs per gene.
+     * TODO: write a SortingCollection.Codec to encode this output, emit the output to temp file(s), then sort, and emit the sorted result. This should be far more memory efficient
+     * @param currentGene
+     * @param molBCCount
+     * @param resultsPerCell
+     * @param batch
+     * @return
+     */
+    private Map<String,ObjectCounter<String>> updateResultsPerCell (final String currentGene, final int molBCCount, final Map<String,ObjectCounter<String>> resultsPerCell, final UMICollection batch) {
+    	String cellBarcode = batch.getCellBarcode();
+    	ObjectCounter<String> oneCell = resultsPerCell.get(cellBarcode);
+    	if (oneCell==null)
+    		oneCell = new ObjectCounter<>();
+    	// use the same reference to the gene name across ObjectCounters.
+    	String g = interner.intern(currentGene);
+    	oneCell.incrementByCount(g, molBCCount);
+    	resultsPerCell.put(cellBarcode, oneCell);
+    	return (resultsPerCell);
+    }
+
+    /**
+     * Writes the "long" form of the DGE, with each row representing a cell and gene with the number of UMIs.
+     * This is only emitted for cell/gene pairs that are non-null.
+     * @param cellBarcodes A list of cell barcodes that dictates the order in which results are emitted.
+     * @param resultsPerCell The counts of UMIs on each gene for many cells.
+     * @param outFile The output file to write to.
+     */
+    private void writeLongOutputFormat(final List<String> cellBarcodes, final Map<String,ObjectCounter<String>> resultsPerCell, final File outFile) {
+    	PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(outFile));
+    	String [] header = {"CELL", "GENE", "UMI_COUNT"};
+    	out.println(StringUtil.join("\t", header));
+    	for (String cell: cellBarcodes) {
+    		ObjectCounter<String> perCell = resultsPerCell.get(cell);
+    		// if there's no result for this cell, skip it.
+    		if (perCell==null) continue;
+    		// write out the cell.
+    		for (String gene: perCell.getKeysOrderedByCount(true)) {
+    			String [] line = {cell, gene, Integer.toString(perCell.getCountForKey(gene))};
+    			out.println(StringUtil.join("\t", line));
+    		}
+    	}
+    	out.flush();
+    	CloserUtil.close(out);
     }
 
     private void writeDgeHeader(final PrintStream out) {
@@ -268,7 +334,7 @@ public class DigitalExpression extends DGECommandLineBase {
      * @param threshold
      * @return
      */
-    public ObjectCounter <String> collapseByEditDistance (final ObjectCounter<String> barcodes, final int editDistance, final int threshold) {
+    public ObjectCounter <String> collapseByEditDistance (final ObjectCounter<String> barcodes, final int editDistance) {
         // map the barcode to the object so I can look up counts
 
 
