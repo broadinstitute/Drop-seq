@@ -65,7 +65,8 @@ import picard.cmdline.Option;
 
 @CommandLineProgramProperties(
         usage = "For each cell, gather up all the UMIs.  An error in synthesis will result in the last base of the synthesis being fixed in >90% of the UMIs for that cell, across all genes." +
-			"This fixed base is T.  For cell barcodes where this occurs, output the cell barcode in a file, as well as (optionally) pad the cell barcodes with N for the error bases.",
+			"This fixed base is T.  For cell barcodes where this occurs, output the cell barcode in a file, as well as (optionally) pad the cell barcodes with N for the error bases.  In cases where we don't know how to fix"
+			+ "the error - when there are too many missing bases in the synthesis, or the synthesis error isn't one of the repairable types, we remove the read from the output BAM.",
         usageShort = "Detect barcode synthesis errors where the final base of a UMI is fixed across all UMIs of a cell.",
         programGroup = DropSeq.class
 )
