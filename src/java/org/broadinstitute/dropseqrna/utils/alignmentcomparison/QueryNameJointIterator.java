@@ -71,14 +71,15 @@ public class QueryNameJointIterator {
 
 			List<SAMRecord> r1List = iterOne.peek();
 			List<SAMRecord> r2List = iterTwo.peek();
-			// if (r1List.get(0).getReadName().equals(anObject))
 			// only have to compare the first record.
 			int cmp = comp.fileOrderCompare(r1List.get(0), r2List.get(0));
-
+			// log.info("R1: "+ r1List.toString()+ "R2: " +r2List.toString());
 			if (cmp < 0)
 				r1List = iterOne.next();
+				// log.info("R1: "+ r1List.toString()+ "R2: " +r2List.toString());
 			else if (cmp > 0)
 				r2List = iterTwo.peek();
+				// log.info("R1: "+ r1List.toString()+ "R2: " +r2List.toString());
 			else if (cmp == 0) {
 				// do some real work.
 				// grab the next record and process it.

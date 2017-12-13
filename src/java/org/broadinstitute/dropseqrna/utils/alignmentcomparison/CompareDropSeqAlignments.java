@@ -26,22 +26,24 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.CustomBAMIterators;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.StringInterner;
 import org.broadinstitute.dropseqrna.utils.alignmentcomparison.QueryNameJointIterator.JointResult;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
-import org.broadinstitute.dropseqrna.utils.readiterators.MapQualityFilteredIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 
+import htsjdk.samtools.SAMFileHeader.SortOrder;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordQueryNameComparator;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.StringUtil;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
@@ -202,15 +204,25 @@ public class CompareDropSeqAlignments extends CommandLineProgram {
 	}
 
 	private PeekableIterator<List<SAMRecord>> getReadIterator (final File bamFile, final Integer readQuality) {
-		SamReader inputSam = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(bamFile);
-		Iterator<SAMRecord> iter = CustomBAMIterators.getQuerynameSortedRecords(inputSam);
+        Iterator<SAMRecord> iter = getQueryNameSortedData(bamFile);
 		// filter out unmapped reads.
-		iter = new UnmappedReadFilter(iter);
+		// iter = new UnmappedReadFilter(iter);
 		// optionally, filter out reads below a map quality threshold.
-		if (readQuality!=null) iter = new MapQualityFilteredIterator(iter, readQuality, false).iterator();
+		//if (readQuality!=null) iter = new MapQualityFilteredIterator(iter, readQuality, false).iterator();
 		final GroupingIterator<SAMRecord> groupingIterator = new GroupingIterator<>(iter, READ_NAME_COMPARATOR);
 		PeekableIterator<List<SAMRecord>> peekable = new PeekableIterator<>(groupingIterator);
 		return peekable;
+	}
+
+	private Iterator<SAMRecord> getQueryNameSortedData (final File bamFile) {
+		SamReader reader = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(bamFile);
+		if (reader.getFileHeader().getSortOrder().equals(SortOrder.queryname))
+			return reader.iterator();
+		log.info("Input SAM/BAM not in queryname order, sorting...");
+        final ProgressLogger progressLogger = new ProgressLogger(log, 1000000, "Sorting reads in query name order");
+        final CloseableIterator<SAMRecord> result = SamRecordSortingIteratorFactory.create(reader.getFileHeader(), reader.iterator(), READ_NAME_COMPARATOR, progressLogger);
+        log.info("Sorting finished.");
+        return result;
 	}
 
 	private void writeGeneReport (final File outFile, final Map<String, GeneResult> geneResults) {
@@ -233,8 +245,6 @@ public class CompareDropSeqAlignments extends CommandLineProgram {
 
 		for (String key: keys) {
 			GeneResult gr = geneResults.get(key);
-			if (key.equals("ABHD16A"))
-				log.info("STOP");
 			String [] line = {gr.getOriginalGene(),  gr.getOriginalContig(), Integer.toString(gr.getCountOriginalReads()), Integer.toString(gr.getCountSameMapping()), Integer.toString(gr.getCountDifferentUnique()),
 					Integer.toString(gr.getCountMapsNonUniqueCount()), Integer.toString(gr.getCountMultiGeneMappingCount()),
 					StringUtil.join(",", gr.getUniqueMapOtherGene()), StringUtil.join(",", gr.getNonUniqueMapOtherGene()), StringUtil.join(",", gr.getOtherContigs())};
