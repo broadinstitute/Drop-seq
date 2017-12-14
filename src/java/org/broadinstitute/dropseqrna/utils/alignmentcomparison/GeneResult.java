@@ -32,16 +32,26 @@ public class GeneResult {
 	private int countOriginalReads;
 	private int countSameMapping;
 
-	// count of reads that map to a different area uniquely.
-	// can I break this up into reads that map to genes and reads that don't map at all?
-	private int countDifferentUnique;
-	private int countNoGene;
+
+	// These reads map uniquely to a different gene and would show up in a DGE under a different gene.
+	private int countDifferentUniqueGene;
+
+
+	// LOSS OF EXPRESSION CATEGORIES
+
+	// this read maps to one gene that isn't the original, and there are multiple reads so the new mapping would not be counted.
+	private int countDifferentGeneNonUniqueCount;
+
+	// these reads used to map uniquely to a gene, now they map to an intron/intergenic.
+	private int countIntronicOrIntergenic;
 
 	// the original gene mapping is present but read also maps to some other non-gene region, making the map quality of the gene read low so it wouldn't be in the DGE.
-	// this read only contains 1 gene.
-	private int countMapsNonUniqueCount;
+	// this read contains the original gene, but now there are multiple mappings.
+	private int countSameGeneMapsNonUniqueCount;
+
 	// multiple genes are mapped to the read, so it wouldn't be in the DGE.
 	private int countMultiGeneMappingCount;
+
 
 	// what genes receive unique mappings (not the original gene)
 	private ObjectCounter<String> uniqueMapOtherGene;
@@ -56,9 +66,9 @@ public class GeneResult {
 		this.originalContig=originalContig;
 		this.countOriginalReads=0;
 		this.countSameMapping=0;
-		this.countNoGene=countNoGene;
-		this.countDifferentUnique=0;
-		this.countMapsNonUniqueCount=0;
+		this.countIntronicOrIntergenic=0;
+		this.countDifferentUniqueGene=0;
+		this.countSameGeneMapsNonUniqueCount=0;
 		this.countMultiGeneMappingCount=0;
 		this.uniqueMapOtherGene=new ObjectCounter<>();
 		this.nonUniqueMapOtherGene=new ObjectCounter<>();
@@ -71,10 +81,11 @@ public class GeneResult {
 	 * @param genes The genes for each read.
 	 */
 	public void addMapping (final Collection <String> genes, final Collection<String> contigs, final int numReads) {
-		if (this.originalGene.equals("AC002553.1"))
-			System.out.println("STOP");
-
 		boolean hasOriginalGene=genes.contains(this.originalGene);
+		// check for the no-gene tag, set the flag, and remove it from the list.
+		boolean hasReadNotOnAnyGene = genes.contains(this.noGeneTag);
+		genes.remove(this.noGeneTag);
+		// always incremented.
 		countOriginalReads++;
 
 		// handle mappings to other contigs.
@@ -87,29 +98,40 @@ public class GeneResult {
 			countSameMapping++;
 			return;
 		}
-		// there's only one mapping to the original gene, but there are multiple reads.
-		if (hasOriginalGene & genes.size()==1 & numReads>1) {
-			countMapsNonUniqueCount++;
+
+		// need to handle cases where a read maps to the same gene multiple times at low map quality.
+		// kinda weird...I'm gonna call these intronic/intergenic, but they aren't really.
+		if (hasOriginalGene & genes.size()==1 & numReads>1 & !hasReadNotOnAnyGene) {
+			countSameGeneMapsNonUniqueCount++;
 			return;
 		}
-		// maps to some new gene uniquely.
-		if (!hasOriginalGene & genes.size()==1) {
-			String gene = genes.iterator().next();
-			if (gene.equals(this.noGeneTag)) {
-				this.countNoGene++;
-				return;
-			} else {
-				// otherwise you're a different gene.
-				countDifferentUnique++;
+
+		// there's only one mapping to the original gene, but there are multiple reads that map to no other genes.
+		if (hasOriginalGene & genes.size()==1 & numReads>1 & hasReadNotOnAnyGene) {
+			countSameGeneMapsNonUniqueCount++;
+			return;
+		}
+
+		// doesn't map to a gene anymore.
+		if (!hasOriginalGene & genes.size()==0 & hasReadNotOnAnyGene) {
+			this.countIntronicOrIntergenic++;
+			return;
+		}
+		// doesn't map to original gene but maps to some other gene.
+		if (!hasOriginalGene & genes.size()==1)
+			// maps to one other gene uniquely.
+			if (numReads==1) {
+				countDifferentUniqueGene++;
 				uniqueMapOtherGene.increment(genes.iterator().next());
 				return;
+			} else { // maps to one other gene non-uniquely.
+				countDifferentGeneNonUniqueCount++;
+				return;
 			}
-		}
 		// there's more than 1 gene mapped.
 		if (genes.size()>1) {
-			countMultiGeneMappingCount++;
 			genes.remove(this.originalGene);
-			genes.remove(this.noGeneTag);
+			countMultiGeneMappingCount++;
 			for (String gene: genes)
 				this.nonUniqueMapOtherGene.increment(gene);
 			return;
@@ -117,30 +139,70 @@ public class GeneResult {
 		throw new InvalidRequestStateException("Missed a case!");
 	}
 
+	/**
+	 * The name of the gene
+	 * @return
+	 */
 	public String getOriginalGene() {
 		return originalGene;
 	}
 
+	/**
+	 * The contig the gene was originally placed on.
+	 * @return
+	 */
 	public String getOriginalContig() {
 		return originalContig;
 	}
 
+	/**
+	 * The number of original reads for this gene.
+	 * @return
+	 */
 	public int getCountOriginalReads() {
 		return countOriginalReads;
 	}
 
+	/**
+	 * These reads map uniquely to the same read
+	 * @return
+	 */
 	public int getCountSameMapping() {
 		return countSameMapping;
 	}
 
-	public int getCountDifferentUnique() {
-		return countDifferentUnique;
+	/**
+	 * These reads map uniquely to a different gene than the original read.
+	 * @return
+	 */
+	public int getCountDifferentUniqueGene() {
+		return countDifferentUniqueGene;
 	}
 
-	public int getCountMapsNonUniqueCount() {
-		return countMapsNonUniqueCount;
+	public int getCountDifferentGeneNonUniqueCount() {
+		return countDifferentGeneNonUniqueCount;
 	}
 
+	/**
+	 * The count of read that now map ONLY to a non-exonic part of the genome.
+	 * @return
+	 */
+	public int getCountIntronicOrIntergenic() {
+		return countIntronicOrIntergenic;
+	}
+
+	/**
+	 * The count of reads that map to BOTH a gene and some other non-exonic region.
+	 * @return
+	 */
+	public int getCountSameGeneMapsNonUniqueCount() {
+		return countSameGeneMapsNonUniqueCount;
+	}
+
+	/**
+	 * The count of reads that map to multiple gene exons.
+	 * @return
+	 */
 	public int getCountMultiGeneMappingCount() {
 		return countMultiGeneMappingCount;
 	}
@@ -174,7 +236,7 @@ public class GeneResult {
 
 	@Override
 	public String toString () {
-		return "Gene [" + this.originalGene +"] contig [" + getOriginalContig() +"] original read count  [" + countOriginalReads+ "] same mapping [" + this.countSameMapping+"] different unique count [" + countDifferentUnique+"] non-unique read count [" + getCountMapsNonUniqueCount() +"] multimap gene counts [" + getCountMultiGeneMappingCount()
+		return "Gene [" + this.originalGene +"] contig [" + getOriginalContig() +"] original read count  [" + countOriginalReads+ "] same mapping [" + this.countSameMapping+"] different unique count [" + countDifferentUniqueGene+"] non-unique read count [" + getCountSameGeneMapsNonUniqueCount() +"] multimap gene counts [" + getCountMultiGeneMappingCount()
 				+ "] other unique genes " + StringUtil.join(",", getUniqueMapOtherGene()) + " other non-unique genes " + StringUtil.join(",", getNonUniqueMapOtherGene()) + " other contigs " + StringUtil.join(",", getOtherContigs()) ;
 	}
 

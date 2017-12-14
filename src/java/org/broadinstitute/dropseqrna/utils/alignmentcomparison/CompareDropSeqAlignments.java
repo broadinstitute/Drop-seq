@@ -32,6 +32,7 @@ import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.StringInterner;
 import org.broadinstitute.dropseqrna.utils.alignmentcomparison.QueryNameJointIterator.JointResult;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+import org.broadinstitute.dropseqrna.utils.readiterators.MapQualityFilteredIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 
 import htsjdk.samtools.SAMFileHeader.SortOrder;
@@ -123,12 +124,6 @@ public class CompareDropSeqAlignments extends CommandLineProgram {
 
 			List<SAMRecord> r1 = jr.getOne();
 			List<SAMRecord> r2 = jr.getTwo();
-			/*log.info("R1 " + r1.toString() + " R2 "+ r2.toString());
-			if (r1.get(0).getReadName().equals("H5CT7BGX3:1:11101:10206:5937"))
-				log.info("STOP");
-			if (!r1.get(0).getContig().equals("1"))
-				continue;
-				*/
 
 			if (contigResults!=null) {
 				ContigResult cr = evaluateByContig(r1, r2);
@@ -206,9 +201,9 @@ public class CompareDropSeqAlignments extends CommandLineProgram {
 	private PeekableIterator<List<SAMRecord>> getReadIterator (final File bamFile, final Integer readQuality) {
         Iterator<SAMRecord> iter = getQueryNameSortedData(bamFile);
 		// filter out unmapped reads.
-		// iter = new UnmappedReadFilter(iter);
+		iter = new UnmappedReadFilter(iter);
 		// optionally, filter out reads below a map quality threshold.
-		//if (readQuality!=null) iter = new MapQualityFilteredIterator(iter, readQuality, false).iterator();
+		if (readQuality!=null) iter = new MapQualityFilteredIterator(iter, readQuality, false).iterator();
 		final GroupingIterator<SAMRecord> groupingIterator = new GroupingIterator<>(iter, READ_NAME_COMPARATOR);
 		PeekableIterator<List<SAMRecord>> peekable = new PeekableIterator<>(groupingIterator);
 		return peekable;
@@ -236,7 +231,10 @@ public class CompareDropSeqAlignments extends CommandLineProgram {
 		writer.print("#");
 		writer.println(h);
 
-		String [] colNames = {"GENE", "CONTIG", "NUM_ORIGINAL_READS", "NUM_SAME_MAPPING", "NUM_DIFFERENT_UNIQUE", "NUM_NON_UNIQUE", "NUM_MULTIMAP", "OTHER_UNIQUE_GENES", "OTHER_MULTIMAPPING_GNES", "OTHER_CONTIGS"};
+		String [] colNames = {"GENE", "CONTIG", "ORIGINAL_READS", "SAME_MAPPING",
+				"NO_GENE", "SAME_GENE_MULTIREAD",
+				"DIFFERENT_GENE", "DIFFERENT_GENE_MULTIREAD","MULTI_GENE_MAPPING",
+				"OTHER_UNIQUE_GENES", "OTHER_MULTIMAPPING_GNES", "OTHER_CONTIGS"};
 		writer.println(StringUtil.join("\t", colNames));
 
 
@@ -245,8 +243,9 @@ public class CompareDropSeqAlignments extends CommandLineProgram {
 
 		for (String key: keys) {
 			GeneResult gr = geneResults.get(key);
-			String [] line = {gr.getOriginalGene(),  gr.getOriginalContig(), Integer.toString(gr.getCountOriginalReads()), Integer.toString(gr.getCountSameMapping()), Integer.toString(gr.getCountDifferentUnique()),
-					Integer.toString(gr.getCountMapsNonUniqueCount()), Integer.toString(gr.getCountMultiGeneMappingCount()),
+			String [] line = {gr.getOriginalGene(),  gr.getOriginalContig(), Integer.toString(gr.getCountOriginalReads()), Integer.toString(gr.getCountSameMapping()),
+					Integer.toString(gr.getCountIntronicOrIntergenic()), Integer.toString(gr.getCountSameGeneMapsNonUniqueCount()),
+					Integer.toString(gr.getCountDifferentUniqueGene()), Integer.toString(gr.getCountDifferentGeneNonUniqueCount()), Integer.toString(gr.getCountMultiGeneMappingCount()),
 					StringUtil.join(",", gr.getUniqueMapOtherGene()), StringUtil.join(",", gr.getNonUniqueMapOtherGene()), StringUtil.join(",", gr.getOtherContigs())};
 			writer.println(StringUtil.join("\t", line));
 		}
