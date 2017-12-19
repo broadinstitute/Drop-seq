@@ -119,6 +119,8 @@ public class CollapseTagWithContext extends CommandLineProgram {
         GroupingIterator<SAMRecord> groupingIter = orderReadsByTags(reader, this.COLLAPSE_TAG, this.CONTEXT_TAGS, this.READ_MQ);
         Iterator<List<SAMRecord>> iter = groupingIter.iterator();
         ProgressLogger pl = new ProgressLogger(log);
+        if (!iter.hasNext())
+			throw new IllegalStateException("I didn't find any reads suitable for collapse.  Make sure you set your collapse tag, context tag, and read map quality correctly!");
 
         log.info("Collapsing tag and writing results");
 
