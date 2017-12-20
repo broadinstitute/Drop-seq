@@ -46,7 +46,7 @@ public class MaskReferenceSequence extends CommandLineProgram {
 
 	private final Log log = Log.getInstance(MaskReferenceSequence.class);
 
-	@Option(shortName= StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="Reference sequence FASTA file.",  optional=false)
+	@Option(shortName= StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="Reference sequence FASTA file.  Fasta must be indexed!",  optional=false)
     public File REFERENCE_SEQUENCE;
 
 	@Option(shortName= StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output FASTA file to write.",  optional=false)
@@ -65,8 +65,11 @@ public class MaskReferenceSequence extends CommandLineProgram {
 	protected int doWork() {
 		IOUtil.assertFileIsReadable(this.REFERENCE_SEQUENCE);
 		IOUtil.assertFileIsWritable(this.OUTPUT);
+		// validate that an index is present for the reference sequence, since it's required.
+		final ReferenceSequenceFile ref = ReferenceSequenceFileFactory.getReferenceSequenceFile(REFERENCE_SEQUENCE, true, true);
+		if (!ref.isIndexed())
+			throw new IllegalStateException ("Input fasta must be indexed.  You can do this by using samtools faidx to create an index");
 
-		final ReferenceSequenceFile ref = ReferenceSequenceFileFactory.getReferenceSequenceFile(REFERENCE_SEQUENCE);
 		FastaSequenceFileWriter writer = new FastaSequenceFileWriter(OUTPUT, OUTPUT_LINE_LENGTH);
 		if (this.CONTIG_PATTERN_TO_IGNORE!=null && !this.CONTIG_PATTERN_TO_IGNORE.isEmpty()) processByWholeContig(ref, writer, this.CONTIG_PATTERN_TO_IGNORE);
 		if (this.INTERVAL_LIST!=null) processByPartialContig(ref, writer, this.INTERVAL_LIST);
