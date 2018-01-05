@@ -23,6 +23,15 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.util.List;
+
+import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.BaseQualityFilter.FailedBaseMetric;
+import org.broadinstitute.dropseqrna.utils.readpairs.ReadPair;
+
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
@@ -34,16 +43,6 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.samtools.util.ProgressLogger;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
-import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.readpairs.ReadPair;
-
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.CommandLineProgramProperties;
 import picard.cmdline.Option;
@@ -54,10 +53,6 @@ import picard.cmdline.StandardOptionDefinitions;
         usageShort = "Moves specified bases of each read pair into a tag",
         programGroup = DropSeq.class)
 public class TagBamWithReadSequenceExtended extends CommandLineProgram {
-
-
-	// ADD ability to change the tag name.
-	// ADD ability to clip bases off the front of the read and make them a tag instead of discarding the read
 
 	private final Log log = Log.getInstance(TagBamWithReadSequenceExtended.class);
 
@@ -97,10 +92,6 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 
 	private String TAG_QUALITY="XQ";
 
-	private FailedBaseMetric metric = null;
-
-
-
 	@Override
 	protected int doWork() {
 		if (this.TAG_BARCODED_READ && this.DISCARD_READ) {
@@ -113,14 +104,16 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		// get the header.
 		SamReader inputSam = SamReaderFactory.makeDefault().open(INPUT);
 		SAMFileHeader h= inputSam.getFileHeader();
-		PeekableIterator<SAMRecord> iter = new PeekableIterator<SAMRecord>(CustomBAMIterators.getQuerynameSortedRecords(inputSam));
+		PeekableIterator<SAMRecord> iter = new PeekableIterator<>(CustomBAMIterators.getQuerynameSortedRecords(inputSam));
 
 		SamHeaderUtil.addPgRecord(h, this);
 		SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(h, true, OUTPUT);
 
 		List<BaseRange> baseRanges = BaseRange.parseBaseRange(this.BASE_RANGE);
 
-		this.metric = new FailedBaseMetric(BaseRange.getTotalRangeSize(this.BASE_RANGE));
+		BaseQualityFilter filter = new BaseQualityFilter(baseRanges, this.BASE_QUALITY);
+
+		// this.metric = new FailedBaseMetric(BaseRange.getTotalRangeSize(this.BASE_RANGE));
 
 		ProgressLogger progress = new ProgressLogger(this.log);
 
@@ -135,7 +128,7 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 				sameName=r1.getReadName().equals(r2.getReadName());
 
 			if (!sameName) {
-				processSingleRead(r1, baseRanges, writer, this.HARD_CLIP_BASES);
+				processSingleRead(r1, filter, writer, this.HARD_CLIP_BASES);
 				continue;
 			}
 
@@ -151,26 +144,26 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 			r1=p.getRead1();
 			r2=p.getRead2();
 			if (BARCODED_READ==1)
-				processReadPair(r1, r2, baseRanges, writer, this.DISCARD_READ);
+				processReadPair(r1, r2, filter, writer, this.DISCARD_READ);
 			if (BARCODED_READ==2)
-				processReadPair(r2, r1, baseRanges, writer, this.DISCARD_READ);
+				processReadPair(r2, r1, filter, writer, this.DISCARD_READ);
 			progress.record(r1);
 			progress.record(r2);
 
 		}
 		writer.close();
-		if (this.SUMMARY!=null) writeOutput (this.metric, this.SUMMARY);
+		if (this.SUMMARY!=null) writeOutput (filter.getMetric(), this.SUMMARY);
 		CloserUtil.close(inputSam);
 		CloserUtil.close(iter);
 		return (0);
 	}
 
-	void processSingleRead(final SAMRecord barcodedRead, final List<BaseRange> baseRanges, final SAMFileWriter writer, final boolean hardClipBases) {
-		int numBadBases=scoreBaseQuality(barcodedRead, baseRanges);
+	void processSingleRead(final SAMRecord barcodedRead, final BaseQualityFilter filter, final SAMFileWriter writer, final boolean hardClipBases) {
+		int numBadBases = filter.scoreBaseQuality(barcodedRead);
 		String seq = barcodedRead.getReadString();
 		// does this have an off by 1 error?  I think it's 0 based so should be ok.
 		//seq=seq.substring(baseRange.get, numBases);
-		seq=BaseRange.getSequenceForBaseRange(baseRanges, seq);
+		seq=BaseRange.getSequenceForBaseRange(filter.getBaseRanges(), seq);
 
 		if (numBadBases>=this.NUM_BASES_BELOW_QUALITY) {
 
@@ -185,7 +178,7 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		}
 		barcodedRead.setAttribute(TAG_NAME, seq);
 		SAMRecord result = barcodedRead;
-		if (hardClipBases) result = hardClipBasesFromRead(barcodedRead, baseRanges);
+		if (hardClipBases) result = hardClipBasesFromRead(barcodedRead, filter.getBaseRanges());
 		writer.addAlignment(result);
 	}
 
@@ -216,13 +209,10 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		return (r);
 	}
 
-	void processReadPair (final SAMRecord barcodedRead, final SAMRecord otherRead, final List<BaseRange> baseRanges, final SAMFileWriter writer, final boolean discardRead) {
-		int numBadBases=scoreBaseQuality(barcodedRead, baseRanges);
+	void processReadPair (final SAMRecord barcodedRead, final SAMRecord otherRead, final BaseQualityFilter filter, final SAMFileWriter writer, final boolean discardRead) {
+		int numBadBases= filter.scoreBaseQuality(barcodedRead);
 		String seq = barcodedRead.getReadString();
-		// does this have an off by 1 error?  I think it's 0 based so should be ok.
-
-		//seq=seq.substring(0, numBases);
-		seq=BaseRange.getSequenceForBaseRange(baseRanges, seq);
+		seq=BaseRange.getSequenceForBaseRange(filter.getBaseRanges(), seq);
 		if (this.TAG_BARCODED_READ)
 			setTagsOnRead(barcodedRead, numBadBases, seq);
 		else
@@ -242,47 +232,6 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		writer.addAlignment(otherRead);
 	}
 
-	private int scoreBaseQuality(final SAMRecord barcodedRead, final List<BaseRange> baseRanges) {
-		int numBasesBelowQuality=0;
-		byte [] qual= barcodedRead.getBaseQualities();
-		char [] seq = barcodedRead.getReadString().toUpperCase().toCharArray();
-		for (BaseRange b: baseRanges)
-			for (int i=b.getStart()-1; i<b.getEnd(); i++) {
-				byte q = qual[i];
-				char s = seq[i];
-
-				if (q < this.BASE_QUALITY || s=='N')
-					numBasesBelowQuality++;
-			}
-
-		this.metric.addFailedBase(numBasesBelowQuality);
-		return (numBasesBelowQuality);
-	}
-
-	private class FailedBaseMetric {
-		List<Integer> data = null;
-
-		public FailedBaseMetric (final Integer length){
-			data=new ArrayList<Integer>(length+1);
-			for (int i=0; i<=length; i++)
-				data.add(new Integer(0));
-		}
-
-		public void addFailedBase(final int numBasesFailed) {
-			Integer i = data.get(numBasesFailed);
-			i++;
-			data.set(numBasesFailed, i);
-		}
-
-		public int getNumFailedBases(final int position) {
-			return (data.get(position));
-		}
-
-		public int getLength() {
-			return (data.size());
-		}
-
-	}
 
 	private void writeOutput (final FailedBaseMetric result, final File output) {
 		BufferedWriter writer = OutputWriterUtil.getWriter(output);
