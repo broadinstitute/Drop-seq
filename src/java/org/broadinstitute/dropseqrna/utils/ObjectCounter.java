@@ -39,80 +39,79 @@ import java.util.Map;
 public class ObjectCounter<T extends Comparable<T>> {
 
 	private Map<T, Integer> countMap;
-	
+
 	public ObjectCounter () {
-		countMap = new HashMap<T, Integer>();
+		countMap = new HashMap<>();
 	}
-	
+
 	/**
 	 * Make a shallow copy of the input object counter.
 	 */
-	public ObjectCounter (ObjectCounter<T> counter) {
+	public ObjectCounter (final ObjectCounter<T> counter) {
 		this();
-		for (T key: counter.getKeys()) {
+		for (T key: counter.getKeys())
 			this.countMap.put(key, counter.getCountForKey(key));
-		}
 	}
-	
-	public boolean hasKey (T object) {
+
+	public boolean hasKey (final T object) {
 		return this.countMap.containsKey(object);
 	}
-	
-	public void increment (T object) {
+
+	public void increment (final T object) {
 		incrementByCount(object, 1);
 	}
-	
+
 	/**
-	 * Add the contents of an ObjectCounter of the same type to this object. 
+	 * Add the contents of an ObjectCounter of the same type to this object.
 	 * @param object
 	 */
-	public void increment (ObjectCounter<T> object) {
+	public void increment (final ObjectCounter<T> object) {
 		for (T key : object.getKeys()) {
 			Integer count = object.getCountForKey(key);
 			this.incrementByCount(key, count);
 		}
 	}
-	
+
 	public void clear() {
 		this.countMap.clear();
 	}
-	
-	public void incrementByCount (T object, int size) {
+
+	public void incrementByCount (final T object, final int size) {
 		Integer count = countMap.get(object);
-		if (count==null) {
+		if (count==null)
 			countMap.put(object, size);
-		} else {
+		else {
 			count+=size;
 			countMap.put(object, count);
 		}
 	}
-	
-	public void setCount(T object, int count) {
+
+	public void setCount(final T object, final int count) {
 		countMap.put(object, count);
 	}
-	
-	public void remove (T object) {
+
+	public void remove (final T object) {
 		this.countMap.remove(object);
 	}
-	
+
 	public Collection<T> getKeys () {
 		return countMap.keySet();
 	}
-	
+
 	public int getSize () {
 		return countMap.size();
 	}
-	
-	public int getCountForKey (T key) {
+
+	public int getCountForKey (final T key) {
 		Integer count = countMap.get(key);
 		if (count==null) return 0;
 		return count;
 	}
-	
+
 	public Collection<Integer> getCounts() {
 		return (this.countMap.values());
 	}
-	
+
 	public int getTotalCount() {
 		int result = 0;
 		for (T key: this.countMap.keySet()) {
@@ -121,8 +120,8 @@ public class ObjectCounter<T extends Comparable<T>> {
 		}
 		return result;
 	}
-	
-	public int getNumberOfSize(int size) {
+
+	public int getNumberOfSize(final int size) {
 		int result = 0;
 		for (T key: this.countMap.keySet()) {
 			int t = getCountForKey(key);
@@ -130,7 +129,7 @@ public class ObjectCounter<T extends Comparable<T>> {
 		}
 		return result;
 	}
-	
+
 	public T getMode () {
 		T max = null;
 		int maxCount=0;
@@ -143,14 +142,32 @@ public class ObjectCounter<T extends Comparable<T>> {
 		}
 		return (max);
 	}
-	// NOTE: 
-	// for keys with the same number of items, object ordering is undefined.  Need to fix this to break ties by the T's natural ordering.	
-	public List<T> getKeysOrderedByCount (boolean decreasing) {
+
+	/**
+	 * Get the object with the fewest counts.
+	 * @return
+	 */
+	public T getMin() {
+		T min=null;
+		int minCount=0;
+		for (T key: this.getKeys()) {
+			int count=this.getCountForKey(key);
+			if (count<minCount) {
+				min = key;
+				minCount=count;
+			}
+		}
+		return (min);
+
+	}
+	// NOTE:
+	// for keys with the same number of items, object ordering is undefined.  Need to fix this to break ties by the T's natural ordering.
+	public List<T> getKeysOrderedByCount (final boolean decreasing) {
 		Map<Integer, List<T>> reversed= this.getReverseMapping();
-		List<Integer> counts = new ArrayList<Integer>(reversed.keySet());
+		List<Integer> counts = new ArrayList<>(reversed.keySet());
 		Collections.sort(counts);
 		if (decreasing) Collections.reverse(counts);
-		List<T> keys = new ArrayList<T>();
+		List<T> keys = new ArrayList<>();
 		for (int i: counts) {
 			List<T> t = reversed.get(i);
 			Collections.sort(t);
@@ -158,42 +175,41 @@ public class ObjectCounter<T extends Comparable<T>> {
 		}
 		return (keys);
 	}
-	
+
 	public Map<Integer, List<T>> getReverseMapping () {
-		Map<Integer, List<T>> result = new HashMap<Integer, List<T>>(this.countMap.size());
+		Map<Integer, List<T>> result = new HashMap<>(this.countMap.size());
 		for (T key : this.countMap.keySet()) {
 			Integer v =getCountForKey(key);
 			List<T> l = result.get(v);
-			if (l==null) {
-				l=new ArrayList<T>();
-			} 
+			if (l==null)
+				l=new ArrayList<>();
 			l.add(key);
 			result.put(v, l);
 		}
 		return result;
 	}
-	
+
 	/**
-	 * Filters this counter to that only entries with at least <count> number of reads remain. 
+	 * Filters this counter to that only entries with at least <count> number of reads remain.
 	 */
-	public void filterByMinCount (int count) {
-		Map<T, Integer> result = new HashMap<T, Integer>();
+	public void filterByMinCount (final int count) {
+		Map<T, Integer> result = new HashMap<>();
 		for (T key: this.countMap.keySet()) {
 			Integer value = countMap.get(key);
-			if (value>=count) {
+			if (value>=count)
 				result.put(key, value);
-			}
 		}
 		this.countMap=result;
 	}
-	
+
 	// public boolean equals()
-	
+
+	@Override
 	public String toString () {
 		return this.countMap.toString();
 	}
-	
-	
-	
-	
+
+
+
+
 }

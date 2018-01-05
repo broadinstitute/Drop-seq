@@ -30,38 +30,35 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import junit.framework.Assert;
-
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.editdistance.EDUtils;
 import org.testng.annotations.Test;
+
+import junit.framework.Assert;
 
 public class MapBarcodesByEditDistanceTest {
 
 	private static File testData = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/inEditDistSmall.txt");
-	
+
 	@Test(enabled=true)
 	public void collapseBarcodesLarge() {
 		int numCoreCells=50;
-		
+
 		ObjectCounter <String> barcodes = EDUtils.readBarCodeFile(testData);
 		MapBarcodesByEditDistance mapper = new  MapBarcodesByEditDistance(true, 4, 0);
 		List<String> barcodeStrings = barcodes.getKeysOrderedByCount(true);
 		List<String> coreBarcodes = barcodeStrings.subList(0, numCoreCells);
-		
+
 		Map<String, List<String>> result = mapper.collapseBarcodes(coreBarcodes, barcodes, false, 1);
 		Assert.assertNotNull(result);
 		for (String key : result.keySet()) {
 			List<String> values = result.get(key);
 			checkResult(key, values);
 		}
-		
-		
-		
-		
 	}
-	
-	private void checkResult (String key, List<String> values) {
+
+
+
+	private void checkResult (final String key, final List<String> values) {
 		// TTTTTTTTTTTT=[ATTTTTTTTTTT, CTTTTTTTTTTT, GTTTTTTTTTTT, TATTTTTTTTTT, TCTTTTTTTTTT, TGTTTTTTTTTT, TTTTTTTTTTCT, TTTTTTTTTTTC]
 		if (key.equals("TTTTTTTTTTTT")) {
 			String [] expected = {"ATTTTTTTTTTT", "CTTTTTTTTTTT", "GTTTTTTTTTTT", "TATTTTTTTTTT", "TCTTTTTTTTTT", "TGTTTTTTTTTT", "TTTTTTTTTTCT", "TTTTTTTTTTTC"};
@@ -82,7 +79,7 @@ public class MapBarcodesByEditDistanceTest {
 			String [] expected = {"GGGGAGGGGGGA", "GGGGCGGGGGCA", "GGGGCGGGGGGC", "GTGGCGGGGGGA"};
 			checkResult(key, values, expected);
 		}
-		// GGGGGGGGGGTT=[AGGGGGGGGGTT, CGGGGGGGGGTT, GGGGGGGGGGAT, GGGGGGGGGTTT, TGGGGGGGGGTT] 
+		// GGGGGGGGGGTT=[AGGGGGGGGGTT, CGGGGGGGGGTT, GGGGGGGGGGAT, GGGGGGGGGTTT, TGGGGGGGGGTT]
 		if (key.equals("GGGGGGGGGGTT")) {
 			String [] expected = {"AGGGGGGGGGTT", "CGGGGGGGGGTT", "GGGGGGGGGGAT", "GGGGGGGGGTTT", "TGGGGGGGGGTT"};
 			checkResult(key, values, expected);
@@ -108,9 +105,8 @@ public class MapBarcodesByEditDistanceTest {
 			checkResult(key, values, expected);
 		}
 		// CCCCCCCCCCCC=[]
-		if (key.equals("CCCCCCCCCCCC")) {
+		if (key.equals("CCCCCCCCCCCC"))
 			Assert.assertTrue(values.size()==0);
-		}
 		// GGGGGGGGGGGG=[AGGGGGGGGGGG, CGGGGGGGGGGG, GAGGGGGGGGGG, GCGGGGGGGGGG, GGAGGGGGGGGG, GGCGGGGGGGGG, GGGAGGGGGGGG, GGGCGGGGGGGG, GGGGAGGGGGGG, GGGGCGGGGGGG, GGGGGAGGGGGG, GGGGGCGGGGGG, GGGGGGAGGGGG, GGGGGGCGGGGG, GGGGGGGAGGGG, GGGGGGGCGGGG, GGGGGGGGAGGG, GGGGGGGGCGGG, GGGGGGGGGAGG, GGGGGGGGGCGG, GGGGGGGGGGAG, GGGGGGGGGGCG, GGGGGGGGGGGA, GGGGGGGGGGGC, GGGGGGGGGGGT, GGGGGGGGGGTG, GGGGGGGGGTGG, GGGGGGGGTGGG, GGGGGGGTGGGG, GGGGGGTGGGGG, GGGGGTGGGGGG, GGGGTGGGGGGG, GGGTGGGGGGGG, GGTGGGGGGGGG, GTGGGGGGGGGG, TGGGGGGGGGGG]
 		if (key.equals("GGGGGGGGGGGG")) {
 			String [] expected = {"AGGGGGGGGGGG", "CGGGGGGGGGGG", "GAGGGGGGGGGG","GCGGGGGGGGGG", "GGAGGGGGGGGG", "GGCGGGGGGGGG", "GGGAGGGGGGGG", "GGGCGGGGGGGG", "GGGGAGGGGGGG", "GGGGCGGGGGGG", "GGGGGAGGGGGG", "GGGGGCGGGGGG", "GGGGGGAGGGGG", "GGGGGGCGGGGG", "GGGGGGGAGGGG", "GGGGGGGCGGGG", "GGGGGGGGAGGG", "GGGGGGGGCGGG", "GGGGGGGGGAGG", "GGGGGGGGGCGG", "GGGGGGGGGGAG", "GGGGGGGGGGCG", "GGGGGGGGGGGA", "GGGGGGGGGGGC", "GGGGGGGGGGGT", "GGGGGGGGGGTG", "GGGGGGGGGTGG", "GGGGGGGGTGGG", "GGGGGGGTGGGG", "GGGGGGTGGGGG", "GGGGGTGGGGGG", "GGGGTGGGGGGG", "GGGTGGGGGGGG", "GGTGGGGGGGGG", "GTGGGGGGGGGG", "TGGGGGGGGGGG"};
@@ -131,18 +127,18 @@ public class MapBarcodesByEditDistanceTest {
 			String [] expected = {"AGGCGGGGGGGA", "AGGGGAGGGGGA", "AGGGGGCGGGGA", "AGGGGGGCGGGA", "AGGGGGGGAGGA", "AGGGGGGGCGGA", "AGGGGGGGGAGA", "AGGGGGGGGCGA", "AGGGGGGGGGAA", "AGGGGGGGGGCA", "AGGGGGGGGGGC", "AGGGGGGGGGGT", "CGGGGGGGGGGA", "TGGGGGGGGGGA"};
 			checkResult(key, values, expected);
 		}
-		
+
 	}
-	
-	private void checkResult (String key, List<String> values, String [] valuesExpected) {
-		List<String> exp = new ArrayList<String>(Arrays.asList(valuesExpected));
+
+	private void checkResult (final String key, final List<String> values, final String [] valuesExpected) {
+		List<String> exp = new ArrayList<>(Arrays.asList(valuesExpected));
 		Assert.assertEquals(exp, values);
-		
+
 	}
-	
+
 	@Test(enabled=true)
 	public void collapseBarcodesSmall() {
-		ObjectCounter <String> barcodes = new ObjectCounter<String>();
+		ObjectCounter <String> barcodes = new ObjectCounter<>();
 		// primary barcode TEST1.
 		barcodes.incrementByCount("TEST1", 10);
 		barcodes.incrementByCount("TEST2", 9);
@@ -157,34 +153,34 @@ public class MapBarcodesByEditDistanceTest {
 		barcodes.incrementByCount("MEST2", 2);
 		// MEST1 goes into TEST1.
 		barcodes.incrementByCount("MEST1", 1);
-		
+
 		MapBarcodesByEditDistance mapper = new  MapBarcodesByEditDistance(false, 4, 0);
 		List<String>coreBarcodes  = barcodes.getKeysOrderedByCount(true);
-		
+
 		Map<String, List<String>> result = mapper.collapseBarcodes(coreBarcodes, barcodes, false, 1);
 		Assert.assertEquals(3, result.size());
-		
+
 		Collection<String> r1 = result.get("TEST1");
 		Assert.assertTrue(r1.contains("TEST2"));
 		Assert.assertTrue(r1.contains("TEST3"));
 		Assert.assertTrue(r1.contains("MEST1"));
 		Assert.assertEquals(r1.size(),3);
-		
+
 		Collection<String> r2 = result.get("FEST3");
 		Assert.assertTrue(r2.contains("FEST2"));
 		Assert.assertTrue(r2.contains("FEST4"));
 		Assert.assertTrue(r2.contains("MEST3"));
 		Assert.assertEquals(r2.size(),3);
-		
-		
+
+
 		Collection<String> r3 = result.get("MEST4");
-		Assert.assertTrue(r3.contains("MEST2"));		
+		Assert.assertTrue(r3.contains("MEST2"));
 		Assert.assertEquals(r3.size(),1);
-		
+
 		Assert.assertNotNull(result);
-		
+
 	}
-	
-	 
-	
+
+
+
 }

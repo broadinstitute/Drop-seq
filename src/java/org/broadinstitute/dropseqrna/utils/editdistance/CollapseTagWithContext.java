@@ -24,24 +24,29 @@
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
 import java.io.File;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.MultiComparator;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.PeekableGroupingIterator;
+import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
+import org.broadinstitute.dropseqrna.utils.StringInterner;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
+import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance.AdaptiveMappingResult;
+import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.MapQualityFilteredIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.MissingTagFilteringIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
@@ -81,13 +86,18 @@ public class CollapseTagWithContext extends CommandLineProgram {
 			+ "This can cause a large amount of memory usage if you pick a lot of tags that are all mostly not set.", minElements = 1)
 	public List<String> CONTEXT_TAGS;
 
+	@Option (doc="By default, groups of reads are gathered by their CONTEXT_TAGS and ordered by the number of total reads.  Contexts with larger numbers of reads are potential 'parents' of smaller context objects. "
+			+ "If this option is used, the count of a context to determine it's ordering is the unique count of values of the TAG(S) added here.  "
+			+ "For example, if you wanted to collapse by UMI counts instead of read counts, you could put the UMI tag here.")
+	public List<String> COUNT_TAGS;
+
 	@Option(doc="The output tag for the newly collapsed tag values")
 	public String OUT_TAG;
 
 	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output BAM file with the new collapsed tag.", optional=false)
 	public File OUTPUT;
 
-	@Option(doc="The edit distance to collapse tags")
+	@Option(doc="The edit distance to collapse tags.  If adaptive edit distance is used, this is the default edit distance used if no adaptive edit distance is discovered.")
 	public Integer EDIT_DISTANCE=1;
 
 	@Option(doc = "Should indels be considered in edit distance calculations?  Doing this correctly is far slower than a simple edit distance test, but gives a more complete result.")
@@ -96,78 +106,46 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	@Option(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
 	public Integer READ_MQ=10;
 
+	@Option (doc="The minumum number of reads (unless using the COUNT_TAGS option) for a context to be eligible for collapse.", optional=true)
+	public Integer MIN_COUNT=null;
+
 	@Option(doc="Number of threads to use.  Defaults to 1.")
 	public int NUM_THREADS=1;
 
-	private CollapseBarcodeThreaded cbt=null;
-	private int threadedBlockSize=20000;
+	@Option (doc="Instead of using the default fixed edit distance, use an adaptive edit distance.  "
+			+ "For each mergable entity, this tries to determine if there are 2 clusters of data by edit distance, and only merge the close-by neighbors.  EXPERIMETNAL!!!")
+	public boolean ADAPTIVE_EDIT_DISTANCE=false;
+
+	@Option (doc="If adaptive edit distance is used, this is the maximum edit distance allowed.", optional=true)
+	public Integer ADAPTIVE_ED_MAX=-1;
+
+	@Option (doc="If adaptive edit distance is used, this is the minimum edit distance allowed.", optional=true)
+	public Integer ADAPTIVE_ED_MIN=-1;
+
+	@Option (doc="If provided, writes out some metrics about each barcode that is merged.", optional=true)
+	public File ADAPTIVE_ED_METRICS_FILE;
 
 	// make this once and reuse it.
 	private MapBarcodesByEditDistance med;
 
-
-	protected int doWorkOld() {
-		med = new MapBarcodesByEditDistance(false, this.NUM_THREADS, 0);
-
-		// TODO Auto-generated method stub
-		IOUtil.assertFileIsReadable(INPUT);
-        IOUtil.assertFileIsWritable(OUTPUT);
-
-        SamReader reader = SamReaderFactory.makeDefault().open(INPUT);
-        SAMFileWriter writer = getWriter (reader);
-
-        GroupingIterator<SAMRecord> groupingIter = orderReadsByTags(reader, this.COLLAPSE_TAG, this.CONTEXT_TAGS, this.READ_MQ);
-        Iterator<List<SAMRecord>> iter = groupingIter.iterator();
-        ProgressLogger pl = new ProgressLogger(log);
-        if (!iter.hasNext())
-			throw new IllegalStateException("I didn't find any reads suitable for collapse.  Make sure you set your collapse tag, context tag, and read map quality correctly!");
-
-        log.info("Collapsing tag and writing results");
-
-        // set up filters.
-        FilteredIterator<SAMRecord> mapFilter = getMapFilteringIterator(this.READ_MQ);
-        FilteredIterator<SAMRecord> tagFilter = getMissingTagIterator(this.COLLAPSE_TAG, this.CONTEXT_TAGS);
-
-        int maxNumInformativeReadsInMemory=0;
-
-        while (iter.hasNext()) {
-        	boolean verbose = false;
-        	// get all reads.  This can be semi-big if tags are passed in that aren't set.
-        	// Set instead of list because removeAll on lists is stupidly slow on large lists.
-        	Set<SAMRecord> allRecs = new HashSet<>(iter.next());
-
-        	// informative reads have all of their tags set, so they can participate in collapse.
-        	Set<SAMRecord> informativeRecs = allRecs.stream().filter(x -> !mapFilter.filterOut(x)).filter(x -> !tagFilter.filterOut(x)).collect(Collectors.toSet());
-
-        	if (informativeRecs.size()>maxNumInformativeReadsInMemory) {
-        		maxNumInformativeReadsInMemory=informativeRecs.size();
-        		if (maxNumInformativeReadsInMemory>=1000) log.info("Max informative reads in memory [" + maxNumInformativeReadsInMemory +"]");
-        		verbose=true;
-        	}
-
-        	// remove the informative reads, as they will get retagged.
-        	allRecs.removeAll(informativeRecs);
-        	List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.OUT_TAG, this.FIND_INDELS, this.EDIT_DISTANCE, verbose);
-
-        	// write out the informative reads, then all the reads that were not altered.
-        	result.stream().forEach(writer::addAlignment);
-        	pl.record(result.stream().toArray(SAMRecord[]::new));
-        	allRecs.stream().forEach(writer::addAlignment);
-        	pl.record(allRecs.stream().toArray(SAMRecord[]::new));
-        }
-        log.info("Re-sorting output BAM in genomic order.");
-        CloserUtil.close(groupingIter);
-        CloserUtil.close(reader);
-        writer.close();
-        log.info("DONE");
-		return 0;
-	}
-
 	@Override
 	protected int doWork() {
-		med = new MapBarcodesByEditDistance(false, this.NUM_THREADS, 0);
+		if (this.ADAPTIVE_EDIT_DISTANCE & this.ADAPTIVE_ED_MAX==null) {
+			log.error("If adaptive edit distance is in use, must set a maximum adaptive edit distance!");
+			return 1;
+		}
+		if (this.ADAPTIVE_EDIT_DISTANCE & this.ADAPTIVE_ED_MIN==null) {
+			log.error("If adaptive edit distance is in use, must set a minimum adaptive edit distance!");
+			return 1;
+		}
+		PrintStream outMetrics = null;
+		if (this.ADAPTIVE_ED_METRICS_FILE!=null) {
+			outMetrics = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.ADAPTIVE_ED_METRICS_FILE));
+			writeMetricsHeader(outMetrics);
+		}
 
-		// TODO Auto-generated method stub
+
+		med = new MapBarcodesByEditDistance(false, this.NUM_THREADS, 0);
 		IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
 
@@ -208,7 +186,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
         	}
 
         	// remove the informative reads, as they will get retagged.
-        	List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.OUT_TAG, this.FIND_INDELS, this.EDIT_DISTANCE, verbose);
+        	List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.COUNT_TAGS, this.OUT_TAG, this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT, verbose, outMetrics);
 
         	// write out the informative reads, then all the reads that were not altered.
         	result.stream().forEach(writer::addAlignment);
@@ -217,6 +195,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
         CloserUtil.close(groupingIter);
         CloserUtil.close(reader);
         writer.close();
+        if (outMetrics!=null) CloserUtil.close(outMetrics);
         log.info("DONE");
 		return 0;
 	}
@@ -247,12 +226,15 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		return informativeReads;
 	}
 
-	private List<SAMRecord> processRecordList (final Collection<SAMRecord> informativeRecs, final String collapseTag, final String outTag, final boolean findIndels, final int editDistance, final boolean verbose) {
+	private List<SAMRecord> processRecordList (final Collection<SAMRecord> informativeRecs, final String collapseTag, final List<String> countTags, final String outTag, final boolean findIndels, final int editDistance, final Integer minEditDistance, final Integer maxEditDistance, final Integer minNumObservations, final boolean verbose, final PrintStream outMetrics) {
+		if (informativeRecs.size()==0) return Collections.EMPTY_LIST;
 
-		// collapse barcodes based on informative reads that have the necessary tags.
-		List<String> barcodes = informativeRecs.stream().map(x -> x.getStringAttribute(collapseTag)).collect(Collectors.toList());
+		// get context.
+		String context = getContextString(informativeRecs.iterator().next(), this.CONTEXT_TAGS);
 
-		Map<String, String> collapseMap = collapseBarcodes(barcodes, findIndels, editDistance, verbose);
+		// get barcode counts.
+		ObjectCounter<String> barcodeCounts = getBarcodeCounts (informativeRecs, collapseTag, countTags);
+		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, findIndels, editDistance, minEditDistance, maxEditDistance, verbose, outMetrics, context, minNumObservations);
 
 		// now that you have a map from children to the parent, retag all the reads.
 		List<SAMRecord> result = new ArrayList<>();
@@ -271,29 +253,103 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		return result;
 	}
 
+	private ObjectCounter<String> getBarcodeCounts (final Collection<SAMRecord> informativeRecs, final String collapseTag, final List<String> countTags) {
+		// collapse barcodes based on informative reads that have the necessary tags.
+		// this counts 1 per read.
+		if (countTags==null) {
+			List<String> barcodes = informativeRecs.stream().map(x -> x.getStringAttribute(collapseTag)).collect(Collectors.toList());
+			ObjectCounter<String> barcodeCounts = new ObjectCounter<>();
+			barcodes.stream().forEach(x -> barcodeCounts.increment(x));
+			return barcodeCounts;
+		}
+
+		// otherwise, for each barcode, extract the unique set of countTag values.
+		StringInterner interner = new StringInterner();
+
+		Map<String, Set<String>> countTagValues = new HashMap<>();
+
+		for (SAMRecord r: informativeRecs) {
+			String barcode = r.getStringAttribute(collapseTag);
+			Set<String> valuesSet = countTagValues.get(barcode);
+			// if the set doesn't exist initialize and add...
+			if (valuesSet==null) {
+				valuesSet=new HashSet<>();
+				countTagValues.put(barcode, valuesSet);
+			}
+			List<String> valsList = new ArrayList<>();
+			for (String countTag: countTags) {
+				String v = r.getStringAttribute(countTag);
+				if (v!=null) valsList.add(v);
+			}
+			String val = interner.intern(StringUtils.join(valsList, ":"));
+			valuesSet.add(val);
+		}
+		// now count the values.
+		ObjectCounter<String> barcodeCounts = new ObjectCounter<>();
+		for (String barcode: countTagValues.keySet()) {
+			int count = countTagValues.get(barcode).size();
+			barcodeCounts.incrementByCount(barcode, count);
+		}
+		return barcodeCounts;
+	}
+
 	private SAMFileWriter getWriter (final SamReader reader) {
 		SAMFileHeader header = reader.getFileHeader();
+		SamHeaderUtil.addPgRecord(header, this);
 		String context = StringUtil.join(" ", this.CONTEXT_TAGS);
 		header.addComment("Edit distance collapsed tag " +  this.COLLAPSE_TAG + " to new tag " + this.OUT_TAG+ " with edit distance "+ this.EDIT_DISTANCE + "using indels=" + this.FIND_INDELS + " in the context of tags [" + context + "]");
         SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(header, false, this.OUTPUT);
         return writer;
 	}
 
-	private Map<String, String> collapseBarcodes(final List<String> barcodes, final boolean findIndels, final int editDistance, final boolean verbose) {
+	private Map<String, String> collapseBarcodes(final ObjectCounter<String> barcodeCounts, final boolean findIndels, final int editDistance, final Integer minEditDistance, final Integer maxEditDistance, final boolean verbose, final PrintStream outMetrics, final String context, final Integer minNumObservations) {
 		// order the barcodes by the number of reads each barcode has.
-		ObjectCounter<String> barcodeCounts = new ObjectCounter<>();
-		barcodes.stream().forEach(x -> barcodeCounts.increment(x));
 		if (verbose) log.info("Collapsing [" + barcodeCounts.getSize() +"] barcodes.");
-		Map<String, String> result = new HashMap<>();
-
+		if (minNumObservations!=null) barcodeCounts.filterByMinCount(minNumObservations);
 
 		// map of primary barcode to list of child barcodes.
-		Map<String, List<String>> r = med.collapseBarcodes(barcodeCounts, findIndels, editDistance);
+		Map<String, String> result = new HashMap<>();
+		Map<String, List<String>> r = null;
+		if (ADAPTIVE_EDIT_DISTANCE) {
+			AdaptiveMappingResult amr= med.collapseBarcodesAdaptive(barcodeCounts, findIndels, editDistance, minEditDistance, maxEditDistance);
+			r = amr.getBarcodeCollapseResult();
+			writeMetrics(context, amr, outMetrics);
+		}
+		else r = med.collapseBarcodes(barcodeCounts, findIndels, editDistance);
+
 		// flip map to each child barcode that belongs to a parent.
 		for (String key: r.keySet())
 			for (String value: r.get(key))
 				result.put(value, key);
+
 		return (result);
+	}
+
+	private String getContextString (final SAMRecord r, final List<String> contextTags) {
+		List<String> result = new ArrayList<>();
+		for (String c: contextTags) {
+			String v = r.getStringAttribute(c);
+			result.add(v);
+		}
+		return StringUtils.join(result, ",");
+	}
+
+	private void writeMetricsHeader (final PrintStream out) {
+		String [] header = {"CONTEXT", "COLLAPSE", "NUM_COLLAPSED", "ADAPTIVE_ED_DISCOVERED", "ADAPTIVE_ED_USED", "NUM_OBS_ORIGINAL", "NUM_OBS_MERGED"};
+		out.println(StringUtil.join("\t", header));
+	}
+
+	private void writeMetrics (final String context, final AdaptiveMappingResult r, final PrintStream out) {
+		if (out==null) return;
+		List<EditDistanceMappingMetric> metricList= r.getMetricResult();
+
+		for (EditDistanceMappingMetric edmm: metricList) {
+			edmm.getOriginalObservations();
+			// Steve reports the number of barcodes including the one that everything is merged into.
+			String [] line = {context, edmm.getBarcode(), Integer.toString(edmm.getNumMergedBarcodes()+1), Integer.toString(edmm.getEditDistanceDiscovered()), Integer.toString(edmm.getEditDistanceUsed()),
+					Integer.toString(edmm.getOriginalObservations()), Integer.toString(edmm.getTotalObservations())};
+			out.println(StringUtil.join("\t", line));
+		}
 	}
 
 	/**
