@@ -33,6 +33,7 @@ import org.broadinstitute.dropseqrna.utils.BaseQualityFilter.FailedBaseMetric;
 import org.broadinstitute.dropseqrna.utils.readpairs.ReadPair;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
@@ -107,7 +108,9 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		PeekableIterator<SAMRecord> iter = new PeekableIterator<>(CustomBAMIterators.getQuerynameSortedRecords(inputSam));
 
 		SamHeaderUtil.addPgRecord(h, this);
-		SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(h, true, OUTPUT);
+		// only assume reads are correctly sorted for output if the input BAM is queryname sorted.
+		boolean assumeSorted = h.getSortOrder().equals(SortOrder.queryname);
+		SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(h, assumeSorted, OUTPUT);
 
 		List<BaseRange> baseRanges = BaseRange.parseBaseRange(this.BASE_RANGE);
 
