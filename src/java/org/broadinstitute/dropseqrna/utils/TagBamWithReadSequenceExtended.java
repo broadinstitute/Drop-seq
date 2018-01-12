@@ -91,7 +91,8 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 	@Option (doc="Barcode tag.  This is typically X plus one more capitalized alpha.  For example, 'XS', which is the default.")
 	public String TAG_NAME="XS";
 
-	private String TAG_QUALITY="XQ";
+	@Option (doc="The tag for the barcode quality.  The number of bases that are below the quality threshold.")
+	public String TAG_QUALITY="XQ";
 
 	@Override
 	protected int doWork() {
