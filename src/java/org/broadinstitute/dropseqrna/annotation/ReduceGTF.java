@@ -43,8 +43,8 @@ import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 /**
@@ -56,8 +56,8 @@ import picard.cmdline.StandardOptionDefinitions;
  */
 
 @CommandLineProgramProperties(
-        usage = "GTF files are annoyingly complex with a poor definition of what data is in them. So hey, why not write a file parser. This program reduces the GTF file in to a simplier, easier to parse format, while simultaneously allowing for data to be filtered.",
-        usageShort = "Parse and simplify a GTF file into an easier to use format.",
+        summary = "GTF files are annoyingly complex with a poor definition of what data is in them. So hey, why not write a file parser. This program reduces the GTF file in to a simplier, easier to parse format, while simultaneously allowing for data to be filtered.",
+        oneLineSummary = "Parse and simplify a GTF file into an easier to use format.",
         programGroup = MetaData.class
 )
 public class ReduceGTF extends CommandLineProgram {
@@ -70,24 +70,24 @@ public class ReduceGTF extends CommandLineProgram {
             "IG_J_pseudogene", "IG_V_pseudogene");
     private static final String NA = "NA";
 
-    @Option(shortName = StandardOptionDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME, doc="The reference sequence dictionary." +
+    @Argument(shortName = StandardOptionDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME, doc="The reference sequence dictionary." +
             "  Only chromosomes found in this file AND the GTF file will be retained.")
 	public File SEQUENCE_DICTIONARY;
 
-	@Option(doc="The GTF file to reduce")
+	@Argument(doc="The GTF file to reduce")
 	public File GTF;
 
-	@Option(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME,doc="The output reduced GTF file.")
+	@Argument(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME,doc="The output reduced GTF file.")
 	public File OUTPUT;
 
-	@Option(doc="Feature type(s) to extract. Only lines of the GTF that have these feature types will be extracted.  " +
+	@Argument(doc="Feature type(s) to extract. Only lines of the GTF that have these feature types will be extracted.  " +
             "This is the 3rd field of the GTF file, some examples of standard feature types are CDS, start_codon, stop_codon, and exon. ")
 	public List<String> FEATURE_TYPE = DEFAULT_FEATURE_TYPES;
 
-	@Option(doc="Functional type(s) to ignore.  These are values in the FUNCTIONAL_FIELD column in the GTF file.")
+	@Argument(doc="Functional type(s) to ignore.  These are values in the FUNCTIONAL_FIELD column in the GTF file.")
 	public List<String> IGNORE_FUNC_TYPE = DEFAULT_IGNORED_FUNC_TYPES;
 
-	@Option(doc="Enhance this reduced GTF file with genes,transcripts,introns, and consensus introns.  This is real " +
+	@Argument(doc="Enhance this reduced GTF file with genes,transcripts,introns, and consensus introns.  This is real " +
             "handy when your GTF file only defines exons, but has the transcript and gene IDs they belong to.")
 	public boolean ENHANCE_GTF=true;
 

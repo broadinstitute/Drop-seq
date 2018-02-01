@@ -49,24 +49,24 @@ import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 
 import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
-@CommandLineProgramProperties(usage = "", usageShort = "", programGroup = DropSeq.class)
+@CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup = DropSeq.class)
 public class TagReadWithInterval extends CommandLineProgram {
 	private final Log log = Log.getInstance(TagReadWithInterval.class);
 	
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted.")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted.")
 	public File INPUT;
 
-	@Option(doc = "The list of Loci to gather start/end read positons for.  This file is in Interval format - tab seperated with fields: chr start end strand name")
+	@Argument(doc = "The list of Loci to gather start/end read positons for.  This file is in Interval format - tab seperated with fields: chr start end strand name")
 	public File LOCI;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM, written with new interval tag")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM, written with new interval tag")
 	public File OUTPUT;
 	
-	@Option(doc = "The tag name to use.  Defaults to ZI.  If a read previously had a tag and now does not, the tag is removed.", optional=true)
+	@Argument(doc = "The tag name to use.  Defaults to ZI.  If a read previously had a tag and now does not, the tag is removed.", optional=true)
 	public String TAG="ZI";
 
 	/** Stock main method. */

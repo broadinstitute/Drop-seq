@@ -32,33 +32,33 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Log;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
-import picard.cmdline.programgroups.Fasta;
+import picard.cmdline.programgroups.ReferenceProgramGroup;
 
 @CommandLineProgramProperties(
-        usage = "Change reference sequence fasta to ignore contigs or portions thereof.  The bases of these contigs are set to N.",
-        usageShort = "Modify reference sequence fasta contig sequence.",
-        programGroup = Fasta.class
+        summary = "Change reference sequence fasta to ignore contigs or portions thereof.  The bases of these contigs are set to N.",
+        oneLineSummary = "Modify reference sequence fasta contig sequence.",
+        programGroup = ReferenceProgramGroup.class
 )
 public class MaskReferenceSequence extends CommandLineProgram {
 
 	private final Log log = Log.getInstance(MaskReferenceSequence.class);
 
-	@Option(shortName= StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="Reference sequence FASTA file.  Fasta must be indexed!",  optional=false)
+	@Argument(shortName= StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="Reference sequence FASTA file.  Fasta must be indexed!",  optional=false)
     public File REFERENCE_SEQUENCE;
 
-	@Option(shortName= StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output FASTA file to write.",  optional=false)
+	@Argument(shortName= StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output FASTA file to write.",  optional=false)
     public File OUTPUT;
 
-	@Option (doc="The number of bases per line in the output file")
+	@Argument (doc="The number of bases per line in the output file")
 	public Integer OUTPUT_LINE_LENGTH=50;
 
-	@Option (doc="A contig name to ignore, or a partial name that will be used as a pattern.  If the contig name contains any of the strings in this list it will be set to N.  This option can be used multiple times", mutex={"INTERVAL_LIST"})
+	@Argument (doc="A contig name to ignore, or a partial name that will be used as a pattern.  If the contig name contains any of the strings in this list it will be set to N.  This option can be used multiple times", mutex={"INTERVAL_LIST"})
 	public List<String> CONTIG_PATTERN_TO_IGNORE;
 
-	@Option (doc="A file containing one or more intervals that will have their bases set to N.", mutex={"CONTIG_PATTERN_TO_IGNORE"})
+	@Argument (doc="A file containing one or more intervals that will have their bases set to N.", mutex={"CONTIG_PATTERN_TO_IGNORE"})
 	public File INTERVAL_LIST;
 
 	@Override

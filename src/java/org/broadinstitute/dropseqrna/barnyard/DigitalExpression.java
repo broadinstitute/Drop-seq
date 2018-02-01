@@ -60,12 +60,12 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.SortingCollection;
 import htsjdk.samtools.util.StringUtil;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
-        usage = "Measures the digital expression of a library.  " +
+        summary = "Measures the digital expression of a library.  " +
                 "Method: 1) For each gene, find the molecular barcodes on the exons of that gene.  " +
                 "2) Determine how many HQ mapped reads are assigned to each barcode.  " +
                 "3) Collapse barcodes by edit distance.  " +
@@ -78,7 +78,7 @@ import picard.cmdline.StandardOptionDefinitions;
                 "3) MIN_NUM_TRANSCRIPTS_PER_CELL " +
                 "4) NUM_CORE_BARCODES " +
                 "5) MIN_NUM_READS_PER_CELL",
-        usageShort = "Calculate Digital Expression",
+        oneLineSummary = "Calculate Digital Expression",
         programGroup = DropSeq.class
 )
 
@@ -86,30 +86,27 @@ public class DigitalExpression extends DGECommandLineBase {
 
     private static final Log log = Log.getInstance(DigitalExpression.class);
 
-    @Option(doc="A summary of the digital expression output, containing 3 columns - the cell barcode, the #genes, and the #transcripts.", optional=true)
+    @Argument(doc="A summary of the digital expression output, containing 3 columns - the cell barcode, the #genes, and the #transcripts.", optional=true)
     public File SUMMARY=null;
 
-    @Option(doc="Output number of reads instead of number of unique molecular barcodes.", optional=true)
+    @Argument(doc="Output number of reads instead of number of unique molecular barcodes.", optional=true)
     public boolean OUTPUT_READS_INSTEAD=false;
 
-    @Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of DGE Matrix.  Genes are in rows, cells in columns.  The first column contains the gene name. This supports zipped formats like gz and bz2.")
+    @Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of DGE Matrix.  Genes are in rows, cells in columns.  The first column contains the gene name. This supports zipped formats like gz and bz2.")
     public File OUTPUT;
 
-    @Option (doc="An alternate output of expression where each row represents a cell, gene, and count of UMIs.  Cell/Gene pairings with 0 UMIs are not emitted.", optional=true)
+    @Argument (doc="An alternate output of expression where each row represents a cell, gene, and count of UMIs.  Cell/Gene pairings with 0 UMIs are not emitted.", optional=true)
     public File OUTPUT_LONG_FORMAT;
 
-    @Option (doc="Output only genes with at least this total expression level, after summing across all cells", optional=true)
+    @Argument (doc="Output only genes with at least this total expression level, after summing across all cells", optional=true)
     public Integer MIN_SUM_EXPRESSION=null;
 
-    @Option(shortName = "H", doc="If true, write a header in the DGE file.  If not specified, and UEI is specified, it is set to true", optional = true)
+    @Argument(shortName = "H", doc="If true, write a header in the DGE file.  If not specified, and UEI is specified, it is set to true.  " +
+            "REFERENCE_SEQUENCE only used to write to header.  If it is not present, it is extracted from INPUT header if possible.", optional = true)
     public Boolean OUTPUT_HEADER;
 
-    @Option(shortName = "UEI", doc="If OUTPUT_HEADER=true, this is required", optional = true)
+    @Argument(shortName = "UEI", doc="If OUTPUT_HEADER=true, this is required", optional = true)
     public String UNIQUE_EXPERIMENT_ID;
-
-    @Option(shortName = "R", optional = true, doc="Reference to which BAM is aligned.  This is only used to put into DGE header, if OUTPUT_HEADER=true.  " +
-            "If not specified, it is extracted from the INPUT header if possible.")
-    public File REFERENCE;
 
     private boolean OUTPUT_EXPRESSED_GENES_ONLY=false;
 
@@ -128,7 +125,7 @@ public class DigitalExpression extends DGECommandLineBase {
 			OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
         if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(this.SUMMARY);
 
-        if (REFERENCE == null && OUTPUT_HEADER) {
+        if (REFERENCE_SEQUENCE == null && OUTPUT_HEADER) {
             final SAMFileHeader header = SamReaderFactory.makeDefault().open(INPUT).getFileHeader();
             final SAMSequenceRecord sequence = header.getSequence(0);
             if (sequence != null) {
@@ -137,7 +134,7 @@ public class DigitalExpression extends DGECommandLineBase {
                     final String filePrefix = "file:";
                     if (uri.startsWith(filePrefix))
 						uri = uri.substring(filePrefix.length());
-                    REFERENCE = new File(uri);
+                    REFERENCE_SEQUENCE = new File(uri);
                 }
             }
         }
@@ -245,8 +242,6 @@ public class DigitalExpression extends DGECommandLineBase {
     /**
      * Writes the "long" form of the DGE, with each row representing a cell and gene with the number of UMIs.
      * This is only emitted for cell/gene pairs that are non-null.
-     * @param cellBarcodes A list of cell barcodes that dictates the order in which results are emitted.
-     * @param resultsPerCell The counts of UMIs on each gene for many cells.
      * @param outFile The output file to write to.
      */
     private void writeLongOutputFormat(final SortingCollection<DGELongFormatRecord> longFormatRecordCollection, final File outFile) {
@@ -270,8 +265,8 @@ public class DigitalExpression extends DGECommandLineBase {
         DgeHeader header = new DgeHeader();
         header.setExpressionFormat(DgeHeader.ExpressionFormat.raw);
         DgeHeaderLibrary lib = new DgeHeaderLibrary(UNIQUE_EXPERIMENT_ID);
-        if (REFERENCE != null)
-			lib.setReference(REFERENCE.getAbsoluteFile());
+        if (REFERENCE_SEQUENCE != null)
+			lib.setReference(REFERENCE_SEQUENCE.getAbsoluteFile());
         lib.setInput(INPUT.getAbsoluteFile());
         setDgeHeaderLibraryField(lib, "OUTPUT_READS_INSTEAD", OUTPUT_READS_INSTEAD);
         setDgeHeaderLibraryField(lib, "MIN_SUM_EXPRESSION", MIN_SUM_EXPRESSION);
@@ -317,7 +312,6 @@ public class DigitalExpression extends DGECommandLineBase {
      * You can safely set threshold to be 3 * edit distance.
      * @param barcodes
      * @param editDistance
-     * @param threshold
      * @return
      */
     public ObjectCounter <String> collapseByEditDistance (final ObjectCounter<String> barcodes, final int editDistance) {

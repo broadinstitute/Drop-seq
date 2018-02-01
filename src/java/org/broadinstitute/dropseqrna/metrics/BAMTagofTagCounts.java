@@ -49,13 +49,13 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
-        usage = "For a given BAM tag, how many unique values of a second BAM tag are present?",
-        usageShort = "For a given BAM tag, how many unique values of a second BAM tag are present?",
+        summary = "For a given BAM tag, how many unique values of a second BAM tag are present?",
+        oneLineSummary = "For a given BAM tag, how many unique values of a second BAM tag are present?",
         programGroup = DropSeq.class
 )
 
@@ -63,28 +63,28 @@ public class BAMTagofTagCounts extends CommandLineProgram {
 
 private static final Log log = Log.getInstance(BAMTagofTagCounts.class);
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. (???)")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. (???)")
 	public File INPUT;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of tag frequencies. This supports zipped formats like gz and bz2.")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of tag frequencies. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
 
-	@Option(doc="Primary Tag to extract")
+	@Argument(doc="Primary Tag to extract")
 	public String PRIMARY_TAG;
 
-	@Option(doc="Secondary Tag to extract")
+	@Argument(doc="Secondary Tag to extract")
 	public String SECONDARY_TAG;
 
-	@Option(doc="Remove Singleton Results")
+	@Argument(doc="Remove Singleton Results")
 	public Boolean REMOVE_SINGLETONS=false;
 
-	@Option(doc="Filter PCR Duplicates.  Defaults to true")
+	@Argument(doc="Filter PCR Duplicates.  Defaults to true")
 	public boolean FILTER_PCR_DUPLICATES=true;
 
-	@Option(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
+	@Argument(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
 	public Integer READ_QUALITY=10;
 
-	@Option(doc="If the secondary tag can occur multiple times, break it up with this delimiter.", optional=true)
+	@Argument(doc="If the secondary tag can occur multiple times, break it up with this delimiter.", optional=true)
 	public String SECONDARY_DELIMITER;
 
 	public static final int MAX_RECORDS_IN_RAM = 500000;

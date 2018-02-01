@@ -37,8 +37,8 @@ import java.util.regex.Pattern;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 /**
@@ -47,67 +47,67 @@ import picard.cmdline.StandardOptionDefinitions;
  * @author nemesh
  *
  */
-@CommandLineProgramProperties(usage = "Filters a BAM file by various qualities to produce a new subset of the BAM containing the reads of interest.",
-        usageShort = "Filters a BAM file by various qualities to produce a new subset of the BAM containing the reads of interest.",
+@CommandLineProgramProperties(summary = "Filters a BAM file by various qualities to produce a new subset of the BAM containing the reads of interest.",
+        oneLineSummary = "Filters a BAM file by various qualities to produce a new subset of the BAM containing the reads of interest.",
         programGroup = DropSeq.class)
 public class FilterBAM extends CommandLineProgram{
 	private final Log log = Log.getInstance(FilterBAM.class);
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
 	public File INPUT;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
 	public File OUTPUT;
 	
-	@Option(doc = "Minimum mapping quality to consider the read", optional=true)
+	@Argument(doc = "Minimum mapping quality to consider the read", optional=true)
 	public Integer MINIMUM_MAPPING_QUALITY = null;
 	
-	@Option(doc = "Should PCR duplicates be filtered?", optional=true)
+	@Argument(doc = "Should PCR duplicates be filtered?", optional=true)
 	public boolean FILTER_PCR_DUPES=false;
 	
-	@Option (doc = "Retain primary reads only", optional=true)
+	@Argument (doc = "Retain primary reads only", optional=true)
 	public boolean RETAIN_ONLY_PRIMARY_READS=false;
 	
-	@Option (doc="Retain reads that have at least this many M bases total in the cigar string.  This sums all the M's in the cigar string.", optional=true)
+	@Argument (doc="Retain reads that have at least this many M bases total in the cigar string.  This sums all the M's in the cigar string.", optional=true)
 	public Integer SUM_MATCHING_BASES=null;
 	
-	@Option (doc="Soft match reference names that have this string. If multiple matches are specified, they are OR'd together." +
+	@Argument (doc="Soft match reference names that have this string. If multiple matches are specified, they are OR'd together." +
 			"This is the equivalent of a hard match with wrapped with .* on either side.", optional=true)
 	public List<String> REF_SOFT_MATCHED_RETAINED=null;
 	
-	@Option (doc="Soft match and reject reference names that have this string.  If multiple matches are specified, they are OR'd together. " +
+	@Argument (doc="Soft match and reject reference names that have this string.  If multiple matches are specified, they are OR'd together. " +
 			"This is the equivalent of a hard match with wrapped with .* on either side. ", optional=true)
 	public List<String> REF_SOFT_MATCHED_REJECTED=null;
 		
-	@Option (doc="Exact match reference names that have this string.  If multiple matches are specified, they are OR'd together." +
+	@Argument (doc="Exact match reference names that have this string.  If multiple matches are specified, they are OR'd together." +
 			"For example, '1' would retain only references that were exactly '1'. This method accepts regular expressions.", optional=true)
 	public List<String> REF_HARD_MATCHED_RETAINED=null;
 	
-	@Option (doc="Exact match and reject reference names that have this string.  If multiple matches are specified, they are OR'd together." +
+	@Argument (doc="Exact match and reject reference names that have this string.  If multiple matches are specified, they are OR'd together." +
 			"This method accepts regular expressions.", optional=true)
 	public List<String> REF_HARD_MATCHED_REJECTED=null;
 
-	@Option (doc="Retain reads that have these tags set with any value.  Can be set multiple times", optional=true)
+	@Argument (doc="Retain reads that have these tags set with any value.  Can be set multiple times", optional=true)
 	public List<String> TAG_RETAIN=null;
 	
-	@Option(doc="If multiple TAG_RETAIN flags are set, should the result be the union of the filters, or the intersect?  [UNION/INTERSECT].", optional=true)
+	@Argument(doc="If multiple TAG_RETAIN flags are set, should the result be the union of the filters, or the intersect?  [UNION/INTERSECT].", optional=true)
 	public String TAG_RETAIN_COMBINE_FLAG=null;
 	
-	@Option (doc="Reject reads that have these tags set with any value.  Can be set multiple times.", optional=true)
+	@Argument (doc="Reject reads that have these tags set with any value.  Can be set multiple times.", optional=true)
 	public List<String> TAG_REJECT=null;
 	
-	@Option(doc="If multiple TAG_REJECT flags are set, should the result be the union of the filters, or the intersect?  [UNION/INTERSECT].", optional=true)
+	@Argument(doc="If multiple TAG_REJECT flags are set, should the result be the union of the filters, or the intersect?  [UNION/INTERSECT].", optional=true)
 	public String TAG_REJECT_COMBINE_FLAG=null;
 
-	@Option(doc="Edit contig names so that a contig that starts with one of these prefixes has the prefix stripped.", optional = true)
+	@Argument(doc="Edit contig names so that a contig that starts with one of these prefixes has the prefix stripped.", optional = true)
     public List<String> STRIP_REF_PREFIX;
 
-	@Option(doc="Edit sequence dictionary and remove any contig that has been filtered by reference name filtering. " +
+	@Argument(doc="Edit sequence dictionary and remove any contig that has been filtered by reference name filtering. " +
             "A read with mate alignment info in which mate is aligned to a contig that has been removed will be changed " +
             "to have an unmapped mate.")
     public boolean DROP_REJECTED_REF = false;
 	
-	//@Option (doc="File with one or more TAG:Value combinations, for example ZC:Z:AAACCCTTGGG.  Any read with any of the tags in the file will be retained.")
+	//@Argument (doc="File with one or more TAG:Value combinations, for example ZC:Z:AAACCCTTGGG.  Any read with any of the tags in the file will be retained.")
 	
 	private static final String UNION="UNION";
 	private static final String INTERSECT="INTERSECT";

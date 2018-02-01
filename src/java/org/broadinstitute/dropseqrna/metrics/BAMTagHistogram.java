@@ -43,8 +43,8 @@ import htsjdk.samtools.util.IterableAdapter;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 /**
@@ -52,26 +52,26 @@ import picard.cmdline.StandardOptionDefinitions;
  * @author nemesh
  *
  */
-@CommandLineProgramProperties(usage = "Create a histogram of values for the given tag",
-        usageShort = "Create a histogram of values for the given tag",
+@CommandLineProgramProperties(summary = "Create a histogram of values for the given tag",
+        oneLineSummary = "Create a histogram of values for the given tag",
         programGroup = DropSeq.class)
 public class BAMTagHistogram extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(BAMTagHistogram.class);
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. (???)")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. (???)")
 	public File INPUT;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of histogram of tag value frequencies. This supports zipped formats like gz and bz2.")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of histogram of tag value frequencies. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
 
-	@Option(doc="Tag to extract")
+	@Argument(doc="Tag to extract")
 	public String TAG;
 
-	@Option(doc="Filter PCR Duplicates.")
+	@Argument(doc="Filter PCR Duplicates.")
 	public boolean FILTER_PCR_DUPLICATES=false;
 
-	@Option(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
+	@Argument(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
 	public Integer READ_QUALITY=10;
 
 	@Override

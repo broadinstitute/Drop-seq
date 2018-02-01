@@ -30,8 +30,8 @@ import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import picard.annotation.Gene;
 import picard.annotation.Gene.Transcript.Exon;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 import java.io.File;
@@ -46,21 +46,21 @@ import java.io.PrintStream;
  */
 
 @CommandLineProgramProperties(
-        usage = "If you really want to have refFlat files instead of GTF files, then this is for you.  Pretty handy for Picard tools that accept refFlat instead of GTF files.",
-        usageShort = "Convert various annotations formats to RefFlat",
+        summary = "If you really want to have refFlat files instead of GTF files, then this is for you.  Pretty handy for Picard tools that accept refFlat instead of GTF files.",
+        oneLineSummary = "Convert various annotations formats to RefFlat",
         programGroup = MetaData.class
 )
 
 public class ConvertToRefFlat extends CommandLineProgram {
 
 	
-	@Option(doc="The annotations set to use to label the read.  This can be a GTF or a refFlat file.")
+	@Argument(doc="The annotations set to use to label the read.  This can be a GTF or a refFlat file.")
 	public File ANNOTATIONS_FILE;
 	
-	@Option(shortName = StandardOptionDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME, doc="The reference sequence dictionary.  Only chromosomes found in this file AND the annotations file will be retained.")
+	@Argument(shortName = StandardOptionDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME, doc="The reference sequence dictionary.  Only chromosomes found in this file AND the annotations file will be retained.")
 	public File SEQUENCE_DICTIONARY;
 	
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output refFlat file")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output refFlat file")
 	public File OUTPUT;
 	
 	@Override

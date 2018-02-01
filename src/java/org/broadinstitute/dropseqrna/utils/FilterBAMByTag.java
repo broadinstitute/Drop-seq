@@ -38,34 +38,34 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
-@CommandLineProgramProperties(usage = "Filters a BAM file based on a TAG and a file containing a list of values.  This is pretty similar to grepping with a file, but is faster and makes a proper BAM.", usageShort = "Filters a BAM file based on a TAG and a file containing a list of values.", programGroup = DropSeq.class)
+@CommandLineProgramProperties(summary = "Filters a BAM file based on a TAG and a file containing a list of values.  This is pretty similar to grepping with a file, but is faster and makes a proper BAM.", oneLineSummary = "Filters a BAM file based on a TAG and a file containing a list of values.", programGroup = DropSeq.class)
 public class FilterBAMByTag extends CommandLineProgram {
 
 	private final Log log = Log.getInstance(FilterBAMByTag.class);
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
 	public File INPUT;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
 	public File OUTPUT;
 
-	@Option(doc = "The BAM tag to filter on.")
+	@Argument(doc = "The BAM tag to filter on.")
 	public String TAG;
 
-	@Option(doc = "A file with 1 column and 1 or more rows containing a barcode value per line.", optional = true)
+	@Argument(doc = "A file with 1 column and 1 or more rows containing a barcode value per line.", optional = true)
 	public File TAG_VALUES_FILE;
 
-	@Option(doc = "A single value for filtering reads.  Use instead of TAG_VALUES_FILE.", optional = true)
+	@Argument(doc = "A single value for filtering reads.  Use instead of TAG_VALUES_FILE.", optional = true)
 	public String TAG_VALUE;
 
-	@Option(doc = "If having a tag value matches the values in the file, accept the read.  If set to false, reject the read.")
+	@Argument(doc = "If having a tag value matches the values in the file, accept the read.  If set to false, reject the read.")
 	public Boolean ACCEPT_TAG = true;
 
-	@Option(doc = "In Paired Read Mode if the tag value is on either read the pair of reads is kept or discarded. This is slower when turned on because "
+	@Argument(doc = "In Paired Read Mode if the tag value is on either read the pair of reads is kept or discarded. This is slower when turned on because "
 			+ "of the need to queryname sort the data, so only turn it on if you need it!")
 	public Boolean PAIRED_MODE=false;
 

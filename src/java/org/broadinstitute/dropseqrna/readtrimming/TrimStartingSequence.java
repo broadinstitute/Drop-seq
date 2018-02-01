@@ -44,35 +44,35 @@ import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 
 import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
-@CommandLineProgramProperties(usage = "Trim the given sequence from the beginning of reads",
-        usageShort = "Trim the given sequence from the beginning of reads",
+@CommandLineProgramProperties(summary = "Trim the given sequence from the beginning of reads",
+        oneLineSummary = "Trim the given sequence from the beginning of reads",
         programGroup = DropSeq.class)
 public class TrimStartingSequence extends CommandLineProgram {
 	private final Log log = Log.getInstance(TrimStartingSequence.class);
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
 	public File INPUT;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM file")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM file")
 	public File OUTPUT;
 
-	@Option(doc = "The output summary statistics", optional=true)
+	@Argument(doc = "The output summary statistics", optional=true)
 	public File OUTPUT_SUMMARY;
 
-	@Option(doc="The sequence to look for at the start of reads.")
+	@Argument(doc="The sequence to look for at the start of reads.")
 	public String SEQUENCE;
 
-	@Option(doc="How many mismatches are acceptable in the sequence.")
+	@Argument(doc="How many mismatches are acceptable in the sequence.")
 	public Integer MISMATCHES=0;
 
-	@Option(doc="How many bases at the begining of the sequence must match before trimming occurs.")
+	@Argument(doc="How many bases at the begining of the sequence must match before trimming occurs.")
 	public Integer NUM_BASES=0;
 
-	@Option (doc="The tag to set for trimmed reads.  This tags the first base to keep in the read.  6 would mean to trim the first 5 bases.")
+	@Argument (doc="The tag to set for trimmed reads.  This tags the first base to keep in the read.  6 would mean to trim the first 5 bases.")
 	public String TRIM_TAG="ZS";
 
 	private Integer readsTrimmed=0;

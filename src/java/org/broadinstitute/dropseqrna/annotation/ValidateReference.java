@@ -33,8 +33,8 @@ import org.broadinstitute.dropseqrna.cmdline.MetaData;
 import picard.PicardException;
 import picard.annotation.Gene;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 import picard.sam.CreateSequenceDictionary;
 
@@ -42,17 +42,17 @@ import java.io.File;
 import java.util.*;
 
 @CommandLineProgramProperties(
-        usage = "Validate reference fasta and GTF for use in Drop-Seq, and display sequences that appear in one but " +
+        summary = "Validate reference fasta and GTF for use in Drop-Seq, and display sequences that appear in one but " +
                 "not the other, and display all gene_biotype values (transcript types)",
-        usageShort = "Validate reference fasta and GTF for use in Drop-Seq",
+        oneLineSummary = "Validate reference fasta and GTF for use in Drop-Seq",
         programGroup = MetaData.class
 )public class ValidateReference extends CommandLineProgram {
 
     @SuppressWarnings("WeakerAccess")
-    @Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="The reference fasta")
+    @Argument(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="The reference fasta")
     public File REFERENCE;
 
-    @Option(doc="Gene annotation file in GTF format")
+    @Argument(doc="Gene annotation file in GTF format")
     public File GTF;
 
     public static void main(final String[] args) {

@@ -48,8 +48,8 @@ import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
 import picard.PicardException;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 /**
@@ -57,8 +57,8 @@ import picard.cmdline.StandardOptionDefinitions;
  * @author nemesh
  *
  */
-@CommandLineProgramProperties(usage = "Fold down barcodes, possibly in the context of another barcode (that has been folded down already.)",
-        usageShort = "Fold down barcodes, possibly in the context of another barcode (that has been folded down already.)",
+@CommandLineProgramProperties(summary = "Fold down barcodes, possibly in the context of another barcode (that has been folded down already.)",
+        oneLineSummary = "Fold down barcodes, possibly in the context of another barcode (that has been folded down already.)",
         programGroup = DropSeq.class)
 public class CollapseBarcodesInPlace extends CommandLineProgram {
 
@@ -66,43 +66,43 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 	private final Log log = Log.getInstance(CollapseBarcodesInPlace.class);
 	private ProgressLogger pl = new ProgressLogger(this.log);
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. ",
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. ",
             minElements = 1)
 	public List<File> INPUT;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output BAM file with an extra tag.")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output BAM file with an extra tag.")
 	public File OUTPUT;
 
-	@Option(doc="Barcode to collapse")
+	@Argument(doc="Barcode to collapse")
 	public String PRIMARY_BARCODE;
 
-	@Option(doc="The edit distance to collapse barcodes")
+	@Argument(doc="The edit distance to collapse barcodes")
 	public Integer EDIT_DISTANCE=1;
 
-	@Option(doc = "Should indels be considered in edit distance calculations?  Doing this correctly is far slower than a simple edit distance test, but gives a more complete result.")
+	@Argument(doc = "Should indels be considered in edit distance calculations?  Doing this correctly is far slower than a simple edit distance test, but gives a more complete result.")
 	public boolean FIND_INDELS=true;
 
-	@Option(doc="The output barcode tag for the newly collapsed barcodes")
+	@Argument(doc="The output barcode tag for the newly collapsed barcodes")
 	public String OUT_BARCODE;
 
-	@Option(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
+	@Argument(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
 	public Integer READ_QUALITY=10;
 
-	@Option(doc="Number of reads a barcode would need to have in order to have other barcodes get merged into it.  All barcodes are candidates to be merged into another barcode." +
+	@Argument(doc="Number of reads a barcode would need to have in order to have other barcodes get merged into it.  All barcodes are candidates to be merged into another barcode." +
 			"For cell barcodes you probably want to set this to a relatively high number like 100, since we expect cells to have thousands or more reads, and this signficantly speeds up analysis.  " +
 			"For molecular barcodes, you probably want to set this to 1, as you want to include all molecular barcodes, unless you have very high sequencing depth.", optional=true)
 	public Integer MIN_NUM_READS_CORE=null;
 
-	@Option(doc="Number of cells that you think are in the library.  This accomplishes the same goals as the MIN_NUM_READS_CORE argument, but instead of defining barcodes as important based on the number of reads, it picks the top <X> barcodes as core.", optional=true)
+	@Argument(doc="Number of cells that you think are in the library.  This accomplishes the same goals as the MIN_NUM_READS_CORE argument, but instead of defining barcodes as important based on the number of reads, it picks the top <X> barcodes as core.", optional=true)
 	public Integer NUM_CORE_BARCODES=null;
 
-	@Option(doc="The number of reads a non-core barcode must have to be merged with a core barcode.", optional=true)
+	@Argument(doc="The number of reads a non-core barcode must have to be merged with a core barcode.", optional=true)
 	public Integer MIN_NUM_READS_NONCORE=1;
 
-	@Option(doc="Filter PCR Duplicates.  Defaults to false")
+	@Argument(doc="Filter PCR Duplicates.  Defaults to false")
 	public boolean FILTER_PCR_DUPLICATES=false;
 
-	@Option(doc="Number of threads to use.  Defaults to 1.")
+	@Argument(doc="Number of threads to use.  Defaults to 1.")
 	public int NUM_THREADS=1;
 
 

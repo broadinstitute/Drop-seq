@@ -47,42 +47,42 @@ import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.StringUtil;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 
 /**
  *
  * @author nemesh
  *
  */
-@CommandLineProgramProperties(usage = "Compare two dropseq alignments across different sets of annotations or genome builds to see what genes present in the original set are lost in the second set.  "
+@CommandLineProgramProperties(summary = "Compare two dropseq alignments across different sets of annotations or genome builds to see what genes present in the original set are lost in the second set.  "
 		+ "The input data should be the same set of data aligned to different references, on either the same genome build or different builds.  If the second input is aligned with secondary reads emitted during alignment,"
 		+ "all contigs for a mapping for non-unique contigs will be listed.  This can be helpful to detect if additional contigs [such as alternative haplotypes] create mapping problems that make some subset of genes invisible to the dropseq toolkit.",
-usageShort = "Compare two alignments",
+oneLineSummary = "Compare two alignments",
 programGroup = DropSeq.class)
 public class CompareDropSeqAlignments extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(CompareDropSeqAlignments.class);
 
-	@Option(doc = "The input SAM or BAM file to analyze.  If coordinate sorted this will save time, but is not required.")
+	@Argument(doc = "The input SAM or BAM file to analyze.  If coordinate sorted this will save time, but is not required.")
 	public File INPUT_1;
 
-	@Option(doc = "The comparison input SAM or BAM file to analyze.  If coordinate sorted this will save time, but is not required.")
+	@Argument(doc = "The comparison input SAM or BAM file to analyze.  If coordinate sorted this will save time, but is not required.")
 	public File INPUT_2;
 
-	@Option(doc="Output file that maps the contig the read uniquely mapped to in INPUT_1, and the contig the read mapped to in INPUT_2, with reads partitioned into groups that did/did not remained uniquely mapped.  This supports zipped formats like gz and bz2.", optional=true)
+	@Argument(doc="Output file that maps the contig the read uniquely mapped to in INPUT_1, and the contig the read mapped to in INPUT_2, with reads partitioned into groups that did/did not remained uniquely mapped.  This supports zipped formats like gz and bz2.", optional=true)
 	public File CONTIG_REPORT;
 
-	@Option(doc="Output file that maps the gene the read uniquely mapped to in INPUT_1, and the gene the read mapped to in INPUT_2, with reads partitioned into groups that did/did not remained uniquely mapped.  This supports zipped formats like gz and bz2.", optional=true)
+	@Argument(doc="Output file that maps the gene the read uniquely mapped to in INPUT_1, and the gene the read mapped to in INPUT_2, with reads partitioned into groups that did/did not remained uniquely mapped.  This supports zipped formats like gz and bz2.", optional=true)
 	public File GENE_REPORT;
 
-	@Option(doc="Tag to extract", optional=true)
+	@Argument(doc="Tag to extract", optional=true)
 	public String GENE_EXON_TAG="GE";
 
-	@Option(doc="The map quality for a read to be considered uniquely mapped.")
+	@Argument(doc="The map quality for a read to be considered uniquely mapped.")
 	public int READ_QUALITY=10;
 
-	@Option (doc="Trim this string from the contig names of both BAMs to make contig names comparable.  This is useful when one alignment strategy calls the first contig 'chr1' and the second strategy '1'")
+	@Argument (doc="Trim this string from the contig names of both BAMs to make contig names comparable.  This is useful when one alignment strategy calls the first contig 'chr1' and the second strategy '1'")
 	public String TRIM_CONTIG_STRING="chr";
 
 	private StringInterner stringInterner = new StringInterner();

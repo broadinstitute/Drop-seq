@@ -42,12 +42,12 @@ import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
-        usage = "For each gene, count the number of times each molecular barcode is observed [The UMI]" +
+        summary = "For each gene, count the number of times each molecular barcode is observed [The UMI]" +
 			"Similar to digital expression, reads are filtered on map quality, and must overlap exons as well as genes. "+
 			"This program requires a tag for what gene a read is on, a molecular barcode tag, and a exon tag.  The exon and gene tags may not be present on every read." +
 			"When filtering the data for a set of barcodes to use, the data is filtered by ONE of the following methods (and if multiple params are filled in, the top one takes precidence):\n" +
@@ -56,14 +56,14 @@ import picard.cmdline.StandardOptionDefinitions;
 			"3) MIN_NUM_TRANSCRIPTS_PER_CELL " +
 			"4) NUM_CORE_BARCODES " +
 			"5) MIN_NUM_READS_PER_CELL",
-        usageShort = "Get the number of reads for each UMI",
+        oneLineSummary = "Get the number of reads for each UMI",
         programGroup = DropSeq.class
 )
 public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase {
 
 	private static final Log log = Log.getInstance(GatherMolecularBarcodeDistributionByGene.class);
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of with 4 columns: CELL, GENE, MOLECULAR BC, #Observations. This supports zipped formats like gz and bz2.")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of with 4 columns: CELL, GENE, MOLECULAR BC, #Observations. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
 
 	@Override

@@ -42,31 +42,31 @@ import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
-        usage = "Calculate the number of reads that are in the BAM, that are mapped, mapped + HQ, mapped + HQ + not PCR duplicated",
-        usageShort = "Calculate reads that are in the BAM at different mapping qualities.",
+        summary = "Calculate the number of reads that are in the BAM, that are mapped, mapped + HQ, mapped + HQ + not PCR duplicated",
+        oneLineSummary = "Calculate reads that are in the BAM at different mapping qualities.",
         programGroup = DropSeq.class
 )
 public class GatherReadQualityMetrics extends CommandLineProgram {
 	private final Log log = Log.getInstance(GatherReadQualityMetrics.class);
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted.")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted.")
 	public File INPUT;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The file to write stats to.")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The file to write stats to.")
 	public File OUTPUT;
 	
-	@Option(doc="The minimum map quality for a read to be considered high quality")
+	@Argument(doc="The minimum map quality for a read to be considered high quality")
 	public Integer MAP_QUALITY=10;
 	
-	@Option(doc="Optionally aggregate reads by a tag and output per-tag metrics.  The map quality scores histogram will still be computed globally.", optional=true)
+	@Argument(doc="Optionally aggregate reads by a tag and output per-tag metrics.  The map quality scores histogram will still be computed globally.", optional=true)
 	public String TAG=null;
 
-    @Option(doc="Include non-PF reads when gathering metrics")
+    @Argument(doc="Include non-PF reads when gathering metrics")
     public boolean INCLUDE_NON_PF_READS=false;
 	
 	private String GLOBAL="all";

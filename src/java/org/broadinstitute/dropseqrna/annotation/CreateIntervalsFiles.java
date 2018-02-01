@@ -32,8 +32,8 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import org.broadinstitute.dropseqrna.cmdline.MetaData;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 import picard.util.TabbedTextFileWithHeaderParser;
 
@@ -42,28 +42,28 @@ import java.util.ArrayList;
 import java.util.List;
 
 @CommandLineProgramProperties(
-        usage = "Create standard Drop-seq intervals files: consensus_introns, genes, rRNA, exons, intergenic",
-        usageShort = "Create standard Drop-seq intervals files",
+        summary = "Create standard Drop-seq intervals files: consensus_introns, genes, rRNA, exons, intergenic",
+        oneLineSummary = "Create standard Drop-seq intervals files",
         programGroup = MetaData.class
 )public class CreateIntervalsFiles extends CommandLineProgram {
 
 
-    @Option(shortName = StandardOptionDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME, doc="The reference sequence dictionary.")
+    @Argument(shortName = StandardOptionDefinitions.SEQUENCE_DICTIONARY_SHORT_NAME, doc="The reference sequence dictionary.")
     public File SEQUENCE_DICTIONARY;
 
-    @Option(doc="Gene definitions used to generate intervals files")
+    @Argument(doc="Gene definitions used to generate intervals files")
     public File REDUCED_GTF;
 
-    @Option(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Directory where intervals files are written")
+    @Argument(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Directory where intervals files are written")
     public File OUTPUT;
 
-    @Option(doc="intervals files are named using this prefix")
+    @Argument(doc="intervals files are named using this prefix")
     public String PREFIX;
 
-    @Option(doc="Name(s) of MT reference sequence, for creating mt.intervals file")
+    @Argument(doc="Name(s) of MT reference sequence, for creating mt.intervals file")
     public List<String> MT_SEQUENCE;
 
-    @Option(doc="Name(s) of non-autosome reference sequences, for creating non_autosomes.intervals file")
+    @Argument(doc="Name(s) of non-autosome reference sequences, for creating non_autosomes.intervals file")
     public List<String> NON_AUTOSOME_SEQUENCE;
 
     public static void main(final String[] args) {

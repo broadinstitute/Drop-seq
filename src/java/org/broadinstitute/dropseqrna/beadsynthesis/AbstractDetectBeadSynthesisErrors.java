@@ -43,55 +43,55 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 public abstract class AbstractDetectBeadSynthesisErrors extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(AbstractDetectBeadSynthesisErrors.class);
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM files to analyze.  They must all have the same sort order")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM files to analyze.  They must all have the same sort order")
 	public List<File> INPUT;
 
-	@Option(doc="Output a summary of the error types and frequencies detected")
+	@Argument(doc="Output a summary of the error types and frequencies detected")
 	public File SUMMARY;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output BAM, with the synthesis error barcodes removed", optional=true)
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output BAM, with the synthesis error barcodes removed", optional=true)
 	public File OUTPUT;
 
-	@Option(doc="The sequence of the primer.", optional=true)
+	@Argument(doc="The sequence of the primer.", optional=true)
 	public String PRIMER_SEQUENCE=null;
 
-	@Option(doc="When looking at fixed UMIs, see if the edit distance from the UMI to the primer is within this threshold.  0 indicates a perfect match between the primer and the UMI.")
+	@Argument(doc="When looking at fixed UMIs, see if the edit distance from the UMI to the primer is within this threshold.  0 indicates a perfect match between the primer and the UMI.")
 	public Integer EDIT_DISTANCE=0;
 
-	@Option(doc="The cell barcode tag.")
+	@Argument(doc="The cell barcode tag.")
 	public String CELL_BARCODE_TAG="XC";
 
-	@Option(doc="The molecular barcode tag.")
+	@Argument(doc="The molecular barcode tag.")
 	public String MOLECULAR_BARCODE_TAG="XM";
 
-	@Option(doc="The Gene/Exon tag")
+	@Argument(doc="The Gene/Exon tag")
 	public String GENE_EXON_TAG="GE";
 
-	@Option(doc="The strand of the gene(s) the read overlaps.  When there are multiple genes, they will be comma-separated.")
+	@Argument(doc="The strand of the gene(s) the read overlaps.  When there are multiple genes, they will be comma-separated.")
 	public String STRAND_TAG="GS";
 
-	@Option(doc="The map quality of the read to be included when calculating the barcodes in <NUM_BARCODES>")
+	@Argument(doc="The map quality of the read to be included when calculating the barcodes in <NUM_BARCODES>")
 	public Integer READ_MQ=10;
 
-	@Option (doc="The minimum number of UMIs required to report a cell barcode")
+	@Argument (doc="The minimum number of UMIs required to report a cell barcode")
 	public Integer MIN_UMIS_PER_CELL=25;
 
-	@Option (doc="Find the top set of <NUM_BARCODES> most common barcodes by HQ reads and only use this set for analysis.",
+	@Argument (doc="Find the top set of <NUM_BARCODES> most common barcodes by HQ reads and only use this set for analysis.",
             mutex = {"CELL_BC_FILE"})
 	public Integer NUM_BARCODES;
 
-	@Option(doc="Override NUM_BARCODES, and process reads that have the cell barcodes in this file instead.  The file has 1 column with no header.",
+	@Argument(doc="Override NUM_BARCODES, and process reads that have the cell barcodes in this file instead.  The file has 1 column with no header.",
             mutex = {"NUM_BARCODES"})
 	public File CELL_BC_FILE;
 
-	@Option(doc="Repair Synthesis errors with at most this many missing bases detected.", optional=true)
+	@Argument(doc="Repair Synthesis errors with at most this many missing bases detected.", optional=true)
 	public Integer MAX_NUM_ERRORS=1;
 
 	SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);

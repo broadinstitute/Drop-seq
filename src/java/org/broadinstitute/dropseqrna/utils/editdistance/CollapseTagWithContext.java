@@ -64,65 +64,65 @@ import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.StringUtil;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
-@CommandLineProgramProperties(usage = "Collapse set of barcodes that all share the same BAM tags.  For example, collapse all UMIs that have the same cell, gene, and gene strand tags.  This would be equivilent to collapsing the UMIs in DGE.",
-usageShort = "Collapse barcodes in the context of one or more tags.)",
+@CommandLineProgramProperties(summary = "Collapse set of barcodes that all share the same BAM tags.  For example, collapse all UMIs that have the same cell, gene, and gene strand tags.  This would be equivilent to collapsing the UMIs in DGE.",
+oneLineSummary = "Collapse barcodes in the context of one or more tags.)",
 programGroup = DropSeq.class)
 
 public class CollapseTagWithContext extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(CollapseTagWithContext.class);
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. ", optional=false)
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. ", optional=false)
 	public File INPUT;
 
-	@Option(doc="Collapse tags that are within <EDIT_DISTANCE>, and have the same CONTEXT_TAGS.  For example, if your context tags were cell and gene, you could collapse UMI tags.", optional=false)
+	@Argument(doc="Collapse tags that are within <EDIT_DISTANCE>, and have the same CONTEXT_TAGS.  For example, if your context tags were cell and gene, you could collapse UMI tags.", optional=false)
 	public String COLLAPSE_TAG;
 
-	@Option(doc="Group reads by these read tags.  Collapse the COLLAPSE_TAG values that have the same CONTEXT_TAGS values.  Reads with unset CONTEXT_TAGS that will be grouped together and loaded into memory together.  "
+	@Argument(doc="Group reads by these read tags.  Collapse the COLLAPSE_TAG values that have the same CONTEXT_TAGS values.  Reads with unset CONTEXT_TAGS that will be grouped together and loaded into memory together.  "
 			+ "This can cause a large amount of memory usage if you pick a lot of tags that are all mostly not set.", minElements = 1)
 	public List<String> CONTEXT_TAGS;
 
-	@Option (doc="By default, groups of reads are gathered by their CONTEXT_TAGS and ordered by the number of total reads.  Contexts with larger numbers of reads are potential 'parents' of smaller context objects. "
+	@Argument (doc="By default, groups of reads are gathered by their CONTEXT_TAGS and ordered by the number of total reads.  Contexts with larger numbers of reads are potential 'parents' of smaller context objects. "
 			+ "If this option is used, the count of a context to determine it's ordering is the unique count of values of the TAG(S) added here.  "
 			+ "For example, if you wanted to collapse by UMI counts instead of read counts, you could put the UMI tag here.")
 	public List<String> COUNT_TAGS;
 
-	@Option(doc="The output tag for the newly collapsed tag values")
+	@Argument(doc="The output tag for the newly collapsed tag values")
 	public String OUT_TAG;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output BAM file with the new collapsed tag.", optional=false)
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output BAM file with the new collapsed tag.", optional=false)
 	public File OUTPUT;
 
-	@Option(doc="The edit distance to collapse tags.  If adaptive edit distance is used, this is the default edit distance used if no adaptive edit distance is discovered.")
+	@Argument(doc="The edit distance to collapse tags.  If adaptive edit distance is used, this is the default edit distance used if no adaptive edit distance is discovered.")
 	public Integer EDIT_DISTANCE=1;
 
-	@Option(doc = "Should indels be considered in edit distance calculations?  Doing this correctly is far slower than a simple edit distance test, but gives a more complete result.")
+	@Argument(doc = "Should indels be considered in edit distance calculations?  Doing this correctly is far slower than a simple edit distance test, but gives a more complete result.")
 	public boolean FIND_INDELS=false;
 
-	@Option(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
+	@Argument(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
 	public Integer READ_MQ=10;
 
-	@Option (doc="The minumum number of reads (unless using the COUNT_TAGS option) for a context to be eligible for collapse.", optional=true)
+	@Argument (doc="The minumum number of reads (unless using the COUNT_TAGS option) for a context to be eligible for collapse.", optional=true)
 	public Integer MIN_COUNT=null;
 
-	@Option(doc="Number of threads to use.  Defaults to 1.")
+	@Argument(doc="Number of threads to use.  Defaults to 1.")
 	public int NUM_THREADS=1;
 
-	@Option (doc="Instead of using the default fixed edit distance, use an adaptive edit distance.  "
+	@Argument (doc="Instead of using the default fixed edit distance, use an adaptive edit distance.  "
 			+ "For each mergable entity, this tries to determine if there are 2 clusters of data by edit distance, and only merge the close-by neighbors.  EXPERIMETNAL!!!")
 	public boolean ADAPTIVE_EDIT_DISTANCE=false;
 
-	@Option (doc="If adaptive edit distance is used, this is the maximum edit distance allowed.", optional=true)
+	@Argument (doc="If adaptive edit distance is used, this is the maximum edit distance allowed.", optional=true)
 	public Integer ADAPTIVE_ED_MAX=-1;
 
-	@Option (doc="If adaptive edit distance is used, this is the minimum edit distance allowed.", optional=true)
+	@Argument (doc="If adaptive edit distance is used, this is the minimum edit distance allowed.", optional=true)
 	public Integer ADAPTIVE_ED_MIN=-1;
 
-	@Option (doc="If provided, writes out some metrics about each barcode that is merged.", optional=true)
+	@Argument (doc="If provided, writes out some metrics about each barcode that is merged.", optional=true)
 	public File ADAPTIVE_ED_METRICS_FILE;
 
 	// make this once and reuse it.

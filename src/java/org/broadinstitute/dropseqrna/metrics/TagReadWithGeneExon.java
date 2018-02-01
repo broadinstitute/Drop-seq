@@ -55,15 +55,15 @@ import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 import picard.annotation.Gene;
 import picard.annotation.LocusFunction;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
-        usage = "A special case tagger.  Tags reads that are exonic for the gene name of the overlapping exon.  This is done specifically to solve the case where a read" +
+        summary = "A special case tagger.  Tags reads that are exonic for the gene name of the overlapping exon.  This is done specifically to solve the case where a read" +
 			"may be tagged with a gene and an exon, but the read may not be exonic for all genes tagged.  This limits the list of genes to only those where the read overlaps the exon and the gene." +
 			"Reads that overlap multiple genes are assigned to the gene that shares the strand with the read.  If that assignment is ambiguous (2 or more genes share the strand of the read), then the read is not assigned any genes.",
-        usageShort = "Tags gene/exons in a strand-specific way, adds locus function type. Used before running digital expression.",
+        oneLineSummary = "Tags gene/exons in a strand-specific way, adds locus function type. Used before running digital expression.",
         programGroup = DropSeq.class
 )
 public class TagReadWithGeneExon extends CommandLineProgram {
@@ -71,31 +71,31 @@ public class TagReadWithGeneExon extends CommandLineProgram {
 	private final Log log = Log.getInstance(TagReadWithGeneExon.class);
 	private ProgressLogger pl = new ProgressLogger(log);
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze")
 	public File INPUT;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM, written with new Gene/Exon tag")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM, written with new Gene/Exon tag")
 	public File OUTPUT;
 
-	@Option(doc = "The strand specific summary info", optional=true)
+	@Argument(doc = "The strand specific summary info", optional=true)
 	public File SUMMARY=null;
 
-	@Option(doc = "The tag name to use.  When there are multiple genes, they will be comma seperated.")
+	@Argument(doc = "The tag name to use.  When there are multiple genes, they will be comma seperated.")
 	public String TAG="GE";
 
-	@Option(doc="The strand of the gene(s) the read overlaps.  When there are multiple genes, they will be comma seperated.")
+	@Argument(doc="The strand of the gene(s) the read overlaps.  When there are multiple genes, they will be comma seperated.")
 	public String STRAND_TAG="GS";
 
-	@Option(doc = "The functional annotation for the read")
+	@Argument(doc = "The functional annotation for the read")
 	public String FUNCTION_TAG="XF";
 
-	@Option(doc="The annotations set to use to label the read.  This can be a GTF or a refFlat file.")
+	@Argument(doc="The annotations set to use to label the read.  This can be a GTF or a refFlat file.")
 	public File ANNOTATIONS_FILE;
 
-	@Option(doc="Use strand info to determine what gene to assign the read to.  If this is on, reads can be assigned to a maximum one one gene.")
+	@Argument(doc="Use strand info to determine what gene to assign the read to.  If this is on, reads can be assigned to a maximum one one gene.")
 	public boolean USE_STRAND_INFO=true;
 
-	@Option(doc="Allow a read to span multiple genes.  If set to true, the gene name will be set to all of the gene/exons the read spans.  In that case, the gene names will be comma separated.")
+	@Argument(doc="Allow a read to span multiple genes.  If set to true, the gene name will be set to all of the gene/exons the read spans.  In that case, the gene names will be comma separated.")
 	public boolean ALLOW_MULTI_GENE_READS=false;
 
 	private ReadTaggingMetric metrics = new ReadTaggingMetric();

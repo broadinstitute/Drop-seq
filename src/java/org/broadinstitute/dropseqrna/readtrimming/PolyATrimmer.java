@@ -44,12 +44,12 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 import picard.util.ClippingUtility;
 
-@CommandLineProgramProperties(usage = "", usageShort = "", programGroup = DropSeq.class)
+@CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup = DropSeq.class)
 public class PolyATrimmer extends CommandLineProgram {
 
 	private final Log log = Log.getInstance(PolyATrimmer.class);
@@ -58,50 +58,50 @@ public class PolyATrimmer extends CommandLineProgram {
 	// poly A found.
 	private static final int NO_POLY_A_ADAPTER_DEBUG_THRESHOLD = 6;
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
 	public File INPUT;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM file")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM file")
 	public File OUTPUT;
 
-	@Option(doc = "The output summary statistics", optional = true)
+	@Argument(doc = "The output summary statistics", optional = true)
 	public File OUTPUT_SUMMARY;
 
-	@Option(shortName = "NEW")
+	@Argument(shortName = "NEW")
 	public boolean USE_NEW_TRIMMER = false;
 
-	@Option(doc = "How many mismatches are acceptable in the sequence (old trim algo).")
+	@Argument(doc = "How many mismatches are acceptable in the sequence (old trim algo).")
 	public Integer MISMATCHES = 0;
 
-	@Option(doc = "How many bases of polyA qualifies as a run of A's (old trim algo).")
+	@Argument(doc = "How many bases of polyA qualifies as a run of A's (old trim algo).")
 	public Integer NUM_BASES = 6;
 
-	@Option(doc = "The tag to set for trimmed reads.  This tags the first base to exclude in the read.  37 would mean to retain the first 36 bases.")
+	@Argument(doc = "The tag to set for trimmed reads.  This tags the first base to exclude in the read.  37 would mean to retain the first 36 bases.")
 	public String TRIM_TAG = "ZP";
 
-	@Option(doc = "Symbolic & literal specification of adapter sequence.  This is a combination of fixed bases to match, "
+	@Argument(doc = "Symbolic & literal specification of adapter sequence.  This is a combination of fixed bases to match, "
 			+ " and references to SAMRecord tag values.  "
 			+ "E.g. '~XM^XCACGT' means 'RCed value of XM tag' + 'value of XC tag' + 'ACGT'. "
 			+ "Ideally this is at least as long as the read (new trim algo)")
 	public AdapterDescriptor ADAPTER = new AdapterDescriptor(AdapterDescriptor.DEFAULT_ADAPTER);
 
-	@Option(doc = "Fraction of bases that can mismatch when looking for adapter match  (new trim algo)")
+	@Argument(doc = "Fraction of bases that can mismatch when looking for adapter match  (new trim algo)")
 	public double MAX_ADAPTER_ERROR_RATE = ClippingUtility.MAX_ERROR_RATE;
 
-	@Option(doc = "Minimum number of bases for adapter match (new trim algo)")
+	@Argument(doc = "Minimum number of bases for adapter match (new trim algo)")
 	public int MIN_ADAPTER_MATCH = 4;
 
-	@Option(doc = "Minimum length of a poly A run, except when start of end of read intervenes (new trim algo)")
+	@Argument(doc = "Minimum length of a poly A run, except when start of end of read intervenes (new trim algo)")
 	public int MIN_POLY_A_LENGTH = 20;
 
-	@Option(doc = "Minimum length of poly A run at end of read, if there is no adapter match (new trim algo)")
+	@Argument(doc = "Minimum length of poly A run at end of read, if there is no adapter match (new trim algo)")
 	public int MIN_POLY_A_LENGTH_NO_ADAPTER_MATCH = 6;
 
-	@Option(doc = "If adapter match is at end of read, with fewer than this many bases matching the read, and not enough "
+	@Argument(doc = "If adapter match is at end of read, with fewer than this many bases matching the read, and not enough "
 			+ "poly A is found preceding it, then ignore the adapter match and try again from the end of the read (new trim algo)")
 	public int DUBIOUS_ADAPTER_MATCH_LENGTH = 6;
 
-	@Option(doc = "When looking for poly A, allow this fraction of bases not to be A (new trim algo)")
+	@Argument(doc = "When looking for poly A, allow this fraction of bases not to be A (new trim algo)")
 	public double MAX_POLY_A_ERROR_RATE = 0.1;
 
 	private Integer readsTrimmed = 0;

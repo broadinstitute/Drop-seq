@@ -32,15 +32,15 @@ import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 
 import htsjdk.samtools.util.Log;
-import picard.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 
 @CommandLineProgramProperties(
-        usage = "For each cell, gather up all the UMIs.  An error in synthesis will result in the last base of the synthesis being fixed in >80% of the UMIs for that cell, across all genes." +
+        summary = "For each cell, gather up all the UMIs.  An error in synthesis will result in the last base of the synthesis being fixed in >80% of the UMIs for that cell, across all genes." +
 			"This fixed base is T.  Cluster together sets of cell barcodes with UMI bias that are edit distance 1 apart, where the error occurs at the last base.  Search for cell barcode"
 			+ "sequences that at ED=1 (using an indel, not a substitution) from one cell barcode sequence to the new cluster of sequences.  If found, this is the intended sequence that explains"
 			+ "this cluster of errors.  If not found, the synthesis error is complete or is a deletion at base 12.  "
 			+ "For cell barcodes where this occurs, output the cell barcode in a file, as well as (optionally) pad the cell barcodes with N for the error bases.",
-        usageShort = "Detect barcode synthesis errors where the final base of a UMI is fixed across all UMIs of a cell.",
+        oneLineSummary = "Detect barcode synthesis errors where the final base of a UMI is fixed across all UMIs of a cell.",
         programGroup = DropSeq.class
 )
 

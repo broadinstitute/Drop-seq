@@ -60,8 +60,8 @@ import picard.analysis.RnaSeqMetrics;
 import picard.analysis.directed.RnaSeqMetricsCollector;
 import picard.annotation.Gene;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 import picard.metrics.PerUnitMetricCollector;
 
@@ -72,51 +72,51 @@ import picard.metrics.PerUnitMetricCollector;
  */
 
 @CommandLineProgramProperties(
-        usage = "An adaptation of the Picard RnaSeqMetricsCollector to collect per-cell data.  In particular, the exon/intron/genic/intragenic/rRNA levels" +
+        summary = "An adaptation of the Picard RnaSeqMetricsCollector to collect per-cell data.  In particular, the exon/intron/genic/intragenic/rRNA levels" +
         		" This program looks at the mapping from each of the reads in both genomic and library space, and selects the better mapping.",
-        usageShort = "Measures the intron/exon/genic/intergenic/rRNA levels of each cell.",
+        oneLineSummary = "Measures the intron/exon/genic/intergenic/rRNA levels of each cell.",
         programGroup = DropSeq.class
 )
 public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(SingleCellRnaSeqMetricsCollector.class);
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
 	public File INPUT;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of per-cell exonic/intronic/genic/intergenic/rRNA levels.  This supports zipped formats like gz and bz2.")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of per-cell exonic/intronic/genic/intergenic/rRNA levels.  This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
 
-	@Option(doc="The cell barcode tag.  If there are no reads with this tag, the program will assume that all reads belong to the same cell and process in single sample mode.")
+	@Argument(doc="The cell barcode tag.  If there are no reads with this tag, the program will assume that all reads belong to the same cell and process in single sample mode.")
 	public String CELL_BARCODE_TAG="XC";
 
-	@Option(doc="Gene annotations in refFlat or GTF format.")
+	@Argument(doc="Gene annotations in refFlat or GTF format.")
 	public File ANNOTATIONS_FILE;
 
-    @Option(doc="Location of rRNA sequences in genome, in interval_list format.  " +
+    @Argument(doc="Location of rRNA sequences in genome, in interval_list format.  " +
             "If not specified no bases will be identified as being ribosomal.  " +
             "Format described here: http://picard.sourceforge.net/javadoc/net/sf/picard/util/IntervalList.html", optional = true)
     public File RIBOSOMAL_INTERVALS;
 
     // for backwards compatability, if the strand isn't set, set it to none.
     // TODO should this default be set to FIRST_READ?
-    @Option(shortName = "STRAND", doc="For strand-specific library prep. " +
+    @Argument(shortName = "STRAND", doc="For strand-specific library prep. " +
             "For unpaired reads, use FIRST_READ_TRANSCRIPTION_STRAND if the reads are expected to be on the transcription strand.")
     public RnaSeqMetricsCollector.StrandSpecificity STRAND_SPECIFICITY = RnaSeqMetricsCollector.StrandSpecificity.NONE;
 
-    @Option(doc="This percentage of the length of a fragment must overlap one of the ribosomal intervals for a read or read pair by this must in order to be considered rRNA.")
+    @Argument(doc="This percentage of the length of a fragment must overlap one of the ribosomal intervals for a read or read pair by this must in order to be considered rRNA.")
     public double RRNA_FRAGMENT_PERCENTAGE = 0.8;
 
-    @Option(doc="Number of cells that you think are in the library. The top NUM_CORE_BARCODES will be reported in the output.", mutex={"CELL_BC_FILE"})
+    @Argument(doc="Number of cells that you think are in the library. The top NUM_CORE_BARCODES will be reported in the output.", mutex={"CELL_BC_FILE"})
 	public Integer NUM_CORE_BARCODES=null;
 
-    @Option(doc="Override NUM_CORE_BARCODES, and process reads that have the cell barcodes in this file instead.  When supplied, output is ordered to match the input barcode ordering. The file has 1 column with no header.", mutex={"NUM_CORE_BARCODES"})
+    @Argument(doc="Override NUM_CORE_BARCODES, and process reads that have the cell barcodes in this file instead.  When supplied, output is ordered to match the input barcode ordering. The file has 1 column with no header.", mutex={"NUM_CORE_BARCODES"})
 	public File CELL_BC_FILE=null;
 
-    @Option(doc="The map quality of the read to be included for determining which cells will be measured.")
+    @Argument(doc="The map quality of the read to be included for determining which cells will be measured.")
 	public Integer READ_MQ=10;
 
-    @Option(doc="If specified, count bases that align to this sequence separately from other categories")
+    @Argument(doc="If specified, count bases that align to this sequence separately from other categories")
     public List<String> MT_SEQUENCE;
 
     @Override

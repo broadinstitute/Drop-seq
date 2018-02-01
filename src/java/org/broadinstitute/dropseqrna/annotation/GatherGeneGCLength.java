@@ -55,17 +55,17 @@ import picard.annotation.Gene;
 import picard.annotation.Gene.Transcript;
 import picard.annotation.Gene.Transcript.Exon;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 
 
 @CommandLineProgramProperties(
-        usage = "Given a GTF file and a reference sequence, produce a report containing the %GC and length of each gene.  "
+        summary = "Given a GTF file and a reference sequence, produce a report containing the %GC and length of each gene.  "
         		+ "GC is calculated for each gene by finding the unique set of base positions overlapping an exon and counting [G/C] bases compared to the total number of bases."
         		+ "Length is calculated by computing the length of each transcript for the gene, and taking the median value",
-        usageShort = "Calculate GC content and length for genes",
+        oneLineSummary = "Calculate GC content and length for genes",
         programGroup = MetaData.class
 )
 
@@ -73,19 +73,19 @@ public class GatherGeneGCLength extends CommandLineProgram {
 
     private static final Log log = Log.getInstance(GatherGeneGCLength.class);
 
-    @Option(doc="The GTF file containing gene models to generate length and GC metrics from")
+    @Argument(doc="The GTF file containing gene models to generate length and GC metrics from")
 	public File GTF;
 
-	@Option(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME,doc="The output report containg the genes and GC/Length metrics.  Output at the gene level, using the median values across transcripts.")
+	@Argument(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME,doc="The output report containg the genes and GC/Length metrics.  Output at the gene level, using the median values across transcripts.")
 	public File OUTPUT;
 
-	@Option(doc="The output report containg the genes and GC/Length metrics at the transcript level.", optional=true)
+	@Argument(doc="The output report containg the genes and GC/Length metrics at the transcript level.", optional=true)
 	public File OUTPUT_TRANSCRIPT_LEVEL;
 
-	@Option(doc="The sequences of each transcript", optional=true)
+	@Argument(doc="The sequences of each transcript", optional=true)
 	public File OUTPUT_TRANSCRIPT_SEQUENCES;
 
-	@Option(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="The reference fasta")
+	@Argument(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="The reference fasta")
     public File REFERENCE;
 
 	// store a copy of this and re-use instead of constructing new ones.

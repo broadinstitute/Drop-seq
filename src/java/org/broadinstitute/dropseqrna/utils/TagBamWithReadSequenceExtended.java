@@ -45,53 +45,53 @@ import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
-@CommandLineProgramProperties(usage="Adds a BAM tag to every read of the defined range of bases of the sequence of the 1st or 2nd read.  " +
+@CommandLineProgramProperties(summary = "Adds a BAM tag to every read of the defined range of bases of the sequence of the 1st or 2nd read.  " +
         "Reads must be paired for this program to run.",
-        usageShort = "Moves specified bases of each read pair into a tag",
+        oneLineSummary = "Moves specified bases of each read pair into a tag",
         programGroup = DropSeq.class)
 public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 
 	private final Log log = Log.getInstance(TagBamWithReadSequenceExtended.class);
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
 	public File INPUT;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output bam")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output bam")
 	public File OUTPUT;
 
-	@Option(doc = "Summary of barcode base quality",optional=true)
+	@Argument(doc = "Summary of barcode base quality",optional=true)
 	public File SUMMARY;
 
-	@Option(doc="Base range to extract, seperated by a dash.  IE: 1-4.  Can extract multiple ranges by seperating them by a colon.  For example 1-4:17-22 extracts the first 4 bases, then the 17-22 bases, and glues the sequence together into a single sequence for a tag.")
+	@Argument(doc="Base range to extract, seperated by a dash.  IE: 1-4.  Can extract multiple ranges by seperating them by a colon.  For example 1-4:17-22 extracts the first 4 bases, then the 17-22 bases, and glues the sequence together into a single sequence for a tag.")
 	public String BASE_RANGE;
 
-	@Option(doc = "The sequence can be from the first or second read [1/2].  ")
+	@Argument(doc = "The sequence can be from the first or second read [1/2].  ")
 	public Integer BARCODED_READ;
 
-	@Option(doc="Add the tag to the sequence the read came from? If false, the read that does not have the barcode gets the tag.  If true, set the tag on the barcoded read.")
+	@Argument(doc="Add the tag to the sequence the read came from? If false, the read that does not have the barcode gets the tag.  If true, set the tag on the barcoded read.")
 	public Boolean TAG_BARCODED_READ=false;
 
-	@Option(doc = "Discard the read the sequence came from?.  If this is true, then the remaining read is marked as unpaired.  If the read is unpaired, then you can't discard a read.")
+	@Argument(doc = "Discard the read the sequence came from?.  If this is true, then the remaining read is marked as unpaired.  If the read is unpaired, then you can't discard a read.")
 	public Boolean DISCARD_READ=false;
 
-	@Option (doc="Should the bases selected for the tag be hard clipped from the read?  BE VERY CAREFUL WITH THIS FEATURE, FOR EXPERTS ONLY.  NOT NEEDED FOR STANDARD DROPSEQ DATA PROCESSING." +
+	@Argument (doc="Should the bases selected for the tag be hard clipped from the read?  BE VERY CAREFUL WITH THIS FEATURE, FOR EXPERTS ONLY.  NOT NEEDED FOR STANDARD DROPSEQ DATA PROCESSING." +
 	"Don't use on aligned data, does NOT change cigar strings")
 	public Boolean HARD_CLIP_BASES=false;
 
-	@Option (doc="Minimum base quality required for barcode")
+	@Argument (doc="Minimum base quality required for barcode")
 	public Integer BASE_QUALITY=10;
 
-	@Option (doc="Number of bases below minimum base quality to fail the barcode.")
+	@Argument (doc="Number of bases below minimum base quality to fail the barcode.")
 	public Integer NUM_BASES_BELOW_QUALITY=1;
 
-	@Option (doc="Barcode tag.  This is typically X plus one more capitalized alpha.  For example, 'XS', which is the default.")
+	@Argument (doc="Barcode tag.  This is typically X plus one more capitalized alpha.  For example, 'XS', which is the default.")
 	public String TAG_NAME="XS";
 
-	@Option (doc="The tag for the barcode quality.  The number of bases that are below the quality threshold.")
+	@Argument (doc="The tag for the barcode quality.  The number of bases that are below the quality threshold.")
 	public String TAG_QUALITY="XQ";
 
 	@Override

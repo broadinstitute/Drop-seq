@@ -38,30 +38,30 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
-import picard.cmdline.CommandLineProgramProperties;
-import picard.cmdline.Option;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
-@CommandLineProgramProperties(usage = "Reads each base and generates a composition per-position matrix",
-        usageShort = "Reads each base and generates a composition per-position matrix",
+@CommandLineProgramProperties(summary = "Reads each base and generates a composition per-position matrix",
+        oneLineSummary = "Reads each base and generates a composition per-position matrix",
         programGroup = DropSeq.class)
 public class BaseDistributionAtReadPosition extends CommandLineProgram {
 
 	private final Log log = Log.getInstance(BaseDistributionAtReadPosition.class);
 
-	@Option(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
 	public File INPUT;
 
-	@Option(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
 	public File OUTPUT;
 
-	@Option(doc="Read to gather statistics on [1/2].  If this is set, the tag is ignored.", optional=true)
+	@Argument(doc="Read to gather statistics on [1/2].  If this is set, the tag is ignored.", optional=true)
 	public Integer READ_NUMBER=null;
 
-	@Option(doc="Tag to gather statistics on.  If this is set, the read number is ignored.", optional=true)
+	@Argument(doc="Tag to gather statistics on.  If this is set, the read number is ignored.", optional=true)
 	public String TAG = null;
 
-	//@Option(doc = "Minimum mapping quality to consider the read")
+	//@Argument(doc = "Minimum mapping quality to consider the read")
 	// public int MINIMUM_MAPPING_QUALITY = 0;
 
 	@Override

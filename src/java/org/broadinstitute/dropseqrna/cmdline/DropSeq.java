@@ -23,7 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.cmdline;
 
-import picard.cmdline.CommandLineProgramGroup;
+import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 
 public class DropSeq implements CommandLineProgramGroup {
 	@Override
