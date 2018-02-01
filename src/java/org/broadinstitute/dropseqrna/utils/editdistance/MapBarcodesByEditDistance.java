@@ -60,7 +60,7 @@ public class MapBarcodesByEditDistance {
 		this.NUM_THREADS=numThreads;
 		this.REPORT_PROGRESS_INTERVAL=reportProgressInterval;
 		// https://blog.krecan.net/2014/03/18/how-to-specify-thread-pool-for-java-8-parallel-streams/
-		if (this.NUM_THREADS>1) forkJoinPool = new ForkJoinPool(numThreads);
+		forkJoinPool = new ForkJoinPool(numThreads);
 	}
 
 	public MapBarcodesByEditDistance (final boolean verbose, final int reportProgressInterval) {
