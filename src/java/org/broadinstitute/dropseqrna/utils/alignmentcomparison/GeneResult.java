@@ -14,8 +14,6 @@ import java.util.Collection;
 
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
-import com.sun.jdi.request.InvalidRequestStateException;
-
 import htsjdk.samtools.util.StringUtil;
 
 /**
@@ -136,7 +134,7 @@ public class GeneResult {
 				this.nonUniqueMapOtherGene.increment(gene);
 			return;
 		}
-		throw new InvalidRequestStateException("Missed a case!");
+		throw new IllegalStateException("Missed a case!");
 	}
 
 	/**
