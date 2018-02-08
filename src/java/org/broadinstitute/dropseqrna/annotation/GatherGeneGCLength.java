@@ -85,10 +85,12 @@ public class GatherGeneGCLength extends CommandLineProgram {
 	@Argument(doc="The sequences of each transcript", optional=true)
 	public File OUTPUT_TRANSCRIPT_SEQUENCES;
 
-	@Argument(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="The reference fasta")
-    public File REFERENCE;
+    @Override
+    protected boolean requiresReference() {
+        return true;
+    }
 
-	// store a copy of this and re-use instead of constructing new ones.
+    // store a copy of this and re-use instead of constructing new ones.
 	private DescriptiveStatistics stats = new DescriptiveStatistics();
 
 	// format output percentages.
@@ -114,12 +116,12 @@ public class GatherGeneGCLength extends CommandLineProgram {
         	IOUtil.assertFileIsWritable(this.OUTPUT_TRANSCRIPT_SEQUENCES);
 			outSequence = new FastaSequenceFileWriter (this.OUTPUT_TRANSCRIPT_SEQUENCES);
         }
-        ReferenceSequenceFileWalker refFileWalker = new ReferenceSequenceFileWalker(REFERENCE);
+        ReferenceSequenceFileWalker refFileWalker = new ReferenceSequenceFileWalker(REFERENCE_SEQUENCE);
 
         SAMSequenceDictionary dict= refFileWalker.getSequenceDictionary();
         if (dict==null) {
         	CloserUtil.close(refFileWalker);
-        	throw new IllegalArgumentException("Reference file" + this.REFERENCE.getAbsolutePath()+" is missing a dictionary file [.dict].  Please make one!");
+        	throw new IllegalArgumentException("Reference file" + this.REFERENCE_SEQUENCE.getAbsolutePath()+" is missing a dictionary file [.dict].  Please make one!");
         }
 
         OverlapDetector<Gene> geneOverlapDetector= GeneAnnotationReader.loadAnnotationsFile(GTF, dict);
@@ -157,7 +159,6 @@ public class GatherGeneGCLength extends CommandLineProgram {
 	/**
 	 * For a GC record and a fasta sequence, calculate the GC content.
 	 * Builds intervals of the unique sequences overlapped by exons, calculates the GC content for each, and aggregates results.
-	 * @param gtfRecord
 	 * @param fastaRef
 	 * @return
 	 */

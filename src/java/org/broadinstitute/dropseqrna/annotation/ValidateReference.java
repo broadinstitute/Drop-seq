@@ -48,9 +48,10 @@ import java.util.*;
         programGroup = MetaData.class
 )public class ValidateReference extends CommandLineProgram {
 
-    @SuppressWarnings("WeakerAccess")
-    @Argument(shortName = StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="The reference fasta")
-    public File REFERENCE;
+    @Override
+    protected boolean requiresReference() {
+        return true;
+    }
 
     @Argument(doc="Gene annotation file in GTF format")
     public File GTF;
@@ -75,7 +76,7 @@ import java.util.*;
     protected int doWork() {
         // LinkedHashSets used to preserve insertion order, which presumably has some intuitive meaning.
 
-        final SAMSequenceDictionary sequenceDictionary = makeSequenceDictionary(REFERENCE);
+        final SAMSequenceDictionary sequenceDictionary = makeSequenceDictionary(REFERENCE_SEQUENCE);
         final GTFReader gtfReader = new GTFReader(GTF, sequenceDictionary);
         // Use
         final Set<String> sequencesInReference = new LinkedHashSet<>();
@@ -107,7 +108,7 @@ import java.util.*;
             }
         }
 
-        validateReferenceBases(REFERENCE);
+        validateReferenceBases(REFERENCE_SEQUENCE);
 
         final Set<String> onlyInReference = subtract(sequencesInReference, sequencesInGtf);
         final Set<String> onlyInGtf = gtfReader.getUnrecognizedSequences();

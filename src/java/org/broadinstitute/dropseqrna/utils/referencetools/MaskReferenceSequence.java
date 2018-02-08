@@ -46,8 +46,10 @@ public class MaskReferenceSequence extends CommandLineProgram {
 
 	private final Log log = Log.getInstance(MaskReferenceSequence.class);
 
-	@Argument(shortName= StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="Reference sequence FASTA file.  Fasta must be indexed!",  optional=false)
-    public File REFERENCE_SEQUENCE;
+	@Override
+	protected boolean requiresReference() {
+		return true;
+	}
 
 	@Argument(shortName= StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output FASTA file to write.",  optional=false)
     public File OUTPUT;
