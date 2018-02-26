@@ -26,10 +26,7 @@ package org.broadinstitute.dropseqrna.barnyard;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
@@ -79,9 +76,10 @@ import picard.metrics.PerUnitMetricCollector;
 )
 public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 
-	private static final Log log = Log.getInstance(SingleCellRnaSeqMetricsCollector.class);
+    private static final Log log = Log.getInstance(SingleCellRnaSeqMetricsCollector.class);
+    private static final int MINIMUM_TRANSCRIPT_LENGTH = 500;
 
-	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
+    @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
 	public File INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of per-cell exonic/intronic/genic/intergenic/rRNA levels.  This supports zipped formats like gz and bz2.")
@@ -237,6 +235,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 
     private class CollectorFactory {
     	final OverlapDetector<Gene> geneOverlapDetector;
+    	final Set<Gene> genesWithLongEnoughTranscripts;
     	final Long ribosomalBasesInitialValue;
     	final OverlapDetector<Interval> ribosomalSequenceOverlapDetector;
     	final HashSet<Integer> ignoredSequenceIndices;
@@ -248,7 +247,9 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     		this.rnaFragPct=rnaFragPct;
     		SamReader reader = SamReaderFactory.makeDefault().open(bamFile);
     		geneOverlapDetector = GeneAnnotationReader.loadAnnotationsFile(annotationsFile, reader.getFileHeader().getSequenceDictionary());
-            log.info("Loaded " + geneOverlapDetector.getAll().size() + " genes.");
+    		// This is a time-consuming call, so invoke it once here so that it isn't invoke over and over by RnaSeqMetricsCollector
+    		genesWithLongEnoughTranscripts = geneOverlapDetector.getAll();
+            log.info("Loaded " + genesWithLongEnoughTranscripts.size() + " genes.");
             ribosomalBasesInitialValue = ribosomalIntervals != null ? 0L : null;
             ribosomalSequenceOverlapDetector = RnaSeqMetricsCollector.makeOverlapDetector(bamFile, reader.getFileHeader(), ribosomalIntervals, log);
             ignoredSequenceIndices = RnaSeqMetricsCollector.makeIgnoredSequenceIndicesSet(reader.getFileHeader(), new HashSet<String>());
@@ -259,7 +260,8 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     		List<SAMReadGroupRecord> readGroups =  getReadGroups(cellBarcodes);
     		return new RnaSeqMtMetricsCollector(CollectionUtil.makeSet(MetricAccumulationLevel.READ_GROUP), readGroups,
                     ribosomalBasesInitialValue, geneOverlapDetector, ribosomalSequenceOverlapDetector,
-                    ignoredSequenceIndices, 500, specificity, this.rnaFragPct, false);
+                    ignoredSequenceIndices, MINIMUM_TRANSCRIPT_LENGTH, specificity, this.rnaFragPct, false,
+                    genesWithLongEnoughTranscripts);
     	}
 
     	public List<SAMReadGroupRecord> getReadGroups(final List<String> cellBarcodes) {
@@ -273,8 +275,6 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     			g.add(rg);
     		}
     		return (g);
-
-
     	}
     }
 
@@ -285,6 +285,8 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     }
 
 	private class RnaSeqMtMetricsCollector extends RnaSeqMetricsCollector {
+        private Set<Gene> genesWithLongEnoughTranscripts;
+
         public RnaSeqMtMetricsCollector(final Set<MetricAccumulationLevel> accumulationLevels,
                                         final List<SAMReadGroupRecord> samRgRecords,
                                         final Long ribosomalBasesInitialValue,
@@ -293,10 +295,12 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
                                         final HashSet<Integer> ignoredSequenceIndices, final int minimumLength,
                                         final StrandSpecificity strandSpecificity,
                                         final double rrnaFragmentPercentage,
-                                        final boolean collectCoverageStatistics) {
+                                        final boolean collectCoverageStatistics,
+                                        final Set<Gene> genesWithLongEnoughTranscripts) {
             super(accumulationLevels, samRgRecords, ribosomalBasesInitialValue, geneOverlapDetector,
                     ribosomalSequenceOverlapDetector, ignoredSequenceIndices, minimumLength, strandSpecificity,
                     rrnaFragmentPercentage, collectCoverageStatistics);
+            this.genesWithLongEnoughTranscripts = genesWithLongEnoughTranscripts;
         }
 
         @Override
@@ -335,6 +339,10 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 					castMetrics().PCT_MT_BASES = castMetrics().MT_BASES / (double) metrics.PF_ALIGNED_BASES;
             }
 
+            @Override
+            protected Set<Gene> getGenesForPickTranscripts() {
+                return genesWithLongEnoughTranscripts;
+            }
         }
     }
 
