@@ -446,7 +446,7 @@ public class DigitalExpression extends DGECommandLineBase {
                 new DGELongFormatRecordCodec(),
                 new CellBarcodeOrderComparator(cellBarcodeOrder),
                 (int) Math.min(maxNamesInRam, Integer.MAX_VALUE),
-                tmpDir
+                tmpDir.toPath()
         );
     }
 

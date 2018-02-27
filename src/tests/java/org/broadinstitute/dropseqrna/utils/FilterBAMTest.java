@@ -84,17 +84,17 @@ public class FilterBAMTest {
 		b.RETAIN_ONLY_PRIMARY_READS=true;
 		
 		SAMRecord r = new SAMRecord(null);
-		r.setNotPrimaryAlignmentFlag(true);
+		r.setSecondaryAlignment(true);
 		boolean result = b.filterRead(r);
 		Assert.assertTrue(result);
 		
 		r = new SAMRecord(null);
-		r.setNotPrimaryAlignmentFlag(false);
+		r.setSecondaryAlignment(false);
 		result = b.rejectNonPrimaryReads(r);
 		Assert.assertFalse(result);
 		
 		b.RETAIN_ONLY_PRIMARY_READS=false;
-		r.setNotPrimaryAlignmentFlag(true);
+		r.setSecondaryAlignment(true);
 		result = b.filterRead(r);
 		Assert.assertFalse(result);
 	}

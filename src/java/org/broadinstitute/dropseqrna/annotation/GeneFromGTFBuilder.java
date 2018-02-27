@@ -31,7 +31,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+import com.google.common.collect.Streams;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
 import htsjdk.samtools.util.CollectionUtil;
@@ -48,10 +50,10 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
 
     private final Log LOG = Log.getInstance(GeneFromGTFBuilder.class);
 
-    final Iterator<Collection<GTFRecord>> gtfRecordsByGeneIterator;
+    final Iterator<List<GTFRecord>> gtfRecordsByGeneIterator;
 
     public GeneFromGTFBuilder(final Iterator<GTFRecord> gtfRecords) {
-        final Map<String, Collection<GTFRecord>> gatheredByGene = gatherByGeneName(gtfRecords);
+        final Map<String, List<GTFRecord>> gatheredByGene = gatherByGeneName(gtfRecords);
         gtfRecordsByGeneIterator = gatheredByGene.values().iterator();
     }
 
@@ -75,7 +77,7 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
     }
 
     private GeneFromGTF makeGeneFromMultiVersionGTFRecords(final Collection<GTFRecord> gtfRecords) {
-        final Map<Integer, Collection<GTFRecord>> gtfRecordsByGeneVersion = gatherByGeneVersion(gtfRecords);
+        final Map<Integer, List<GTFRecord>> gtfRecordsByGeneVersion = gatherByGeneVersion(gtfRecords);
         final List<Integer> versions = new ArrayList<>(gtfRecordsByGeneVersion.keySet());
         Collections.sort(versions);
         final int highestVersion = versions.get(versions.size() - 1);
@@ -87,8 +89,8 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
         // Remove featureType==gene before making transcripts
         final Collection<GTFRecord> nonGeneGTFRecords = CollectionUtil.makeCollection(new GeneAnnotationFilter(gtfRecords.iterator()));
 
-        final Map<String, Collection<GTFRecord>> gtfLinesByTranscript = gatherByTranscriptId(nonGeneGTFRecords);
-        for (final Map.Entry<String, Collection<GTFRecord>> entry : gtfLinesByTranscript.entrySet()) {
+        final Map<String, List<GTFRecord>> gtfLinesByTranscript = gatherByTranscriptId(nonGeneGTFRecords);
+        for (final Map.Entry<String, List<GTFRecord>> entry : gtfLinesByTranscript.entrySet()) {
             if (entry.getKey() == null)
 				// Skip gene entries
                 continue;
@@ -207,40 +209,22 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
 
         }
 
-    private Map<String, Collection<GTFRecord>> gatherByGeneName(final Iterator<GTFRecord> gtfRecords) {
-        return CollectionUtil.partition(CollectionUtil.makeCollection(gtfRecords),
-                new CollectionUtil.Partitioner<GTFRecord, String>() {
-                    @Override
-                    public String getPartition(final GTFRecord gtfRecord) {
-                        return gtfRecord.getGeneName();
-                    }
-                });
+    private Map<String, List<GTFRecord>> gatherByGeneName(final Iterator<GTFRecord> gtfRecords) {
+        return Streams.stream(gtfRecords).collect(Collectors.groupingBy(GTFRecord::getGeneName));
     }
 
-    private Map<Integer, Collection<GTFRecord>> gatherByGeneVersion(final Collection<GTFRecord> gtfRecords) {
-        return CollectionUtil.partition(gtfRecords,
-                new CollectionUtil.Partitioner<GTFRecord, Integer>() {
-                    @Override
-                    public Integer getPartition(final GTFRecord gtfRecord) {
-                        if (gtfRecord.getGeneVersion() != null)
-							return gtfRecord.getGeneVersion();
-						else
-							return Integer.MIN_VALUE;
-                    }
-                }
-        );
+    private Map<Integer, List<GTFRecord>> gatherByGeneVersion(final Collection<GTFRecord> gtfRecords) {
+        return gtfRecords.stream().collect(
+                Collectors.groupingBy(gtfRecord -> gtfRecord.getGeneVersion() != null? gtfRecord.getGeneVersion(): Integer.MIN_VALUE));
     }
 
-    private Map<String, Collection<GTFRecord>> gatherByTranscriptId(final Collection<GTFRecord> gtfRecords) {
-        return CollectionUtil.partition(gtfRecords,
-                new CollectionUtil.Partitioner<GTFRecord, String>() {
-                    @Override
-                    public String getPartition(final GTFRecord gtfRecord) {
-                        if (gtfRecord.getTranscriptID() == null)
-							throw new RuntimeException("GTFRecord does not have transcriptID: " + gtfRecord);
-                        return gtfRecord.getTranscriptID();
-                    }
-                });
+    private Map<String, List<GTFRecord>> gatherByTranscriptId(final Collection<GTFRecord> gtfRecords) {
+        return gtfRecords.stream().collect(
+                Collectors.groupingBy(gtfRecord -> {
+                    if (gtfRecord.getTranscriptID() == null)
+                        throw new RuntimeException("GTFRecord does not have transcriptID: " + gtfRecord);
+                    return gtfRecord.getTranscriptID();
+                }));
     }
 
     private static class Exon implements Comparable<Exon> {
