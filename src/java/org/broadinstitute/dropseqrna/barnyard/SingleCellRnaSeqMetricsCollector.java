@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+import htsjdk.samtools.*;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
@@ -35,14 +36,6 @@ import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMProgramRecord;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
@@ -117,7 +110,12 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     @Argument(doc="If specified, count bases that align to this sequence separately from other categories")
     public List<String> MT_SEQUENCE;
 
-    @Override
+	public SingleCellRnaSeqMetricsCollector() {
+		// By default set this to silent to speed up BAM reading.
+		this.VALIDATION_STRINGENCY = ValidationStringency.SILENT;
+	}
+
+	@Override
 	protected int doWork() {
 		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
