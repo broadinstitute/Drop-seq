@@ -110,11 +110,6 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     @Argument(doc="If specified, count bases that align to this sequence separately from other categories")
     public List<String> MT_SEQUENCE;
 
-	public SingleCellRnaSeqMetricsCollector() {
-		// By default set this to silent to speed up BAM reading.
-		this.VALIDATION_STRINGENCY = ValidationStringency.SILENT;
-	}
-
 	@Override
 	protected int doWork() {
 		IOUtil.assertFileIsReadable(INPUT);
