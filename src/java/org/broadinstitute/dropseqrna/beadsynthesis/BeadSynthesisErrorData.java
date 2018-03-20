@@ -223,6 +223,20 @@ public class BeadSynthesisErrorData {
 		return (result);
 	}
 
+	/**
+	 * Is the cell polyT biased at a particular base location?
+	 * @param position The position in the UMI (1 based)
+	 * @param threshold If the UMI at least this fraction T, the cell barcode is biased.
+	 * @return
+	 */
+	public boolean isPolyTBiasedAtPosition(final int position, final double threshold) {
+		double [] freq = getPolyTFrequency();
+		if (position<1 | position > freq.length+1)
+			throw new IllegalArgumentException("Requested position ["+ position+"] is outside the expected range of the UMI available bases 1-"+ freq.length+1);
+		if (freq[position-1]>=threshold) return true;
+		return false;
+	}
+
 
 
 	/**

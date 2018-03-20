@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
@@ -43,7 +44,6 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import picard.cmdline.CommandLineProgram;
-import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 public abstract class AbstractDetectBeadSynthesisErrors extends CommandLineProgram {
@@ -147,6 +147,8 @@ public abstract class AbstractDetectBeadSynthesisErrors extends CommandLineProgr
         BiasedBarcodeCollection result = new BiasedBarcodeCollection(errorBarcodesWithPositions, numCellsFilteredLowUMIs);
         return result;
 	}
+
+
 
 	/**
 	 * Gets a reference to the UMI strings from the cache.  Has the side effect of populating the cache with additional
