@@ -23,10 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
+import java.util.ArrayList;
+import java.util.List;
 
 public class HammingDistance {
 
-	public static int getHammingDistance(String sequence1, String sequence2) {
+	public static int getHammingDistance(final String sequence1, final String sequence2) {
 	    char[] s1 = sequence1.toCharArray();
 	    char[] s2 = sequence2.toCharArray();
 
@@ -34,24 +36,41 @@ public class HammingDistance {
 	    int longest = Math.max(s1.length, s2.length);
 
 	    int result = 0;
-	    for (int i=0; i<shorter; i++) {
-	        if (s1[i] != s2[i]) result++;
-	    }
+	    for (int i=0; i<shorter; i++)
+			if (s1[i] != s2[i]) result++;
 
 	    result += longest - shorter;
 
 	    return result;
 	}
-	
+
+	/**
+	 * The two strings must be of the same length to use this test.
+	 * @param sequence1 The first String to compare
+	 * @param sequence2 The second String to compare
+	 * @return The positions at which the strings differ.  The number of elements in the array is the edit distance.
+	 */
+	public static int [] getHammingDistanceChangePositions(final String sequence1, final String sequence2) {
+		char[] s1 = sequence1.toCharArray();
+	    char[] s2 = sequence2.toCharArray();
+	    if (s1.length!=s2.length)
+	    	throw new IllegalArgumentException("Strings not of equal length!  String one ["+sequence1+"] String two ["+ sequence2+"]");
+	    List<Integer> resultList = new ArrayList<>();
+	    for (int i=0; i<s1.length; i++)
+			if (s1[i] != s2[i]) resultList.add(i);
+	    int[] result =  resultList.stream().mapToInt(x -> x).toArray();
+	    return (result);
+	}
+
 	/*
 	private String getRandomString(int length) {
 		SecureRandom random = new SecureRandom();
 		return new BigInteger(length, random).toString(32);
-		 
+
 	}
 	*/
-	
-	public static boolean greaterThanHammingDistance(String sequence1, String sequence2, int minDistance) {
+
+	public static boolean greaterThanHammingDistance(final String sequence1, final String sequence2, final int minDistance) {
 	    char[] s1 = sequence1.toCharArray();
 	    char[] s2 = sequence2.toCharArray();
 
@@ -62,6 +81,6 @@ public class HammingDistance {
 	    }
 	    return false;
 	}
-	
+
 }
 

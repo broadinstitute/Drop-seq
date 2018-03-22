@@ -71,7 +71,10 @@ public class UmiIteratorWrapper extends CountChangingIteratorWrapper<SAMRecord> 
                               final boolean useStrandInfo) {
         super(underlyingIterator);
 		this.cellBarcodeTag = cellBarcodeTag;
-		this.cellBarcodeList = new HashSet<>(cellBarcodeList);
+		if (cellBarcodeList==null)
+			this.cellBarcodeList=null;
+		else
+			this.cellBarcodeList = new HashSet<>(cellBarcodeList);
 		this.geneExonTag=geneExonTag;
 		this.strandTag= strandTag;
 		this.readMQ = readMQ;

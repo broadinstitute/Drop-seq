@@ -160,8 +160,7 @@ public class ObjectCounter<T extends Comparable<T>> {
 		return (min);
 
 	}
-	// NOTE:
-	// for keys with the same number of items, object ordering is undefined.  Need to fix this to break ties by the T's natural ordering.
+
 	public List<T> getKeysOrderedByCount (final boolean decreasing) {
 		Map<Integer, List<T>> reversed= this.getReverseMapping();
 		List<Integer> counts = new ArrayList<>(reversed.keySet());

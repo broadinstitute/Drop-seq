@@ -71,6 +71,33 @@ public class MapBarcodesByEditDistance {
 		this(verbose, 1, 100000);
 	}
 
+	public BottomUpCollapseResult bottomUpCollapse (final ObjectCounter<String> barcodes, final int editDistance) {
+		BottomUpCollapseResult result = new BottomUpCollapseResult();
+
+		// ordered from smallest to largest.
+		List<String> barcodeList = barcodes.getKeysOrderedByCount(false);
+
+		// process [i] vs [i+1:(end-1)]
+		// can't collapse the last barcode with nothing...
+		int len=barcodeList.size();
+		for (int i=0; i<(len-1); i++) {
+			String smallBC = barcodeList.get(i);
+			List<String> largerBarcodes= barcodeList.subList(i+1, len);
+			Set<String> largerRelatedBarcodes= processSingleBarcode(smallBC, largerBarcodes, false, editDistance);
+			// if there's just 1 larger neighbor, the result is unambiguous.
+			if (largerRelatedBarcodes.size()==1 ) {
+				String largerBarcode=largerRelatedBarcodes.iterator().next();
+				// only add if the barcode is larger.
+				// this avoids ordering issues with equally sized barcodes vs alphanumeric barcode sorting.
+				if (barcodes.getCountForKey(smallBC)< barcodes.getCountForKey(largerBarcode))
+					result.addPair(smallBC, largerBarcode);
+			}
+			if (largerRelatedBarcodes.size()>1)
+				result.addAmbiguousBarcode(smallBC);
+		}
+		return result;
+	}
+
 	/**
 	 * Perform edit distance collapse where all barcodes are eligible to be collapse.
 	 * Barcodes are ordered by total number of counts.
@@ -344,7 +371,7 @@ public class MapBarcodesByEditDistance {
 	 * @param editDistance
 	 * @return
 	 */
-	private Set<String> processSingleBarcodeMultithreaded(final String barcode, final List<String> comparisonBarcodes, final boolean findIndels, final int editDistance) {
+	public Set<String> processSingleBarcodeMultithreaded(final String barcode, final List<String> comparisonBarcodes, final boolean findIndels, final int editDistance) {
 		Set<String> result = new HashSet<>();
 		try {
 			if (findIndels)

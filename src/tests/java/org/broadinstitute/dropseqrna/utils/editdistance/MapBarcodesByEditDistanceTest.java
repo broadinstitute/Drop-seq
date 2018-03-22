@@ -27,8 +27,10 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.testng.annotations.Test;
@@ -38,6 +40,63 @@ import junit.framework.Assert;
 public class MapBarcodesByEditDistanceTest {
 
 	private static File testData = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/inEditDistSmall.txt");
+
+	@Test
+	public void testBottomUpCollapse() {
+		MapBarcodesByEditDistance mbed=new MapBarcodesByEditDistance(true);
+		ObjectCounter<String> barcodes = new ObjectCounter<>();
+		// initialize with test data
+		// unambiguous pair
+		barcodes.incrementByCount("GTACAAAATATC", 1003);
+		barcodes.incrementByCount("GTACAAAATATA", 4287);
+
+		// unambiguous pair
+		barcodes.incrementByCount("CCGCCGTTCGAA", 1016);
+		barcodes.incrementByCount("CCGCAGTTCGAA", 3108);
+
+		//ambiguous
+		barcodes.incrementByCount("TAGAATCCCAAG", 20);
+		barcodes.incrementByCount("TAGAATCACAAG", 39);
+		barcodes.incrementByCount("TAGAATCGCAAG", 5199);
+
+		//ambiguous
+		barcodes.incrementByCount("CCGGAGACTATA", 20);
+		barcodes.incrementByCount("CCGGAGACGATA", 23);
+		barcodes.incrementByCount("CCGGAGACCATA", 2202);
+		barcodes.incrementByCount("CCGGAGACAATA", 4165);
+
+		Set<String> expectedAmbiguous = new HashSet<>(Arrays.asList("TAGAATCCCAAG", "CCGGAGACTATA", "CCGGAGACGATA"));
+
+
+		// no neighbors
+		barcodes.incrementByCount("ACTGTAGAAGGG", 172);
+
+		// run and validate
+		BottomUpCollapseResult result= mbed.bottomUpCollapse(barcodes, 1);
+
+		// validate unambiguous
+		String larger = result.getLargerRelatedBarcode("GTACAAAATATC");
+		Assert.assertEquals("GTACAAAATATA", larger);
+		larger = result.getLargerRelatedBarcode("CCGCCGTTCGAA");
+		Assert.assertEquals("CCGCAGTTCGAA", larger);
+		larger = result.getLargerRelatedBarcode("CCGGAGACCATA");
+		Assert.assertEquals("CCGGAGACAATA", larger);
+		larger = result.getLargerRelatedBarcode("TAGAATCACAAG");
+		Assert.assertEquals("TAGAATCGCAAG", larger);
+
+
+
+
+		// validate ambiguous
+		Collection<String> ambiguous = result.getAmbiguousBarcodes();
+		Assert.assertTrue(ambiguous.containsAll(expectedAmbiguous));
+		Assert.assertTrue(expectedAmbiguous.containsAll(ambiguous));
+
+		// validate no neighbor
+		larger = result.getLargerRelatedBarcode("ACTGTAGAAGGG");
+		Assert.assertNull(larger);
+
+	}
 
 	@Test(enabled=true)
 	public void collapseBarcodesLarge() {
