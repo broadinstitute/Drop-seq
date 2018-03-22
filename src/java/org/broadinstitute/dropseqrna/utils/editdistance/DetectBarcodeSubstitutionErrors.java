@@ -244,6 +244,7 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
 
 		ObjectCounter<String> result = new ObjectCounter<>();
 		int counter=0;
+		int polyTBiasedBarcodes=0;
 		log.info("Gathering UMI counts per cell and filtering out UMI biased barcodes as appropriate");
         for (final List<UMICollection> umiCollectionList : groupingIterator) {
             final String cellBarcode = umiCollectionList.get(0).getCellBarcode();
@@ -263,12 +264,12 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
             }
             // check if the barcode is polyT biased at the last base.
             boolean polyTBiased = bsed.isPolyTBiasedAtPosition(polyTPosition, polyTThreshold);
+            if (polyTBiased) polyTBiasedBarcodes++;
             if (bsed.getNumTranscripts() >= minUMIsPerCell && !polyTBiased)
 				result.incrementByCount(bsed.getCellBarcode(), bsed.getNumTranscripts());
-//            else
-//            	log.info("Rejected cell because too small or UMI bias");
         }
         log.info("Finished gathering a list of cell barcodes to collapse");
+        log.info("Discovered ["+polyTBiasedBarcodes+"] barcodes that were excluded due to incomplete synthesis and had T bias at last base of UMI [" + polyTPosition+"]");
 		return result;
 	}
 
