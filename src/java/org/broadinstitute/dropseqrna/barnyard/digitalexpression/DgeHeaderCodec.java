@@ -34,7 +34,8 @@ public class DgeHeaderCodec {
 
     private static final Log log = Log.getInstance(DgeHeaderCodec.class);
 
-    private static char RECORD_START = '@';
+    private static char RECORD_START = '#';
+    private static char RECORD_START_PREV = '@';
     private static String KV_SEPARATOR = ":";
     private static String FIELD_SEPARATOR = "\t";
     private static String DGE_RECORD_LABEL = "DGE";
@@ -43,6 +44,10 @@ public class DgeHeaderCodec {
     private enum DgeRecordTag {VERSION, EXPRESSION_FORMAT}
     private enum LibraryRecordTag {INPUT, INPUT_DGE, REFERENCE, UEI, PREFIX}
     private enum CommandRecordTag {CL};
+
+    static boolean isRecordStartChar(int c) {
+        return c == RECORD_START || c == RECORD_START_PREV;
+    }
 
     public void encode(final Writer writer, final DgeHeader header) {
         writeLine(writer, buildFirstLine(header));
@@ -193,7 +198,7 @@ public class DgeHeaderCodec {
         public String readHeaderLine() throws IOException {
             reader.mark(1);
             int c = reader.read();
-            if (c == RECORD_START) {
+            if (isRecordStartChar(c)) {
                 return reader.readLine();
             } else {
                 reader.reset();
@@ -214,7 +219,7 @@ public class DgeHeaderCodec {
         public String readHeaderLine() throws IOException {
             inputStream.mark(1);
             int c = inputStream.read();
-            if (c == RECORD_START) {
+            if (isRecordStartChar(c)) {
                 return readToEndOfLine();
             } else {
                 inputStream.reset();
@@ -283,7 +288,7 @@ public class DgeHeaderCodec {
     private boolean isHeaderLine(final BufferedReader reader) throws IOException {
         reader.mark(1);
         int c = reader.read();
-        if (c == RECORD_START) {
+        if (isRecordStartChar(c)) {
             return true;
         } else {
             reader.reset();
