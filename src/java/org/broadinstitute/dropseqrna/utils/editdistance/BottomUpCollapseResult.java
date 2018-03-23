@@ -73,4 +73,9 @@ public class BottomUpCollapseResult {
 		return this.barcodeMap.keySet();
 	}
 
+	public int getCountUnambiguousParentBarcodes () {
+		Set<String> s = new HashSet<>(barcodeMap.values());
+		return s.size();
+	}
+
 }

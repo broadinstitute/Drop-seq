@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -130,7 +131,8 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
                 this.READ_MQ, false, true, cellBarcodes, true);
 
         // get list of barcodes that have enough UMIs, and are not polyT biased.
-        ObjectCounter<String> umiCounts=getUMIsPerCell(umiIterator, this.MIN_UMIS_PER_CELL, this.UMI_BIAS_BASE, this.UMI_BIAS_THRESHOLD);
+        UMIsPerCellResult umiResult=getUMIsPerCell(umiIterator, this.MIN_UMIS_PER_CELL, this.UMI_BIAS_BASE, this.UMI_BIAS_THRESHOLD);
+        ObjectCounter<String> umiCounts=umiResult.getUmisPerCell();
 
         // how do they collapse bottom up?
         MapBarcodesByEditDistance med = new MapBarcodesByEditDistance(true, this.NUM_THREADS, 10000);
@@ -140,7 +142,7 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
         umiIterator.close();
 
         // write report on which substitutions were found
-        if (this.OUTPUT_REPORT!=null) writeReport(result, umiCounts);
+        if (this.OUTPUT_REPORT!=null) writeReport(result, umiResult);
 
         // perform repair/filtering.
         repairBAM(result);
@@ -148,13 +150,39 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
 		return 0;
 	}
 
-	private void writeReport (final BottomUpCollapseResult result, final ObjectCounter<String> umiCounts) {
+	/**
+	 * How many UMIs were assigned to ambiguous cell barcodes
+	 * @param ambiguousBarcodes The set of ambiguous barcodes
+	 * @param umiCounts The counts of UMIs per barcode.
+	 * @return
+	 */
+	private int getTotalAmbiguousUMIs (final Set<String> ambiguousBarcodes, final ObjectCounter<String> umiCounts) {
+		return ambiguousBarcodes.stream().mapToInt(x-> umiCounts.getCountForKey(x)).sum();
+	}
+
+	private void writeReport (final BottomUpCollapseResult result, final UMIsPerCellResult umiResult) {
 		PrintStream outReport = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUTPUT_REPORT));
+
+		// write comments section, each line starts with a "#"
+		outReport.println("# FILTER_AMBIGUOUS="+FILTER_AMBIGUOUS);
+		outReport.println("# MIN_UMIS_PER_CELL="+MIN_UMIS_PER_CELL);
+		outReport.println("# UMI_BIAS_THRESHOLD="+MIN_UMIS_PER_CELL);
+		outReport.println("# EDIT_DISTANCE="+MIN_UMIS_PER_CELL);
+		outReport.println("#");
+		outReport.println("# TOTAL_BARCODES_TESTED="+umiResult.getNumCellBarocodesTested());
+		outReport.println("# BARCODES_COLLAPSED="+result.getUnambiguousSmallBarcodes().size());
+		outReport.println("# ESTIMATED_UMIS_COLLAPSED="+getTotalAmbiguousUMIs(result.getUnambiguousSmallBarcodes(), umiResult.getUmisPerCell()));
+		outReport.println("# AMBIGUOUS_BARCODES="+result.getAmbiguousBarcodes().size());
+		outReport.println("# ESTIMATED_AMBIGUOUS_UMIS="+getTotalAmbiguousUMIs(result.getAmbiguousBarcodes(), umiResult.getUmisPerCell()));
+		outReport.println("# POLY_T_BIASED_BARCODES="+umiResult.getPolyTBiasedBarcodes());
+		outReport.println("# POLY_T_BIASED_BARRCODE_UMIS="+umiResult.getPolyTBiasedUMIs());
+		outReport.println("# POLY_T_POSITION="+umiResult.getPolyTPosition());
+
 		/// write header
 		String [] header= {"intended_barcode", "neighbor_barcode", "intended_size", "neighbor_size", "position", "intended_base", "neighbor_base"};
 		outReport.println(StringUtil.join("\t", header));
 
-
+		ObjectCounter<String> umiCounts=umiResult.getUmisPerCell();
 		Iterator<String> smalls = result.getUnambiguousSmallBarcodes().iterator();
 		while (smalls.hasNext()) {
 			String small=smalls.next();
@@ -229,7 +257,7 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
 	 * @param polyTThreshold How much bias excludes a cell [0-1].
 	 * @return
 	 */
-	public ObjectCounter<String> getUMIsPerCell (final UMIIterator iter, final int minUMIsPerCell, Integer polyTPosition, final double polyTThreshold) {
+	public UMIsPerCellResult getUMIsPerCell (final UMIIterator iter, final int minUMIsPerCell, Integer polyTPosition, final double polyTThreshold) {
 		if (polyTThreshold > 1 | polyTThreshold<0)
 			throw new IllegalArgumentException("PolyT Threshold must be between 0 and 1.");
 
@@ -241,12 +269,15 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
                     }
                 });
 
-		ObjectCounter<String> result = new ObjectCounter<>();
+		ObjectCounter<String> umisPerCellCounter = new ObjectCounter<>();
 		int counter=0;
 		int polyTBiasedBarcodes=0;
+		int polyTBiasedUMIs=0;
+		int numCellBarocodesTest=0;
 		log.info("Gathering UMI counts per cell and filtering out UMI biased barcodes as appropriate");
         for (final List<UMICollection> umiCollectionList : groupingIterator) {
             final String cellBarcode = umiCollectionList.get(0).getCellBarcode();
+            numCellBarocodesTest++;
             BeadSynthesisErrorData bsed = new BeadSynthesisErrorData(cellBarcode);
             for (final UMICollection umis : umiCollectionList) {
             	int transcriptCounts= umis.getDigitalExpression(1, 1, false);
@@ -265,13 +296,53 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
             }
             // check if the barcode is polyT biased at the last base.
             boolean polyTBiased = bsed.isPolyTBiasedAtPosition(polyTPosition, polyTThreshold);
-            if (polyTBiased) polyTBiasedBarcodes++;
+            if (polyTBiased) {
+            	polyTBiasedBarcodes++;
+            	polyTBiasedUMIs+=bsed.getNumTranscripts();
+            }
             if (bsed.getNumTranscripts() >= minUMIsPerCell && !polyTBiased)
-				result.incrementByCount(bsed.getCellBarcode(), bsed.getNumTranscripts());
+				umisPerCellCounter.incrementByCount(bsed.getCellBarcode(), bsed.getNumTranscripts());
         }
         log.info("Finished gathering a list of cell barcodes to collapse");
         log.info("Discovered ["+polyTBiasedBarcodes+"] barcodes that were excluded due to incomplete synthesis and had T bias at last base of UMI [" + polyTPosition+"]");
-		return result;
+        UMIsPerCellResult result2 = new UMIsPerCellResult(umisPerCellCounter, numCellBarocodesTest, polyTBiasedBarcodes, polyTBiasedUMIs, polyTPosition);
+		return result2;
+	}
+
+	private class UMIsPerCellResult {
+		private final ObjectCounter<String> umisPerCell;
+		private final int polyTBiasedBarcodes;
+		private final int polyTBiasedUMIs;
+		private final int polyTPosition;
+		private final int numCellBarocodesTested;
+
+		public UMIsPerCellResult (final ObjectCounter<String> umisPerCell, final int numCellBarocodesTested, final int polyTBiasedBarcodes, final int polyTBiasedUMIs, final int polyTPosition) {
+			this.umisPerCell=umisPerCell;
+			this.numCellBarocodesTested=numCellBarocodesTested;
+			this.polyTBiasedBarcodes=polyTBiasedBarcodes;
+			this.polyTBiasedUMIs=polyTBiasedUMIs;
+			this.polyTPosition=polyTPosition;
+		}
+
+		public ObjectCounter<String> getUmisPerCell() {
+			return umisPerCell;
+		}
+
+		public int getPolyTBiasedBarcodes() {
+			return polyTBiasedBarcodes;
+		}
+
+		public int getPolyTPosition() {
+			return polyTPosition;
+		}
+
+		public int getNumCellBarocodesTested() {
+			return numCellBarocodesTested;
+		}
+
+		public int getPolyTBiasedUMIs() {
+			return polyTBiasedUMIs;
+		}
 	}
 
 	/** Stock main method. */
