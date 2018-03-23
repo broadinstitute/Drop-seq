@@ -28,7 +28,6 @@ package org.broadinstitute.dropseqrna.utils.editdistance;
 import java.io.File;
 import java.io.PrintStream;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -70,7 +69,7 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
 	private ProgressLogger pl = new ProgressLogger(this.log);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input DropSeq BAM file to analyze", minElements = 1)
-	public File INPUT;
+	public List<File> INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output BAM file with cell barcodes collapsed.")
 	public File OUTPUT;
@@ -116,8 +115,8 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
 
 	@Override
 	protected int doWork() {
-		// TODO Auto-generated method stub
-		IOUtil.assertFileIsReadable(INPUT);
+		for (final File input : INPUT)
+			IOUtil.assertFileIsReadable(input);
         IOUtil.assertFileIsWritable(OUTPUT);
         if (this.OUTPUT_REPORT!=null) IOUtil.assertFileIsWritable(this.OUTPUT_REPORT);
 
@@ -126,7 +125,7 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
 
         // build up the UMI per cell data set.
         Collection <String> cellBarcodes = null;
-        UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
+        UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(this.INPUT, false),
                 this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG,
                 this.READ_MQ, false, true, cellBarcodes, true);
 
@@ -179,7 +178,7 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
 
 	private void repairBAM (final BottomUpCollapseResult result) {
 
-		final SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false);
+		final SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(this.INPUT, false);
 		SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
 		headerAndIterator.header.addComment("Bottom-up edit distance collapse tag " + this.CELL_BARCODE_TAG +" with edit distance " + this.EDIT_DISTANCE+ " filtering ambiguous neighbors=" + this.FILTER_AMBIGUOUS);
 		SAMFileWriter writer= new SAMFileWriterFactory().setCreateIndex(CREATE_INDEX).makeSAMOrBAMWriter(headerAndIterator.header, true, OUTPUT);
