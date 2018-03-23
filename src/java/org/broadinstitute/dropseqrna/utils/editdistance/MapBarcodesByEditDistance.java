@@ -77,6 +77,8 @@ public class MapBarcodesByEditDistance {
 		// ordered from smallest to largest.
 		List<String> barcodeList = barcodes.getKeysOrderedByCount(false);
 
+		long startTime = System.currentTimeMillis();
+
 		// process [i] vs [i+1:(end-1)]
 		// can't collapse the last barcode with nothing...
 		int len=barcodeList.size();
@@ -94,6 +96,14 @@ public class MapBarcodesByEditDistance {
 			}
 			if (largerRelatedBarcodes.size()>1)
 				result.addAmbiguousBarcode(smallBC);
+			if (this.REPORT_PROGRESS_INTERVAL!=0 && i % this.REPORT_PROGRESS_INTERVAL == 0)
+				log.info("Processed [" + i + "] records of [" +len+"] barcodes");
+		}
+
+		if (verbose) {
+			long endTime = System.currentTimeMillis();
+			long duration = (endTime - startTime)/1000;
+			log.info("Collapse with [" + this.NUM_THREADS +"] threads took [" + duration + "] seconds to process");
 		}
 		return result;
 	}
