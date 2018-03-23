@@ -137,7 +137,7 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
         MapBarcodesByEditDistance med = new MapBarcodesByEditDistance(true, this.NUM_THREADS, 10000);
         log.info("Starting Barcode Collapse of [" + umiCounts.getSize()+ "] barcodes");
         BottomUpCollapseResult result= med.bottomUpCollapse(umiCounts, this.EDIT_DISTANCE);
-        log.info("Barcode Collapse Complete");
+        log.info("Barcode Collapse Complete - ["+ result.getUnambiguousSmallBarcodes().size() + "] barcodes collapsed");
         umiIterator.close();
 
         // write report on which substitutions were found
@@ -253,8 +253,10 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
             	int transcriptCounts= umis.getDigitalExpression(1, 1, false);
             	int readCounts = umis.getDigitalExpression(1, 1, true);
                 Collection<String> umiCol = umis.getMolecularBarcodes();
-            	if (polyTPosition==null && umiCol.size()>0)
+            	if (polyTPosition==null && umiCol.size()>0) {
             		polyTPosition=umiCol.iterator().next().length();
+            		log.info("Auto-discovered last base of UMI ["+polyTPosition +"]");
+            	}
 
                 bsed.addUMI(umiCol);
                 bsed.incrementReads(readCounts);
