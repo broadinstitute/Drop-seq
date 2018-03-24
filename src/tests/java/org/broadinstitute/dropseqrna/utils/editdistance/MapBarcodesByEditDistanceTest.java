@@ -84,9 +84,6 @@ public class MapBarcodesByEditDistanceTest {
 		larger = result.getLargerRelatedBarcode("TAGAATCACAAG");
 		Assert.assertEquals("TAGAATCGCAAG", larger);
 
-
-
-
 		// validate ambiguous
 		Collection<String> ambiguous = result.getAmbiguousBarcodes();
 		Assert.assertTrue(ambiguous.containsAll(expectedAmbiguous));
@@ -97,6 +94,23 @@ public class MapBarcodesByEditDistanceTest {
 		Assert.assertNull(larger);
 
 	}
+
+	@Test(enabled=false)
+	public void testBottomUpSpeed () {
+		MapBarcodesByEditDistance mbed=new MapBarcodesByEditDistance(true, 1, 10000);
+		ObjectCounter<String> barcodes = getRandomBarcodes(12, 500000);
+		BottomUpCollapseResult result= mbed.bottomUpCollapse(barcodes, 1);
+		Assert.assertNotNull(result);
+	}
+
+	private ObjectCounter<String> getRandomBarcodes (final int barcodeLength, final int numBarcodes) {
+		List<String> barcodes = CollapseBarcodeThreadedTest.getRandomBarcodes(barcodeLength, numBarcodes);
+		ObjectCounter<String> b = new ObjectCounter<>();
+		barcodes.stream().forEach(x -> b.increment(x));
+		return b;
+	}
+
+
 
 	@Test(enabled=true)
 	public void collapseBarcodesLarge() {

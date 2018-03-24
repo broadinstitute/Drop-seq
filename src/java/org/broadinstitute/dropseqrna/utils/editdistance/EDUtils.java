@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
@@ -52,30 +53,26 @@ public class EDUtils {
 
 	public Set<String> getStringsWithinEditDistanceWithIndel(final String baseString,
 			final List<String> comparisonStrings, final int editDistance) {
-		Set<String> result = new HashSet<String>();
-		for (String b : comparisonStrings) {
-			int ed = LevenshteinDistance.getIndelSlidingWindowEditDistance(baseString, b);
-			if (ed <= editDistance)
-				result.add(b);
-		}
+		Set<String> result = comparisonStrings.stream().filter(x -> LevenshteinDistance.getIndelSlidingWindowEditDistance(baseString, x) <= editDistance).collect(Collectors.toSet());
 		return (result);
 	}
 
 	public Set<String> getStringsWithinEditDistance(final String baseString,
 			final List<String> comparisonStrings, final int editDistance) {
-		Set<String> result = new HashSet<String>();
-		for (String b : comparisonStrings) {
-			int ed = HammingDistance.getHammingDistance(baseString, b);
-			if (ed <= editDistance)
-				result.add(b);
-		}
+
+		Set<String> result = comparisonStrings.stream().filter(x -> HammingDistance.getHammingDistance(baseString, x) <= editDistance).collect(Collectors.toSet());
 		return (result);
 	}
 
+	public Set<String> getStringsWithinEditDistanceEqualSizedStrings(final String baseString,
+			final List<String> comparisonStrings, final int editDistance) {
+		Set<String> result = comparisonStrings.stream().filter(x -> HammingDistance.getHammingDistanceEqualSizedStrings(baseString, x) <= editDistance).collect(Collectors.toSet());
+		return (result);
+	}
 
 	public Set<String> getStringsWithinHammingDistance(final String baseString,
 			final List<String> comparisonStrings, final int editDistance) {
-		Set<String> result = new HashSet<String>();
+		Set<String> result = new HashSet<>();
 		for (String b : comparisonStrings) {
 			boolean flag = HammingDistance.greaterThanHammingDistance(baseString, b, editDistance);
 			if (flag==false)
@@ -91,7 +88,7 @@ public class EDUtils {
 	 * @return a list of Barcodes with counts.
 	 */
 	public static ObjectCounter <String> readBarCodeFile(final File aFile) {
-		ObjectCounter <String> result = new ObjectCounter<String>();
+		ObjectCounter <String> result = new ObjectCounter<>();
 
 		try {
 			BufferedReader input = new BufferedReader(new FileReader(aFile));

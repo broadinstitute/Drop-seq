@@ -72,20 +72,28 @@ public class MapBarcodesByEditDistance {
 	}
 
 	public BottomUpCollapseResult bottomUpCollapse (final ObjectCounter<String> barcodes, final int editDistance) {
+
 		BottomUpCollapseResult result = new BottomUpCollapseResult();
 
 		// ordered from smallest to largest.
 		List<String> barcodeList = barcodes.getKeysOrderedByCount(false);
+		List<char []> barcodeListArrays = barcodeList.stream().map(x-> x.toCharArray()).collect(Collectors.toList());
+
+		// assert all the char [] are the same length to speed things up.
+		if (!assertAllArraysSameLength(barcodeListArrays))
+			throw new IllegalArgumentException("This collapse requires all strings to be the same length!");
 
 		long startTime = System.currentTimeMillis();
 
 		// process [i] vs [i+1:(end-1)]
 		// can't collapse the last barcode with nothing...
-		int len=barcodeList.size();
+		int len=barcodeListArrays.size();
 		for (int i=0; i<(len-1); i++) {
 			String smallBC = barcodeList.get(i);
-			List<String> largerBarcodes= barcodeList.subList(i+1, len);
-			Set<String> largerRelatedBarcodes= processSingleBarcode(smallBC, largerBarcodes, false, editDistance);
+			List<char [] > largerBarcodes= barcodeListArrays.subList(i+1, len);
+			// get the small barcode as the char []
+			Set<String> largerRelatedBarcodes = processHammingDistanceEqualSizedStrings(barcodeListArrays.get(i), largerBarcodes, editDistance);
+
 			// if there's just 1 larger neighbor, the result is unambiguous.
 			if (largerRelatedBarcodes.size()==1 ) {
 				String largerBarcode=largerRelatedBarcodes.iterator().next();
@@ -103,9 +111,49 @@ public class MapBarcodesByEditDistance {
 		if (verbose) {
 			long endTime = System.currentTimeMillis();
 			long duration = (endTime - startTime)/1000;
-			log.info("Collapse with [" + this.NUM_THREADS +"] threads took [" + duration + "] seconds to process");
+			log.info("Collapsed ["+len+"] barcodes with [" + this.NUM_THREADS +"] threads took [" + duration + "] seconds to process");
 		}
 		return result;
+	}
+
+
+	/**
+	 * This is a particular optimization for large numbers of strings to avoid converting Strings into char []'s repeatedly.
+	 *
+	 * @param barcode
+	 * @param comparisonBarcodes
+	 * @param editDistance
+	 * @return
+	 */
+	private Set<String> processHammingDistanceEqualSizedStrings (final char [] barcode, final List<char []> comparisonBarcodes, final int editDistance) {
+		Set<char []> resultTemp = Collections.EMPTY_SET;
+		if (this.NUM_THREADS==1)
+			resultTemp = comparisonBarcodes.stream().filter(x -> HammingDistance.getHammingDistanceEqualSizedStrings(barcode, x) <= editDistance).collect(Collectors.toSet());
+		else
+			try {
+				resultTemp = forkJoinPool.submit(() -> comparisonBarcodes.parallelStream().filter(x -> HammingDistance.getHammingDistanceEqualSizedStrings(barcode, x) <= editDistance).collect(Collectors.toSet())).get();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			} catch (ExecutionException e) {
+				e.printStackTrace();
+			}
+		// convert the char [] back to strings
+		Set<String> result = resultTemp.stream().map(x -> String.valueOf(x)).collect(Collectors.toSet());
+		return result;
+	}
+
+	/**
+	 * Make sure all character arrays are the same size so you can use the short-cut hamming distance that doesn't do this check.
+	 * @param charArrays
+	 * @return
+	 */
+	private boolean assertAllArraysSameLength (final Collection<char []> charArrays) {
+		int length = charArrays.iterator().next().length;
+		for (char [] s: charArrays){
+			int l = s.length;
+			if (l!=length) return false;
+		}
+		return true;
 	}
 
 	/**
@@ -357,6 +405,8 @@ public class MapBarcodesByEditDistance {
 		return threshold;
 	}
 
+
+
 	private Set<String> processSingleBarcode(final String barcode, final List<String> comparisonBarcodes, final boolean findIndels, final int editDistance) {
 		Set<String> closeBarcodes =null;
 
@@ -382,12 +432,12 @@ public class MapBarcodesByEditDistance {
 	 * @return
 	 */
 	public Set<String> processSingleBarcodeMultithreaded(final String barcode, final List<String> comparisonBarcodes, final boolean findIndels, final int editDistance) {
-		Set<String> result = new HashSet<>();
+		Set<String> result = Collections.EMPTY_SET;
 		try {
 			if (findIndels)
 				result = forkJoinPool.submit(() -> comparisonBarcodes.parallelStream().filter(x -> LevenshteinDistance.getIndelSlidingWindowEditDistance(barcode, x) <= editDistance).collect(Collectors.toSet())).get();
 			else
-				result = forkJoinPool.submit(() -> comparisonBarcodes.stream().filter(x -> HammingDistance.getHammingDistance(barcode, x) <= editDistance).collect(Collectors.toSet())).get();
+				result = forkJoinPool.submit(() -> comparisonBarcodes.parallelStream().filter(x -> HammingDistance.getHammingDistance(barcode, x) <= editDistance).collect(Collectors.toSet())).get();
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		} catch (ExecutionException e) {
@@ -438,15 +488,5 @@ public class MapBarcodesByEditDistance {
 		}
 
 	}
-	/*
-	private List<BarcodeWithCount> getBarcodesWithCounts (final ObjectCounter<String> barcodes) {
-		List<BarcodeWithCount> result = new ArrayList<>();
-		List<String> keys = barcodes.getKeysOrderedByCount(true);
-		for (String k: keys) {
-			BarcodeWithCount b = new BarcodeWithCount(k, barcodes.getCountForKey(k));
-			result.add(b);
-		}
-		return (result);
-	}
-	*/
+
 }

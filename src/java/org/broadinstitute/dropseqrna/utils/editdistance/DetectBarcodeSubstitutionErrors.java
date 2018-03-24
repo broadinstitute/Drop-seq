@@ -296,7 +296,7 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
             }
             // check if the barcode is polyT biased at the last base.
             boolean polyTBiased = bsed.isPolyTBiasedAtPosition(polyTPosition, polyTThreshold);
-            if (polyTBiased) {
+            if (bsed.getNumTranscripts() >= minUMIsPerCell && polyTBiased) {
             	polyTBiasedBarcodes++;
             	polyTBiasedUMIs+=bsed.getNumTranscripts();
             }

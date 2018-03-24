@@ -31,18 +31,54 @@ public class HammingDistance {
 	public static int getHammingDistance(final String sequence1, final String sequence2) {
 	    char[] s1 = sequence1.toCharArray();
 	    char[] s2 = sequence2.toCharArray();
+	    return getHammingDistance(s1,s2);
+	}
 
-	    int shorter = Math.min(s1.length, s2.length);
-	    int longest = Math.max(s1.length, s2.length);
+	public static int getHammingDistance(final char[] sequence1, final char[] sequence2) {
+	    int shorter = Math.min(sequence1.length, sequence2.length);
+	    int longest = Math.max(sequence1.length, sequence2.length);
 
 	    int result = 0;
 	    for (int i=0; i<shorter; i++)
-			if (s1[i] != s2[i]) result++;
+			if (sequence1[i] != sequence2[i]) result++;
 
 	    result += longest - shorter;
 
 	    return result;
 	}
+
+
+	/**
+	 * Hamming distance optimized for equal sized strings.
+	 *
+	 * This forgoes checks in string length, so use with caution.
+	 *
+	 * @param sequence1
+	 * @param sequence2
+	 * @return
+	 */
+	public static int getHammingDistanceEqualSizedStrings (final String sequence1, final String sequence2) {
+		char[] s1 = sequence1.toCharArray();
+	    char[] s2 = sequence2.toCharArray();
+	    return getHammingDistanceEqualSizedStrings(s1,s2);
+
+	}
+
+	/**
+	 * Use char []'s instead of strings to avoid huge numbers of conversions.
+	 * This is far faster than using strings and converting them to character arrays over and over.
+	 * char arrays are a bit faster than s1.charAt(index) comparisons!
+	 * @param sequence1
+	 * @param sequence2
+	 * @return
+	 */
+	public static int getHammingDistanceEqualSizedStrings (final char [] sequence1, final char [] sequence2) {
+		int result = 0;
+	    for (int i=0; i<sequence1.length; i++)
+	    	if (sequence1[i] != sequence2[i]) result++;
+	    return result;
+	}
+
 
 	/**
 	 * The two strings must be of the same length to use this test.
