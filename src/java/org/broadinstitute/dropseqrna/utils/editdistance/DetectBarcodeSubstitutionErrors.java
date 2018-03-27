@@ -120,7 +120,15 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
 			IOUtil.assertFileIsReadable(input);
         IOUtil.assertFileIsWritable(OUTPUT);
         if (this.OUTPUT_REPORT!=null) IOUtil.assertFileIsWritable(this.OUTPUT_REPORT);
-
+        // I wanted to write out the UMIs per cell, but I only can generate the pre-repaired UMIs per cell, which isn't representative of the output.
+        // this would be a super-set of the cell barcodes that have 20 UMIs per cell, since they can be filtered/repaired.
+        PrintStream outCellList = null;
+        /*
+        if (this.OUTPUT_CELL_LIST!=null) {
+        	IOUtil.assertFileIsWritable(this.OUTPUT_CELL_LIST);
+        	outCellList = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUTPUT_CELL_LIST));
+        }
+		*/
         // set the cell barcode tag for the output if not set.
         if (this.OUT_CELL_BARCODE_TAG==null) this.OUT_CELL_BARCODE_TAG=this.CELL_BARCODE_TAG;
 
@@ -131,7 +139,7 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
                 this.READ_MQ, false, true, cellBarcodes, true);
 
         // get list of barcodes that have enough UMIs, and are not polyT biased.
-        UMIsPerCellResult umiResult=getUMIsPerCell(umiIterator, this.MIN_UMIS_PER_CELL, this.UMI_BIAS_BASE, this.UMI_BIAS_THRESHOLD);
+        UMIsPerCellResult umiResult=getUMIsPerCell(umiIterator, this.MIN_UMIS_PER_CELL, this.UMI_BIAS_BASE, this.UMI_BIAS_THRESHOLD, outCellList);
         ObjectCounter<String> umiCounts=umiResult.getUmisPerCell();
 
         // how do they collapse bottom up?
@@ -257,7 +265,7 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
 	 * @param polyTThreshold How much bias excludes a cell [0-1].
 	 * @return
 	 */
-	public UMIsPerCellResult getUMIsPerCell (final UMIIterator iter, final int minUMIsPerCell, Integer polyTPosition, final double polyTThreshold) {
+	public UMIsPerCellResult getUMIsPerCell (final UMIIterator iter, final int minUMIsPerCell, Integer polyTPosition, final double polyTThreshold, final PrintStream outCellList) {
 		if (polyTThreshold > 1 | polyTThreshold<0)
 			throw new IllegalArgumentException("PolyT Threshold must be between 0 and 1.");
 
@@ -302,10 +310,15 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
             }
             if (bsed.getNumTranscripts() >= minUMIsPerCell && !polyTBiased)
 				umisPerCellCounter.incrementByCount(bsed.getCellBarcode(), bsed.getNumTranscripts());
+            if (outCellList!=null && bsed.getNumTranscripts() >= minUMIsPerCell)
+				outCellList.println(bsed.getCellBarcode());
         }
+
+        if (outCellList!=null) CloserUtil.close(outCellList);
         log.info("Finished gathering a list of cell barcodes to collapse");
         log.info("Discovered ["+polyTBiasedBarcodes+"] barcodes that were excluded due to incomplete synthesis and had T bias at last base of UMI [" + polyTPosition+"]");
         UMIsPerCellResult result2 = new UMIsPerCellResult(umisPerCellCounter, numCellBarocodesTest, polyTBiasedBarcodes, polyTBiasedUMIs, polyTPosition);
+
 		return result2;
 	}
 
