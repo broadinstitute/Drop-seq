@@ -99,7 +99,7 @@ public class MapBarcodesByEditDistance {
 				String largerBarcode=largerRelatedBarcodes.iterator().next();
 				// only add if the barcode is larger.
 				// this avoids ordering issues with equally sized barcodes vs alphanumeric barcode sorting.
-				if (barcodes.getCountForKey(smallBC)< barcodes.getCountForKey(largerBarcode))
+				if (barcodes.getCountForKey(smallBC)<= barcodes.getCountForKey(largerBarcode))
 					result.addPair(smallBC, largerBarcode);
 			}
 			if (largerRelatedBarcodes.size()>1)

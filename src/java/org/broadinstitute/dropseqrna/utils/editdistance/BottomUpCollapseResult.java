@@ -78,4 +78,28 @@ public class BottomUpCollapseResult {
 		return s.size();
 	}
 
+	/**
+	 * Find if there are any barcodes that are both the intended sequence AND are a smaller target that will be merged.
+	 * @return
+	 */
+	public Set<String> getIntendedAndTargetBarcodes () {
+		Set<String> keys=new HashSet<>(barcodeMap.keySet());
+		Set<String> values = new HashSet<>(barcodeMap.values());
+		keys.retainAll(values);
+		return keys;
+	}
+
+	public void removeIntendedSequences(final Set<String> barcodes) {
+		Set<String> keys = new HashSet<> (this.barcodeMap.keySet());
+		for (String smallBarcode: keys) {
+			// find if the barcode has an intended sequence.
+			String intended = this.barcodeMap.get(smallBarcode);
+			// keys can no longer exist if they've been swept out.
+			if (intended==null)  continue;
+			// if the intended sequence should be removed, then remove the key.
+			if (barcodes.contains(intended))
+				this.barcodeMap.remove(smallBarcode);
+		}
+	}
+
 }

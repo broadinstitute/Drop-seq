@@ -149,6 +149,10 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
         log.info("Barcode Collapse Complete - ["+ result.getUnambiguousSmallBarcodes().size() + "] barcodes collapsed");
         umiIterator.close();
 
+        // remove any ambiguous barcodes that are both intended sequences AND neighbors.
+        result=pruneTransientNeighbors(result, umiCounts);
+
+
         // write report on which substitutions were found
         if (this.OUTPUT_REPORT!=null) writeReport(result, umiResult);
 
@@ -156,6 +160,31 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
         repairBAM(result);
         log.info("Finished");
 		return 0;
+	}
+
+	/**
+	 * There's a possibility that there are barcode neighbors that have transient associations.
+	 * A -> B -> C
+	 * Where A is small, B is medium, and C is large.
+	 * Depending on the iteration order, B might collapse into C, then A would "collapse" into B, which would effectively change the name of A to B, but not
+	 * change the data contained in A.
+	 * In the other order, A is first collapsed into B, which is then collapsed into C.
+	 * Instead of either of these options, remove the intermediate intended sequence relationship (A->B) when B is both an intended barcode
+	 * and a smaller barcode.
+	 * This ignores ambiguous barcodes.
+	 * @param result
+	 * @param umiCounts
+	 * @return
+	 */
+	BottomUpCollapseResult pruneTransientNeighbors (final BottomUpCollapseResult result, final ObjectCounter<String> umiCounts) {
+		// which barcodes are both neighbors and intended?
+		String a1 = result.getLargerRelatedBarcode("GGGCGCAAGCCT");
+		String a2 = result.getLargerRelatedBarcode("GGTCGCAAGCCT");
+		Set<String> both = result.getIntendedAndTargetBarcodes();
+
+		both.removeAll(result.getAmbiguousBarcodes());
+		result.removeIntendedSequences(both);
+		return result;
 	}
 
 	/**
@@ -246,7 +275,10 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
 		String cellBarcode=r.getStringAttribute(this.CELL_BARCODE_TAG);
 		// check filter first as it's faster.
 		boolean ambiguous=result.isAmbiguousBarcode(cellBarcode);
+		// if you're filtering ambiguous, return no read.
 		if (this.FILTER_AMBIGUOUS && ambiguous) return null;
+		// if you're not filtering ambiguous, return the read unmodified.
+		if (this.FILTER_AMBIGUOUS && ambiguous) return r;
 		String newCellBarcode=result.getLargerRelatedBarcode(cellBarcode);
 		// if not null, we have something to repair.
 		if (newCellBarcode!=null)
