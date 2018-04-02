@@ -178,8 +178,6 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
 	 */
 	BottomUpCollapseResult pruneTransientNeighbors (final BottomUpCollapseResult result, final ObjectCounter<String> umiCounts) {
 		// which barcodes are both neighbors and intended?
-		String a1 = result.getLargerRelatedBarcode("GGGCGCAAGCCT");
-		String a2 = result.getLargerRelatedBarcode("GGTCGCAAGCCT");
 		Set<String> both = result.getIntendedAndTargetBarcodes();
 
 		both.removeAll(result.getAmbiguousBarcodes());
