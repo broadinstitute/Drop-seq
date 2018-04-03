@@ -40,6 +40,7 @@ public class BeadSynthesisErrorData {
 	private int numReads;
 	private int numTranscripts;
 
+	// BeadSynthesisErrorDataBuilder.
 
 	// private int umiCounts;
 	// cached results

@@ -80,16 +80,21 @@ public abstract class AbstractDetectBeadSynthesisErrors extends CommandLineProgr
 	@Argument(doc="The map quality of the read to be included when calculating the barcodes in <NUM_BARCODES>")
 	public Integer READ_MQ=10;
 
+	// HAS TO BE FILLED IN.
 	@Argument (doc="The minimum number of UMIs required to report a cell barcode")
 	public Integer MIN_UMIS_PER_CELL=25;
 
+	// OPTIONAL
 	@Argument (doc="Find the top set of <NUM_BARCODES> most common barcodes by HQ reads and only use this set for analysis.",
             mutex = {"CELL_BC_FILE"})
 	public Integer NUM_BARCODES;
 
+	// OPTIONAL
 	@Argument(doc="Override NUM_BARCODES, and process reads that have the cell barcodes in this file instead.  The file has 1 column with no header.",
             mutex = {"NUM_BARCODES"})
 	public File CELL_BC_FILE;
+
+
 
 	@Argument(doc="Repair Synthesis errors with at most this many missing bases detected.", optional=true)
 	public Integer MAX_NUM_ERRORS=1;
@@ -126,7 +131,9 @@ public abstract class AbstractDetectBeadSynthesisErrors extends CommandLineProgr
 
 		int counter=0;
         int numCellsFilteredLowUMIs = 0;
-
+        //TODO: Refactor this loop.  Only keep results that have an error and have more than the minimum number of UMIs, add those to the map.
+        // For all results, push them into a sorting collection in a temp file
+        // At the end of this loop, iterate over the sorting collection and write the detailed report if the report writer is not null.
         for (final List<UMICollection> umiCollectionList : groupingIterator) {
             final String cellBarcode = umiCollectionList.get(0).getCellBarcode();
             BeadSynthesisErrorData bsed = new BeadSynthesisErrorData(cellBarcode);
