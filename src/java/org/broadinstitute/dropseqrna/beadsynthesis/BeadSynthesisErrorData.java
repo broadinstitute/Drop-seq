@@ -57,7 +57,9 @@ public class BeadSynthesisErrorData {
 		this.numTranscripts=0;
 	}
 
-
+	//maybe add a finalize() method that gets the count of the total UMIs in the object counter, caches the number, and throws away the object counter since that might be expensive
+	// to store.
+	// if you finalize, you also need to run AbstractDetectBeadSynthesisErrors.getEnhancedErrorType first, so that should probably be part of this class, and not an "enhanced" error.
 
 	public void addUMI (final String umi) {
 		//umiCounts++;

@@ -100,6 +100,8 @@ public abstract class AbstractDetectBeadSynthesisErrors extends CommandLineProgr
 
 	/**
 	 * Find all the cell barcodes that are biased.
+	 * TODO: A less memory-hog version of this would write out the summary file as it runs.  Could even write this out to a SortingIteratorFactory by implementing a codec...
+	 * Only need to hang onto errors that are not NO_ERROR, and leave the rest null (and check for that when running barcode repair.)
 	 * @param iter
 	 * @return
 	 */
