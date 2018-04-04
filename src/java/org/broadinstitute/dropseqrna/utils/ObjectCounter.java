@@ -61,6 +61,15 @@ public class ObjectCounter<T extends Comparable<T>> {
 		incrementByCount(object, 1);
 	}
 
+	public void decrement (final T object) {
+		incrementByCount(object, -1);
+	}
+
+	public void decrementByCOunt (final T object, final int count) {
+		int count2=count *-1;
+		incrementByCount(object, count2);
+	}
+
 	/**
 	 * Add the contents of an ObjectCounter of the same type to this object.
 	 * @param object

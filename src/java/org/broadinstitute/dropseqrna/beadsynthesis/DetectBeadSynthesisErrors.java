@@ -158,7 +158,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 		Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions = biasedBarcodeCollection.getBiasedBarcodes();
 
 		// here's where we'll find intended neighbors to T-Biased barcodes.
-		List<BarcodeNeighborGroup> buildBarcodeNeighborGroups = buildBarcodeNeighborGroups(errorBarcodesWithPositions, this.EXTREME_BASE_RATIO);
+		List<BarcodeNeighborGroup> buildBarcodeNeighborGroups = buildBarcodeNeighborGroups(errorBarcodesWithPositions.values(), this.EXTREME_BASE_RATIO);
 
 		// clean up the BAM if desired.
 		if (this.OUTPUT!=null)
@@ -276,21 +276,24 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 	}
 
 
-	//TODO: find a way to use this...?
-	private List<BarcodeNeighborGroup> buildBarcodeNeighborGroups (final Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions, final double umiBiasThreshold) {
+	/**
+	 * Group errors into related neighbor sequences.
+	 * @param errorBarcodesWithPositions
+	 * @param umiBiasThreshold
+	 * @return
+	 */
+	List<BarcodeNeighborGroup> buildBarcodeNeighborGroups (final Collection<BeadSynthesisErrorData> errorBarcodesWithPositions, final double umiBiasThreshold) {
     	Map<String, BarcodeNeighborGroup> result = new HashMap<>();
-    	for (String k: errorBarcodesWithPositions.keySet()) {
-    		BeadSynthesisErrorData b = errorBarcodesWithPositions.get(k);
+    	for (BeadSynthesisErrorData b: errorBarcodesWithPositions) {
     		int polyTErrorPosition = b.getPolyTErrorPosition(umiBiasThreshold);
     		// there's an error if the base isn't -1.
     		if (polyTErrorPosition!= -1) {
     			int umiLength = b.getBaseLength();
-    			int numErrors= umiLength-polyTErrorPosition+1;
     			String cellBCRoot = padCellBarcode(b.getCellBarcode(), polyTErrorPosition, umiLength);
     			BarcodeNeighborGroup bng = result.get(cellBCRoot);
     			// if the neighbor group is null create and add it.
     			if (bng==null)
-					bng=new BarcodeNeighborGroup();
+					bng=new BarcodeNeighborGroup(cellBCRoot);
     			bng.addNeighbor(b);
     			result.put(cellBCRoot, bng);
     		}

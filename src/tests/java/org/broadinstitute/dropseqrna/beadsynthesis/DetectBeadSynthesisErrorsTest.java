@@ -23,6 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
@@ -117,8 +121,69 @@ public class DetectBeadSynthesisErrorsTest {
 
 	}
 
-	public void testFindNeighbors () {
 
+	@Test
+	public void testBuildBarcodeNeighborGroups () {
+		List<BeadSynthesisErrorData> d= new ArrayList<>();
+		double umiBiasThreshold=0.8;
+
+		// add a set of 4 neighbors.
+		d.add(generateBaseCounts("AAAA1", BeadSynthesisErrorTypes.SYNTH_MISSING_BASE, 100, 9, umiBiasThreshold));
+		d.add(generateBaseCounts("AAAA2", BeadSynthesisErrorTypes.SYNTH_MISSING_BASE, 100, 9, umiBiasThreshold));
+		d.add(generateBaseCounts("AAAA3", BeadSynthesisErrorTypes.SYNTH_MISSING_BASE, 100, 9, umiBiasThreshold));
+		d.add(generateBaseCounts("AAAA4", BeadSynthesisErrorTypes.SYNTH_MISSING_BASE, 100, 9, umiBiasThreshold));
+
+		// add a set of 3 neighbors
+		d.add(generateBaseCounts("BBBB1", BeadSynthesisErrorTypes.SYNTH_MISSING_BASE, 100, 9, umiBiasThreshold));
+		d.add(generateBaseCounts("BBBB2", BeadSynthesisErrorTypes.SYNTH_MISSING_BASE, 100, 9, umiBiasThreshold));
+		d.add(generateBaseCounts("BBBB3", BeadSynthesisErrorTypes.SYNTH_MISSING_BASE, 100, 9, umiBiasThreshold));
+
+		// add a set of 2 neighbors
+		d.add(generateBaseCounts("CCCC1", BeadSynthesisErrorTypes.SYNTH_MISSING_BASE, 100, 9, umiBiasThreshold));
+		d.add(generateBaseCounts("CCCC2", BeadSynthesisErrorTypes.SYNTH_MISSING_BASE, 100, 9, umiBiasThreshold));
+
+		// add a set of 1 neighbor
+		d.add(generateBaseCounts("DDDD1", BeadSynthesisErrorTypes.SYNTH_MISSING_BASE, 100, 9, umiBiasThreshold));
+
+		// add a set of 2 neighbors with errors and 2 without errors. Only the 2 errors should be returned.
+		d.add(generateBaseCounts("EEEE1", BeadSynthesisErrorTypes.SYNTH_MISSING_BASE, 100, 9, umiBiasThreshold));
+		d.add(generateBaseCounts("EEEE2", BeadSynthesisErrorTypes.SYNTH_MISSING_BASE, 100, 9, umiBiasThreshold));
+		d.add(generateBaseCounts("EEEE3", BeadSynthesisErrorTypes.NO_ERROR, 100, 9, umiBiasThreshold));
+		d.add(generateBaseCounts("EEEE4", BeadSynthesisErrorTypes.NO_ERROR, 100, 9, umiBiasThreshold));
+
+		DetectBeadSynthesisErrors dbse = new DetectBeadSynthesisErrors();
+		List<BarcodeNeighborGroup> result = dbse.buildBarcodeNeighborGroups(d, umiBiasThreshold);
+
+
+
+		for (BarcodeNeighborGroup g: result) {
+			if (g.getRootSequence().equals("AAAA"))
+				Assert.assertEquals(4, g.getNeighborCellBarcodes().size());
+			if (g.getRootSequence().equals("BBBB"))
+				Assert.assertEquals(3, g.getNeighborCellBarcodes().size());
+			if (g.getRootSequence().equals("CCCC"))
+				Assert.assertEquals(2, g.getNeighborCellBarcodes().size());
+			if (g.getRootSequence().equals("DDDD"))
+				Assert.assertEquals(1, g.getNeighborCellBarcodes().size());
+			if (g.getRootSequence().equals("EEEE"))
+				Assert.assertEquals(2, g.getNeighborCellBarcodes().size());
+		}
+
+
+
+
+	}
+
+	// methods for generating BaseDistributionMetricCollection with a few patterns.
+	private BeadSynthesisErrorData generateBaseCounts (final String cellBarcode, final BeadSynthesisErrorTypes error, final int numUMis, final int numUMIBases, final double umiBiasThreshold) {
+		GenerateRandomUMIs gru = new GenerateRandomUMIs(umiBiasThreshold);
+		Collection<String> umis = gru.getUMICollection(numUMis, numUMIBases, error);
+		BeadSynthesisErrorData d = new BeadSynthesisErrorData(cellBarcode);
+		d.addUMI(umis);
+		// validate that the generated data has the right error type.
+		BeadSynthesisErrorTypes actualError = d.getErrorType(umiBiasThreshold);
+		Assert.assertEquals(error, actualError);
+		return d;
 	}
 
 }

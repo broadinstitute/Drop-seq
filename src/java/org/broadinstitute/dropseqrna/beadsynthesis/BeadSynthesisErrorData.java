@@ -66,8 +66,9 @@ public class BeadSynthesisErrorData {
 	 * @param errorType
 	 * @return
 	 */
-	static BeadSynthesisErrorData getInstance(final String cellBarcode, final BeadSynthesisErrorTypes errorType) {
+	static BeadSynthesisErrorData getInstance(final String cellBarcode, final BeadSynthesisErrorTypes errorType, final BaseDistributionMetricCollection baseCounts) {
 		BeadSynthesisErrorData r = new BeadSynthesisErrorData(cellBarcode);
+		r.baseCounts=baseCounts;
 		r.errorTypeCached=errorType;
 		r.errorTypeExtendedCached=errorType;
 		r.dataChanged=false;

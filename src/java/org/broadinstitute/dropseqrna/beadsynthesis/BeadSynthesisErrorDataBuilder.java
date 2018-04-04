@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright 2017 Broad Institute
+ * Copyright 2018 Broad Institute
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,46 +21,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+public class BeadSynthesisErrorDataBuilder {
 
+	public BeadSynthesisErrorDataBuilder () {
 
-
-public class BarcodeNeighborGroup {
-
-	private Set<BeadSynthesisErrorData> neighbors;
-	private final String rootSequence;
-
-	public BarcodeNeighborGroup(final String rootSequence) {
-		this.rootSequence=rootSequence;
-		this.neighbors=new HashSet<>();
+	}
+	/*
+	public BeadSynthesisErrorData static build (final String cellBarcode, final Collection<String> umis, final double umiBiasThreshold) {
+		BeadSynthesisErrorData d =new BeadSynthesisErrorData(cellBarcode);
 	}
 
-	public void addNeighbor (final BeadSynthesisErrorData neighbor) {
-		this.neighbors.add(neighbor);
-	}
+	public BeadSynthesisErrorData static build (final String cellBarcode, final Collection<String> umis, final double umiBiasThreshold, final DetectPrimerInUMI detectPrimerTool, final Integer editDistanceToPrimer) {
 
-	public List<String> getNeighborCellBarcodes () {
-		List<String> result = new ArrayList<>();
-		for (BeadSynthesisErrorData bsed: neighbors)
-			result.add(bsed.getCellBarcode());
-		Collections.sort(result);
-		return result;
 	}
-
-	@Override
-	public String toString () {
-		StringBuilder b = new StringBuilder();
-		b.append("Neighbors " + getNeighborCellBarcodes().toString() +"");
-		return (b.toString());
-	}
-
-	public String getRootSequence() {
-		return rootSequence;
-	}
+	*/
 }
