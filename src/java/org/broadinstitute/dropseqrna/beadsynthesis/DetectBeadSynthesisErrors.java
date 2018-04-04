@@ -27,17 +27,27 @@ import java.io.File;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.TranscriptomeException;
+import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
+import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
+import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetric;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
 import org.broadinstitute.dropseqrna.utils.Bases;
+import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
+import org.broadinstitute.dropseqrna.utils.StringInterner;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
@@ -46,16 +56,17 @@ import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.metrics.MetricBase;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.IterableAdapter;
 import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.samtools.util.ProgressLogger;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.Argument;
+import htsjdk.samtools.util.SortingCollection;
+import picard.cmdline.CommandLineProgram;
+import picard.cmdline.StandardOptionDefinitions;
 
 /**
  *
@@ -71,7 +82,7 @@ import org.broadinstitute.barclay.argparser.Argument;
         programGroup = DropSeq.class
 )
 
-public class DetectBeadSynthesisErrors extends AbstractDetectBeadSynthesisErrors {
+public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 
 	private static final Log log = Log.getInstance(DetectBeadSynthesisErrors.class);
 
@@ -81,27 +92,73 @@ public class DetectBeadSynthesisErrors extends AbstractDetectBeadSynthesisErrors
 			+ "AAAAAA	20		5|4|6|5.")
 	public File OUTPUT_STATS;
 
-	private Double EXTREME_BASE_RATIO=0.8;
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM files to analyze.  They must all have the same sort order")
+	public List<File> INPUT;
 
+	@Argument(doc="Output a summary of the error types and frequencies detected")
+	public File SUMMARY;
 
-	private DetectPrimerInUMI detectPrimerTool=null;
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output BAM, with the synthesis error barcodes removed", optional=true)
+	public File OUTPUT;
+
+	@Argument(doc="The sequence of the primer.", optional=true)
+	public String PRIMER_SEQUENCE=null;
+
+	@Argument(doc="When looking at fixed UMIs, see if the edit distance from the UMI to the primer is within this threshold.  0 indicates a perfect match between the primer and the UMI.")
+	public Integer EDIT_DISTANCE=0;
+
+	@Argument(doc="The cell barcode tag.")
+	public String CELL_BARCODE_TAG="XC";
+
+	@Argument(doc="The molecular barcode tag.")
+	public String MOLECULAR_BARCODE_TAG="XM";
+
+	@Argument(doc="The Gene/Exon tag")
+	public String GENE_EXON_TAG="GE";
+
+	@Argument(doc="The strand of the gene(s) the read overlaps.  When there are multiple genes, they will be comma-separated.")
+	public String STRAND_TAG="GS";
+
+	@Argument(doc="The map quality of the read to be included when calculating the barcodes in <NUM_BARCODES>")
+	public Integer READ_MQ=10;
+
+	// HAS TO BE FILLED IN.
+	@Argument (doc="The minimum number of UMIs required to report a cell barcode.  If this parameter is specified and [NUM_BARCODES or CELL_BC_FILE] are not specified, then all cell barcodes with at least this many UMIs will be analyzed., optional=false")
+	public Integer MIN_UMIS_PER_CELL=25;
+
+	// OPTIONAL
+	@Argument (doc="Find the top set of <NUM_BARCODES> most common barcodes by HQ reads and only use this set for analysis.", optional=true)
+	public Integer NUM_BARCODES;
+
+	// OPTIONAL
+	@Argument(doc="Override NUM_BARCODES, and process reads that have the cell barcodes in this file instead.  The file has 1 column with no header.", optional=true)
+	public File CELL_BC_FILE;
+
+	@Argument(doc="Repair Synthesis errors with at most this many missing bases detected.", optional=true)
+	public Integer MAX_NUM_ERRORS=1;
+
+	Double EXTREME_BASE_RATIO=0.8;
+	DetectPrimerInUMI detectPrimerTool=null;
+
+	SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);
+
+	private Character PAD_CHARACTER='N';
+
 
 	@Override
 	protected int doWork() {
 		// primer detection if requested.
 		if (this.PRIMER_SEQUENCE!=null)
-			detectPrimerTool = new DetectPrimerInUMI(this.PRIMER_SEQUENCE);
+			this.detectPrimerTool = new DetectPrimerInUMI(this.PRIMER_SEQUENCE);
+
+		PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT_STATS));
 
 		UMIIterator iterator = prepareUMIIterator();
-
-		BiasedBarcodeCollection biasedBarcodeCollection = findBiasedBarcodes(iterator);
+		BiasedBarcodeCollection biasedBarcodeCollection = findBiasedBarcodes(iterator, out, this.SUMMARY);
 		Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions = biasedBarcodeCollection.getBiasedBarcodes();
-		int numCellsFilteredLowUMIs = biasedBarcodeCollection.getNumBarcodesFilteredLowUMIs();
 
-        // initialize output writers.
-        PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT_STATS));
-		writeFile (errorBarcodesWithPositions.values(), out);
-		writeSummary(errorBarcodesWithPositions.values(), numCellsFilteredLowUMIs, SUMMARY);
+		// here's where we'll find intended neighbors to T-Biased barcodes.
+		List<BarcodeNeighborGroup> buildBarcodeNeighborGroups = buildBarcodeNeighborGroups(errorBarcodesWithPositions, this.EXTREME_BASE_RATIO);
 
 		// clean up the BAM if desired.
 		if (this.OUTPUT!=null)
@@ -110,6 +167,138 @@ public class DetectBeadSynthesisErrors extends AbstractDetectBeadSynthesisErrors
 	}
 
 
+
+
+	/**
+	 * Find all the cell barcodes that are biased.
+	 *
+	 * This walks through many (perhaps all?) of the cell barcodes, and for cell barcodes that have a sufficient number of UMIs, looks to see if there's an error
+	 * @param iter The BAM iterator to walk through
+	 * @param out the verbose output stream.
+	 * @param outSummary The summary output stream.
+	 *
+	 * TODO: A less memory-hog version of this would write out the summary file as it runs.  Could even write this out to a SortingIteratorFactory by implementing a codec...
+	 * Only need to hang onto errors that are SYNTH_MISSING_BASE, and leave the rest null (and check for that when running barcode repair.)
+	 *
+	 * @return A collection of biased cell barcodes.
+	 */
+	private BiasedBarcodeCollection findBiasedBarcodes (final UMIIterator iter, final PrintStream out, final File outSummary) {
+
+		// Group the stream of UMICollections into groups with the same cell barcode.
+        GroupingIterator<UMICollection> groupingIterator = new GroupingIterator<>(iter,
+                new Comparator<UMICollection>() {
+                    @Override
+                    public int compare(final UMICollection o1, final UMICollection o2) {
+                        return o1.getCellBarcode().compareTo(o2.getCellBarcode());
+                    }
+                });
+
+
+		// for holding barcodes results.  The key is the cell barcode, the value is the first base to pad.
+		// Used for cleanup of BAMs.
+		Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions = new HashMap<>();
+
+ 		// for holding UMI Strings efficiently
+		StringInterner  umiStringCache = new StringInterner();
+
+		// a sorting collection so big data can spill to disk before it's sorted and written out as a report.
+		SortingCollection<BeadSynthesisErrorData> sortingCollection= SortingCollection.newInstance(BeadSynthesisErrorData.class, new BeadSynthesisErrorDataCodec(), new BeadSynthesisErrorData.SizeComparator(), this.MAX_RECORDS_IN_RAM);
+
+        // gather up summary stats
+     	BeadSynthesisErrorsSummaryMetric summary = new BeadSynthesisErrorsSummaryMetric();
+
+     	// track the list of cell barcodes with sufficient UMIs to process.  We'll need them later to find intended sequences.
+     	Set<String> cellBarcodes = new HashSet<>();
+
+     	// a log for processing
+     	ProgressLogger prog = new ProgressLogger(log, 1000000, "Processed Cell/Gene UMIs");
+
+     	// main data generation loop.
+        for (final List<UMICollection> umiCollectionList : groupingIterator) {
+            BeadSynthesisErrorData bsed = buildBeadSynthesisErrorData(umiCollectionList, umiStringCache, prog);
+            // if the cell has too few UMIs, then go to the next cell and skip all processing.
+            if (bsed.getUMICount() < this.MIN_UMIS_PER_CELL)
+				// not sure I even want to track this...
+            	// summary.LOW_UMI_COUNT++;
+            	continue;
+
+            // add the result to the summary
+            summary=addDataToSummary(bsed, summary);
+            cellBarcodes.add(bsed.getCellBarcode()); // track the cell barcode if it's sufficiently large to process.
+            // explicitly call getting the error type.
+            BeadSynthesisErrorTypes errorType=bsed.getErrorType(this.EXTREME_BASE_RATIO, this.detectPrimerTool, this.EDIT_DISTANCE);
+            // finalize object so it uses less memory.
+            bsed.finalize();
+            // only add to the collection if you have UMIs and a repairable error.
+            if (bsed.getUMICount()>=this.MIN_UMIS_PER_CELL && errorType==BeadSynthesisErrorTypes.SYNTH_MISSING_BASE)
+            	errorBarcodesWithPositions.put(bsed.getCellBarcode(), bsed);
+
+            // add to sorting collection if you have enough UMIs.
+            sortingCollection.add(bsed);
+        }
+        //TODO: I think I don't need this line.
+        // sortingCollection.doneAdding();
+        PeekableIterator<BeadSynthesisErrorData> bsedIter = new PeekableIterator<>(sortingCollection.iterator());
+
+        // write out the records from the sorting collection.
+        writeFile(bsedIter, out);
+        // write out the summary
+        writeSummary(summary, outSummary);
+        CloserUtil.close(bsedIter);
+
+        // the error barcodes we want to fix.
+        BiasedBarcodeCollection result = new BiasedBarcodeCollection(errorBarcodesWithPositions, cellBarcodes);
+
+        return result;
+	}
+
+	/**
+	 * For a single cell barcode, gather up all the reads/UMIs to test for UMI errors.
+	 * @param umiCollectionList A collection of UMIs for a cell.
+	 * @param umiStringCache A cache to save space on UMIs - there are only 4^length possible UMIs, and length is usually 8-9, so UMIs are often repeated.
+	 * @param prog A progress logger.
+	 * @return A BeadSynthesisErrorData object for a single cell barcode across all UMIs.
+	 */
+	private BeadSynthesisErrorData buildBeadSynthesisErrorData (final List<UMICollection> umiCollectionList, final StringInterner umiStringCache, final ProgressLogger prog) {
+		final String cellBarcode = umiCollectionList.get(0).getCellBarcode();
+		BeadSynthesisErrorData bsed = new BeadSynthesisErrorData(cellBarcode);
+		for (final UMICollection umis : umiCollectionList) {
+			int transcriptCounts = umis.getDigitalExpression(1, 1, false);
+			int readCounts = umis.getDigitalExpression(1, 1, true);
+			Collection<String> umiCol = umis.getMolecularBarcodes();
+			umiCol = getUMIsFromCache(umiCol, umiStringCache);
+			bsed.addUMI(umiCol);
+			bsed.incrementReads(readCounts);
+			bsed.incrementTranscripts(transcriptCounts);
+			prog.record(null, 0);
+		}
+		return bsed;
+	}
+
+
+	//TODO: find a way to use this...?
+	private List<BarcodeNeighborGroup> buildBarcodeNeighborGroups (final Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions, final double umiBiasThreshold) {
+    	Map<String, BarcodeNeighborGroup> result = new HashMap<>();
+    	for (String k: errorBarcodesWithPositions.keySet()) {
+    		BeadSynthesisErrorData b = errorBarcodesWithPositions.get(k);
+    		int polyTErrorPosition = b.getPolyTErrorPosition(umiBiasThreshold);
+    		// there's an error if the base isn't -1.
+    		if (polyTErrorPosition!= -1) {
+    			int umiLength = b.getBaseLength();
+    			int numErrors= umiLength-polyTErrorPosition+1;
+    			String cellBCRoot = padCellBarcode(b.getCellBarcode(), polyTErrorPosition, umiLength);
+    			BarcodeNeighborGroup bng = result.get(cellBCRoot);
+    			// if the neighbor group is null create and add it.
+    			if (bng==null)
+					bng=new BarcodeNeighborGroup();
+    			bng.addNeighbor(b);
+    			result.put(cellBCRoot, bng);
+    		}
+
+    	}
+    	List<BarcodeNeighborGroup> neighborGroups= new ArrayList<> (result.values());
+    	return neighborGroups;
+    }
 
 	/**
 	 * For each problematic cell, replace cell barcodes positions with N.
@@ -143,7 +332,7 @@ public class DetectBeadSynthesisErrors extends AbstractDetectBeadSynthesisErrors
 		if (bsed==null) return (r); // no correction data, no fix.
 
 		// we're only going to fix cells where there's one or more synthesis errors
-		BeadSynthesisErrorTypes bset = getEnhancedErrorType(bsed, extremeBaseRatio, this.detectPrimerTool);
+		BeadSynthesisErrorTypes bset = bsed.getErrorType(extremeBaseRatio, this.detectPrimerTool, this.EDIT_DISTANCE);
 		if (bset==BeadSynthesisErrorTypes.NO_ERROR) return (r); // no error, return.
 		// has an error, not a synthesis error...
 		if (bset!=BeadSynthesisErrorTypes.SYNTH_MISSING_BASE)
@@ -167,63 +356,45 @@ public class DetectBeadSynthesisErrors extends AbstractDetectBeadSynthesisErrors
 	}
 
 
-
-
-
-	private void writeSummary (final Collection <BeadSynthesisErrorData> data, final int numCellsFilteredLowUMIs, final File out) {
-		// skip if no data.
-		if (data.size()==0)
-			return;
-
-		// gather up error types.
-		BeadSynthesisErrorsSummaryMetric m = new BeadSynthesisErrorsSummaryMetric();
-		m.LOW_UMI_COUNT=numCellsFilteredLowUMIs;
-
-		for (BeadSynthesisErrorData bsde: data) {
-			BeadSynthesisErrorTypes t = getEnhancedErrorType(bsde, EXTREME_BASE_RATIO, this.detectPrimerTool);
-			m.NUM_BEADS++;
-			switch (t) {
-				case SYNTH_MISSING_BASE: m.SYNTHESIS_MISSING_BASE++; m.incrementSynthesisMissingBase(bsde.getPolyTErrorPosition(this.EXTREME_BASE_RATIO)); break;
-				case PRIMER: m.PRIMER_MATCH++; break;
-				case SINGLE_UMI: m.SINGLE_UMI_ERROR++; break;
-				case FIXED_FIRST_BASE: m.FIXED_FIRST_BASE++; break;
-				case OTHER_ERROR: m.OTHER_ERROR_COUNT++; break;
-				default: m.NO_ERROR++; break;
-			}
-
-		}
-
+	private void writeSummary(final BeadSynthesisErrorsSummaryMetric summary, final File out) {
 		MetricsFile<BeadSynthesisErrorsSummaryMetric, Integer> outFile = new MetricsFile<>();
-		outFile.addMetric(m);
-		outFile.addHistogram(m.getHistogram());
+		outFile.addMetric(summary);
+		outFile.addHistogram(summary.getHistogram());
 		outFile.write(out);
-
 	}
 
-	private void writeFile (final Collection <BeadSynthesisErrorData> data, final PrintStream out) {
-		if (data.size()==0) {
+	private BeadSynthesisErrorsSummaryMetric addDataToSummary (final BeadSynthesisErrorData bsde, final BeadSynthesisErrorsSummaryMetric summary) {
+		BeadSynthesisErrorTypes t = bsde.getErrorType(EXTREME_BASE_RATIO, this.detectPrimerTool, this.EDIT_DISTANCE);
+		if (t==null) {
+			log.info("STOP");
+			t = bsde.getErrorType(EXTREME_BASE_RATIO, this.detectPrimerTool, this.EDIT_DISTANCE);
+		}
+		summary.NUM_BEADS++;
+		switch (t) {
+			case SYNTH_MISSING_BASE: summary.SYNTHESIS_MISSING_BASE++; summary.incrementSynthesisMissingBase(bsde.getPolyTErrorPosition(this.EXTREME_BASE_RATIO)); break;
+			case PRIMER: summary.PRIMER_MATCH++; break;
+			case SINGLE_UMI: summary.SINGLE_UMI_ERROR++; break;
+			case FIXED_FIRST_BASE: summary.FIXED_FIRST_BASE++; break;
+			case OTHER_ERROR: summary.OTHER_ERROR_COUNT++; break;
+			default: summary.NO_ERROR++; break;
+		}
+		return summary;
+	}
+
+
+	private void writeFile (final PeekableIterator <BeadSynthesisErrorData> iter, final PrintStream out) {
+		if (!iter.hasNext()) {
 			out.close();
 			return;
 		}
 
-		// if there are records, write out the file.
-        final List<BeadSynthesisErrorData> dataArray = new ArrayList<>(data);
-        Collections.sort(dataArray, new Comparator<BeadSynthesisErrorData>() {
-            @Override
-            public int compare(final BeadSynthesisErrorData o1, final BeadSynthesisErrorData o2) {
-                // Note that this is backwards so record with largest UMICount comes first
-                int cmp = Integer.compare(o2.getUMICount(), o1.getUMICount());
-                if (cmp != 0)
-					return cmp;
-                return o1.getCellBarcode().compareTo(o2.getCellBarcode());
-            }
-        });
-
-		BeadSynthesisErrorData first = dataArray.get(0);
+		BeadSynthesisErrorData first = iter.peek();
 		int umiLength = first.getBaseLength();
 		writeBadBarcodeStatisticsFileHeader(umiLength, out);
-		for (BeadSynthesisErrorData bsde: dataArray)
-			writeBadBarcodeStatisticsFileEntry(bsde, out);
+		while (iter.hasNext()) {
+			BeadSynthesisErrorData bsed = iter.next();
+			writeBadBarcodeStatisticsFileEntry(bsed, out);
+		}
 		out.close();
 	}
 
@@ -251,7 +422,7 @@ public class DetectBeadSynthesisErrors extends AbstractDetectBeadSynthesisErrors
 		line.add(Integer.toString(base));
 		int polyTErrorBase = data.getPolyTErrorPosition(EXTREME_BASE_RATIO);
 		line.add(Integer.toString(polyTErrorBase));
-		line.add(getEnhancedErrorType(data, EXTREME_BASE_RATIO, this.detectPrimerTool).toString());
+		line.add(data.getErrorType(EXTREME_BASE_RATIO, this.detectPrimerTool, this.EDIT_DISTANCE).toString());
 
 
 		BaseDistributionMetricCollection bases = data.getBaseCounts();
@@ -266,7 +437,7 @@ public class DetectBeadSynthesisErrors extends AbstractDetectBeadSynthesisErrors
 	}
 
 
-
+	//TODO: maybe make this part of BaseDistributionMetric
 	private String format (final BaseDistributionMetric bdm) {
 		List<String> d = new ArrayList<>();
 
@@ -278,53 +449,108 @@ public class DetectBeadSynthesisErrors extends AbstractDetectBeadSynthesisErrors
 		return StringUtils.join(d, "|");
 	}
 
-    @Override
-    protected String[] customCommandLineValidation() {
-        for (final File input : INPUT)
-			IOUtil.assertFileIsReadable(input);
-        IOUtil.assertFileIsWritable(this.OUTPUT_STATS);
-        IOUtil.assertFileIsWritable(this.SUMMARY);
 
-        if (OUTPUT!=null) IOUtil.assertFileIsWritable(this.OUTPUT);
-        return super.customCommandLineValidation();
-    }
-
-
-
-	public class BeadSynthesisErrorsSummaryMetric extends MetricBase {
-		public int NUM_BEADS;
-		public int NO_ERROR;
-		public int LOW_UMI_COUNT;
-		public int SYNTHESIS_MISSING_BASE;
-		public int SINGLE_UMI_ERROR;
-		public int PRIMER_MATCH;
-		public int FIXED_FIRST_BASE;
-		public int OTHER_ERROR_COUNT;
-
-
-		/** The distribution of  SYNTHESIS_MISSING_BASE error positions */
-		private Histogram <Integer> histogram = null;
-
-		public BeadSynthesisErrorsSummaryMetric () {
-			this.NUM_BEADS=0;
-			this.NO_ERROR=0;
-			this.SYNTHESIS_MISSING_BASE=0;
-			this.SINGLE_UMI_ERROR=0;
-			this.PRIMER_MATCH=0;
-			this.OTHER_ERROR_COUNT=0;
-			this.LOW_UMI_COUNT=0;
-			histogram = new Histogram<>("SYNTHESIS_ERROR_BASE", "num cells");
-		}
-
-		public void incrementSynthesisMissingBase (final int position) {
-			histogram.increment(position);
-		}
-
-		public Histogram<Integer> getHistogram() {
-			return histogram;
-		}
-
+	/**
+	 * Gets a reference to the UMI strings from the cache.  Has the side effect of populating the cache with additional
+	 * strings.  This reduces total memory footprint by returning references to repeated strings instead of
+	 * holding new objects for the same UMI over and over.
+	 * @param umis A list of strings to get references to
+	 * @param umiStringCache The cache of strings holding references.
+	 */
+	private Collection<String> getUMIsFromCache (final Collection<String> umis, final StringInterner umiStringCache) {
+		List<String> result = new ArrayList<>(umis.size());
+		for (String umi: umis)
+			result.add(umiStringCache.intern(umi));
+		return (result);
 	}
+
+	/**
+	 * Take the original cell barcode and UMI, and move bases from the end of the cell barcode to the start of the UMI,
+	 * then trim an equal number of bases off the end of the UMI so the length is the same.
+	 * Example:
+	 * Cell barcode: 		ACGCTCATACAG
+	 * UMI: 				TCCTTATT
+	 * errorPosition: 		2
+	 * New Cell Barcode:	ACGCTCATACNN
+	 * New UMI:				AGTCCTTA
+	 *
+	 * @param cellBarcode The original cell barcode
+	 * @param umi The original UMI
+	 * @param errorPosition The position in the UMI where the error occurred.
+	 */
+	public String fixUMI (final String cellBarcode, final String umi, final int errorPosition) {
+		// 0 based, from end of cell barcode.
+		int badBasesUMI=umi.length()-errorPosition;
+		int lastBase = cellBarcode.length();
+		int firstBaseToPad = lastBase-badBasesUMI-1;
+		String cellBCBases=cellBarcode.substring(firstBaseToPad, cellBarcode.length());
+
+		String umiRemaining=umi.substring(0, errorPosition-1);
+		return cellBCBases+umiRemaining;
+	}
+
+	/**
+	 * Set up the UMI Iterator.
+	 * @return
+	 */
+	public UMIIterator prepareUMIIterator() {
+		List<String> barcodes=getCellBarcodes();
+		return new UMIIterator(SamFileMergeUtil.mergeInputs(INPUT, false, samReaderFactory),
+                this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG, this.READ_MQ,
+                false, false, barcodes, true);
+	}
+
+	public List<String> getCellBarcodes () {
+		if (this.CELL_BC_FILE==null & this.NUM_BARCODES==null) {
+			log.info("Selecting cells based on number of transcripts [" + this.MIN_UMIS_PER_CELL +"]");
+			return null;
+		}
+
+		if (this.CELL_BC_FILE!=null) {
+			IOUtil.assertFileIsReadable(this.CELL_BC_FILE);
+			List<String> cellBarcodes = ParseBarcodeFile.readCellBarcodeFile(this.CELL_BC_FILE);
+			log.info("Found " + cellBarcodes.size()+ " cell barcodes in file");
+			return (cellBarcodes);
+		}
+		log.info("Gathering barcodes for the top [" + this.NUM_BARCODES +"] cells");
+        return new BarcodeListRetrieval().getListCellBarcodesByReadCount(
+                SamFileMergeUtil.mergeInputs(INPUT, false, samReaderFactory).iterator,
+                this.CELL_BARCODE_TAG, this.READ_MQ, null, this.NUM_BARCODES);
+	}
+
+
+	/**
+	 * Picks a number of bases to pad.
+	 * If errorPosition =-1, then don't pad any bases.
+	 */
+	String padCellBarcode (final String cellBarcode, final int errorPosition, final int umiLength) {
+		if (errorPosition==-1) return (cellBarcode);
+
+		// 0 based, from end of cell barcode.
+		int badBasesUMI=umiLength-errorPosition;
+		int lastBase = cellBarcode.length();
+		int firstBaseToPad = lastBase-badBasesUMI-1;
+
+		char [] charAr = cellBarcode.toCharArray();
+		for (int i=firstBaseToPad; i<lastBase; i++)
+			charAr[i]=this.PAD_CHARACTER;
+		return new String (charAr);
+	}
+
+
+	 @Override
+	    protected String[] customCommandLineValidation() {
+	        for (final File input : INPUT)
+				IOUtil.assertFileIsReadable(input);
+	        IOUtil.assertFileIsWritable(this.OUTPUT_STATS);
+	        IOUtil.assertFileIsWritable(this.SUMMARY);
+
+	        if (this.CELL_BARCODE_TAG!=null & this.NUM_BARCODES!=null)
+	        	throw new TranscriptomeException("Must specify at most one of CELL_BARCODE_TAG or  NUM_BARCODES");
+
+	        if (OUTPUT!=null) IOUtil.assertFileIsWritable(this.OUTPUT);
+	        return super.customCommandLineValidation();
+	    }
 
 
 	/** Stock main method. */

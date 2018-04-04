@@ -24,6 +24,7 @@
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 
 import org.apache.commons.lang.math.NumberUtils;
@@ -40,14 +41,13 @@ public class BeadSynthesisErrorData {
 	private int numReads;
 	private int numTranscripts;
 
-	// BeadSynthesisErrorDataBuilder.
-
-	// private int umiCounts;
 	// cached results
 	private boolean dataChanged;
 	private BeadSynthesisErrorTypes errorTypeCached=null;
-	//private double [] polyTFreq=null;
-	//private double [] synthesisErrorMetric=null;
+	private BeadSynthesisErrorTypes errorTypeExtendedCached=null;
+
+	// the number of unique sequences without collapse.
+	private int numUMIs;
 
 	public BeadSynthesisErrorData (final String cellBarcode) {
 		this.cellBarcode=cellBarcode;
@@ -56,6 +56,25 @@ public class BeadSynthesisErrorData {
 		this.dataChanged=true;
 		this.numReads=0;
 		this.numTranscripts=0;
+		this.numUMIs=-1;
+	}
+
+	/**
+	 * Build an object stub for testing that has the cell barcode and the error type.
+	 * This error type is set for all calls to getErrorType.
+	 * @param cellBarcode
+	 * @param errorType
+	 * @return
+	 */
+	static BeadSynthesisErrorData getInstance(final String cellBarcode, final BeadSynthesisErrorTypes errorType) {
+		BeadSynthesisErrorData r = new BeadSynthesisErrorData(cellBarcode);
+		r.errorTypeCached=errorType;
+		r.errorTypeExtendedCached=errorType;
+		r.dataChanged=false;
+		r.numReads=0;
+		r.numTranscripts=0;
+		r.numUMIs=0;
+		return null;
 	}
 
 	//maybe add a finalize() method that gets the count of the total UMIs in the object counter, caches the number, and throws away the object counter since that might be expensive
@@ -72,6 +91,20 @@ public class BeadSynthesisErrorData {
 	public void addUMI (final Collection <String> umis) {
 		for (String umi: umis)
 			addUMI(umi);
+	}
+
+	/**
+	 * No more data can be added after this is called.  The collection of UMIs will be discarded to save space.
+	 * Whatever call was made to getErrorType will be cached, so one of the methods must be called before finalize.
+	 */
+	@Override
+	public void finalize () {
+		if (this.errorTypeCached==null && this.errorTypeExtendedCached==null)
+			throw new IllegalStateException("Can't finalize until call to getErrorType is made!");
+		// cache the number of UMIs.
+		getUMICount();
+		// remove the ObjectCounter to save memory
+		this.umiCounts=null;
 	}
 
 	public void incrementReads (final int numReads) {
@@ -91,8 +124,9 @@ public class BeadSynthesisErrorData {
 	}
 
 	public int getUMICount() {
-		return this.umiCounts.getTotalCount();
-		//return this.umiCounts;
+		if (this.numUMIs==-1 || this.dataChanged)
+			this.numUMIs=this.umiCounts.getTotalCount();
+		return this.numUMIs;
 	}
 
 	public ObjectCounter<String> getUMICounts() {
@@ -147,6 +181,28 @@ public class BeadSynthesisErrorData {
 		BeadSynthesisErrorTypes t = BeadSynthesisErrorTypes.NO_ERROR;
 		this.errorTypeCached=t;
 		return t;
+	}
+
+	BeadSynthesisErrorTypes getErrorType (final double extremeBaseRatio, final DetectPrimerInUMI detectPrimerTool, final Integer editDistanceToPrimer) {
+		if (!this.dataChanged & this.errorTypeExtendedCached!=null) return (this.errorTypeExtendedCached);
+		this.dataChanged=false;
+
+		BeadSynthesisErrorTypes errorType = this.getErrorType(extremeBaseRatio);
+		// cache the extended type as the regular type, but there's a chance to change if the detectPrimerTool says so.
+		this.errorTypeExtendedCached=this.errorTypeCached;
+
+		//base case, error is not a single UMI.
+		if (errorType!=BeadSynthesisErrorTypes.SINGLE_UMI)
+			return this.errorTypeExtendedCached;
+		// if there's a primer, run detection.
+		if (detectPrimerTool!=null & editDistanceToPrimer!=null) {
+			// a single UMI-style error, does the most common UMI match the primer?
+			String singleUMI = this.getUMICounts().getKeysOrderedByCount(true).get(0);
+			boolean primerDetected = detectPrimerTool.isStringInPrimer(singleUMI, editDistanceToPrimer);
+			if (primerDetected)
+				this.errorTypeExtendedCached=BeadSynthesisErrorTypes.PRIMER;
+		}
+		return this.errorTypeExtendedCached;
 	}
 
 	/**
@@ -305,6 +361,14 @@ public class BeadSynthesisErrorData {
 		return (maxFreq);
 	}
 
-
+	public static class SizeComparator implements Comparator<BeadSynthesisErrorData> {
+        @Override
+        public int compare(final BeadSynthesisErrorData d1, final BeadSynthesisErrorData d2) {
+        	int cmp = Integer.compare(d2.getUMICount(), d1.getUMICount());
+            if (cmp != 0)
+    			return cmp;
+            return d1.getCellBarcode().compareTo(d2.getCellBarcode());
+        }
+    }
 
 }

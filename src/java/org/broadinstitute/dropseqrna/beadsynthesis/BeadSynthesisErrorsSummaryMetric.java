@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright 2017 Broad Institute
+ * Copyright 2018 Broad Institute
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,32 +21,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
-import java.util.Map;
-import java.util.Set;
+import htsjdk.samtools.metrics.MetricBase;
+import htsjdk.samtools.util.Histogram;
 
-public class BiasedBarcodeCollection {
-	private final Map<String, BeadSynthesisErrorData> biasedBarcodes;
-	private final Set<String> allCellBarcodes;
+public class BeadSynthesisErrorsSummaryMetric extends MetricBase {
+	public int NUM_BEADS;
+	public int NO_ERROR;
+	// public int LOW_UMI_COUNT;
+	public int SYNTHESIS_MISSING_BASE;
+	public int SINGLE_UMI_ERROR;
+	public int PRIMER_MATCH;
+	public int FIXED_FIRST_BASE;
+	public int OTHER_ERROR_COUNT;
 
-	public BiasedBarcodeCollection ( final Map<String, BeadSynthesisErrorData> biasedBarcodes) {
-		this(biasedBarcodes, null);
+
+	/** The distribution of  SYNTHESIS_MISSING_BASE error positions */
+	private Histogram <Integer> histogram = null;
+
+	public BeadSynthesisErrorsSummaryMetric () {
+		this.NUM_BEADS=0;
+		this.NO_ERROR=0;
+		this.SYNTHESIS_MISSING_BASE=0;
+		this.SINGLE_UMI_ERROR=0;
+		this.PRIMER_MATCH=0;
+		this.OTHER_ERROR_COUNT=0;
+		// this.LOW_UMI_COUNT=0;
+		histogram = new Histogram<>("SYNTHESIS_ERROR_BASE", "num cells");
 	}
 
-	public BiasedBarcodeCollection ( final Map<String, BeadSynthesisErrorData> biasedBarcodes, final Set<String> allCellBarcodes) {
-		this.biasedBarcodes=biasedBarcodes;
-		this.allCellBarcodes=allCellBarcodes;
+	public void incrementSynthesisMissingBase (final int position) {
+		histogram.increment(position);
 	}
 
-	public Map<String, BeadSynthesisErrorData> getBiasedBarcodes() {
-		return biasedBarcodes;
+	public Histogram<Integer> getHistogram() {
+		return histogram;
 	}
-
-	public Set<String> getAllCellBarcodes() {
-		return allCellBarcodes;
-	}
-
-
 
 }
