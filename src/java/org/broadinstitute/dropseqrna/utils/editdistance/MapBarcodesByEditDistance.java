@@ -54,7 +54,6 @@ public class MapBarcodesByEditDistance {
 	private final boolean verbose;
 	private ForkJoinPool forkJoinPool;
 
-
 	public MapBarcodesByEditDistance (final boolean verbose, final int numThreads, final int reportProgressInterval) {
 		this.verbose=verbose;
 		this.NUM_THREADS=numThreads;
@@ -70,6 +69,80 @@ public class MapBarcodesByEditDistance {
 	public MapBarcodesByEditDistance (final boolean verbose) {
 		this(verbose, 1, 100000);
 	}
+
+	/**
+	 * Find if a repaired barcode [which have an N at the last base] can be matched up to one and ONLY one other barcode at the edit distance.
+	 * This match up can be one of two ways:
+	 * 1) An indel relationship at any position
+	 * 2) A substitution relationship at base 12.
+	 *
+	 * @param repairedCellBarcodes cell barcodes that have been repaired, and we need to find their intended sequence.  They should all end in N.
+	 * @param otherBarcodes
+	 * @return A map from the repaired sequence to the intended sequence.
+	 */
+	public Map<String, String> findIntendedIndelSequences (final List<String> repairedCellBarcodes, final List<String> otherBarcodes, final int editDistance) {
+		Map<String, String> result=new HashMap<>();
+
+		long startTime = System.currentTimeMillis();
+
+		for (String repairedBC: repairedCellBarcodes) {
+			Set<String> possibleIntendedSequences = findIntendedIndelSequences(repairedBC, otherBarcodes, editDistance);
+			if (possibleIntendedSequences.size()==1)
+				result.put(repairedBC, possibleIntendedSequences.iterator().next());
+		}
+
+		if (verbose) {
+			long endTime = System.currentTimeMillis();
+			long duration = (endTime - startTime)/1000;
+			log.info("Collapsed ["+repairedCellBarcodes.size()+"] barcodes with [" + this.NUM_THREADS +"] threads took [" + duration + "] seconds to process");
+		}
+		return result;
+	}
+
+	/**
+	 * An intended sequence is one of two things:
+	 * 1) An indel relationship (not a substitution) at base 1-11
+	 * 2) A substitution at base 12.
+	 * At ED=1, because the repairedCellBarcode has an N at the end, it's automatically substitution >1 if the base isn't 12.
+	 * @param repairedCellBarcode
+	 * @param otherBarcodes
+	 * @param editDistance
+	 * @return
+	 */
+	Set<String> findIntendedIndelSequences (final String repairedCellBarcode, final List<String> otherBarcodes, final int editDistance) {
+		Set<String> indelResult = processSingleBarcodeMultithreaded(repairedCellBarcode, otherBarcodes, true, editDistance);
+		Set<String> hammingResult = processSingleBarcodeMultithreaded(repairedCellBarcode, otherBarcodes, false, editDistance);
+		Set<String> hammingResultPos12 = new HashSet<>();
+
+		// indel changes must be deletions in the repaired region (or insertions in the intended sequence)
+		Set<String> indelResultFiltered = new HashSet<>();
+		for (String s: indelResult) {
+			LevenshteinDistanceResult r= LevenshteinDistance.computeLevenshteinDistanceResult(s, repairedCellBarcode, 1, 1, 2);
+			String [] ops  = r.getOperations();
+			// any position before the last is D, and last is I.
+			for (int i=0; i<ops.length-2; i++)
+				if (ops[i].equals("D") && ops[ops.length-1].equals("I")) {
+					indelResultFiltered.add(s);
+					break;
+				}
+
+		}
+
+		// hamming result must be at the last position.
+		for (String s: hammingResult) {
+			int [] pos = HammingDistance.getHammingDistanceChangePositions(repairedCellBarcode, s);
+			// if there's one change at the last base...
+			if (pos.length==1 && pos[0]==s.length()-1)
+				hammingResultPos12.add(s);
+		}
+
+		// add any hamming position 12 results to the indel results.
+		indelResultFiltered.addAll(hammingResultPos12);
+		return indelResultFiltered;
+
+	}
+
+
 
 	public BottomUpCollapseResult bottomUpCollapse (final ObjectCounter<String> barcodes, final int editDistance) {
 

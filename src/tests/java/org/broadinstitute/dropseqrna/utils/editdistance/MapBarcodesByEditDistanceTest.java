@@ -27,6 +27,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -36,10 +37,77 @@ import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.testng.annotations.Test;
 
 import junit.framework.Assert;
+import picard.util.TabbedInputParser;
 
 public class MapBarcodesByEditDistanceTest {
 
 	private static File testData = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/inEditDistSmall.txt");
+
+	private static File indelAnswerKey = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/indel_barcode_repair_answer_key.txt");
+	private static File repairedBC = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/repairedBC.txt");
+	private static File intendedBC = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/potential_intendedBC.txt");
+
+	@Test
+	public void testFindIntendedIndelSequences() {
+		// A set of data collapsed by R.
+		TabbedInputParser parser = new TabbedInputParser(false, indelAnswerKey);
+
+		//key: repaired barcode, value: intended barcode.
+		Map<String, String> expectedResult = new HashMap<>();
+
+		// skip the header
+		String [] header = parser.next();
+		while (parser.hasNext()) {
+			String [] line = parser.next();
+			expectedResult.put(line[0], line[1]);
+		}
+
+
+		// some abmiguous intended sequences that need to be in the starting data so the results work out correctly.
+		List<String> intended=readFile(intendedBC);
+		List<String> repaired = readFile(repairedBC);
+
+		// now run the test!
+		MapBarcodesByEditDistance mbed = new MapBarcodesByEditDistance(true);
+		Map<String,String> result= mbed.findIntendedIndelSequences(repaired, intended, 1);
+
+		// now test
+		for (String repairedBC: result.keySet()) {
+			String expectedIntended=expectedResult.get(repairedBC);
+			if (expectedIntended==null)
+				System.out.println("");
+			String actualIntended =result.get(repairedBC);
+			if (actualIntended==null)
+				System.out.println("");
+			Assert.assertNotNull(expectedIntended);
+			Assert.assertNotNull(actualIntended);
+			Assert.assertEquals(expectedIntended, actualIntended);
+		}
+
+		// check from the other direction
+		for (String repairedBC: expectedResult.keySet()) {
+			String expectedIntended=expectedResult.get(repairedBC);
+			if (expectedIntended==null)
+				System.out.println("");
+			String actualIntended =result.get(repairedBC);
+			if (actualIntended==null)
+				System.out.println("");
+			Assert.assertNotNull(expectedIntended);
+			Assert.assertNotNull(actualIntended);
+			Assert.assertEquals(expectedIntended, actualIntended);
+		}
+
+	}
+
+	private List<String> readFile (final File f) {
+		List<String> result = new ArrayList<>();
+		TabbedInputParser parser = new TabbedInputParser(false, f);
+		while (parser.hasNext()) {
+			String [] line = parser.next();
+			result.add(line[0]);
+		}
+		return result;
+	}
 
 	@Test
 	public void testBottomUpCollapse() {

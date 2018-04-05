@@ -53,6 +53,17 @@ public class LevenshteinDistanceResult {
 		this.substitutionCost=substitutionCost;
 	}
 
+	/*
+	LevenshteinDistanceResult(final char [] stringOne, final char [] stringTwo, final int [] [] distance, final int deletionCost, final int insertionCost, final int substitutionCost) {
+		this.stringOne=stringOne;
+		this.stringTwo=stringTwo;
+		this.distance = distance;
+		this.deletionCost= deletionCost;
+		this.insertionCost=insertionCost;
+		this.substitutionCost=substitutionCost;
+	}
+	*/
+
 	public int getEditDistance () {
 		int l1 = distance.length-1;
 		int l2 = distance[0].length-1;
