@@ -77,16 +77,16 @@ public class MapBarcodesByEditDistance {
 	 * 2) A substitution relationship at base 12.
 	 *
 	 * @param repairedCellBarcodes cell barcodes that have been repaired, and we need to find their intended sequence.  They should all end in N.
-	 * @param otherBarcodes
+	 * @param potentialIntendedSequences Other cell barcodes that do not exhibit UMI Bias, and are the search set to find the "original" barcodes that gave rise to the repaired barcodes.
 	 * @return A map from the repaired sequence to the intended sequence.
 	 */
-	public Map<String, String> findIntendedIndelSequences (final List<String> repairedCellBarcodes, final List<String> otherBarcodes, final int editDistance) {
+	public Map<String, String> findIntendedIndelSequences (final Collection<String> repairedCellBarcodes, final List<String> potentialIntendedSequences, final int editDistance) {
 		Map<String, String> result=new HashMap<>();
 
 		long startTime = System.currentTimeMillis();
 
 		for (String repairedBC: repairedCellBarcodes) {
-			Set<String> possibleIntendedSequences = findIntendedIndelSequences(repairedBC, otherBarcodes, editDistance);
+			Set<String> possibleIntendedSequences = findIntendedIndelSequences(repairedBC, potentialIntendedSequences, editDistance);
 			if (possibleIntendedSequences.size()==1)
 				result.put(repairedBC, possibleIntendedSequences.iterator().next());
 		}
@@ -94,7 +94,7 @@ public class MapBarcodesByEditDistance {
 		if (verbose) {
 			long endTime = System.currentTimeMillis();
 			long duration = (endTime - startTime)/1000;
-			log.info("Collapsed ["+repairedCellBarcodes.size()+"] barcodes with [" + this.NUM_THREADS +"] threads took [" + duration + "] seconds to process");
+			log.info("Collapsed ["+repairedCellBarcodes.size()+"] barcodes against [" + potentialIntendedSequences.size() + "] targets with [" + this.NUM_THREADS +"] threads took [" + duration + "] seconds to process");
 		}
 		return result;
 	}

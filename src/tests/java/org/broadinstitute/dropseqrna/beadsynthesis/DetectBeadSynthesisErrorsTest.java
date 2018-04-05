@@ -152,9 +152,7 @@ public class DetectBeadSynthesisErrorsTest {
 		d.add(generateBaseCounts("EEEE4", BeadSynthesisErrorTypes.NO_ERROR, 100, 9, umiBiasThreshold));
 
 		DetectBeadSynthesisErrors dbse = new DetectBeadSynthesisErrors();
-		List<BarcodeNeighborGroup> result = dbse.buildBarcodeNeighborGroups(d, umiBiasThreshold);
-
-
+		Collection <BarcodeNeighborGroup> result = dbse.buildBarcodeNeighborGroups(d, umiBiasThreshold).values();
 
 		for (BarcodeNeighborGroup g: result) {
 			if (g.getRootSequence().equals("AAAA"))

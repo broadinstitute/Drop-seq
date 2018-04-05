@@ -48,6 +48,7 @@ import org.broadinstitute.dropseqrna.utils.Bases;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 import org.broadinstitute.dropseqrna.utils.StringInterner;
+import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
@@ -134,8 +135,11 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 	@Argument(doc="Override NUM_BARCODES, and process reads that have the cell barcodes in this file instead.  The file has 1 column with no header.", optional=true)
 	public File CELL_BC_FILE;
 
-	@Argument(doc="Repair Synthesis errors with at most this many missing bases detected.", optional=true)
-	public Integer MAX_NUM_ERRORS=1;
+	// @Argument(doc="Repair Synthesis errors with at most this many missing bases detected.", optional=true)
+	private Integer MAX_NUM_ERRORS=1;
+
+	@Argument(doc="Number of threads to use for edit distance collapse.  Defaults to 1.")
+	public int NUM_THREADS=1;
 
 	Double EXTREME_BASE_RATIO=0.8;
 	DetectPrimerInUMI detectPrimerTool=null;
@@ -157,13 +161,43 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 		BiasedBarcodeCollection biasedBarcodeCollection = findBiasedBarcodes(iterator, out, this.SUMMARY);
 		Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions = biasedBarcodeCollection.getBiasedBarcodes();
 
-		// here's where we'll find intended neighbors to T-Biased barcodes.
-		List<BarcodeNeighborGroup> buildBarcodeNeighborGroups = buildBarcodeNeighborGroups(errorBarcodesWithPositions.values(), this.EXTREME_BASE_RATIO);
+		Set<String> potentialIntendedSequences = biasedBarcodeCollection.getAllCellBarcodes();
+
+		// Group T-biased barcodes into groups of neighbors.  The key is the padded sequence the neighbors share
+		Map<String, BarcodeNeighborGroup> barcodeNeighborGroups = buildBarcodeNeighborGroups(errorBarcodesWithPositions.values(), this.EXTREME_BASE_RATIO);
+
+		// find intended sequences for these neighbors
+		Map<String, String> intendedSequenceMap = findIntendedBarcodes(barcodeNeighborGroups, potentialIntendedSequences);
 
 		// clean up the BAM if desired.
 		if (this.OUTPUT!=null)
-			cleanBAM(errorBarcodesWithPositions);
+			cleanBAM(errorBarcodesWithPositions, intendedSequenceMap);
 		return 0;
+	}
+
+	/**
+	 * For each BarcodeNeighborGroup, try to find a sequence that gave rise to these sequences.  This will not always be successful!
+	 * This provides a map from the biased barcodes to the intended sequences where it can be found, but does not include all biased barcodes.
+	 * @return a map from the biased barcode to the intended sequence.  There will be multiple biased barcodes linked to a single intended sequence.
+	 */
+	private Map<String, String> findIntendedBarcodes (final Map<String, BarcodeNeighborGroup> biasedGroups, final Set<String> potentialIntendedSequences) {
+
+		List<String> repairedCellBarcodes = new ArrayList<> (biasedGroups.keySet());
+		List<String> potentialIntendedBarcodes = new ArrayList<>(potentialIntendedSequences);
+
+		MapBarcodesByEditDistance mbed = new MapBarcodesByEditDistance(true, this.NUM_THREADS);
+		Map<String, String> intendedSequenceMap = mbed.findIntendedIndelSequences (repairedCellBarcodes, potentialIntendedBarcodes, 1);
+
+		Map<String,String> result = new HashMap<>();
+		// for each intended sequence, add each of the neighbors to the map.
+		for (String paddedSequence: intendedSequenceMap.keySet()) {
+			BarcodeNeighborGroup bng = biasedGroups.get(paddedSequence);
+			String intendedSeq = intendedSequenceMap.get(paddedSequence);
+			// map all neighbors to the intended sequence.
+			bng.getNeighborCellBarcodes().stream().forEach(x-> result.put(x, intendedSeq));
+		}
+
+		return result;
 	}
 
 
@@ -183,7 +217,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 	 * @return A collection of biased cell barcodes.
 	 */
 	private BiasedBarcodeCollection findBiasedBarcodes (final UMIIterator iter, final PrintStream out, final File outSummary) {
-
+		log.info("Finding Cell Barcodes with UMI errors");
 		// Group the stream of UMICollections into groups with the same cell barcode.
         GroupingIterator<UMICollection> groupingIterator = new GroupingIterator<>(iter,
                 new Comparator<UMICollection>() {
@@ -236,19 +270,20 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
             // add to sorting collection if you have enough UMIs.
             sortingCollection.add(bsed);
         }
-        //TODO: I think I don't need this line.
-        // sortingCollection.doneAdding();
+
         PeekableIterator<BeadSynthesisErrorData> bsedIter = new PeekableIterator<>(sortingCollection.iterator());
 
+        log.info("Writing Biased UMI reports");
         // write out the records from the sorting collection.
         writeFile(bsedIter, out);
         // write out the summary
         writeSummary(summary, outSummary);
         CloserUtil.close(bsedIter);
 
+        // only keep cell barcodes that aren't errors
+        cellBarcodes.removeAll(errorBarcodesWithPositions.keySet());
         // the error barcodes we want to fix.
         BiasedBarcodeCollection result = new BiasedBarcodeCollection(errorBarcodesWithPositions, cellBarcodes);
-
         return result;
 	}
 
@@ -282,7 +317,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 	 * @param umiBiasThreshold
 	 * @return
 	 */
-	List<BarcodeNeighborGroup> buildBarcodeNeighborGroups (final Collection<BeadSynthesisErrorData> errorBarcodesWithPositions, final double umiBiasThreshold) {
+	Map<String, BarcodeNeighborGroup> buildBarcodeNeighborGroups (final Collection<BeadSynthesisErrorData> errorBarcodesWithPositions, final double umiBiasThreshold) {
     	Map<String, BarcodeNeighborGroup> result = new HashMap<>();
     	for (BeadSynthesisErrorData b: errorBarcodesWithPositions) {
     		int polyTErrorPosition = b.getPolyTErrorPosition(umiBiasThreshold);
@@ -299,15 +334,15 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
     		}
 
     	}
-    	List<BarcodeNeighborGroup> neighborGroups= new ArrayList<> (result.values());
-    	return neighborGroups;
+    	// List<BarcodeNeighborGroup> neighborGroups= new ArrayList<> (result.values());
+    	return result;
     }
 
 	/**
 	 * For each problematic cell, replace cell barcodes positions with N.
 	 * Take the replaced bases and prepend them to the UMI, and trim the last <X> bases off the end of the UMI.
 	 */
-	private void cleanBAM (final Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions) {
+	private void cleanBAM (final Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions, final Map<String, String> intendedSequenceMap) {
 		log.info("Cleaning BAM");
         final SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(INPUT, true);
 		SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
@@ -316,7 +351,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 		ProgressLogger pl = new ProgressLogger(log);
 		for (SAMRecord r: new IterableAdapter<>(headerAndIterator.iterator)) {
 			pl.record(r);
-			r=padCellBarcodeFix(r, errorBarcodesWithPositions, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.EXTREME_BASE_RATIO);
+			r=padCellBarcodeFix(r, errorBarcodesWithPositions, intendedSequenceMap, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.EXTREME_BASE_RATIO);
 			if (r!=null)
 				writer.addAlignment(r);
 		}
@@ -328,7 +363,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 	/**
 	 * @return null if the read should not be included in the output BAM.
 	 */
-	SAMRecord padCellBarcodeFix (final SAMRecord r, final Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions, final String cellBarcodeTag, final String molecularBarcodeTag, final double extremeBaseRatio) {
+	SAMRecord padCellBarcodeFix (final SAMRecord r, final Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions, final Map<String, String> intendedSequenceMap, final String cellBarcodeTag, final String molecularBarcodeTag, final double extremeBaseRatio) {
 		String cellBC=r.getStringAttribute(cellBarcodeTag);
 
 		BeadSynthesisErrorData bsed = errorBarcodesWithPositions.get(cellBC);
@@ -353,6 +388,12 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 		String umi = r.getStringAttribute(molecularBarcodeTag);
 		String cellBCFixed = padCellBarcode(cellBC, polyTErrorPosition, umiLength);
 		String umiFixed = fixUMI(cellBC, umi, polyTErrorPosition);
+
+		// if there's an intended sequence, use that instead of the default padded cell barcode.
+		String intendedSeq = intendedSequenceMap.get(cellBC);
+		if (intendedSeq!=null)
+			cellBCFixed=intendedSeq;
+
 		r.setAttribute(cellBarcodeTag, cellBCFixed);
 		r.setAttribute(molecularBarcodeTag, umiFixed);
 		return r;
