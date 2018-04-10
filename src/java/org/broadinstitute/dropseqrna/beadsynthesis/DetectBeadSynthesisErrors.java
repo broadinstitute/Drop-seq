@@ -148,6 +148,9 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 	// @Argument(doc="Repair Synthesis errors with at most this many missing bases detected.", optional=true)
 	private Integer MAX_NUM_ERRORS=1;
 
+	@Argument (doc="Which base to scan for UMI bias when repairing intended sequences with substitution errors.  This is typically the last base of the UMI.  If set to null, program will use the last base of the UMI.  This argument only needs to be set if you've done something unusual with your data.", optional=true)
+	public Integer UMI_BIAS_BASE=null;
+
 	@Argument(doc="Number of threads to use for edit distance collapse.  Defaults to 1.")
 	public int NUM_THREADS=1;
 
@@ -168,7 +171,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 		PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT_STATS));
 
 		UMIIterator iterator = prepareUMIIterator();
-		BiasedBarcodeCollection biasedBarcodeCollection = findBiasedBarcodes(iterator, out, this.SUMMARY);
+		BiasedBarcodeCollection biasedBarcodeCollection = findBiasedBarcodes(iterator, out, this.SUMMARY, UMI_BIAS_BASE);
 		Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions = biasedBarcodeCollection.getBiasedBarcodes();
 
 		ObjectCounter<String> umisPerCell = biasedBarcodeCollection.getUMICounts();
@@ -189,61 +192,6 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 			cleanBAM(errorBarcodesWithPositions, intendedSequenceMap);
 		return 0;
 	}
-
-	void writeReport (final ObjectCounter<String> umisPerCell, final Collection<BarcodeNeighborGroup> neighborGroups, final Map<String, String> intendedSequenceMap, final Map<String, Double> umiBias, final File outFile) {
-		PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(outFile));
-
-		IntendedSequenceBuilder b = new IntendedSequenceBuilder(umisPerCell, umiBias);
-
-		// write header.
-		String [] header = {"intended_sequence", "related_sequences", "deleted_base", "deleted_base_pos", "non_incorperation_rate", "intended_UMIs", "related_median_UMIs", "intended_TBias", "related_median_TBias"};
-		out.println(StringUtils.join(header, "\t"));
-
-		// for each neighbor group, write out a report line.
-		for (BarcodeNeighborGroup ng: neighborGroups) {
-			// this is slightly janky, but the intended sequence map holds raw neighbor barcodes to the intended sequence, so you only need the first barcode in the list.
-			String intendedSequence = intendedSequenceMap.get(ng.getNeighborCellBarcodes().iterator().next());
-			IntendedSequence is = b.build(intendedSequence, ng);
-			writeLine(is, out);
-		}
-		CloserUtil.close(out);
-	}
-
-	void writeLine (final IntendedSequence is, final PrintStream out) {
-		List<String> line = new ArrayList<>();
-		line.add(getNullableString(is.getIntendedSequence()));
-		line.add(StringUtils.join(is.getRelatedSequences(), ":"));
-		line.add(getNullableString(is.getDeletedBase()));
-		line.add(getNullableString(is.getDeletedBasePos()));
-
-		if (is.getDeletionRate()==null)
-			line.add("NA");
-		else
-			line.add(df2.format(is.getDeletionRate()));
-
-		if (is.getIntendedSequenceUMIs()==null)
-			line.add("NA");
-		else
-			line.add(is.getIntendedSequenceUMIs().toString());
-
-		line.add(df2.format(is.getMedianRelatedSequenceUMIs()));
-
-		if (is.getIntendedSequenceUMIBias()==null)
-			line.add("NA");
-		else
-			line.add(df2.format(is.getIntendedSequenceUMIBias()));
-		line.add(df2.format(is.getRelatedMedianUMIBias()));
-
-		String l = StringUtils.join(line, "\t");
-		out.println(l);
-
-	}
-
-	private String getNullableString (final Object o) {
-		if (o==null) return "NA";
-		return o.toString();
-	}
-
 
 	/**
 	 * For each BarcodeNeighborGroup, try to find a sequence that gave rise to these sequences.  This will not always be successful!
@@ -312,7 +260,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 	 *
 	 * @return A collection of biased cell barcodes.
 	 */
-	private BiasedBarcodeCollection findBiasedBarcodes (final UMIIterator iter, final PrintStream out, final File outSummary) {
+	private BiasedBarcodeCollection findBiasedBarcodes (final UMIIterator iter, final PrintStream out, final File outSummary, final Integer lastUMIBase) {
 		log.info("Finding Cell Barcodes with UMI errors");
 		// Group the stream of UMICollections into groups with the same cell barcode.
         GroupingIterator<UMICollection> groupingIterator = new GroupingIterator<>(iter,
@@ -352,7 +300,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
         for (final List<UMICollection> umiCollectionList : groupingIterator) {
             BeadSynthesisErrorData bsed = buildBeadSynthesisErrorData(umiCollectionList, umiStringCache, prog);
             // if the cell has too few UMIs, then go to the next cell and skip all processing.
-            if (bsed.getUMICount() < this.MIN_UMIS_PER_CELL)
+            if (bsed.getNumTranscripts() < this.MIN_UMIS_PER_CELL)
 				// not sure I even want to track this...
             	// summary.LOW_UMI_COUNT++;
             	continue;
@@ -363,9 +311,17 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 
             // explicitly call getting the error type.
             BeadSynthesisErrorType errorType=bsed.getErrorType(this.EXTREME_BASE_RATIO, this.detectPrimerTool, this.EDIT_DISTANCE);
-            // gather up the UMI bias at the last base.
 
+            // gather up the UMI bias at the last base.  Note: this can be over-ridden by supplying a last base position.
             double barcodeUMIBias = bsed.getPolyTFrequencyLastBase();
+            if (lastUMIBase!=null)  {
+            	// bounds check
+            	double freqs [] = bsed.getPolyTFrequency();
+            	if (lastUMIBase>freqs.length)
+            		throw new IllegalArgumentException("Trying to override UMI last base position with ["+ lastUMIBase +"] but UMI length is [" + freqs.length +"]");
+            	barcodeUMIBias=freqs[lastUMIBase-1];
+            }
+
             umiBias.put(bsed.getCellBarcode(), barcodeUMIBias);
 
             // finalize object so it uses less memory.
@@ -684,6 +640,64 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 			charAr[i]=this.PAD_CHARACTER;
 		return new String (charAr);
 	}
+
+	void writeReport (final ObjectCounter<String> umisPerCell, final Collection<BarcodeNeighborGroup> neighborGroups, final Map<String, String> intendedSequenceMap, final Map<String, Double> umiBias, final File outFile) {
+		if (outFile==null) return;  // if the output file is null, this is a no-op.
+		PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(outFile));
+
+		IntendedSequenceBuilder b = new IntendedSequenceBuilder(umisPerCell, umiBias);
+
+		// write header.
+		String [] header = {"intended_sequence", "related_sequences", "num_related", "deleted_base", "deleted_base_pos", "non_incorperation_rate", "intended_UMIs", "related_median_UMIs", "intended_TBias", "related_median_TBias"};
+		out.println(StringUtils.join(header, "\t"));
+
+		// for each neighbor group, write out a report line.
+		for (BarcodeNeighborGroup ng: neighborGroups) {
+			// this is slightly janky, but the intended sequence map holds raw neighbor barcodes to the intended sequence, so you only need the first barcode in the list.
+			String intendedSequence = intendedSequenceMap.get(ng.getNeighborCellBarcodes().iterator().next());
+			IntendedSequence is = b.build(intendedSequence, ng);
+			writeLine(is, out);
+		}
+		CloserUtil.close(out);
+	}
+
+	void writeLine (final IntendedSequence is, final PrintStream out) {
+		List<String> line = new ArrayList<>();
+		line.add(getNullableString(is.getIntendedSequence()));
+		line.add(StringUtils.join(is.getRelatedSequences(), ":"));
+		line.add(Integer.toString(is.getRelatedSequences().size()));
+		line.add(getNullableString(is.getDeletedBase()));
+		line.add(getNullableString(is.getDeletedBasePos()));
+		if (is.getMedianRelatedSequenceUMIs()<this.MIN_UMIS_PER_CELL)
+			log.info("STOP");
+		if (is.getDeletionRate()==null)
+			line.add("NA");
+		else
+			line.add(df2.format(is.getDeletionRate()));
+
+		if (is.getIntendedSequenceUMIs()==null)
+			line.add("NA");
+		else
+			line.add(is.getIntendedSequenceUMIs().toString());
+
+		line.add(df2.format(is.getMedianRelatedSequenceUMIs()));
+
+		if (is.getIntendedSequenceUMIBias()==null)
+			line.add("NA");
+		else
+			line.add(df2.format(is.getIntendedSequenceUMIBias()));
+		line.add(df2.format(is.getRelatedMedianUMIBias()));
+
+		String l = StringUtils.join(line, "\t");
+		out.println(l);
+
+	}
+
+	private String getNullableString (final Object o) {
+		if (o==null) return "NA";
+		return o.toString();
+	}
+
 
 
 	 @Override

@@ -64,9 +64,9 @@ import picard.cmdline.StandardOptionDefinitions;
 oneLineSummary = "Collaps umambiguously related small barcodes into larger neighbors.)",
 programGroup = DropSeq.class)
 
-public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
+public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 
-	private final Log log = Log.getInstance(DetectBarcodeSubstitutionErrors.class);
+	private final Log log = Log.getInstance(DetectBeadSubstitutionErrors.class);
 	private ProgressLogger pl = new ProgressLogger(this.log);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input DropSeq BAM file to analyze", minElements = 1)
@@ -390,7 +390,7 @@ public class DetectBarcodeSubstitutionErrors extends CommandLineProgram{
 
 	/** Stock main method. */
 	public static void main(final String[] args) {
-		System.exit(new DetectBarcodeSubstitutionErrors().instanceMain(args));
+		System.exit(new DetectBeadSubstitutionErrors().instanceMain(args));
 	}
 
 }
