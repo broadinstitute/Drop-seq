@@ -25,6 +25,7 @@ package org.broadinstitute.dropseqrna.beadsynthesis;
 
 import java.io.File;
 import java.io.PrintStream;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -46,6 +47,7 @@ import org.broadinstitute.dropseqrna.utils.BaseDistributionMetric;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
 import org.broadinstitute.dropseqrna.utils.Bases;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 import org.broadinstitute.dropseqrna.utils.StringInterner;
 import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
@@ -102,6 +104,14 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output BAM, with the synthesis error barcodes removed", optional=true)
 	public File OUTPUT;
 
+	@Argument(doc="A report of which barcodes where collapsed, what the intended sequences were, and what base positions were changed.  There are 2 modes of errors reported. "
+			+ "The first is an insertion/deletion changes at bases 1-11 in the intended sequence, where a base in the intended sequence is partially incorperated into the related sequence "
+			+ "resulting in a deletion in the intended sequence generating a new sequence, and an 'insertion' at the last base of the sequence, which is the first base of the UMI. "
+			+ "The second is a substitution event at base 12, where the last base is partially incorperated.  Both changes are the same mechanism, but the signature of the change [indel vs subsitution] differs."
+			+ "Not all repaired barcodes will have an intended sequence - if the base is incorperated at a very low rate compared to the number of UMIs in the repaired cell barcode library size, "
+			+ "the intended sequence may be too small to find.", optional=true)
+	public File REPORT=null;
+
 	@Argument(doc="The sequence of the primer.", optional=true)
 	public String PRIMER_SEQUENCE=null;
 
@@ -125,7 +135,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 
 	// HAS TO BE FILLED IN.
 	@Argument (doc="The minimum number of UMIs required to report a cell barcode.  If this parameter is specified and [NUM_BARCODES or CELL_BC_FILE] are not specified, then all cell barcodes with at least this many UMIs will be analyzed., optional=false")
-	public Integer MIN_UMIS_PER_CELL=25;
+	public Integer MIN_UMIS_PER_CELL=20;
 
 	// OPTIONAL
 	@Argument (doc="Find the top set of <NUM_BARCODES> most common barcodes by HQ reads and only use this set for analysis.", optional=true)
@@ -147,7 +157,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 	SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);
 
 	private Character PAD_CHARACTER='N';
-
+	private static DecimalFormat df2 = new DecimalFormat("#.##");
 
 	@Override
 	protected int doWork() {
@@ -161,13 +171,18 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 		BiasedBarcodeCollection biasedBarcodeCollection = findBiasedBarcodes(iterator, out, this.SUMMARY);
 		Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions = biasedBarcodeCollection.getBiasedBarcodes();
 
-		Set<String> potentialIntendedSequences = biasedBarcodeCollection.getAllCellBarcodes();
+		ObjectCounter<String> umisPerCell = biasedBarcodeCollection.getUMICounts();
+		Map<String, Double> umiBias = biasedBarcodeCollection.getUMIBias();
 
 		// Group T-biased barcodes into groups of neighbors.  The key is the padded sequence the neighbors share
 		Map<String, BarcodeNeighborGroup> barcodeNeighborGroups = buildBarcodeNeighborGroups(errorBarcodesWithPositions.values(), this.EXTREME_BASE_RATIO);
 
 		// find intended sequences for these neighbors
-		Map<String, String> intendedSequenceMap = findIntendedBarcodes(barcodeNeighborGroups, potentialIntendedSequences);
+		Map<String, String> intendedSequenceMap = findIntendedBarcodes(barcodeNeighborGroups, umisPerCell.getKeys(), umiBias);
+
+		// write report about which sequences were collapsed and why
+		writeReport(umisPerCell, barcodeNeighborGroups.values(), intendedSequenceMap, umiBias, this.REPORT);
+
 
 		// clean up the BAM if desired.
 		if (this.OUTPUT!=null)
@@ -175,28 +190,109 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 		return 0;
 	}
 
+	void writeReport (final ObjectCounter<String> umisPerCell, final Collection<BarcodeNeighborGroup> neighborGroups, final Map<String, String> intendedSequenceMap, final Map<String, Double> umiBias, final File outFile) {
+		PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(outFile));
+
+		IntendedSequenceBuilder b = new IntendedSequenceBuilder(umisPerCell, umiBias);
+
+		// write header.
+		String [] header = {"intended_sequence", "related_sequences", "deleted_base", "deleted_base_pos", "non_incorperation_rate", "intended_UMIs", "related_median_UMIs", "intended_TBias", "related_median_TBias"};
+		out.println(StringUtils.join(header, "\t"));
+
+		// for each neighbor group, write out a report line.
+		for (BarcodeNeighborGroup ng: neighborGroups) {
+			// this is slightly janky, but the intended sequence map holds raw neighbor barcodes to the intended sequence, so you only need the first barcode in the list.
+			String intendedSequence = intendedSequenceMap.get(ng.getNeighborCellBarcodes().iterator().next());
+			IntendedSequence is = b.build(intendedSequence, ng);
+			writeLine(is, out);
+		}
+		CloserUtil.close(out);
+	}
+
+	void writeLine (final IntendedSequence is, final PrintStream out) {
+		List<String> line = new ArrayList<>();
+		line.add(getNullableString(is.getIntendedSequence()));
+		line.add(StringUtils.join(is.getRelatedSequences(), ":"));
+		line.add(getNullableString(is.getDeletedBase()));
+		line.add(getNullableString(is.getDeletedBasePos()));
+
+		if (is.getDeletionRate()==null)
+			line.add("NA");
+		else
+			line.add(df2.format(is.getDeletionRate()));
+
+		if (is.getIntendedSequenceUMIs()==null)
+			line.add("NA");
+		else
+			line.add(is.getIntendedSequenceUMIs().toString());
+
+		line.add(df2.format(is.getMedianRelatedSequenceUMIs()));
+
+		if (is.getIntendedSequenceUMIBias()==null)
+			line.add("NA");
+		else
+			line.add(df2.format(is.getIntendedSequenceUMIBias()));
+		line.add(df2.format(is.getRelatedMedianUMIBias()));
+
+		String l = StringUtils.join(line, "\t");
+		out.println(l);
+
+	}
+
+	private String getNullableString (final Object o) {
+		if (o==null) return "NA";
+		return o.toString();
+	}
+
+
 	/**
 	 * For each BarcodeNeighborGroup, try to find a sequence that gave rise to these sequences.  This will not always be successful!
 	 * This provides a map from the biased barcodes to the intended sequences where it can be found, but does not include all biased barcodes.
 	 * @return a map from the biased barcode to the intended sequence.  There will be multiple biased barcodes linked to a single intended sequence.
 	 */
-	private Map<String, String> findIntendedBarcodes (final Map<String, BarcodeNeighborGroup> biasedGroups, final Set<String> potentialIntendedSequences) {
+	private Map<String, String> findIntendedBarcodes (final Map<String, BarcodeNeighborGroup> biasedGroups, final Collection<String> collection, final Map<String, Double> umiBias) {
 
-		List<String> repairedCellBarcodes = new ArrayList<> (biasedGroups.keySet());
-		List<String> potentialIntendedBarcodes = new ArrayList<>(potentialIntendedSequences);
+		Set<String> potentialIntendedBarcodes = new HashSet<>(collection);
+		// gather up biased barcocdes
+		Set<String> toRemove = new HashSet<>();
+		for (BarcodeNeighborGroup bng: biasedGroups.values())
+			toRemove.addAll(bng.getNeighborCellBarcodes());
+		// remove biased barcodes from potential intended barcodes.
+		potentialIntendedBarcodes.removeAll(toRemove);
+
+		List<String> potentialIntendedBarcodesList = new ArrayList<>(potentialIntendedBarcodes);
+
+		List<String> repairedCellBarcodes = new ArrayList<>(biasedGroups.keySet());
 
 		MapBarcodesByEditDistance mbed = new MapBarcodesByEditDistance(true, this.NUM_THREADS);
-		Map<String, String> intendedSequenceMap = mbed.findIntendedIndelSequences (repairedCellBarcodes, potentialIntendedBarcodes, 1);
+		Map<String, String> intendedSequenceMap = mbed.findIntendedIndelSequences (repairedCellBarcodes, potentialIntendedBarcodesList, 1);
 
 		Map<String,String> result = new HashMap<>();
 		// for each intended sequence, add each of the neighbors to the map.
 		for (String paddedSequence: intendedSequenceMap.keySet()) {
 			BarcodeNeighborGroup bng = biasedGroups.get(paddedSequence);
 			String intendedSeq = intendedSequenceMap.get(paddedSequence);
-			// map all neighbors to the intended sequence.
-			bng.getNeighborCellBarcodes().stream().forEach(x-> result.put(x, intendedSeq));
+			if (intendedSeq!=null) {
+				bng.setIntendedSequence(intendedSeq);
+				// map all neighbors to the intended sequence.
+				bng.getNeighborCellBarcodes().stream().forEach(x-> result.put(x, intendedSeq));
+			}
 		}
 
+		//TODO: are we missing BarcodeNeighborGroup?  Probably.  which ones?
+		// ones where no there's no intended sequence.
+		/*
+		Set<String> unrepairedBarcodes = new HashSet<> (biasedGroups.keySet());
+		unrepairedBarcodes.removeAll(intendedSequenceMap.keySet());
+		for (String paddedSequence: unrepairedBarcodes) {
+			log.info("STOP");
+			BarcodeNeighborGroup ng = biasedGroups.get(paddedSequence);
+			// if there's big bias in all but one of the barcodes of the BarcodeNeighborGroup we could call that the intended sequence.
+			for (String n: ng.getNeighborCellBarcodes()) {
+				double umiBiasN = umiBias.get(n);
+			}
+		}
+		*/
 		return result;
 	}
 
@@ -233,6 +329,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 		Map<String, BeadSynthesisErrorData> errorBarcodesWithPositions = new HashMap<>();
 
  		// for holding UMI Strings efficiently
+		// TODO: evaluate if this is needed this anymore now that the report is written out disk immediately.
 		StringInterner  umiStringCache = new StringInterner();
 
 		// a sorting collection so big data can spill to disk before it's sorted and written out as a report.
@@ -242,12 +339,16 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
      	BeadSynthesisErrorsSummaryMetric summary = new BeadSynthesisErrorsSummaryMetric();
 
      	// track the list of cell barcodes with sufficient UMIs to process.  We'll need them later to find intended sequences.
-     	Set<String> cellBarcodes = new HashSet<>();
+     	ObjectCounter<String> umisPerCellBarcode = new ObjectCounter<>();
+
+     	// track the UMI Bias at the last base
+     	Map<String, Double> umiBias = new HashMap<>();
 
      	// a log for processing
      	ProgressLogger prog = new ProgressLogger(log, 1000000, "Processed Cell/Gene UMIs");
 
      	// main data generation loop.
+     	// to ease memory usage, after generating the BeadSynthesisErrorData object, use its cell barcode string for registering additional data.
         for (final List<UMICollection> umiCollectionList : groupingIterator) {
             BeadSynthesisErrorData bsed = buildBeadSynthesisErrorData(umiCollectionList, umiStringCache, prog);
             // if the cell has too few UMIs, then go to the next cell and skip all processing.
@@ -258,13 +359,19 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 
             // add the result to the summary
             summary=addDataToSummary(bsed, summary);
-            cellBarcodes.add(bsed.getCellBarcode()); // track the cell barcode if it's sufficiently large to process.
+            umisPerCellBarcode.incrementByCount(bsed.getCellBarcode(), bsed.getNumTranscripts()); // track the cell barcode if it's sufficiently large to process.
+
             // explicitly call getting the error type.
-            BeadSynthesisErrorTypes errorType=bsed.getErrorType(this.EXTREME_BASE_RATIO, this.detectPrimerTool, this.EDIT_DISTANCE);
+            BeadSynthesisErrorType errorType=bsed.getErrorType(this.EXTREME_BASE_RATIO, this.detectPrimerTool, this.EDIT_DISTANCE);
+            // gather up the UMI bias at the last base.
+
+            double barcodeUMIBias = bsed.getPolyTFrequencyLastBase();
+            umiBias.put(bsed.getCellBarcode(), barcodeUMIBias);
+
             // finalize object so it uses less memory.
             bsed.finalize();
             // only add to the collection if you have UMIs and a repairable error.
-            if (bsed.getUMICount()>=this.MIN_UMIS_PER_CELL && errorType==BeadSynthesisErrorTypes.SYNTH_MISSING_BASE)
+            if (bsed.getUMICount()>=this.MIN_UMIS_PER_CELL && errorType==BeadSynthesisErrorType.SYNTH_MISSING_BASE)
             	errorBarcodesWithPositions.put(bsed.getCellBarcode(), bsed);
 
             // add to sorting collection if you have enough UMIs.
@@ -280,10 +387,8 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
         writeSummary(summary, outSummary);
         CloserUtil.close(bsedIter);
 
-        // only keep cell barcodes that aren't errors
-        cellBarcodes.removeAll(errorBarcodesWithPositions.keySet());
         // the error barcodes we want to fix.
-        BiasedBarcodeCollection result = new BiasedBarcodeCollection(errorBarcodesWithPositions, cellBarcodes);
+        BiasedBarcodeCollection result = new BiasedBarcodeCollection(errorBarcodesWithPositions, umisPerCellBarcode, umiBias);
         return result;
 	}
 
@@ -312,7 +417,8 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 
 
 	/**
-	 * Group errors into related neighbor sequences.
+	 * Group errors into related neighbor sequences.  Only looks at synthesis errors with 1 base missing.
+	 *
 	 * @param errorBarcodesWithPositions
 	 * @param umiBiasThreshold
 	 * @return
@@ -321,18 +427,16 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
     	Map<String, BarcodeNeighborGroup> result = new HashMap<>();
     	for (BeadSynthesisErrorData b: errorBarcodesWithPositions) {
     		int polyTErrorPosition = b.getPolyTErrorPosition(umiBiasThreshold);
-    		// there's an error if the base isn't -1.
-    		if (polyTErrorPosition!= -1) {
-    			int umiLength = b.getBaseLength();
+    		int umiLength = b.getBaseLength();
+    		if (polyTErrorPosition==umiLength && b.getErrorType(umiBiasThreshold)==BeadSynthesisErrorType.SYNTH_MISSING_BASE) {
     			String cellBCRoot = padCellBarcode(b.getCellBarcode(), polyTErrorPosition, umiLength);
-    			BarcodeNeighborGroup bng = result.get(cellBCRoot);
-    			// if the neighbor group is null create and add it.
-    			if (bng==null)
-					bng=new BarcodeNeighborGroup(cellBCRoot);
-    			bng.addNeighbor(b);
-    			result.put(cellBCRoot, bng);
-    		}
-
+        		BarcodeNeighborGroup bng = result.get(cellBCRoot);
+        		// if the neighbor group is null create and add it.
+        		if (bng==null)
+    				bng=new BarcodeNeighborGroup(cellBCRoot);
+        		bng.addNeighbor(b);
+        		result.put(cellBCRoot, bng);
+    			}
     	}
     	// List<BarcodeNeighborGroup> neighborGroups= new ArrayList<> (result.values());
     	return result;
@@ -370,10 +474,10 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 		if (bsed==null) return (r); // no correction data, no fix.
 
 		// we're only going to fix cells where there's one or more synthesis errors
-		BeadSynthesisErrorTypes bset = bsed.getErrorType(extremeBaseRatio, this.detectPrimerTool, this.EDIT_DISTANCE);
-		if (bset==BeadSynthesisErrorTypes.NO_ERROR) return (r); // no error, return.
+		BeadSynthesisErrorType bset = bsed.getErrorType(extremeBaseRatio, this.detectPrimerTool, this.EDIT_DISTANCE);
+		if (bset==BeadSynthesisErrorType.NO_ERROR) return (r); // no error, return.
 		// has an error, not a synthesis error...
-		if (bset!=BeadSynthesisErrorTypes.SYNTH_MISSING_BASE)
+		if (bset!=BeadSynthesisErrorType.SYNTH_MISSING_BASE)
 			return (null);
 
 		// has a synthesis error
@@ -408,7 +512,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 	}
 
 	private BeadSynthesisErrorsSummaryMetric addDataToSummary (final BeadSynthesisErrorData bsde, final BeadSynthesisErrorsSummaryMetric summary) {
-		BeadSynthesisErrorTypes t = bsde.getErrorType(EXTREME_BASE_RATIO, this.detectPrimerTool, this.EDIT_DISTANCE);
+		BeadSynthesisErrorType t = bsde.getErrorType(EXTREME_BASE_RATIO, this.detectPrimerTool, this.EDIT_DISTANCE);
 		if (t==null) {
 			log.info("STOP");
 			t = bsde.getErrorType(EXTREME_BASE_RATIO, this.detectPrimerTool, this.EDIT_DISTANCE);
@@ -450,7 +554,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 		header.add("CELL_BARCODE");
 		header.add("NUM_UMI");
 		header.add("FIRST_BIASED_BASE");
-		header.add(BeadSynthesisErrorTypes.SYNTH_MISSING_BASE.toString());
+		header.add(BeadSynthesisErrorType.SYNTH_MISSING_BASE.toString());
 		header.add("ERROR_TYPE");
 		for (int i=0; i<umiLength; i++)
 			header.add("BASE_"+ Integer.toString(i+1));
@@ -588,6 +692,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 				IOUtil.assertFileIsReadable(input);
 	        IOUtil.assertFileIsWritable(this.OUTPUT_STATS);
 	        IOUtil.assertFileIsWritable(this.SUMMARY);
+	        if (this.REPORT!=null) IOUtil.assertFileIsWritable(this.REPORT);
 
 	        if (this.CELL_BARCODE_TAG!=null & this.NUM_BARCODES!=null)
 	        	throw new TranscriptomeException("Must specify at most one of CELL_BARCODE_TAG or  NUM_BARCODES");

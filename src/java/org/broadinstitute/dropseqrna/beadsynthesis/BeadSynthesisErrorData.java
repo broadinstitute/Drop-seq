@@ -43,8 +43,8 @@ public class BeadSynthesisErrorData {
 
 	// cached results
 	private boolean dataChanged;
-	private BeadSynthesisErrorTypes errorTypeCached=null;
-	private BeadSynthesisErrorTypes errorTypeExtendedCached=null;
+	private BeadSynthesisErrorType errorTypeCached=null;
+	private BeadSynthesisErrorType errorTypeExtendedCached=null;
 
 	// the number of unique sequences without collapse.
 	private int numUMIs;
@@ -66,7 +66,7 @@ public class BeadSynthesisErrorData {
 	 * @param errorType
 	 * @return
 	 */
-	static BeadSynthesisErrorData getInstance(final String cellBarcode, final BeadSynthesisErrorTypes errorType, final BaseDistributionMetricCollection baseCounts) {
+	static BeadSynthesisErrorData getInstance(final String cellBarcode, final BeadSynthesisErrorType errorType, final BaseDistributionMetricCollection baseCounts) {
 		BeadSynthesisErrorData r = new BeadSynthesisErrorData(cellBarcode);
 		r.baseCounts=baseCounts;
 		r.errorTypeCached=errorType;
@@ -152,7 +152,7 @@ public class BeadSynthesisErrorData {
 	 * @return The error type for the data.
 	 */
 	// the caching is ugly and needs to be cleaned up.
-	public BeadSynthesisErrorTypes getErrorType (final double threshold) {
+	public BeadSynthesisErrorType getErrorType (final double threshold) {
 		// return cached result
 		if (!this.dataChanged & this.errorTypeCached!=null) return (this.errorTypeCached);
 		this.dataChanged=false;
@@ -160,40 +160,40 @@ public class BeadSynthesisErrorData {
 		int errorPosition = getErrorBase(threshold);
 		int polyTPos = getPolyTErrorPosition(threshold);
 		if (errorPosition==polyTPos & errorPosition!=-1) {
-			BeadSynthesisErrorTypes t = BeadSynthesisErrorTypes.SYNTH_MISSING_BASE;
+			BeadSynthesisErrorType t = BeadSynthesisErrorType.SYNTH_MISSING_BASE;
 			this.errorTypeCached=t;
 			return t;
 		}
 		else if (hasSingleUMIError(threshold)) {
-			BeadSynthesisErrorTypes t = BeadSynthesisErrorTypes.SINGLE_UMI;
+			BeadSynthesisErrorType t = BeadSynthesisErrorType.SINGLE_UMI;
 			this.errorTypeCached=t;
 			return t;
 		}
 		else if (hasFixedFirstBase(threshold)) {
-			BeadSynthesisErrorTypes t = BeadSynthesisErrorTypes.FIXED_FIRST_BASE;
+			BeadSynthesisErrorType t = BeadSynthesisErrorType.FIXED_FIRST_BASE;
 			this.errorTypeCached=t;
 			return t;
 		}
 		else if (errorPosition!=polyTPos) {
-			BeadSynthesisErrorTypes t = BeadSynthesisErrorTypes.OTHER_ERROR;
+			BeadSynthesisErrorType t = BeadSynthesisErrorType.OTHER_ERROR;
 			this.errorTypeCached=t;
 			return t;
 		}
-		BeadSynthesisErrorTypes t = BeadSynthesisErrorTypes.NO_ERROR;
+		BeadSynthesisErrorType t = BeadSynthesisErrorType.NO_ERROR;
 		this.errorTypeCached=t;
 		return t;
 	}
 
-	BeadSynthesisErrorTypes getErrorType (final double extremeBaseRatio, final DetectPrimerInUMI detectPrimerTool, final Integer editDistanceToPrimer) {
+	BeadSynthesisErrorType getErrorType (final double extremeBaseRatio, final DetectPrimerInUMI detectPrimerTool, final Integer editDistanceToPrimer) {
 		if (!this.dataChanged & this.errorTypeExtendedCached!=null) return (this.errorTypeExtendedCached);
 		this.dataChanged=false;
 
-		BeadSynthesisErrorTypes errorType = this.getErrorType(extremeBaseRatio);
+		BeadSynthesisErrorType errorType = this.getErrorType(extremeBaseRatio);
 		// cache the extended type as the regular type, but there's a chance to change if the detectPrimerTool says so.
 		this.errorTypeExtendedCached=this.errorTypeCached;
 
 		//base case, error is not a single UMI.
-		if (errorType!=BeadSynthesisErrorTypes.SINGLE_UMI)
+		if (errorType!=BeadSynthesisErrorType.SINGLE_UMI)
 			return this.errorTypeExtendedCached;
 		// if there's a primer, run detection.
 		if (detectPrimerTool!=null & editDistanceToPrimer!=null) {
@@ -201,7 +201,7 @@ public class BeadSynthesisErrorData {
 			String singleUMI = this.getUMICounts().getKeysOrderedByCount(true).get(0);
 			boolean primerDetected = detectPrimerTool.isStringInPrimer(singleUMI, editDistanceToPrimer);
 			if (primerDetected)
-				this.errorTypeExtendedCached=BeadSynthesisErrorTypes.PRIMER;
+				this.errorTypeExtendedCached=BeadSynthesisErrorType.PRIMER;
 		}
 		return this.errorTypeExtendedCached;
 	}
@@ -281,6 +281,15 @@ public class BeadSynthesisErrorData {
 		//this.polyTFreq=result;
 
 		return (result);
+	}
+
+	/**
+	 * Returns the T bias at the last base of the UMI.
+	 * @return
+	 */
+	public double getPolyTFrequencyLastBase () {
+		double [] polyT = getPolyTFrequency();
+		return polyT[polyT.length-1];
 	}
 
 	/**

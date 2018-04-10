@@ -82,7 +82,7 @@ public class MapBarcodesByEditDistance {
 	 */
 	public Map<String, String> findIntendedIndelSequences (final Collection<String> repairedCellBarcodes, final List<String> potentialIntendedSequences, final int editDistance) {
 		Map<String, String> result=new HashMap<>();
-
+		//TODO: test 121117_NoRepair_02-13-2018, barcode TGTATTGTTGG, which should be a full deletion.
 		long startTime = System.currentTimeMillis();
 
 		for (String repairedBC: repairedCellBarcodes) {

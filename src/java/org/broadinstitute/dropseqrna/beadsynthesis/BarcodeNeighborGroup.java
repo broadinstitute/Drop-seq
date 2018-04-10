@@ -35,6 +35,7 @@ public class BarcodeNeighborGroup {
 
 	private Set<BeadSynthesisErrorData> neighbors;
 	private final String rootSequence;
+	private String intendedSequence;
 
 	public BarcodeNeighborGroup(final String rootSequence) {
 		this.rootSequence=rootSequence;
@@ -63,4 +64,14 @@ public class BarcodeNeighborGroup {
 	public String getRootSequence() {
 		return rootSequence;
 	}
+
+	public String getIntendedSequence() {
+		return intendedSequence;
+	}
+
+	public void setIntendedSequence(final String intendedSequence) {
+		this.intendedSequence = intendedSequence;
+	}
+
+
 }

@@ -23,28 +23,48 @@
  */
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
+
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 public class BiasedBarcodeCollection {
 	private final Map<String, BeadSynthesisErrorData> biasedBarcodes;
-	private final Set<String> allCellBarcodes;
+	private final ObjectCounter<String> umiCount;
+	private final Map<String, Double> umiBias;
 
 	public BiasedBarcodeCollection ( final Map<String, BeadSynthesisErrorData> biasedBarcodes) {
-		this(biasedBarcodes, null);
+		this(biasedBarcodes, new ObjectCounter<String>(), new HashMap<String, Double>());
 	}
 
-	public BiasedBarcodeCollection ( final Map<String, BeadSynthesisErrorData> biasedBarcodes, final Set<String> allCellBarcodes) {
+	public BiasedBarcodeCollection ( final Map<String, BeadSynthesisErrorData> biasedBarcodes, final ObjectCounter<String> allCellBarcodes, final Map<String, Double> umiBias) {
 		this.biasedBarcodes=biasedBarcodes;
-		this.allCellBarcodes=allCellBarcodes;
+		this.umiCount=allCellBarcodes;
+		this.umiBias=umiBias;
+	}
+
+	public void add (final BeadSynthesisErrorData data) {
+		this.biasedBarcodes.put(data.getCellBarcode(), data);
+	}
+
+	public void addUMIBias (final String cellBarcode, final Double bias) {
+		umiBias.put(cellBarcode, bias);
+	}
+
+	public void incrementUMICount (final String cellBarcode, final int umiCount) {
+		this.umiCount.incrementByCount(cellBarcode, umiCount);
 	}
 
 	public Map<String, BeadSynthesisErrorData> getBiasedBarcodes() {
 		return biasedBarcodes;
 	}
 
-	public Set<String> getAllCellBarcodes() {
-		return allCellBarcodes;
+	public ObjectCounter<String> getUMICounts() {
+		return umiCount;
+	}
+
+	public Map<String, Double> getUMIBias () {
+		return this.umiBias;
 	}
 
 

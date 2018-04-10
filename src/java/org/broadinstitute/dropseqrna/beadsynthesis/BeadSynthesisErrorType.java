@@ -23,7 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
-public enum BeadSynthesisErrorTypes {
+public enum BeadSynthesisErrorType {
 	NO_ERROR("NO_ERROR"),
 	SYNTH_MISSING_BASE("SYNTH_MISSING_BASE"),
 	SINGLE_UMI("SINGLE_UMI"),
@@ -34,7 +34,7 @@ public enum BeadSynthesisErrorTypes {
 	
 	private final String text;
 	
-	private BeadSynthesisErrorTypes(String text) {
+	private BeadSynthesisErrorType(String text) {
 		this.text=text;
 	}
 	
