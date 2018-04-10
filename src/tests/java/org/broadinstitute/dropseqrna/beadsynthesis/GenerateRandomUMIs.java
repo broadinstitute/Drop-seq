@@ -44,7 +44,7 @@ public class GenerateRandomUMIs {
 		this.umiBiasThreshold=umiBiasThreshold;
 	}
 
-	public Collection<String> getUMICollection(final int numBarcodes, final int numBases, final BeadSynthesisErrorTypes errorType) {
+	public Collection<String> getUMICollection(final int numBarcodes, final int numBases, final BeadSynthesisErrorType errorType) {
 
 		switch (errorType) {
 			case SYNTH_MISSING_BASE:  return getBiasedUMIs(numBarcodes, numBases);
