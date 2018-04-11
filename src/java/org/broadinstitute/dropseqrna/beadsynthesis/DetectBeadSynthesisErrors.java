@@ -107,8 +107,8 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 	@Argument(doc="A report of which barcodes where collapsed, what the intended sequences were, and what base positions were changed.  There are 2 modes of errors reported. "
 			+ "The first is an insertion/deletion changes at bases 1-11 in the intended sequence, where a base in the intended sequence is partially incorperated into the related sequence "
 			+ "resulting in a deletion in the intended sequence generating a new sequence, and an 'insertion' at the last base of the sequence, which is the first base of the UMI. "
-			+ "The second is a substitution event at base 12, where the last base is partially incorperated.  Both changes are the same mechanism, but the signature of the change [indel vs subsitution] differs."
-			+ "Not all repaired barcodes will have an intended sequence - if the base is incorperated at a very low rate compared to the number of UMIs in the repaired cell barcode library size, "
+			+ "The second is a substitution event at base 12, where the last base is partially incorporated.  Both changes are the same mechanism, but the signature of the change [indel vs subsitution] differs."
+			+ "Not all repaired barcodes will have an intended sequence - if the base is incorporated at a very low rate compared to the number of UMIs in the repaired cell barcode library size, "
 			+ "the intended sequence may be too small to find.", optional=true)
 	public File REPORT=null;
 
@@ -648,7 +648,7 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 		IntendedSequenceBuilder b = new IntendedSequenceBuilder(umisPerCell, umiBias);
 
 		// write header.
-		String [] header = {"intended_sequence", "related_sequences", "num_related", "deleted_base", "deleted_base_pos", "non_incorperation_rate", "intended_UMIs", "related_median_UMIs", "intended_TBias", "related_median_TBias"};
+		String [] header = {"intended_sequence", "related_sequences", "num_related", "deleted_base", "deleted_base_pos", "non_incorporated_rate", "intended_UMIs", "related_median_UMIs", "intended_TBias", "related_median_TBias"};
 		out.println(StringUtils.join(header, "\t"));
 
 		// for each neighbor group, write out a report line.
