@@ -23,10 +23,6 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.PeekableIterator;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,6 +32,9 @@ import java.util.Map;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
 
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.PeekableIterator;
 import picard.util.TabbedTextFileWithHeaderParser;
 
 /**
@@ -52,7 +51,7 @@ public class UMICollection {
 	public UMICollection (final String cellBarcode, final String geneName) {
 		this.cellBarcode = cellBarcode;
 		this.geneName = geneName;
-		molecularBarcodeCounts=new ObjectCounter<String>();
+		molecularBarcodeCounts=new ObjectCounter<>();
 	}
 
 	public void incrementMolecularBarcodeCount (final String molecularBarcode, final int count) {
@@ -176,7 +175,10 @@ public class UMICollection {
 	 * @return
 	 */
 	private ObjectCounter<String> collapseByEditDistance (final ObjectCounter<String> counts, final int editDistance) {
-		ObjectCounter <String> result = new ObjectCounter<String>();
+		// short circuit when ED=0.  Useful for huge data sets.
+		if (editDistance==0) return counts;
+
+		ObjectCounter <String> result = new ObjectCounter<>();
 
 		MapBarcodesByEditDistance mbed = new MapBarcodesByEditDistance(false, 0);
 		Map<String, List<String>> collapseMap = mbed.collapseBarcodes(counts, false, editDistance);
@@ -196,12 +198,12 @@ public class UMICollection {
 	public static Collection<UMICollection> parseUMICollectionFile (final File input) {
 		IOUtil.assertFileIsReadable(input);
 
-		Collection<UMICollection> result = new ArrayList<UMICollection>();
+		Collection<UMICollection> result = new ArrayList<>();
 		TabbedTextFileWithHeaderParser parser = new TabbedTextFileWithHeaderParser(input);
 
 		UMICollection currentUMI = null;
 
-		PeekableIterator<TabbedTextFileWithHeaderParser.Row> parserIter = new PeekableIterator<TabbedTextFileWithHeaderParser.Row>(parser.iterator());
+		PeekableIterator<TabbedTextFileWithHeaderParser.Row> parserIter = new PeekableIterator<>(parser.iterator());
 
 		if (parserIter.hasNext()) {
 			TabbedTextFileWithHeaderParser.Row row  =parserIter.peek();
