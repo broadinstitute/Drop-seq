@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.utils.editdistance;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,6 +38,7 @@ import java.util.Set;
  *
  */
 public class BottomUpCollapseResult {
+
 	// maps a smaller barcode that unambiguously is related to a larger barcode
 	private Map<String,String> barcodeMap;
 	// a set of barcodes that map to > 1 larger barcode
@@ -101,5 +103,63 @@ public class BottomUpCollapseResult {
 				this.barcodeMap.remove(smallBarcode);
 		}
 	}
+
+	/**
+	 * Find a set of common barcode changes where a base has a very common error mode (see gatherCommonPatterns).
+	 * Create a new BottomUpCollapseResult object where the non-common changes observed are set to be ambiguous.
+	 * @param freqThreshold The minimum frequency of the change to label a base change as common.
+	 * @return a new BottomUpCollapseResult where barcode pairs in non common patterns are set to have the smaller neighbor be ambiguous instead
+	 * of collapsing it into the larger neighbor.
+	 */
+	public BottomUpCollapseResult makeNonCommonChangesAmbiguous (final double freqThreshold) {
+		BottomUpCollapseResult result = new BottomUpCollapseResult();
+		// A->C position 0. (should be ambiguous)
+		// c.addPair("CCGTA","ACGTA");
+
+		BarcodeSubstitutionCollection c = gatherCommonPatterns(freqThreshold);
+		Iterator<String> smalls = this.getUnambiguousSmallBarcodes().iterator();
+		while (smalls.hasNext()) {
+			String neighborBarcode=smalls.next();
+			String intendedBarcode = this.getLargerRelatedBarcode(neighborBarcode);
+			boolean approvedPattern = c.containsPattern(intendedBarcode, neighborBarcode);
+			// this pattern isn't what you want, set the neighbor barcodes to be ambiguous.
+			if (approvedPattern)
+				result.addPair(neighborBarcode, intendedBarcode);
+			else
+				// remove the neighbor barcode from the map so it isn't collapsed, then add it as ambiguous so it's cleaned up.
+				result.addAmbiguousBarcode(neighborBarcode);
+		}
+
+		return result;
+
+
+	}
+
+	/**
+	 * From all the pairs of barcodes, find the common patterns.
+	 * These are changes that occur more than some frequency of the time at a base position.
+	 * For example, if A->C changes occur more than 50% of the time at position 1 (and all other data is random)
+	 * return an object containing the A->C change at position 1.
+	 * @param freqThreshold The minimum frequency of the change to label a base change as common.
+	 * @return
+	 */
+	public BarcodeSubstitutionCollection gatherCommonPatterns (final double freqThreshold) {
+		// gather up all the patterns.
+		BarcodeSubstitutionCollection c = new BarcodeSubstitutionCollection();
+		Iterator<String> smalls = this.getUnambiguousSmallBarcodes().iterator();
+		while (smalls.hasNext()) {
+			String neighborBarcode=smalls.next();
+			String intendedBarcode = this.getLargerRelatedBarcode(neighborBarcode);
+			c.add(intendedBarcode, neighborBarcode);
+		}
+		// replace
+		c=c.filterToCommonSubstitutionPatterns(freqThreshold);
+		return c;
+	}
+
+
+
+
+
 
 }

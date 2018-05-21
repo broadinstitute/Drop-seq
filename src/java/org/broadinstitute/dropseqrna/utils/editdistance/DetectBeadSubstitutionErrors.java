@@ -84,6 +84,10 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 	@Argument(doc="Remove smaller barcodes that map at the edit distance to multiple larger barcodes.")
 	public Boolean FILTER_AMBIGUOUS=true;
 
+	@Argument (doc="Only repair substiution patterns that occur at a base as more than <FREQ_COMMON_SUBSTITUTION> of the total changes.  We expect there to be a single dominant barcode change [from say A->C at base 1] due to a synthesis error at that base.  "
+			+ "In those cases, we want to perform repair, but we don't want to arbitrarily combine barcodes together.  Set this to 0 to combine everything...but testing has revealed that this will combine barcodes capriciously so we don't recommend it!")
+	public double FREQ_COMMON_SUBSTITUTION=0.5;
+
 	@Argument(doc="The cell barcode tag.")
 	public String CELL_BARCODE_TAG="XC";
 
@@ -152,12 +156,15 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
         // remove any ambiguous barcodes that are both intended sequences AND neighbors.
         result=pruneTransientNeighbors(result, umiCounts);
 
+        // find the most common substitution patterns and filter BottomUpCollapseResult to that set.
+        // use this only to repair.
+        BottomUpCollapseResult resultClean = result.makeNonCommonChangesAmbiguous(this.FREQ_COMMON_SUBSTITUTION);
 
         // write report on which substitutions were found
-        if (this.OUTPUT_REPORT!=null) writeReport(result, umiResult);
+        if (this.OUTPUT_REPORT!=null) writeReport(result, resultClean, umiResult);
 
         // perform repair/filtering.
-        repairBAM(result);
+        repairBAM(resultClean);
         log.info("Finished");
 		return 0;
 	}
@@ -195,7 +202,7 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 		return ambiguousBarcodes.stream().mapToInt(x-> umiCounts.getCountForKey(x)).sum();
 	}
 
-	private void writeReport (final BottomUpCollapseResult result, final UMIsPerCellResult umiResult) {
+	private void writeReport (final BottomUpCollapseResult result, final BottomUpCollapseResult resultClean, final UMIsPerCellResult umiResult) {
 		PrintStream outReport = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUTPUT_REPORT));
 
 		// write comments section, each line starts with a "#"
@@ -214,7 +221,7 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 		outReport.println("# POLY_T_POSITION="+umiResult.getPolyTPosition());
 
 		/// write header
-		String [] header= {"intended_barcode", "neighbor_barcode", "intended_size", "neighbor_size", "position", "intended_base", "neighbor_base"};
+		String [] header= {"intended_barcode", "neighbor_barcode", "intended_size", "neighbor_size", "position", "intended_base", "neighbor_base", "repaired"};
 		outReport.println(StringUtil.join("\t", header));
 
 		ObjectCounter<String> umiCounts=umiResult.getUmisPerCell();
@@ -222,21 +229,22 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 		while (smalls.hasNext()) {
 			String small=smalls.next();
 			String large = result.getLargerRelatedBarcode(small);
-			int [] pos = HammingDistance.getHammingDistanceChangePositions(small, large);
-			if (pos.length!=1)
-				new IllegalArgumentException("Strings don't have edit distance 1!");
-			String intendedBase = large.substring(pos[0], pos[0]+1);
-			String neighborBase = small.substring(pos[0], pos[0]+1);
-			// output position is one based!
-			String [] body = {large, small, Integer.toString(umiCounts.getCountForKey(large)), Integer.toString(umiCounts.getCountForKey(small)),
-					Integer.toString(pos[0]+1), intendedBase, neighborBase};
+			BarcodeSubstitutionPair p = new BarcodeSubstitutionPair(large, small);
+			String cleanLarger = resultClean.getLargerRelatedBarcode(small);
+			boolean repaired = cleanLarger!=null;
 
+			String [] body = {large, small, Integer.toString(umiCounts.getCountForKey(large)), Integer.toString(umiCounts.getCountForKey(small)),
+					Integer.toString(p.getPosition()+1), p.getIntendedBase(), p.getNeighborBase(), Boolean.toString(repaired)};
 			outReport.println(StringUtil.join("\t", body));
 		}
 
 
 		CloserUtil.close(outReport);
 	}
+
+
+
+
 
 
 	private void repairBAM (final BottomUpCollapseResult result) {
