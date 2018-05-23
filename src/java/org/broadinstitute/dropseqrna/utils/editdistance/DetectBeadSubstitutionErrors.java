@@ -78,6 +78,9 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 	@Argument(doc="Output report detailing which barcodes were merged, and what the position of the substitution and intended/changed bases were for each pair of barcordes merged.", optional=true)
 	public File OUTPUT_REPORT;
 
+	@Argument(doc="Output the number of substitutions found at each base, from intended sequence to neighbor sequence.", optional=true)
+	public File OUTPUT_SUMMARY;
+
 	@Argument(doc="The output barcode tag for the newly collapsed barcodes.  Defaults to the CELL_BARCODE_TAG if not set.", optional=true)
 	public String OUT_CELL_BARCODE_TAG;
 
@@ -86,7 +89,7 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 
 	@Argument (doc="Only repair substiution patterns that occur at a base as more than <FREQ_COMMON_SUBSTITUTION> of the total changes.  We expect there to be a single dominant barcode change [from say A->C at base 1] due to a synthesis error at that base.  "
 			+ "In those cases, we want to perform repair, but we don't want to arbitrarily combine barcodes together.  Set this to 0 to combine everything...but testing has revealed that this will combine barcodes capriciously so we don't recommend it!")
-	public double FREQ_COMMON_SUBSTITUTION=0.5;
+	public double FREQ_COMMON_SUBSTITUTION=0.8;
 
 	@Argument(doc="The cell barcode tag.")
 	public String CELL_BARCODE_TAG="XC";
@@ -124,9 +127,11 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 			IOUtil.assertFileIsReadable(input);
         IOUtil.assertFileIsWritable(OUTPUT);
         if (this.OUTPUT_REPORT!=null) IOUtil.assertFileIsWritable(this.OUTPUT_REPORT);
+        if (this.OUTPUT_SUMMARY!=null) IOUtil.assertFileIsWritable(this.OUTPUT_SUMMARY);
+
         // I wanted to write out the UMIs per cell, but I only can generate the pre-repaired UMIs per cell, which isn't representative of the output.
         // this would be a super-set of the cell barcodes that have 20 UMIs per cell, since they can be filtered/repaired.
-        PrintStream outCellList = null;
+        // PrintStream outCellList = null;
         /*
         if (this.OUTPUT_CELL_LIST!=null) {
         	IOUtil.assertFileIsWritable(this.OUTPUT_CELL_LIST);
@@ -143,7 +148,7 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
                 this.READ_MQ, false, true, cellBarcodes, true);
 
         // get list of barcodes that have enough UMIs, and are not polyT biased.
-        UMIsPerCellResult umiResult=getUMIsPerCell(umiIterator, this.MIN_UMIS_PER_CELL, this.UMI_BIAS_BASE, this.UMI_BIAS_THRESHOLD, outCellList);
+        UMIsPerCellResult umiResult=getUMIsPerCell(umiIterator, this.MIN_UMIS_PER_CELL, this.UMI_BIAS_BASE, this.UMI_BIAS_THRESHOLD, null);
         ObjectCounter<String> umiCounts=umiResult.getUmisPerCell();
 
         // how do they collapse bottom up?
@@ -153,12 +158,15 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
         log.info("Barcode Collapse Complete - ["+ result.getUnambiguousSmallBarcodes().size() + "] barcodes collapsed");
         umiIterator.close();
 
-        // remove any ambiguous barcodes that are both intended sequences AND neighbors.
-        result=pruneTransientNeighbors(result, umiCounts);
-
         // find the most common substitution patterns and filter BottomUpCollapseResult to that set.
         // use this only to repair.
-        BottomUpCollapseResult resultClean = result.makeNonCommonChangesAmbiguous(this.FREQ_COMMON_SUBSTITUTION);
+        BarcodeSubstitutionCollection commonChanges = result.gatherCommonPatterns(this.FREQ_COMMON_SUBSTITUTION);
+        BottomUpCollapseResult resultClean = result.makeNonCommonChangesAmbiguous(commonChanges);
+
+        writeCommonSubstitutionReport(result, commonChanges, this.OUTPUT_SUMMARY);
+        // remove any ambiguous barcodes that are both intended sequences AND neighbors.
+        result=pruneTransientNeighbors(result, umiCounts);
+        resultClean=pruneTransientNeighbors(resultClean, umiCounts);
 
         // write report on which substitutions were found
         if (this.OUTPUT_REPORT!=null) writeReport(result, resultClean, umiResult);
@@ -167,6 +175,30 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
         repairBAM(resultClean);
         log.info("Finished");
 		return 0;
+	}
+
+
+	private void writeCommonSubstitutionReport (final BottomUpCollapseResult result, final BarcodeSubstitutionCollection commonChanges, final File outFile) {
+		if (outFile==null) return;
+		PrintStream outReport = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(outFile));
+		String [] header = {"position", "intended_base", "substitution_base", "count", "repaired"};
+		outReport.println(StringUtil.join("\t", header));
+
+		String [] bases= {"A", "C", "G", "T"};
+
+		BarcodeSubstitutionCollection allChanges = result.gatherAllPatterns();
+		List<Integer> positions = allChanges.getPositions();
+		for (int position : positions)
+			for (String intendedBase: bases)
+				for (String neighborBase: bases)
+					if (!intendedBase.equals(neighborBase)) {
+						int count = allChanges.getCount(intendedBase, neighborBase, position);
+						int commonCount = commonChanges.getCount(intendedBase, neighborBase, position);
+						boolean used = commonCount >0;
+						String [] line = {Integer.toString(position+1), intendedBase, neighborBase, Integer.toString(count), Boolean.toString(used).toUpperCase()};
+						outReport.println(StringUtil.join("\t", line));
+					}
+		outReport.close();
 	}
 
 	/**
@@ -221,7 +253,7 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 		outReport.println("# POLY_T_POSITION="+umiResult.getPolyTPosition());
 
 		/// write header
-		String [] header= {"intended_barcode", "neighbor_barcode", "intended_size", "neighbor_size", "position", "intended_base", "neighbor_base", "repaired"};
+		String [] header= {"intended_barcode", "neighbor_barcode", "intended_size", "neighbor_size", "position", "intended_base", "neighbor_base", "repaired", "filtered"};
 		outReport.println(StringUtil.join("\t", header));
 
 		ObjectCounter<String> umiCounts=umiResult.getUmisPerCell();
@@ -234,10 +266,9 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 			boolean repaired = cleanLarger!=null;
 
 			String [] body = {large, small, Integer.toString(umiCounts.getCountForKey(large)), Integer.toString(umiCounts.getCountForKey(small)),
-					Integer.toString(p.getPosition()+1), p.getIntendedBase(), p.getNeighborBase(), Boolean.toString(repaired)};
+					Integer.toString(p.getPosition()+1), p.getIntendedBase(), p.getNeighborBase(), Boolean.toString(repaired).toUpperCase()};
 			outReport.println(StringUtil.join("\t", body));
 		}
-
 
 		CloserUtil.close(outReport);
 	}

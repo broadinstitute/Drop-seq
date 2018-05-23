@@ -24,6 +24,7 @@
 
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.broadinstitute.dropseqrna.utils.editdistance.BarcodeSubstitutionCollection.BarcodeSubstitutionElement;
@@ -89,22 +90,49 @@ public class BarcodeSubstitutionCollectionTest {
 			String neighbor = "ACATA";
 			c.add(intended, neighbor);
 		}
-		// add a little noise
+		// add a little noise (G->C)
 		c.add("ACGTA", "ACCTA");
+
+		// A second dominant change: T->C base 3 (position 2)
+		for (int i=0; i<5; i++) {
+			String intended = "ACTTA";
+			String neighbor = "ACCTA";
+			c.add(intended, neighbor);
+		}
+		// add a little noise (T->A)
+		c.add("ACTTA", "ACATA");
+
 
 		//validate that the freqs are not one because of the noise.
 		int pos = 0;
 
-		BarcodeSubstitutionElement e = c.getMostCommonSubsitution(pos);
+		Collection<BarcodeSubstitutionElement> el = c.getMostCommonSubsitutions(pos, 0.5);
+		Assert.assertEquals(el.size(), 1);
+		BarcodeSubstitutionElement e = el.iterator().next();
+
 		double freq = c.getSubsitutionFrequency(e, pos);
 		Assert.assertTrue(e.getIntendedBase().equals("A") && e.getNeighborbase().equals("T"));
 		Assert.assertEquals(freq, 0.8333333, 0.001);
 
-		pos=2;
-		e = c.getMostCommonSubsitution(pos);
-		freq = c.getSubsitutionFrequency(e, pos);
-		Assert.assertTrue(e.getIntendedBase().equals("G") && e.getNeighborbase().equals("A") );
-		Assert.assertEquals(freq, 0.8333333, 0.001);
+		pos=2; // two changes, G->A, T->C.  Order not guaranteed.
+		el = c.getMostCommonSubsitutions(pos, 0.5);
+		Assert.assertEquals(el.size(), 2);
+		for (BarcodeSubstitutionElement bse: el)
+			if (bse.getNeighborbase().equals("A")) {
+				String intendedBase="G";
+				freq = c.getSubsitutionFrequency(bse, pos,intendedBase);
+				Assert.assertTrue(bse.getIntendedBase().equals(intendedBase) && bse.getNeighborbase().equals("A") );
+				Assert.assertEquals(freq, 0.83333, 0.001);
+			}
+			else if (bse.getNeighborbase().equals("C")) {
+				String intendedBase="T";
+				freq = c.getSubsitutionFrequency(bse, pos, intendedBase);
+				Assert.assertTrue(bse.getIntendedBase().equals(intendedBase) && bse.getNeighborbase().equals("C") );
+				Assert.assertEquals(freq, 0.83333, 0.001);
+			} else
+				// this shouldn't happen.
+				Assert.assertTrue(false);
+
 
 		// add in some noise at other positions.
 		// position 1 changes, expected freq =0.33
@@ -125,16 +153,33 @@ public class BarcodeSubstitutionCollectionTest {
 		// after cleanup!
 		pos = 0;
 
-		e = result.getMostCommonSubsitution(pos);
-		freq = result.getSubsitutionFrequency(e, pos);
+		// the frequency should be fixed at 1 for all changes.
+		el = result.getMostCommonSubsitutions(pos, freq);
+		Assert.assertEquals(el.size(), 1);
+		e = el.iterator().next();
+		freq = result.getSubsitutionFrequency(e, pos, "A");
 		Assert.assertTrue(e.getIntendedBase().equals("A") && e.getNeighborbase().equals("T"));
 		Assert.assertEquals(freq, 1, 0.001);
 
 		pos=2;
-		e = result.getMostCommonSubsitution(pos);
-		freq = result.getSubsitutionFrequency(e, pos);
-		Assert.assertTrue(e.getIntendedBase().equals("G") && e.getNeighborbase().equals("A") );
-		Assert.assertEquals(freq, 1, 0.001);
+
+		el = result.getMostCommonSubsitutions(pos, freq);
+
+		for (BarcodeSubstitutionElement bse: el)
+			if (bse.getNeighborbase().equals("A")) {
+				String intendedBase="G";
+				freq = result.getSubsitutionFrequency(bse, pos,intendedBase);
+				Assert.assertTrue(bse.getIntendedBase().equals(intendedBase) && bse.getNeighborbase().equals("A") );
+				Assert.assertEquals(freq, 1, 0.001);
+			}
+			else if (bse.getNeighborbase().equals("C")) {
+				String intendedBase="T";
+				freq = result.getSubsitutionFrequency(bse, pos, intendedBase);
+				Assert.assertTrue(bse.getIntendedBase().equals(intendedBase) && bse.getNeighborbase().equals("C") );
+				Assert.assertEquals(freq, 1, 0.001);
+			} else
+				// this shouldn't happen.
+				Assert.assertTrue(false);
 
 	}
 }

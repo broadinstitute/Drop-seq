@@ -111,17 +111,14 @@ public class BottomUpCollapseResult {
 	 * @return a new BottomUpCollapseResult where barcode pairs in non common patterns are set to have the smaller neighbor be ambiguous instead
 	 * of collapsing it into the larger neighbor.
 	 */
-	public BottomUpCollapseResult makeNonCommonChangesAmbiguous (final double freqThreshold) {
+	public BottomUpCollapseResult makeNonCommonChangesAmbiguous (final BarcodeSubstitutionCollection commonChanges) {
 		BottomUpCollapseResult result = new BottomUpCollapseResult();
-		// A->C position 0. (should be ambiguous)
-		// c.addPair("CCGTA","ACGTA");
 
-		BarcodeSubstitutionCollection c = gatherCommonPatterns(freqThreshold);
 		Iterator<String> smalls = this.getUnambiguousSmallBarcodes().iterator();
 		while (smalls.hasNext()) {
 			String neighborBarcode=smalls.next();
 			String intendedBarcode = this.getLargerRelatedBarcode(neighborBarcode);
-			boolean approvedPattern = c.containsPattern(intendedBarcode, neighborBarcode);
+			boolean approvedPattern = commonChanges.containsPattern(intendedBarcode, neighborBarcode);
 			// this pattern isn't what you want, set the neighbor barcodes to be ambiguous.
 			if (approvedPattern)
 				result.addPair(neighborBarcode, intendedBarcode);
@@ -156,6 +153,22 @@ public class BottomUpCollapseResult {
 		c=c.filterToCommonSubstitutionPatterns(freqThreshold);
 		return c;
 	}
+
+	public BarcodeSubstitutionCollection gatherAllPatterns () {
+		// gather up all the patterns.
+		BarcodeSubstitutionCollection c = new BarcodeSubstitutionCollection();
+		Iterator<String> smalls = this.getUnambiguousSmallBarcodes().iterator();
+		while (smalls.hasNext()) {
+			String neighborBarcode=smalls.next();
+			String intendedBarcode = this.getLargerRelatedBarcode(neighborBarcode);
+			c.add(intendedBarcode, neighborBarcode);
+		}
+		// replace
+		return c;
+	}
+
+
+
 
 
 

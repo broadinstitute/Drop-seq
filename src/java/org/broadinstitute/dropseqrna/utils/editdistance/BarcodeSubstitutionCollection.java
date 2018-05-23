@@ -25,6 +25,7 @@
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +44,7 @@ import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 public class BarcodeSubstitutionCollection {
 
 	private Map<Integer, ObjectCounter<BarcodeSubstitutionElement>> substitutionCountsByPosition;
+
 
 	public BarcodeSubstitutionCollection() {
 		substitutionCountsByPosition = new HashMap<>();
@@ -92,6 +94,45 @@ public class BarcodeSubstitutionCollection {
 	}
 
 	/**
+	 * Get the most commonly occurring substitution change at a position and starting base.
+	 * Multiple substitutions are returned at a single position (1 for each intended base),
+	 * for example A->C and G->T could both occur at position 1 as the dominant changes.  In the previous example,
+	 * A would not also frequently change to G or T, and G would not change to A or C.
+	 *
+	 * @param position The position to search for common substitution.
+	 * @param freqThreshold what fraction of base changes from intended to neighbor sequence have to a particular base to be added to the collection.
+	 * @return
+	 */
+	public Collection<BarcodeSubstitutionElement> getMostCommonSubsitutions (final int position, final double freqThreshold) {
+		ObjectCounter<BarcodeSubstitutionElement> o = substitutionCountsByPosition.get(position);
+		// map from intended base to a object counter containing those changes.
+		Map<String, ObjectCounter<BarcodeSubstitutionElement>> mapIntendedBase = new HashMap<>();
+		for (BarcodeSubstitutionElement e : o.getKeys()) {
+			String i = e.getIntendedBase();
+			ObjectCounter<BarcodeSubstitutionElement> r = mapIntendedBase.get(i);
+			if (r==null) {
+				r = new ObjectCounter<>();
+				mapIntendedBase.put(i, r);
+			}
+			r.incrementByCount(e, o.getCountForKey(e));
+		}
+		//gather the mode from each object counter, validate that it's above the desired frequency.
+		List<BarcodeSubstitutionElement> result = new ArrayList<>();
+		for (String intendedBase : mapIntendedBase.keySet()) {
+			ObjectCounter<BarcodeSubstitutionElement> oc = mapIntendedBase.get(intendedBase);
+			BarcodeSubstitutionElement common = oc.getMode();
+			int countMode = oc.getCountForKey(common);
+			int total = oc.getTotalCount();
+			double frac = (double) countMode / (double) total;
+			if (frac>=freqThreshold)
+				result.add(common);
+		}
+
+		return result;
+	}
+
+
+	/**
 	 * Get the frequency of the most commonly occurring edit substitution change.
 	 * @param position The base position to check
 	 * @param e The base change from intended sequence to neighbor sequence.
@@ -100,6 +141,28 @@ public class BarcodeSubstitutionCollection {
 	public double getSubsitutionFrequency (final BarcodeSubstitutionElement e, final int position) {
 		int countMode = getCount (e, position);
 		int sum = getTotalSubsitutionsAtPosition(position);
+		// no divide by 0 please.
+		if (sum==0) return 0;
+		double freq = (double) countMode / (double) sum;
+		return freq;
+	}
+
+	/**
+	 * Get the frequency of the most commonly occurring edit substitution change, for a particular intended base.
+	 * @param position The base position to check
+	 * @param e The base change from intended sequence to neighbor sequence.
+	 * @param intendedBase the intended base at this position.
+	 * @return the frequency of this substitution event at this position.
+	 */
+	public double getSubsitutionFrequency (final BarcodeSubstitutionElement e, final int position, final String intendedBase) {
+		int countMode = getCount (e, position);
+
+		ObjectCounter<BarcodeSubstitutionElement> o = substitutionCountsByPosition.get(position);
+		if (o==null) return 0;
+		int sum=0;
+		for (BarcodeSubstitutionElement bse: o.getKeys())
+			if (bse.getIntendedBase().equals(intendedBase))
+				sum+=o.getCountForKey(bse);
 		// no divide by 0 please.
 		if (sum==0) return 0;
 		double freq = (double) countMode / (double) sum;
@@ -117,7 +180,9 @@ public class BarcodeSubstitutionCollection {
 		return o.getTotalCount();
 	}
 
-
+	// need to change this so it goes from the intended sequence to a very common new sequence.
+	// this means there can be more than one repair per base.  IE: A->C and C->G at position 1.
+	/*
 	public BarcodeSubstitutionCollection filterToCommonSubstitutionPatterns (final double freqThreshold) {
 		BarcodeSubstitutionCollection result = new BarcodeSubstitutionCollection();
 
@@ -136,6 +201,35 @@ public class BarcodeSubstitutionCollection {
 		}
 		return result;
 	}
+	*/
+
+	/**
+	 * Filters the substitution collection to the most commonly occurring change at each position AND intended base.
+	 * Each position and intended base will have 0 to 1 valid substitution patterns.
+	 * @param freqThreshold For a base change from an intended base to one of 3 possible neighbors, what fraction of
+	 * the total number of substitutions come from the most commonly occurring base change.
+	 * @return
+	 */
+	public BarcodeSubstitutionCollection filterToCommonSubstitutionPatterns (final double freqThreshold) {
+		BarcodeSubstitutionCollection result = new BarcodeSubstitutionCollection();
+
+		// scan for common problems.
+		List<Integer> positions = this.getPositions();
+		for (int i=0; i<positions.size(); i++) {
+			Collection<BarcodeSubstitutionElement> el = getMostCommonSubsitutions(i,freqThreshold);
+			for (BarcodeSubstitutionElement e: el) {
+				int count = this.getCount(e, i);
+				ObjectCounter<BarcodeSubstitutionElement> ob = result.substitutionCountsByPosition.get(i);
+				if (ob==null) {
+					ob = new ObjectCounter<>();
+					result.substitutionCountsByPosition.put(i, ob);
+				}
+				ob.incrementByCount(e, count);
+			}
+		}
+		return result;
+	}
+
 
 	/**
 	 * Do the intended and neighbor barcodes substitution change match a known pattern?

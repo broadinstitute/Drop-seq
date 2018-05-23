@@ -68,8 +68,8 @@ public class BottomUpCollapseResultTest {
 		c.addPair("CTGCA", "CTGTA" );
 		c.addPair("CTGGA", "CTGTA");
 
-
-		BottomUpCollapseResult result = c.makeNonCommonChangesAmbiguous(0.5);
+		BarcodeSubstitutionCollection commonPatterns = c.gatherCommonPatterns(0.5);
+		BottomUpCollapseResult result = c.makeNonCommonChangesAmbiguous(commonPatterns);
 
 		// there should be lots of ambiguous barcodes I didn't add directly.
 		List<String> expectedAmbiguous = ImmutableList.of("CCGTA", "TCCTA", "GATCT", "GCTCT", "GTTCT", "CTGAA", "CTGCA", "CTGGA");
