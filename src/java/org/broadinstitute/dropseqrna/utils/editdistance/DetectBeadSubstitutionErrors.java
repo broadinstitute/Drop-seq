@@ -253,7 +253,7 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 		outReport.println("# POLY_T_POSITION="+umiResult.getPolyTPosition());
 
 		/// write header
-		String [] header= {"intended_barcode", "neighbor_barcode", "intended_size", "neighbor_size", "position", "intended_base", "neighbor_base", "repaired", "filtered"};
+		String [] header= {"intended_barcode", "neighbor_barcode", "intended_size", "neighbor_size", "position", "intended_base", "neighbor_base", "repaired"};
 		outReport.println(StringUtil.join("\t", header));
 
 		ObjectCounter<String> umiCounts=umiResult.getUmisPerCell();
