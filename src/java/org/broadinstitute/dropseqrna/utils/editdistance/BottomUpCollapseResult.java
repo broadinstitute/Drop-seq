@@ -113,7 +113,8 @@ public class BottomUpCollapseResult {
 	 */
 	public BottomUpCollapseResult makeNonCommonChangesAmbiguous (final BarcodeSubstitutionCollection commonChanges) {
 		BottomUpCollapseResult result = new BottomUpCollapseResult();
-
+		// add all the old ambiguous barcodes into the new result.
+		this.getAmbiguousBarcodes().forEach(result::addAmbiguousBarcode);
 		Iterator<String> smalls = this.getUnambiguousSmallBarcodes().iterator();
 		while (smalls.hasNext()) {
 			String neighborBarcode=smalls.next();
