@@ -127,10 +127,7 @@ public class BottomUpCollapseResult {
 				// remove the neighbor barcode from the map so it isn't collapsed, then add it as ambiguous so it's cleaned up.
 				result.addAmbiguousBarcode(neighborBarcode);
 		}
-
 		return result;
-
-
 	}
 
 	/**
