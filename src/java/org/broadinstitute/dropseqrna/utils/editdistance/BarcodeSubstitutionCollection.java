@@ -105,6 +105,8 @@ public class BarcodeSubstitutionCollection {
 	 */
 	public Collection<BarcodeSubstitutionElement> getMostCommonSubsitutions (final int position, final double freqThreshold) {
 		ObjectCounter<BarcodeSubstitutionElement> o = substitutionCountsByPosition.get(position);
+		if (o==null) return Collections.emptyList();  // have to explicitly test for there being no substitutions at this position.
+
 		// map from intended base to a object counter containing those changes.
 		Map<String, ObjectCounter<BarcodeSubstitutionElement>> mapIntendedBase = new HashMap<>();
 		for (BarcodeSubstitutionElement e : o.getKeys()) {
