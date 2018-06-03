@@ -72,7 +72,7 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input DropSeq BAM file to analyze", minElements = 1)
 	public List<File> INPUT;
 
-	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output BAM file with cell barcodes collapsed.")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output BAM file with cell barcodes collapsed.", optional=true)
 	public File OUTPUT;
 
 	@Argument(doc="Output report detailing which barcodes were merged, and what the position of the substitution and intended/changed bases were for each pair of barcordes merged.", optional=true)
@@ -126,6 +126,7 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 		for (final File input : INPUT)
 			IOUtil.assertFileIsReadable(input);
         IOUtil.assertFileIsWritable(OUTPUT);
+        if (this.OUTPUT!=null) IOUtil.assertFileIsWritable(this.OUTPUT);
         if (this.OUTPUT_REPORT!=null) IOUtil.assertFileIsWritable(this.OUTPUT_REPORT);
         if (this.OUTPUT_SUMMARY!=null) IOUtil.assertFileIsWritable(this.OUTPUT_SUMMARY);
 
@@ -172,7 +173,7 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
         if (this.OUTPUT_REPORT!=null) writeReport(result, resultClean, umiResult);
 
         // perform repair/filtering.
-        repairBAM(resultClean);
+        if (this.OUTPUT!=null) repairBAM(resultClean);
         log.info("Finished");
 		return 0;
 	}
