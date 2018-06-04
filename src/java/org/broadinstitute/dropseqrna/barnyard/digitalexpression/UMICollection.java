@@ -23,19 +23,18 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.PeekableIterator;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
+import picard.util.TabbedTextFileWithHeaderParser;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
-
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.PeekableIterator;
-import picard.util.TabbedTextFileWithHeaderParser;
 
 /**
  * Models a collection of UMIs for a gene and cell barcode.

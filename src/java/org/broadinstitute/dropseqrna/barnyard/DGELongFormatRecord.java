@@ -23,12 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
+import com.google.common.collect.ComparisonChain;
+
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
-
-import com.google.common.collect.ComparisonChain;
 
 /**
  * A simple structure to hold the cell/gene/UMI count.

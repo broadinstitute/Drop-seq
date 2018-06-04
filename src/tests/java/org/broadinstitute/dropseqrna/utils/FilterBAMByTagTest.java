@@ -25,17 +25,10 @@ package org.broadinstitute.dropseqrna.utils;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordSetBuilder;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import junit.framework.Assert;
-
-import org.broadinstitute.dropseqrna.utils.FilterBAMByTag;
 import org.testng.annotations.Test;
+
+import java.util.*;
 
 public class FilterBAMByTagTest {
 

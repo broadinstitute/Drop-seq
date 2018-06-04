@@ -23,16 +23,11 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Random;
-import java.util.Set;
-
+import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.utils.CountChangingIteratorWrapper;
 
-import htsjdk.samtools.SAMRecord;
+import java.util.*;
 
 //TODO: Better name?
 public class UmiIteratorWrapper extends CountChangingIteratorWrapper<SAMRecord> {

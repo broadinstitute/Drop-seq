@@ -25,13 +25,13 @@ package org.broadinstitute.dropseqrna.annotation;
 
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.OverlapDetector;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.MetaData;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import picard.annotation.Gene;
 import picard.annotation.Gene.Transcript.Exon;
 import picard.cmdline.CommandLineProgram;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 import java.io.File;

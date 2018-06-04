@@ -23,17 +23,17 @@
  */
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
-import java.io.File;
-import java.util.List;
-
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
 import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
+import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
+import java.io.File;
+import java.util.List;
 
 /**
  * Generate a collection of BeadSynthesisErrorData objects from a BAM file.
@@ -54,7 +54,10 @@ public class BiasedBarcodeCollectionFactory {
 			final int readMQ, final List<String> cellBarcodes) {
 
 		return new UMIIterator(SamFileMergeUtil.mergeInputs(inputFiles, false, samReaderFactory),
-				geneExonTag, cellBarcodeTag, molBCTag, strandTag, readMQ, false, false, cellBarcodes, true);
+				GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG,
+				GeneFunctionCommandLineBase.DEFAULT_GENE_FUNCTION_TAG, GeneFunctionCommandLineBase.DEFAULT_STRAND_STRATEGY,
+				GeneFunctionCommandLineBase.DEFAULT_LOCUS_FUNCTION_LIST,
+				cellBarcodeTag, molBCTag, readMQ, false, cellBarcodes, true);
 
 	}
 

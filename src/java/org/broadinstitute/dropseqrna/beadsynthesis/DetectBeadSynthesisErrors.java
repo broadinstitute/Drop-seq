@@ -23,53 +23,33 @@
  */
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
-import java.io.File;
-import java.io.PrintStream;
-import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.commons.lang.StringUtils;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.TranscriptomeException;
-import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
-import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
-import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.BaseDistributionMetric;
-import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
-import org.broadinstitute.dropseqrna.utils.Bases;
-import org.broadinstitute.dropseqrna.utils.GroupingIterator;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
-import org.broadinstitute.dropseqrna.utils.StringInterner;
-import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
-import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
-import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
-import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
-import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
-
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.IterableAdapter;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.PeekableIterator;
-import htsjdk.samtools.util.ProgressLogger;
-import htsjdk.samtools.util.SortingCollection;
-import picard.cmdline.CommandLineProgram;
+import htsjdk.samtools.util.*;
+import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.TranscriptomeException;
+import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
+import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
+import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
+import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
+import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.*;
+import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
+import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.File;
+import java.io.PrintStream;
+import java.text.DecimalFormat;
+import java.util.*;
 
 /**
  *
@@ -85,7 +65,7 @@ import picard.cmdline.StandardOptionDefinitions;
         programGroup = DropSeq.class
 )
 
-public class DetectBeadSynthesisErrors extends CommandLineProgram  {
+public class DetectBeadSynthesisErrors extends GeneFunctionCommandLineBase {
 
 	private static final Log log = Log.getInstance(DetectBeadSynthesisErrors.class);
 
@@ -123,12 +103,6 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 
 	@Argument(doc="The molecular barcode tag.")
 	public String MOLECULAR_BARCODE_TAG="XM";
-
-	@Argument(doc="The Gene/Exon tag")
-	public String GENE_EXON_TAG="GE";
-
-	@Argument(doc="The strand of the gene(s) the read overlaps.  When there are multiple genes, they will be comma-separated.")
-	public String STRAND_TAG="GS";
 
 	@Argument(doc="The map quality of the read to be included when calculating the barcodes in <NUM_BARCODES>")
 	public Integer READ_MQ=10;
@@ -599,9 +573,13 @@ public class DetectBeadSynthesisErrors extends CommandLineProgram  {
 	 */
 	public UMIIterator prepareUMIIterator() {
 		List<String> barcodes=getCellBarcodes();
-		return new UMIIterator(SamFileMergeUtil.mergeInputs(INPUT, false, samReaderFactory),
-                this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG, this.READ_MQ,
-                false, false, barcodes, true);
+
+		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(INPUT, false, samReaderFactory),
+				GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+        		this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+        		this.READ_MQ, false, barcodes, true);
+
+				return (umiIterator);
 	}
 
 	public List<String> getCellBarcodes () {

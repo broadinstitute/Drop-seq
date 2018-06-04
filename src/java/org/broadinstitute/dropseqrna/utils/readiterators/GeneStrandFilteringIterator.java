@@ -23,12 +23,11 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import java.util.Iterator;
-
+import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
-import htsjdk.samtools.SAMRecord;
+import java.util.Iterator;
 
 /**
  * Filters reads where the read strand and gene strand disagree.

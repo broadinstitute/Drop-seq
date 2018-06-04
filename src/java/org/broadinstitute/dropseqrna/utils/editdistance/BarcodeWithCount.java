@@ -23,10 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import java.util.Comparator;
-
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
+
+import java.util.Comparator;
 
 
 public class BarcodeWithCount {

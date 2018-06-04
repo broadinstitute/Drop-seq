@@ -24,10 +24,9 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
 import java.util.Iterator;
-
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
 public class PCRDuplicateFilteringIterator extends FilteredIterator<SAMRecord> {
 

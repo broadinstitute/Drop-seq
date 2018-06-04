@@ -23,12 +23,11 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import java.util.Iterator;
-
+import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
-import htsjdk.samtools.SAMRecord;
+import java.util.Iterator;
 
 public class BamTagCountingIterator extends FilteredIterator<SAMRecord> {
 

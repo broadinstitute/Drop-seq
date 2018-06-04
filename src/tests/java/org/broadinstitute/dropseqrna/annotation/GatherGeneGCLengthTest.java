@@ -23,13 +23,13 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.broadinstitute.dropseqrna.annotation.GatherGeneGCLength.GCIsoformSummary;
 import org.broadinstitute.dropseqrna.annotation.GatherGeneGCLength.GCResult;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 

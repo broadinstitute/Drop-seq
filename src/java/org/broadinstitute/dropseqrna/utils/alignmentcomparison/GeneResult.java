@@ -10,11 +10,10 @@
  */
 package org.broadinstitute.dropseqrna.utils.alignmentcomparison;
 
-import java.util.Collection;
-
+import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
-import htsjdk.samtools.util.StringUtil;
+import java.util.Collection;
 
 /**
  * For each gene, how many of the reads uniquely mapped to the first gene mapped to the same gene in the second data set

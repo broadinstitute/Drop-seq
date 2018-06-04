@@ -25,13 +25,15 @@ package org.broadinstitute.dropseqrna.utils.referencetools;
 
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.StringUtil;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class ReferenceUtils {
 
-	public static String getSequence (byte [] fastaRefBases, Interval interval) {
+	public static String getSequence (final byte [] fastaRefBases, final Interval interval) {
 		int startBase=interval.getStart();
 		int endBase=interval.getEnd();
 		byte [] bases=getSubArray (fastaRefBases, startBase-1, endBase-1);
@@ -40,25 +42,31 @@ public class ReferenceUtils {
 		b.append(baseString);
 		return (b.toString());
 	}
-	
-	private static byte [] getSubArray (byte [] input, int startPos, int endPos) {
+
+	public static byte [] setSequenceToN (final byte [] fastaRefBases, final Interval interval) {
+		byte [] result = fastaRefBases;
+		int startBase=interval.getStart();
+		int endBase=interval.getEnd();
+		// the byte [] is base 0, the coordinates are base 1.
+		Arrays.fill(result, startBase-1, endBase, StringUtil.charToByte('N'));
+		return (result);
+	}
+
+	private static byte [] getSubArray (final byte [] input, final int startPos, final int endPos) {
 		byte [] result = new byte[(endPos-startPos)+1];
-		
-		for (int i=0; i<=endPos-startPos; i++) {
+
+		for (int i=0; i<=endPos-startPos; i++)
 			result[i]=input[i+startPos];
-		}
 		return result;
 	}
-	
-	public static List<Interval> getIntervalsForChr (IntervalList intervals, String chromosome) {
+
+	public static List<Interval> getIntervalsForChr (final IntervalList intervals, final String chromosome) {
 		List<Interval> result = new ArrayList<Interval>();
 		for (Interval i: intervals) {
 			if (i.getContig().equals(chromosome)) {
 				result.add(i);
 			}
 		}
-		return (result);	
+		return (result);
 	}
-	
-	
 }

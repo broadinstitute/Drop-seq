@@ -23,37 +23,32 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-
 import htsjdk.samtools.*;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.*;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
-
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.CollectionUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.OverlapDetector;
-import htsjdk.samtools.util.ProgressLogger;
 import picard.analysis.MetricAccumulationLevel;
 import picard.analysis.RnaSeqMetrics;
 import picard.analysis.directed.RnaSeqMetricsCollector;
 import picard.annotation.Gene;
 import picard.cmdline.CommandLineProgram;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 import picard.metrics.PerUnitMetricCollector;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * An adaptation of the Picard RnaSeqMetricsCollector to collect per-cell data.  In particular, the exon/intron/genic/intragenic/rRNA levels.
@@ -114,6 +109,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 	protected int doWork() {
 		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
+		if (RIBOSOMAL_INTERVALS!=null) IOUtil.assertFileIsReadable(RIBOSOMAL_INTERVALS);
 
 		for (final String mtSequence : MT_SEQUENCE) {
 			final SAMSequenceRecord samSequenceRecord =
@@ -275,6 +271,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
             extends RnaSeqMetrics {
         public long MT_BASES;
         public double PCT_MT_BASES;
+
     }
 
 	private class RnaSeqMtMetricsCollector extends RnaSeqMetricsCollector {
@@ -328,6 +325,8 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
             @Override
             public void finish() {
                 super.finish();
+                // PCT_RIBOSOMAL_BASES should never be null.
+                if (metrics.PCT_RIBOSOMAL_BASES==null) metrics.PCT_RIBOSOMAL_BASES=0d;
                 if (metrics.PF_ALIGNED_BASES > 0)
 					castMetrics().PCT_MT_BASES = castMetrics().MT_BASES / (double) metrics.PF_ALIGNED_BASES;
             }

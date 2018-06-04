@@ -10,10 +10,10 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.SAMRecord;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import htsjdk.samtools.SAMRecord;
 
 /**
  * Finds if specified potions of a read are below a minimum base quality.

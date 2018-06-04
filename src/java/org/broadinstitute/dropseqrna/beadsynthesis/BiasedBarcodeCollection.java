@@ -23,10 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 public class BiasedBarcodeCollection {
 	private final Map<String, BeadSynthesisErrorData> biasedBarcodes;

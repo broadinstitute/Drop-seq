@@ -23,12 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import picard.PicardException;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-
-import picard.PicardException;
 
 /**
  * Hold a buffered file writer and handle exceptions.

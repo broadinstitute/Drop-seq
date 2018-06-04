@@ -23,15 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
+import htsjdk.samtools.util.Log;
 import org.apache.commons.lang.StringUtils;
 
-import htsjdk.samtools.util.Log;
+import java.util.*;
 
 public class LevenshteinDistanceResult {
 

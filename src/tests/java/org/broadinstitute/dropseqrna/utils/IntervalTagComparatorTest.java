@@ -23,25 +23,18 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.*;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.Interval;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-
-import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
-import org.testng.Assert;
-import org.testng.annotations.Test;
-
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordSetBuilder;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.Interval;
 
 public class IntervalTagComparatorTest {
 

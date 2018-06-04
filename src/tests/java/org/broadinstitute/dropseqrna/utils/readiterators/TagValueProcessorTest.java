@@ -23,16 +23,15 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import java.io.File;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-
+import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
-import htsjdk.samtools.SAMRecord;
+import java.io.File;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 /**
  * NOTE: TagValueProcessor no longer exists, but this tests the functionality that replaces it

@@ -23,13 +23,13 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-
 import org.apache.commons.lang.RandomStringUtils;
 import org.junit.Assert;
 import org.testng.annotations.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 public class CollapseBarcodeThreadedTest {
 

@@ -24,7 +24,6 @@
 package org.broadinstitute.dropseqrna.utils.readpairs;
 
 import htsjdk.samtools.SAMRecord;
-
 import org.broadinstitute.dropseqrna.junctionlibrary.JunctionSamUtils;
 
 public class ReadPair {

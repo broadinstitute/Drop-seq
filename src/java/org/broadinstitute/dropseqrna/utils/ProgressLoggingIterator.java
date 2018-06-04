@@ -23,10 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.util.Iterator;
-
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.ProgressLogger;
+
+import java.util.Iterator;
 
 /**
  * A simple iterator that logs each read that passes through it.

@@ -24,16 +24,14 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
 import htsjdk.samtools.metrics.MetricsFile;
+import org.junit.Assert;
+import org.testng.annotations.Test;
+import picard.analysis.RnaSeqMetrics;
+import picard.analysis.directed.RnaSeqMetricsCollector;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.junit.Assert;
-import org.testng.annotations.Test;
-
-import picard.analysis.RnaSeqMetrics;
-import picard.analysis.directed.RnaSeqMetricsCollector;
 
 public class SingleCellRnaSeqMetricsCollectorTest {
 

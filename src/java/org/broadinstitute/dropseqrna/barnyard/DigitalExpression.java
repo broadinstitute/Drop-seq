@@ -23,20 +23,15 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.metrics.MetricBase;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.*;
 import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.DGELongFormatRecord.CellBarcodeOrderComparator;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeader;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderCodec;
@@ -48,21 +43,13 @@ import org.broadinstitute.dropseqrna.utils.editdistance.EDUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
-
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.metrics.MetricBase;
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.SortingCollection;
-import htsjdk.samtools.util.StringUtil;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintStream;
+import java.util.*;
 
 @CommandLineProgramProperties(
         summary = "Measures the digital expression of a library.  " +
@@ -143,9 +130,11 @@ public class DigitalExpression extends DGECommandLineBase {
         //		this.GENE_TAG, this.EXON_TAG, this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
         //		this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES);
 
+
         List<String> cellBarcodes=new BarcodeListRetrieval().getCellBarcodes(this.INPUT, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-                this.GENE_EXON_TAG, this.STRAND_TAG, this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
-                this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD, USE_STRAND_INFO);
+                this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
+                this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
+                this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD);
 
         if (cellBarcodes.isEmpty()) {
             log.error("Running digital expression without somehow selecting a set of barcodes to process no longer supported.");
@@ -158,6 +147,24 @@ public class DigitalExpression extends DGECommandLineBase {
         return 0;
     }
 
+
+    @Override
+    protected String[] customCommandLineValidation() {
+        final String[] superErrors = super.customCommandLineValidation();
+        if (OUTPUT_HEADER == null)
+			OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
+        if (UNIQUE_EXPERIMENT_ID != null || !OUTPUT_HEADER)
+			return superErrors;
+		else {
+            final ArrayList<String> list = new ArrayList<>(1);
+            if (superErrors != null)
+				for (final String msg: superErrors)
+					list.add(msg);
+            list.add("If OUTPUT_HEADER==true, UNIQUE_EXPERIMENT_ID must be set");
+            return list.toArray(new String[list.size()]);
+        }
+    }
+
     private void digitalExpression(final List<String> cellBarcodes) {
         PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
 
@@ -165,10 +172,10 @@ public class DigitalExpression extends DGECommandLineBase {
 			writeDgeHeader(out);
 
         writeHeader(out, cellBarcodes);
-
+        //TODO should the ambiguous reads handling be a parameter?  It's set to false by default for DGE to get rid of ambiguous gene assignments on reads
         UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
-                this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG,
-                this.READ_MQ, true, this.USE_STRAND_INFO, cellBarcodes);
+        		GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
+        		this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ, false, cellBarcodes);
 
         String gene = null;
         Map<String, Integer> transcriptCountMap = new HashMap<>();
@@ -282,8 +289,11 @@ public class DigitalExpression extends DGECommandLineBase {
 			setDgeHeaderLibraryField(lib, "CELL_BC_FILE", CELL_BC_FILE.getAbsoluteFile());
 		else
 			setDgeHeaderLibraryField(lib, "CELL_BC_FILE", null);
-        setDgeHeaderLibraryField(lib, "USE_STRAND_INFO", USE_STRAND_INFO);
+        // TODO: modify this properly to strand strategy?
+        // setDgeHeaderLibraryField(lib, "USE_STRAND_INFO", USE_STRAND_INFO);
         setDgeHeaderLibraryField(lib, "RARE_UMI_FILTER_THRESHOLD", RARE_UMI_FILTER_THRESHOLD);
+        setDgeHeaderLibraryField(lib, "STRAND_STRATEGY", this.STRAND_STRATEGY.name());
+        setDgeHeaderLibraryField(lib, "LOCUS_FUNCTION_LIST", this.LOCUS_FUNCTION_LIST.toString());
         header.addLibrary(lib);
         header.addCommand(getCommandLine());
         final OutputStreamWriter writer = new OutputStreamWriter(out);

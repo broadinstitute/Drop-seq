@@ -23,8 +23,6 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
-import java.io.File;
-
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReader;
@@ -32,6 +30,8 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.OverlapDetector;
 import picard.annotation.Gene;
+
+import java.io.File;
 
 /**
  * This class handles reading both GTFs and refFlat files.

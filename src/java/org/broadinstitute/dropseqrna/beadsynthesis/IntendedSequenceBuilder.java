@@ -24,13 +24,13 @@
 
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.editdistance.LevenshteinDistance;
 import org.broadinstitute.dropseqrna.utils.editdistance.LevenshteinDistanceResult;
+
+import java.util.List;
+import java.util.Map;
 
 public class IntendedSequenceBuilder {
 

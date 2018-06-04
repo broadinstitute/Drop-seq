@@ -24,13 +24,12 @@
 
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import java.util.List;
-import java.util.Set;
-
+import com.google.common.collect.ImmutableList;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import com.google.common.collect.ImmutableList;
+import java.util.List;
+import java.util.Set;
 
 public class BottomUpCollapseResultTest {
 

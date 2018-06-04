@@ -23,22 +23,13 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import htsjdk.samtools.util.Log;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
-
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-
-import htsjdk.samtools.util.Log;
 
 /**
  * A utility class that takes a list of strings (ordered by prevalence to determine which barcodes are merged into which)

@@ -24,17 +24,15 @@
 package org.broadinstitute.dropseqrna.annotation;
 
 import htsjdk.samtools.util.OverlapDetector;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+import picard.annotation.Gene;
+import picard.annotation.Gene.Transcript;
 
 import java.io.File;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-
-import org.testng.Assert;
-import org.testng.annotations.Test;
-
-import picard.annotation.Gene;
-import picard.annotation.Gene.Transcript;
 
 
 

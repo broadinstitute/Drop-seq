@@ -24,16 +24,12 @@
 package org.broadinstitute.dropseqrna.annotation;
 
 import htsjdk.samtools.util.OverlapDetector;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+import picard.annotation.Gene;
 
 import java.io.File;
 import java.util.Collection;
-
-import org.broadinstitute.dropseqrna.annotation.ConvertToRefFlat;
-import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
-import org.testng.Assert;
-import org.testng.annotations.Test;
-
-import picard.annotation.Gene;
 
 
 public class ConvertToRefFlatTest {

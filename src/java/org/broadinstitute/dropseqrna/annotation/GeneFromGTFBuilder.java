@@ -23,22 +23,14 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import com.google.common.collect.Streams;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.Log;
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import picard.annotation.AnnotationException;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Convert a collection of GTFRecords into a collection of GeneFromGTF objects.

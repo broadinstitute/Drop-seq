@@ -24,11 +24,7 @@
 
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Holds a map of smaller->larger barcodes that are unambiguously associated

@@ -23,11 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import java.util.Iterator;
-
+import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
-import htsjdk.samtools.SAMRecord;
+import java.util.Iterator;
 
 public class EditDistanceFilteringIterator extends FilteredIterator<SAMRecord> {
 

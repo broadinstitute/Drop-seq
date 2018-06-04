@@ -23,10 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.util.Iterator;
-
 import htsjdk.samtools.util.IterableOnceIterator;
 import htsjdk.samtools.util.PeekableIterator;
+
+import java.util.Iterator;
 
 public abstract class FilteredIterator<T> extends IterableOnceIterator<T> {
 

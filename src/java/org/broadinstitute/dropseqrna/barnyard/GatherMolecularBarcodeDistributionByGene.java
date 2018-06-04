@@ -23,28 +23,30 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
 import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.OutputWriterUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
-
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.Argument;
+import picard.annotation.LocusFunction;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 @CommandLineProgramProperties(
         summary = "For each gene, count the number of times each molecular barcode is observed [The UMI]" +
@@ -75,21 +77,23 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 
 		writePerTranscriptHeader(out);
 
-		// use a set instead of a list because list.contains is terrrrible.
-		Set<String> barcodes=new HashSet<> (new BarcodeListRetrieval().getCellBarcodes(this.INPUT, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-				this.GENE_EXON_TAG, this.STRAND_TAG, this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
-				this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD, USE_STRAND_INFO));
+
+		Set<String> cellBarcodes=new HashSet<>(new BarcodeListRetrieval().getCellBarcodes(this.INPUT, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+                this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
+                this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
+                this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD));
 
 		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
-                this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG,
-				this.READ_MQ, true, this.USE_STRAND_INFO, barcodes);
+				GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+        		this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+        		this.READ_MQ, false, cellBarcodes);
 
 		UMICollection batch;
 
 		while ((batch=umiIterator.next())!=null)
 			if (batch.isEmpty()==false) {
 				String cellTag = batch.getCellBarcode();
-				if (barcodes.contains(cellTag) || barcodes.isEmpty())
+				if (cellBarcodes.contains(cellTag) || cellBarcodes.isEmpty())
 					writePerTranscriptStats (batch.getGeneName(), batch.getCellBarcode(), batch.getMolecularBarcodeCountsCollapsed(this.EDIT_DISTANCE), out);
 			}
 
@@ -135,12 +139,15 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	 * @param useStrandInfo
 	 * @return
 	 */
-	public ObjectCounter<String> getNumTranscriptsPerCell (final File bamFile, final String cellTag, final String molecularBarcodeTag,
-			final String geneExonTag, final String strandTag, final Integer mapQuality, final int editDistance, final int minNumReadsMolBarcode, final boolean useStrandInfo) {
+	public ObjectCounter<String> getNumTranscriptsPerCell (final File bamFile, final String cellBarcodeTag, final String molecularBarcodeTag,
+			final String geneNameTag, final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList,
+			final Integer mapQuality, final int editDistance, final int minNumReadsMolBarcode, final Collection<String> cellBarcodes) {
 
 
 		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(bamFile), false),
-                geneExonTag, cellTag, molecularBarcodeTag, strandTag, mapQuality, true, useStrandInfo, null);
+				geneNameTag, strandTag, geneFunctionTag,
+				strategy, locusFunctionList, cellBarcodeTag, molecularBarcodeTag,
+				mapQuality, false, cellBarcodes);
 
 		ObjectCounter<String> transcriptsPerCell = new ObjectCounter<>();
 

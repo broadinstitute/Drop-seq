@@ -23,19 +23,18 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
-import java.io.File;
-import java.util.HashSet;
-import java.util.Set;
-
-import org.broadinstitute.dropseqrna.utils.DropSeqSamUtil;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.OverlapDetector;
+import org.broadinstitute.dropseqrna.utils.DropSeqSamUtil;
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import picard.annotation.AnnotationException;
+
+import java.io.File;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Loads gene annotations from a GTF file into an OverlapDetector<Gene>.  Discards annotations that are not

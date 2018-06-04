@@ -23,11 +23,11 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
+import htsjdk.samtools.util.Interval;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-
-import htsjdk.samtools.util.Interval;
 
 public class GTFRecord implements Comparable<GTFRecord> {
 

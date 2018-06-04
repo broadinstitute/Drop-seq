@@ -23,6 +23,27 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
+import htsjdk.samtools.util.*;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.cmdline.MetaData;
+import org.broadinstitute.dropseqrna.utils.FastaSequenceFileWriter;
+import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+import org.broadinstitute.dropseqrna.utils.referencetools.ReferenceUtils;
+import picard.annotation.Gene;
+import picard.annotation.Gene.Transcript;
+import picard.annotation.Gene.Transcript.Exon;
+import picard.cmdline.CommandLineProgram;
+import picard.cmdline.StandardOptionDefinitions;
+
 import java.io.File;
 import java.io.PrintStream;
 import java.text.DecimalFormat;
@@ -30,34 +51,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.builder.EqualsBuilder;
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-import org.broadinstitute.dropseqrna.cmdline.MetaData;
-import org.broadinstitute.dropseqrna.utils.FastaSequenceFileWriter;
-import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
-import org.broadinstitute.dropseqrna.utils.referencetools.ReferenceUtils;
-
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.reference.ReferenceSequence;
-import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.OverlapDetector;
-import htsjdk.samtools.util.SequenceUtil;
-import picard.annotation.Gene;
-import picard.annotation.Gene.Transcript;
-import picard.annotation.Gene.Transcript.Exon;
-import picard.cmdline.CommandLineProgram;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.Argument;
-import picard.cmdline.StandardOptionDefinitions;
 
 
 

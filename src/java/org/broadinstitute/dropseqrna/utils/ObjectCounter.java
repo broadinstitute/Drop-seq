@@ -23,12 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Keeps track of the number of times an object has been seen.

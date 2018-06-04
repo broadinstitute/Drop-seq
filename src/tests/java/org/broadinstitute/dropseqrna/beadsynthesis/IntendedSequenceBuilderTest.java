@@ -24,12 +24,12 @@
 
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.util.HashMap;
+import java.util.Map;
 
 
 

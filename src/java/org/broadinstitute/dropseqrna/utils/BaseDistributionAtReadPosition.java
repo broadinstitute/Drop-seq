@@ -23,13 +23,6 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
-import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
@@ -37,10 +30,16 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
-import picard.cmdline.CommandLineProgram;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.util.List;
 
 @CommandLineProgramProperties(summary = "Reads each base and generates a composition per-position matrix",
         oneLineSummary = "Reads each base and generates a composition per-position matrix",

@@ -25,11 +25,7 @@ package org.broadinstitute.dropseqrna.utils.modularfileparser;
 
 import htsjdk.samtools.util.Log;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 
 public class ModularFileParser  {
 	private final Log log = Log.getInstance(ModularFileParser.class);

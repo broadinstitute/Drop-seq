@@ -23,36 +23,23 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.*;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
-
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.RuntimeIOException;
-import picard.cmdline.CommandLineProgram;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 
 @CommandLineProgramProperties(
         summary = "Determine the cell barcodes that have a minimum number of transcripts.  For a multi-species BAM, " +
@@ -60,7 +47,7 @@ import picard.cmdline.StandardOptionDefinitions;
         oneLineSummary = "Determine the cell barcodes that have a minimum number of transcripts.",
         programGroup = DropSeq.class)
 public class SelectCellsByNumTranscripts
-        extends CommandLineProgram {
+        extends GeneFunctionCommandLineBase {
 
     @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "SAM or BAM file to analyze.")
     public File INPUT;
@@ -90,17 +77,8 @@ public class SelectCellsByNumTranscripts
     @Argument(doc="The molecular barcode tag.")
     public String MOLECULAR_BARCODE_TAG="XM";
 
-    @Argument(doc="The Gene/Exon tag")
-    public String GENE_EXON_TAG="GE";
-
-    @Argument(doc="The strand of the gene(s) the read overlaps.  When there are multiple genes, they will be comma seperated.")
-    public String STRAND_TAG="GS";
-
     @Argument(doc="The map quality of the read to be included.")
     public int READ_MQ=10;
-
-    @Argument(doc="Is the library stranded?  If so, use the strand info to more precisely place reads on the correct gene, and ignore reads that are on the wrong strand.")
-    public boolean USE_STRAND_INFO=true;
 
     @Argument(doc="The edit distance that molecular barcodes should be combined at within a gene.")
     public Integer EDIT_DISTANCE=1;
@@ -133,9 +111,9 @@ public class SelectCellsByNumTranscripts
 			mapContainer = new SingleOrganismMapContainer(cellBarcodes);
 
         // gene/exon tags are sorted first, followed by cells
-        UMIIterator umiIterator = new UMIIterator(headerAndIterator,
-                this.GENE_EXON_TAG, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.STRAND_TAG,
-                this.READ_MQ, true, this.USE_STRAND_INFO, cellBarcodes);
+        UMIIterator umiIterator = new UMIIterator(headerAndIterator, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+        		this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+        		this.READ_MQ, false, cellBarcodes);
 
 
         String gene = null;
@@ -171,7 +149,7 @@ public class SelectCellsByNumTranscripts
 
         writeBarcodes(OUTPUT, finalBarcodes);
         log.info("Wrote cell barcodes to " + OUTPUT.getAbsolutePath());
-
+        CloserUtil.close(umiIterator);
         return 0;
     }
 
@@ -203,9 +181,9 @@ public class SelectCellsByNumTranscripts
             final String reference = rec.getReferenceName();
             for (int i = 0; i < referenceSequencePrefix.length; ++i)
 				if (reference.startsWith(referenceSequencePrefix[i])) {
-                    final String geneExon = rec.getStringAttribute(GENE_EXON_TAG);
+                    final String geneExon = rec.getStringAttribute(GENE_NAME_TAG);
                     if (geneExon != null) {
-                        rec.setAttribute(GENE_EXON_TAG, genePrefix[i] + geneExon);
+                        rec.setAttribute(GENE_NAME_TAG, genePrefix[i] + geneExon);
                         break;
                     }
                 }

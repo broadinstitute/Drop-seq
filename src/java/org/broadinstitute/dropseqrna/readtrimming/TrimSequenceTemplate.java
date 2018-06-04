@@ -24,9 +24,9 @@
 package org.broadinstitute.dropseqrna.readtrimming;
 
 
-
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.samtools.util.StringUtil;
+import org.broadinstitute.dropseqrna.TranscriptomeException;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -35,8 +35,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import org.broadinstitute.dropseqrna.TranscriptomeException;
 
 public class TrimSequenceTemplate {
 

@@ -23,14 +23,13 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
+import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
-
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-
-import htsjdk.samtools.SAMRecord;
 
 public class ChromosomeFilteringIterator extends FilteredIterator<SAMRecord>{
 

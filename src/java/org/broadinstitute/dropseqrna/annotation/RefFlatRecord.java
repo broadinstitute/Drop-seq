@@ -23,10 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
 
 /**
  * Holds one parsed line of a refFlat record.  Also good for writing them back to a file.

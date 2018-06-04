@@ -25,20 +25,18 @@ package org.broadinstitute.dropseqrna.barnyard;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-
+import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.metrics.BAMTagHistogram;
 import org.broadinstitute.dropseqrna.metrics.BAMTagofTagCounts;
 import org.broadinstitute.dropseqrna.metrics.TagOfTagResults;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
+import picard.annotation.LocusFunction;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 public class BarcodeListRetrieval {
 
@@ -62,8 +60,8 @@ public class BarcodeListRetrieval {
 	 * @return
 	 */
 	public List<String> getCellBarcodes(final File bamFile, final String cellBarcodeTag, final String molecularBarcodeTag,
-			final String geneExonBarcodeTag, final String strandTag, final File cellBCFile, final Integer readQuality, final Integer minNumTranscriptsPerCell,
-			final Integer minNumNumGenesPerCell, final Integer minNumReadsPerCell, final Integer numCoreBarcodes, final Integer editDistance, final Integer minNumReadsMolBarcode, final boolean useStrandInfo) {
+			final String geneNameTag, final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList, final File cellBCFile, final Integer readQuality, final Integer minNumTranscriptsPerCell,
+			final Integer minNumNumGenesPerCell, final Integer minNumReadsPerCell, final Integer numCoreBarcodes, final Integer editDistance, final Integer minNumReadsMolBarcode) {
 		List<String> cellBarcodes=new ArrayList<String>();
 
 		if (cellBCFile!=null) {
@@ -74,13 +72,21 @@ public class BarcodeListRetrieval {
 
 		if (minNumNumGenesPerCell!=null){
 			log.info("Looking for cell barcodes that have at least " + minNumNumGenesPerCell + " genes");
-			cellBarcodes = getListCellBarcodesByGeneCount(bamFile, cellBarcodeTag, geneExonBarcodeTag, readQuality, minNumNumGenesPerCell);
+			cellBarcodes = getListCellBarcodesByGeneCount(bamFile, cellBarcodeTag, geneNameTag, readQuality, minNumNumGenesPerCell);
 			return (cellBarcodes);
 		}
 
 		if (minNumTranscriptsPerCell!=null) {
 			log.info("Looking for cell barcodes that have at least " + minNumTranscriptsPerCell + " transcripts");
-			cellBarcodes = getListCellBarcodesByTranscriptCount(bamFile, cellBarcodeTag, molecularBarcodeTag, geneExonBarcodeTag, strandTag, readQuality, minNumTranscriptsPerCell, editDistance, minNumReadsMolBarcode, useStrandInfo);
+
+			/*
+			 * (final File input, final String cellBarcodeTag, final String molecularBarcodeTag, final String geneNameTag,
+			final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList,
+			final int readQuality, final int editDistance, final int minNumReadsMolBarcode, final int minNumTranscripts) {
+			 */
+			cellBarcodes = getListCellBarcodesByTranscriptCount(bamFile, cellBarcodeTag, molecularBarcodeTag, geneNameTag, strandTag, geneFunctionTag,
+					 strategy, locusFunctionList,  readQuality, editDistance, minNumReadsMolBarcode, minNumTranscriptsPerCell);
+			return (cellBarcodes);
 		}
 
 		if (minNumReadsPerCell!=null || numCoreBarcodes!=null){
@@ -186,10 +192,21 @@ public class BarcodeListRetrieval {
 		return (result);
 	}
 
-	public List<String> getListCellBarcodesByTranscriptCount(final File input, final String cellBarcodeTag, final String molecularBarcodeTag, final String geneExonTag, final String strandTag, final int readQuality, final int editDistance, final int minNumReadsMolBarcode, final int minNumTranscripts, final boolean useStrandInfo) {
+	public List<String> getListCellBarcodesByTranscriptCount(final File input, final String cellBarcodeTag, final String molecularBarcodeTag, final String geneNameTag,
+			final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList,
+			final int readQuality, final int editDistance, final int minNumReadsMolBarcode, final int minNumTranscripts) {
 		List<String> result = new ArrayList<String>();
+		List<String> initialCells = getListCellBarcodesByReadCount(input, cellBarcodeTag, readQuality, minNumTranscripts, null);
+
 		GatherMolecularBarcodeDistributionByGene g = new GatherMolecularBarcodeDistributionByGene();
-		ObjectCounter<String> numTranscripts = g.getNumTranscriptsPerCell (input,cellBarcodeTag, molecularBarcodeTag, geneExonTag, strandTag, readQuality, editDistance, minNumReadsMolBarcode, useStrandInfo);
+		/**
+		 * (final File bamFile, final String cellBarcodeTag, final String molecularBarcodeTag,
+			final String geneNameTag, final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList,
+			final Integer mapQuality, final int editDistance, final int minNumReadsMolBarcode, final boolean useStrandInfo, final List<String> cellBarcodes)
+		 */
+		ObjectCounter<String> numTranscripts = g.getNumTranscriptsPerCell (input,cellBarcodeTag, molecularBarcodeTag,
+				geneNameTag, strandTag, geneFunctionTag, strategy, locusFunctionList,
+				readQuality, editDistance, minNumReadsMolBarcode, initialCells);
 
 		for (String key: numTranscripts.getKeys()) {
 			int count = numTranscripts.getCountForKey(key);

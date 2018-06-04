@@ -25,7 +25,9 @@ package org.broadinstitute.dropseqrna.utils;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.SAMFileHeader.SortOrder;
-import htsjdk.samtools.util.*;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.ProgressLogger;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 
 import java.util.List;

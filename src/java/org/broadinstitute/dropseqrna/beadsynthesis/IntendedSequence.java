@@ -24,10 +24,10 @@
 
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.util.Collections;
 import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
 
 public class IntendedSequence {
 

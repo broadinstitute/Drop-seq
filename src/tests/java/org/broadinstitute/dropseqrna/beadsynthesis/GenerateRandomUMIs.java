@@ -24,15 +24,11 @@
 
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-import java.util.stream.Collectors;
-
 import org.apache.commons.lang.RandomStringUtils;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class GenerateRandomUMIs {
 

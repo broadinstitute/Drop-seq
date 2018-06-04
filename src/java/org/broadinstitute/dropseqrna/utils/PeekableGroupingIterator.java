@@ -23,12 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.util.IterableOnceIterator;
+import htsjdk.samtools.util.PeekableIterator;
+
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.Iterator;
-
-import htsjdk.samtools.util.IterableOnceIterator;
-import htsjdk.samtools.util.PeekableIterator;
 
 /**
  * Modeled after GroupingIterator, this class lets you group sets of objects

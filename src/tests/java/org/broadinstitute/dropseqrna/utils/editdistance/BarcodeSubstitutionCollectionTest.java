@@ -24,12 +24,12 @@
 
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import java.util.Collection;
-import java.util.List;
-
 import org.broadinstitute.dropseqrna.utils.editdistance.BarcodeSubstitutionCollection.BarcodeSubstitutionElement;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.util.Collection;
+import java.util.List;
 
 public class BarcodeSubstitutionCollectionTest {
 

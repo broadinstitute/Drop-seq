@@ -23,12 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
+import org.junit.Assert;
+import org.testng.annotations.Test;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import org.junit.Assert;
-import org.testng.annotations.Test;
 
 
 public class DetectBeadSynthesisErrorsTest {

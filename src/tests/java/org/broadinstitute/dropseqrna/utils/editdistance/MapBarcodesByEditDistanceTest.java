@@ -23,21 +23,13 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import junit.framework.Assert;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.testng.annotations.Test;
-
-import junit.framework.Assert;
 import picard.util.TabbedInputParser;
+
+import java.io.File;
+import java.util.*;
 
 public class MapBarcodesByEditDistanceTest {
 

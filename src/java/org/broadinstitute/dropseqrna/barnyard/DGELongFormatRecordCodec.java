@@ -23,17 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.EOFException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.samtools.util.SortingCollection;
 import htsjdk.samtools.util.SortingCollection.Codec;
 import picard.PicardException;
+
+import java.io.*;
 
 public class DGELongFormatRecordCodec implements SortingCollection.Codec<DGELongFormatRecord> {
 

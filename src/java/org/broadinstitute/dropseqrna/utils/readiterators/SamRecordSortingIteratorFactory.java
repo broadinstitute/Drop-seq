@@ -29,11 +29,10 @@ import htsjdk.samtools.SAMFileWriterImpl;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.ProgressLogger;
+import org.broadinstitute.dropseqrna.utils.SortingIteratorFactory;
 
 import java.util.Comparator;
 import java.util.Iterator;
-
-import org.broadinstitute.dropseqrna.utils.SortingIteratorFactory;
 
 public class SamRecordSortingIteratorFactory {
 

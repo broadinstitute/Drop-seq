@@ -23,31 +23,21 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.util.List;
-
+import htsjdk.samtools.*;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.util.*;
 import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.BaseQualityFilter.FailedBaseMetric;
 import org.broadinstitute.dropseqrna.utils.readpairs.ReadPair;
-
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileHeader.SortOrder;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.PeekableIterator;
-import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.util.List;
 
 @CommandLineProgramProperties(summary = "Adds a BAM tag to every read of the defined range of bases of the sequence of the 1st or 2nd read.  " +
         "Reads must be paired for this program to run.",

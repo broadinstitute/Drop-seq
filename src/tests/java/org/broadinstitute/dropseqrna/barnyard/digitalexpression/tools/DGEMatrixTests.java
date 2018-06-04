@@ -23,16 +23,14 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression.tools;
 
+import htsjdk.samtools.util.TestUtil;
+import org.junit.Assert;
+import org.testng.annotations.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.tools.DGEMatrix;
-import org.junit.Assert;
-import org.testng.annotations.Test;
-
-import htsjdk.samtools.util.TestUtil;
 
 public class DGEMatrixTests {
 

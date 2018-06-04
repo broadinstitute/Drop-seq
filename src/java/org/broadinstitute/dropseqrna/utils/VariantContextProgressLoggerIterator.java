@@ -23,10 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.util.Iterator;
-
 import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.variant.variantcontext.VariantContext;
+
+import java.util.Iterator;
 
 public class VariantContextProgressLoggerIterator extends FilteredIterator<VariantContext>{
 	private final ProgressLogger progressLogger;

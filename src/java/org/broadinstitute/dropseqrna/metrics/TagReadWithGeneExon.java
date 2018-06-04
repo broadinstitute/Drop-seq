@@ -23,41 +23,24 @@
  */
 package org.broadinstitute.dropseqrna.metrics;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.*;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.OverlapDetector;
-import htsjdk.samtools.util.ProgressLogger;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import htsjdk.samtools.util.*;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.annotation.AnnotationUtils;
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
-
 import picard.annotation.Gene;
 import picard.annotation.LocusFunction;
 import picard.cmdline.CommandLineProgram;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.File;
+import java.util.*;
 
 @CommandLineProgramProperties(
         summary = "A special case tagger.  Tags reads that are exonic for the gene name of the overlapping exon.  This is done specifically to solve the case where a read" +
@@ -80,7 +63,8 @@ public class TagReadWithGeneExon extends CommandLineProgram {
 	@Argument(doc = "The strand specific summary info", optional=true)
 	public File SUMMARY=null;
 
-	@Argument(doc = "The tag name to use.  When there are multiple genes, they will be comma seperated.")
+	/*
+	@Option(doc = "The tag name to use.  When there are multiple genes, they will be comma seperated.")
 	public String TAG="GE";
 
 	@Argument(doc="The strand of the gene(s) the read overlaps.  When there are multiple genes, they will be comma seperated.")
@@ -88,15 +72,28 @@ public class TagReadWithGeneExon extends CommandLineProgram {
 
 	@Argument(doc = "The functional annotation for the read")
 	public String FUNCTION_TAG="XF";
+	*/
+
+	@Argument(doc="Gene Name tag.  Takes on the gene name this read overlaps (if any)")
+	public String GENE_NAME_TAG="gn";
+
+	@Argument(doc="Gene Strand tag.  For a given gene name <GENE_NAME_TAG>, this is the strand of the gene.")
+	public String GENE_STRAND_TAG="gs";
+
+	@Argument(doc="Gene Function tag.  For a given gene name <GENE_NAME_TAG>, this is the function of the gene at this read's position: UTR/CODING/INTRONIC/...")
+	public String GENE_FUNCTION_TAG="gf";
+
+	@Argument(doc="READ functional annotation tag.  For this read, what is the function?  This only looks at reads on the right strand, and prioritizes coding over intron over intergenic.  There is only 1 value for this tag.")
+	public String READ_FUNCTION_TAG="XF";
 
 	@Argument(doc="The annotations set to use to label the read.  This can be a GTF or a refFlat file.")
 	public File ANNOTATIONS_FILE;
 
-	@Argument(doc="Use strand info to determine what gene to assign the read to.  If this is on, reads can be assigned to a maximum one one gene.")
+	@Argument(doc="Use strand info to determine what gene to assign the read to.  If this is on, reads can be assigned to a maximum one one gene.  This is used for the READ_FUNCTION_TAG output only.")
 	public boolean USE_STRAND_INFO=true;
 
-	@Argument(doc="Allow a read to span multiple genes.  If set to true, the gene name will be set to all of the gene/exons the read spans.  In that case, the gene names will be comma separated.")
-	public boolean ALLOW_MULTI_GENE_READS=false;
+	// @Option(doc="Allow a read to span the exons of multiple genes.  If set to true, the gene name will be set to all of the gene/exons the read spans.  In that case, the gene names will be comma separated.")
+	private boolean ALLOW_MULTI_GENE_READS=false;
 
 	private ReadTaggingMetric metrics = new ReadTaggingMetric();
 
@@ -120,13 +117,14 @@ public class TagReadWithGeneExon extends CommandLineProgram {
         	pl.record(r);
 
         	if (!r.getReadUnmappedFlag())
-				r=	setGeneExons(r, geneOverlapDetector);
+				// r=	setGeneExons(r, geneOverlapDetector, this.ALLOW_MULTI_GENE_READS);
+        		r= setAnnotations(r, geneOverlapDetector, this.ALLOW_MULTI_GENE_READS);
         	writer.addAlignment(r);
         }
 
 		CloserUtil.close(inputSam);
 		writer.close();
-		if (this.USE_STRAND_INFO) log.info(this.metrics.toString());
+		// if (this.USE_STRAND_INFO) log.info(this.metrics.toString());
 		if (SUMMARY==null) return 0;
 
 		//process summary
@@ -137,9 +135,10 @@ public class TagReadWithGeneExon extends CommandLineProgram {
 
 	}
 
-	public SAMRecord setGeneExons (final SAMRecord r, final OverlapDetector<Gene> geneOverlapDetector) {
+	/*
+	public SAMRecord setGeneExons (final SAMRecord r, final OverlapDetector<Gene> geneOverlapDetector, final boolean allowMultiGeneReads) {
 		Map<Gene, LocusFunction> map = AnnotationUtils.getInstance().getLocusFunctionForReadByGene(r, geneOverlapDetector);
-		Set<Gene> exonsForRead = AnnotationUtils.getInstance().getConsistentExons (r, map.keySet(), ALLOW_MULTI_GENE_READS);
+		Set<Gene> exonsForRead = AnnotationUtils.getInstance().getConsistentExons (r, map.keySet(), allowMultiGeneReads);
 
 		List<Gene> genes = new ArrayList<Gene>();
 
@@ -157,7 +156,7 @@ public class TagReadWithGeneExon extends CommandLineProgram {
 		if (genes.size()>1 && this.ALLOW_MULTI_GENE_READS==false)
 			log.error("There should only be 1 gene assigned to a read for DGE purposes.");
 
-		String finalGeneName = getCompoundGeneName(genes);
+		String finalGeneName = getCompoundName(genes);
 		String finalGeneStrand = getCompoundStrand(genes);
 
 		if (f!=null)
@@ -171,6 +170,89 @@ public class TagReadWithGeneExon extends CommandLineProgram {
 		}
 		return (r);
 	}
+	*/
+	/**
+	 * Add functional annotations for this read.
+	 * @param r
+	 * @param geneOverlapDetector
+	 * @return
+	 */
+	public SAMRecord setAnnotations (final SAMRecord r, final OverlapDetector<Gene> geneOverlapDetector, final boolean allowMultiReadGenes) {
+		Map<Gene, List<LocusFunction>> map = AnnotationUtils.getInstance().getFunctionalDataForRead (r, geneOverlapDetector);
+		List<Gene> genes = new ArrayList<Gene>(map.keySet());
+		// sort genes by name alphabetically to maintain some consistent ordering.
+		Collections.sort(genes, GENE_NAME_COMPARATOR);
+
+
+		// populate a list of genes and loci functions.  Get rid of intergenic annotations.
+		List<Gene> geneList = new ArrayList<Gene>();
+
+		// ensure the loci are sorted in the same output order as the genes!
+		List<LocusFunction> functionList = new ArrayList<LocusFunction>();
+		for (Gene g: genes) {
+			List<LocusFunction> fa = map.get(g);
+			Collections.sort(fa, Collections.reverseOrder());
+			for (LocusFunction lf: fa) {
+				geneList.add(g);
+				functionList.add(lf);
+			}
+		}
+
+		String finalGeneName = getCompoundName(geneList);
+		String finalGeneStrand = getCompoundStrand(geneList);
+		String finalLociFunctions=getCompoundFunctionName(functionList);
+
+		r.setAttribute(this.GENE_FUNCTION_TAG, finalLociFunctions);
+		r.setAttribute(this.GENE_NAME_TAG, finalGeneName);
+		r.setAttribute(this.GENE_STRAND_TAG, finalGeneStrand);
+
+		// filter Gene/Locus Function map down to correct strand for read tags for the summary function
+
+		if (USE_STRAND_INFO)
+			genes = getGenesConsistentWithReadStrand(genes, r);
+
+
+		List<LocusFunction> finalFunctionList = new ArrayList<LocusFunction>();
+		for (Gene g: genes) {
+			List<LocusFunction> lf = map.get(g);
+			finalFunctionList.addAll(lf);
+		}
+		// pick the summary locus function for genes that were consistent.
+		LocusFunction f = AnnotationUtils.getInstance().getLocusFunction(finalFunctionList, false);
+		r.setAttribute(this.READ_FUNCTION_TAG, f.name());
+		return (r);
+	}
+
+	/**
+	 * Get a list of genes that are not intergenic.  Don't record intergenic annotations, as those are genes that fall inbetween alignment blocks.
+	 * @param map
+	 * @return
+	 */
+	private Set<Gene> getNonIntergenicGenes (final Map<Gene, LocusFunction> map) {
+		Set<Gene> result = new HashSet<Gene>();
+		for (Gene g: map.keySet()) {
+			LocusFunction lf = map.get(g);
+			if (lf!=LocusFunction.INTERGENIC)
+				result.add(g);
+		}
+		return (result);
+	}
+
+	public static final Comparator<Gene> GENE_NAME_COMPARATOR =  new Comparator<Gene>() {
+        @Override
+		public int compare(final Gene g1, final Gene g2) {
+            return (g1.getName().compareTo(g2.getName()));
+        }
+    };
+
+    public static final Comparator<LocusFunction> LOCUS_FUNCTION_COMPARATOR =  new Comparator<LocusFunction>() {
+        @Override
+		public int compare(final LocusFunction g1, final LocusFunction g2) {
+            return (g1.compareTo(g2));
+        }
+    };
+
+    // LocusFunction
 
 	/**
 	 * If a read overlaps 1 gene, accept it.
@@ -202,11 +284,12 @@ public class TagReadWithGeneExon extends CommandLineProgram {
 			return new ArrayList<Gene>();
 		}
 
+		/**
 		if (sameStrand.size()>1) {
 			this.metrics.AMBIGUOUS_READS_REJECTED++;
 			return new ArrayList<Gene>();
 		}
-
+		*/
 		// otherwise, the read is unambiguously assigned to a gene on the correct strand - the sameStrandSize must be 1 as it's not 0 and not > 1.
 		if (oppositeStrand.size()>0)
 			this.metrics.READ_AMBIGUOUS_GENE_FIXED++;
@@ -216,7 +299,7 @@ public class TagReadWithGeneExon extends CommandLineProgram {
 
 	}
 
-	private String getCompoundGeneName (final Collection<Gene> genes) {
+	public static String getCompoundName (final Collection<Gene> genes) {
 
 		if (genes.isEmpty()) return (null);
 
@@ -234,7 +317,25 @@ public class TagReadWithGeneExon extends CommandLineProgram {
 		return (result.toString());
 	}
 
-	private String getCompoundStrand (final Collection<Gene> genes) {
+	public static String getCompoundFunctionName (final Collection<LocusFunction> functions) {
+
+		if (functions.isEmpty()) return (null);
+
+		StringBuilder result = new StringBuilder();
+		Iterator<LocusFunction> iter = functions.iterator();
+		result.append(iter.next().name());
+
+
+		while (iter.hasNext()) {
+			result.append(",");
+			result.append(iter.next().name());
+		}
+
+		return (result.toString());
+	}
+
+
+	public static String getCompoundStrand (final Collection<Gene> genes) {
 
 		if (genes.isEmpty()) return (null);
 

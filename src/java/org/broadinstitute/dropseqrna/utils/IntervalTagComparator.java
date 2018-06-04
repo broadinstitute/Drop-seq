@@ -23,14 +23,14 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.util.Comparator;
-import java.util.regex.Pattern;
-
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMTagUtil;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.StringUtil;
+
+import java.util.Comparator;
+import java.util.regex.Pattern;
 
 /**
  * When assigning intervals as tags to a BAM, the interval information is stored as a string.

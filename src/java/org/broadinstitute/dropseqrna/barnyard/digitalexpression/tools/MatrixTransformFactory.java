@@ -23,15 +23,14 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression.tools;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.tools.MatrixTransformI;
 import org.la4j.Matrix;
 import org.la4j.Vectors;
 import org.la4j.vector.functor.VectorAccumulator;
 import org.la4j.vector.functor.VectorFunction;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 /**
  * Produces functions that transform a matrix.

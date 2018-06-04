@@ -10,11 +10,11 @@
  */
 package org.broadinstitute.dropseqrna.utils.alignmentcomparison;
 
-import java.util.Arrays;
-import java.util.List;
-
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Ordering;
+
+import java.util.Arrays;
+import java.util.List;
 
 public class ContigResult implements Comparable<ContigResult> {
 

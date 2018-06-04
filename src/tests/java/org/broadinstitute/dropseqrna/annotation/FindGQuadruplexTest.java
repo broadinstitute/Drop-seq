@@ -23,10 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
-import java.util.List;
-
 import org.junit.Assert;
 import org.testng.annotations.Test;
+
+import java.util.List;
 
 /**
  * Given a sequence, find a list of GQuadruplex intervals.

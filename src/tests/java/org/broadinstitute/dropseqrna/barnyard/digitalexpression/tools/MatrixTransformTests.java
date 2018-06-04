@@ -23,12 +23,11 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression.tools;
 
-import java.io.File;
-
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.tools.DGEMatrix;
 import org.la4j.Matrix;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.io.File;
 
 public class MatrixTransformTests {
 

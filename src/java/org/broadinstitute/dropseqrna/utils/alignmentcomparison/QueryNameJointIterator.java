@@ -10,12 +10,12 @@
  */
 package org.broadinstitute.dropseqrna.utils.alignmentcomparison;
 
-import java.util.List;
-
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordQueryNameComparator;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.PeekableIterator;
+
+import java.util.List;
 
 /**
  * Holds two iterators and outputs data when both iterators have the same query

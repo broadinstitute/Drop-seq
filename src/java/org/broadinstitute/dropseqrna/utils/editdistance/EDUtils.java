@@ -23,6 +23,9 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
+import org.broadinstitute.dropseqrna.TranscriptomeException;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -31,9 +34,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import org.broadinstitute.dropseqrna.TranscriptomeException;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 public class EDUtils {
 

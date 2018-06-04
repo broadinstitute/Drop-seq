@@ -23,15 +23,14 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.util.CloserUtil;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-
-import org.testng.Assert;
-import org.testng.annotations.Test;
-
-import htsjdk.samtools.util.CloserUtil;
 
 public class PeekableGroupingIteratorTest {
 
