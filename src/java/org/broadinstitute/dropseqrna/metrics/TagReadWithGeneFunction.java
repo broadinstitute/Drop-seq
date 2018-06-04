@@ -49,9 +49,9 @@ import java.util.*;
         oneLineSummary = "Tags gene/exons in a strand-specific way, adds locus function type. Used before running digital expression.",
         programGroup = DropSeq.class
 )
-public class TagReadWithGeneExon extends CommandLineProgram {
+public class TagReadWithGeneFunction extends CommandLineProgram {
 
-	private final Log log = Log.getInstance(TagReadWithGeneExon.class);
+	private final Log log = Log.getInstance(TagReadWithGeneFunction.class);
 	private ProgressLogger pl = new ProgressLogger(log);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze")
@@ -368,7 +368,7 @@ public class TagReadWithGeneExon extends CommandLineProgram {
 
 	/** Stock main method. */
 	public static void main(final String[] args) {
-		System.exit(new TagReadWithGeneExon().instanceMain(args));
+		System.exit(new TagReadWithGeneFunction().instanceMain(args));
 	}
 
 }

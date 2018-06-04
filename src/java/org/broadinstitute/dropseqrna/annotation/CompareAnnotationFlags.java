@@ -5,7 +5,7 @@ import htsjdk.samtools.util.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.metrics.TagReadWithGeneExon;
+import org.broadinstitute.dropseqrna.metrics.TagReadWithGeneFunction;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionIteratorWrapper;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
@@ -19,14 +19,14 @@ import java.io.IOException;
 import java.util.*;
 
 @CommandLineProgramProperties(
-        summary = "Test the old vs new versions of TagReadWithGeneExon by comparing the tags from both for UTR/CODING reads.",
+        summary = "Test the old vs new versions of TagReadWithGeneFunction by comparing the tags from both for UTR/CODING reads.",
         		oneLineSummary ="Test program don't use.",
         programGroup = DropSeq.class)
 
 public class CompareAnnotationFlags extends CommandLineProgram {
 
 
-	private final Log log = Log.getInstance(TagReadWithGeneExon.class);
+	private final Log log = Log.getInstance(CompareAnnotationFlags.class);
 	private ProgressLogger pl = new ProgressLogger(log);
 
 
