@@ -27,10 +27,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
-import org.broadinstitute.dropseqrna.utils.GroupingIterator;
-import org.broadinstitute.dropseqrna.utils.MultiComparator;
-import org.broadinstitute.dropseqrna.utils.StringInterner;
-import org.broadinstitute.dropseqrna.utils.StringTagComparator;
+import org.broadinstitute.dropseqrna.utils.*;
 import picard.annotation.LocusFunction;
 
 import java.util.Collection;
@@ -119,8 +116,11 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		// Filter reads on map quality
 		MapQualityFilteredIterator filteringIterator2 = new MapQualityFilteredIterator(filteringIterator, readMQ, true);
 
-		// Filter reads on if the read contains a cell barcode.
-		TagValueFilteringIterator<String> filteringIterator3 = new TagValueFilteringIterator<String>(filteringIterator2, this.cellBarcodeTag, cellBarcodes);
+		// Filter reads on if the read contains a cell barcode, if cell barcodes have been specified.
+		FilteredIterator<SAMRecord> filteringIterator3 =
+				(cellBarcodes != null?
+						new TagValueFilteringIterator<String>(filteringIterator2, this.cellBarcodeTag, cellBarcodes):
+				filteringIterator2);
 
 		// Filter/assign reads based on functional annotations
 		GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator3, geneTag, geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
