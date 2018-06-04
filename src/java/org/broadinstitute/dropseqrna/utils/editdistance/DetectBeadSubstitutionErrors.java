@@ -125,7 +125,6 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 	protected int doWork() {
 		for (final File input : INPUT)
 			IOUtil.assertFileIsReadable(input);
-        IOUtil.assertFileIsWritable(OUTPUT);
         if (this.OUTPUT!=null) IOUtil.assertFileIsWritable(this.OUTPUT);
         if (this.OUTPUT_REPORT!=null) IOUtil.assertFileIsWritable(this.OUTPUT_REPORT);
         if (this.OUTPUT_SUMMARY!=null) IOUtil.assertFileIsWritable(this.OUTPUT_SUMMARY);
