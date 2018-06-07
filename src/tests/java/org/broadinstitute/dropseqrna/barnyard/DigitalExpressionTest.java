@@ -263,7 +263,12 @@ public class DigitalExpressionTest {
 	/**
 	 * @return A digital expression file, which is marked as deleteOnExit
      */
-    public static File makeDigitalExpressionFile(final boolean outputHeader) throws IOException {
+	public static File makeDigitalExpressionFile(final boolean outputHeader) throws IOException {
+		return makeDigitalExpressionFile(outputHeader, new File("."));
+	}
+
+	/** Use this version when calling from private tests */
+    public static File makeDigitalExpressionFile(final boolean outputHeader, final File basedir) throws IOException {
 		final File outFile = File.createTempFile("testDigitalExpression.", ".digital_expression.txt.gz");
 		final File summaryFile = File.createTempFile("testDigitalExpression.", ".digital_expression_summary.txt");
         final File cellBarcodesFile = File.createTempFile("testDigitalExpression.", ".selectedCellBarcodes.txt");
@@ -275,7 +280,7 @@ public class DigitalExpressionTest {
 			writer.println(cellBarcode);
         writer.close();
         final DigitalExpression de = new DigitalExpression();
-		de.INPUT = IN_FILE;
+		de.INPUT = new File(basedir, IN_FILE.getPath());
 		de.OUTPUT = outFile;
 		de.SUMMARY = summaryFile;
         de.CELL_BC_FILE = cellBarcodesFile;

@@ -1,0 +1,5 @@
+datasets:
+- path: testdata/org/broadinstitute/dropseq/cluster/P60ENTSTNRep1P1.subset.auto.digital_expression.txt
+- path: testdata/org/broadinstitute/dropseq/cluster/P60ENTSTNRep3P1.subset.auto.digital_expression.txt
+- path: testdata/org/broadinstitute/dropseq/cluster/P60ENTSTNRep4P1.subset.auto.digital_expression.txt
+

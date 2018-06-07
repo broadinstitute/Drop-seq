@@ -40,7 +40,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class MergeDgeSparseTest {
-    private static final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/private/cluster");
+    private static final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/cluster");
     private static final File YAML = new File(TEST_DATA_DIR, "test.yaml");
 
     @SuppressWarnings("unchecked")

@@ -1,0 +1,13 @@
+# This is a comment
+A_AAATCCAAACGT
+B_ACGCACCCGGAC# another comment
+C_TTCTATTCCGAT  # A comment preceeded by whitespace
+# some blank lines
+
+C_CCAGTCATCTAG
+
+# Edge case: the last cell barcode in Rep1P1
+A_GGAATTTTAGTT
+
+# Edge case: the first cell barcode in Rep1P1
+A_ATTCCCCTCGTT

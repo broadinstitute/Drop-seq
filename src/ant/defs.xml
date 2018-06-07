@@ -1,0 +1,121 @@
+<!--
+  ~ The MIT License
+  ~
+  ~ Copyright (c) 2018 The Broad Institute
+  ~
+  ~ Permission is hereby granted, free of charge, to any person obtaining a copy
+  ~ of this software and associated documentation files (the "Software"), to deal
+  ~ in the Software without restriction, including without limitation the rights
+  ~ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the Software is
+  ~ furnished to do so, subject to the following conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be included in
+  ~ all copies or substantial portions of the Software.
+  ~
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  ~ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  ~ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  ~ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  ~ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  ~ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  ~ THE SOFTWARE.
+  -->
+
+<!-- To be included in build.xml -->
+<!-- Get GIT hash, if available, otherwise leave it blank.  -->
+<exec executable="git" outputproperty="repository.revision" failifexecutionfails="true" errorproperty="">
+    <arg value="log"/>
+    <arg value="-1"/>
+    <arg value="--pretty=format:%h_%at"/>
+</exec>
+<property name="repository.revision" value=""/>
+
+
+<property name="Drop-seq.version" value="1.13"/>
+<property name="zip.label" value="Drop-seq_tools-${Drop-seq.version}"/>
+<property name="javac.debug" value="true"/>
+<property name="javac.target" value="1.8"/>
+<property name="testng.verbosity" value="2"/>
+<property name="jdk.url" value="http://docs.oracle.com/javase/8/docs/api/"/>
+
+<property environment="env"/>
+
+
+<macrodef name="compile">
+    <attribute name="destdir"/>
+    <attribute name="src"/>
+    <attribute name="classpathrefid"/>
+    <sequential>
+        <mkdir dir="@{destdir}"/>
+        <javac destdir="@{destdir}"
+               optimize="${javac.opt}"
+               includes ="org/broadinstitute/dropseqrna/**/*.*"
+               debug="${javac.debug}"
+               includeantruntime="false">
+            <src path="@{src}"/>
+            <classpath refid="@{classpathrefid}"/>
+        </javac>
+    </sequential>
+</macrodef>
+
+        <!-- TEST -->
+<macrodef name="test">
+    <attribute name="destdir"/>
+    <attribute name="classpathrefid"/>
+    <attribute name="classes"/>
+    <sequential>
+        <taskdef resource="testngtasks" classpathref="test.classpath"/>
+        <testng suitename="Drop-seq-tests" classpathref="@{classpathrefid}" outputdir="@{destdir}"
+                failureproperty="tests.failed" excludedgroups="slow" workingDir="${basedir}"
+                verbose="${testng.verbosity}">
+            <classpath>
+                <pathelement path="@{classes}"/>
+            </classpath>
+            <classfileset dir="@{classes}">
+                <include name="**/Test*.class"/>
+                <include name="**/*Test.class"/>
+            </classfileset>
+            <jvmarg value="-Xmx1G"/>
+        </testng>
+        <fail if="tests.failed" message="There were failed unit tests"/>
+    </sequential>
+</macrodef>
+
+<macrodef name="single-test">
+    <attribute name="destdir"/>
+    <attribute name="classpathrefid"/>
+    <attribute name="classes"/>
+    <sequential>
+        <taskdef resource="testngtasks" classpathref="test.classpath"/>
+        <fail unless="test.name" message="Please provide input test: -Dtest.name=..." />
+        <testng suitename="Drop-seq-tests" classpathref="@{classpathrefid}" outputdir="@{destdir}"
+                failureproperty="tests.failed" excludedgroups="slow" workingDir="${basedir}"
+                verbose="${testng.verbosity}">
+            <classpath>
+                <pathelement path="@{classes}"/>
+            </classpath>
+            <classfileset dir="@{classes}">
+                <include name="**/Test*.class"/>
+                <include name="**/${test.name}.class"/>
+            </classfileset>
+            <jvmarg value="-Xmx1G"/>
+        </testng>
+        <fail if="tests.failed" message="There were failed unit tests"/>
+    </sequential>
+</macrodef>
+
+        <!-- Create script to invoke the given main program.  main-class is no longer necessary: should it be deleted? -->
+<macrodef name="package-command">
+    <attribute name="main-class"/>
+    <attribute name="title"/>
+    <attribute name="visibility"/>
+    <sequential>
+        <!-- Copy template for script, and then replace slugs with appropriate values -->
+        <copy file="src/scripts/@{visibility}_clp_template.sh" tofile="${dist}/scripts/@{title}"/>
+        <replace file="${dist}/scripts/@{title}">
+            <replacefilter token="__PROGNAME__" value="@{title}"/>
+        </replace>
+        <chmod perm="ug+rx" file="${dist}/@{title}"/>
+    </sequential>
+</macrodef>

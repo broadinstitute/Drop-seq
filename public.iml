@@ -13,7 +13,7 @@
     <orderEntry type="module-library" exported="">
       <library>
         <CLASSES>
-          <root url="file://$MODULE_DIR$/../lib" />
+          <root url="file://$MODULE_DIR$/lib" />
         </CLASSES>
         <JAVADOC />
         <SOURCES>
@@ -22,17 +22,20 @@
           <root url="file://$MODULE_DIR$/../../../git-picard/src/main/java" />
           <root url="jar://$USER_HOME$/.ideaLibSources/picard-2.10.3-sources.jar!/" />
         </SOURCES>
-        <jarDirectory url="file://$MODULE_DIR$/../lib" recursive="false" />
+        <jarDirectory url="file://$MODULE_DIR$/lib" recursive="false" />
       </library>
     </orderEntry>
-    <orderEntry type="module-library" exported="">
+    <orderEntry type="module-library" exported="" scope="TEST">
       <library>
         <CLASSES>
-          <root url="file://$MODULE_DIR$/../lib/test" />
+          <root url="file://$MODULE_DIR$/lib/test" />
         </CLASSES>
         <JAVADOC />
-        <SOURCES />
-        <jarDirectory url="file://$MODULE_DIR$/../lib/test" recursive="false" />
+        <SOURCES>
+          <root url="file://$MODULE_DIR$/lib/test" />
+        </SOURCES>
+        <jarDirectory url="file://$MODULE_DIR$/lib/test" recursive="false" />
+        <jarDirectory url="file://$MODULE_DIR$/lib/test" recursive="false" type="SOURCES" />
       </library>
     </orderEntry>
     <orderEntry type="library" name="R User Library" level="project" />

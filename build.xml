@@ -1,0 +1,179 @@
+<?xml version="1.0"?>
+<!--
+  ~ The MIT License
+  ~
+  ~ Copyright (c) 2017 The Broad Institute
+  ~
+  ~ Permission is hereby granted, free of charge, to any person obtaining a copy
+  ~ of this software and associated documentation files (the "Software"), to deal
+  ~ in the Software without restriction, including without limitation the rights
+  ~ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the Software is
+  ~ furnished to do so, subject to the following conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be included in
+  ~ all copies or substantial portions of the Software.
+  ~
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  ~ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  ~ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  ~ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  ~ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  ~ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  ~ THE SOFTWARE.
+  -->
+<!DOCTYPE project [
+        <!ENTITY defs SYSTEM "src/ant/defs.xml">
+        ]>
+<project name="Drop-seq" basedir="." default="all">
+
+    <property name="src" location="src/java"/>
+    <property name="src.test" location="src/tests/java"/>
+    <property name="lib" location="lib"/>
+    <property name="dist" location="dist"/>
+    <property name="classes" location="classes"/>
+    <property name="classes.test" location="testclasses"/>
+    <property name="test.output" location="dist/test"/>
+    <property name="javadoc" location="javadoc"/>
+    <property name="picard.executable.dir" location="../../3rdParty/picard"/>
+
+    <!-- load macro definitions etc from ant/defs.xml -->
+    &defs;
+
+    <!-- INIT -->
+    <path id="classpath">
+        <fileset dir="${lib}">
+            <include name="*.jar"/>
+        </fileset>
+    </path>
+    <path id="test.classpath">
+        <pathelement location="${classes}"/>
+        <path refid="classpath"/>
+        <fileset dir="${lib}/test">
+            <include name="*.jar"/>
+        </fileset>
+    </path>
+
+    <!-- CLEAN -->
+    <target name="clean">
+        <delete dir="${classes}"/>
+        <delete dir="${classes.test}"/>
+        <delete dir="${test.output}"/>
+        <delete  dir="${dist}"/>
+        <delete  dir="${javadoc}"/>
+    </target>
+
+    <target name="compile" depends="compile-tests"
+            description="Compile source and test files without cleaning">
+    </target>
+
+    <target name="compile-src" description="Compile files without cleaning">
+        <compile src="${src}" destdir="${classes}" classpathrefid="classpath"/>
+    </target>
+
+    <target name="compile-tests" depends="compile-src" description="Compile test files without cleaning">
+        <compile src="${src.test}" destdir="${classes.test}" classpathrefid="test.classpath"/>
+    </target>
+
+
+    <target name="test" depends="compile-tests" description="Run unit test suite">
+        <test classes="${classes.test}" classpathrefid="test.classpath" destdir="${test.output}"/>
+    </target>
+
+    <target name="single-test" depends="compile-tests" description="Run a single unit test">
+        <single-test classes="${classes.test}" classpathrefid="test.classpath" destdir="${test.output}"/>
+    </target>
+
+
+    <target name="javadoc" description="Generates javadoc.">
+        <javadoc
+                sourcepath="${src}"
+                destdir="javadoc"
+                packagenames="org.broadinstitute.dropseqrna.*"
+                windowtitle="Drop-seq Java API Documentation"
+                doctitle="&lt;h1&gt;Drop-seq Java API Documentation&lt;/h1&gt;"
+                author="true"
+                protected="true"
+                use="true"
+                version="true"
+                classpathref="classpath">
+            <link href="${jdk.url}"/>
+        </javadoc>
+    </target>
+
+    <target name="jar-executable" depends="compile-src">
+        <mkdir dir="${dist}"/>
+        <pathconvert property="classpath.manifest" refid="classpath" pathsep=" ">
+            <chainedmapper>
+                <flattenmapper/>
+                <globmapper from="*.jar" to="lib/*.jar"/>
+            </chainedmapper>
+        </pathconvert>
+        <delete file="${dist}/dropseq.jar"/>
+        <jar destfile="${dist}/dropseq.jar" compress="no">
+            <fileset dir="${classes}" includes="org/broadinstitute/dropseqrna/**/*.*"/>
+            <manifest>
+                <attribute name="Implementation-Version" value="${Drop-seq.version}(${repository.revision})"/>
+                <attribute name="Implementation-Vendor" value="Broad Institute"/>
+                <attribute name="Main-Class" value="org.broadinstitute.dropseqrna.cmdline.DropSeqMain"/>
+                <attribute name="Implementation-Title" value="Drop-seq tools"/>
+                <attribute name="Class-Path" value="${classpath.manifest}"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="package-commands">
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.annotation.ValidateReference" title="ValidateReference"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.annotation.CreateIntervalsFiles" title="CreateIntervalsFiles"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.annotation.ConvertToRefFlat" title="ConvertToRefFlat"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.annotation.ReduceGTF" title="ReduceGTF"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.annotation.GatherGeneGCLength" title="GatherGeneGCLength"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.utils.TagBamWithReadSequenceExtended" title="TagBamWithReadSequenceExtended"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.metrics.BAMTagHistogram" title="BAMTagHistogram"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.metrics.GatherReadQualityMetrics" title="GatherReadQualityMetrics"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.metrics.BAMTagofTagCounts" title="BAMTagofTagCounts"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.metrics.TagReadWithGeneFunction" title="TagReadWithGeneFunction"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.metrics.TagReadWithGeneExonFunction" title="TagReadWithGeneExonFunction"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.utils.BaseDistributionAtReadPosition" title="BaseDistributionAtReadPosition"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.metrics.TagReadWithInterval" title="TagReadWithInterval"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.barnyard.DigitalExpression" title="DigitalExpression"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.barnyard.GatherMolecularBarcodeDistributionByGene" title="GatherMolecularBarcodeDistributionByGene"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.barnyard.SingleCellRnaSeqMetricsCollector" title="SingleCellRnaSeqMetricsCollector"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.readtrimming.PolyATrimmer" title="PolyATrimmer"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.readtrimming.TrimStartingSequence" title="TrimStartingSequence"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.utils.FilterBAM" title="FilterBAM"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.beadsynthesis.DetectBeadSynthesisErrors" title="DetectBeadSynthesisErrors"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.utils.FilterBAMByTag" title="FilterBAMByTag"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.barnyard.SelectCellsByNumTranscripts" title="SelectCellsByNumTranscripts"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.utils.editdistance.CollapseBarcodesInPlace" title="CollapseBarcodesInPlace"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.utils.editdistance.CollapseTagWithContext" title="CollapseTagWithContext"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.utils.editdistance.DetectBeadSubstitutionErrors" title="DetectBeadSubstitutionErrors"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.utils.alignmentcomparison.CompareDropSeqAlignments" title="CompareDropSeqAlignments"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.utils.referencetools.MaskReferenceSequence" title="MaskReferenceSequence"/>
+        <package-command visibility="public" main-class="org.broadinstitute.dropseqrna.cluster.MergeDgeSparse" title="MergeDgeSparse"/>
+    </target>
+
+
+
+    <target name="all" depends="compile, jar-executable" description="Default build target"/>
+
+    <target name="make-deployment-zip" depends="jar-executable, package-commands" description="Create zipfile for deployment">
+        <delete file="${dist}/${zip.label}.zip"/>
+        <echo file="${dist}/loadDotKits.sh" message="# This file intentionally empty"/>
+        <zip zipfile="${dist}/${zip.label}.zip">
+            <zipfileset dir="${dist}" includes="dropseq.jar" prefix="${zip.label}/jar"/>
+            <zipfileset dir="${lib}" includes="*.*" prefix="${zip.label}/jar/lib"/>
+            <zipfileset dir="${picard.executable.dir}" includes="*.*" prefix="${zip.label}/3rdParty/picard"/>
+            <zipfileset dir="${dist}/scripts" prefix="${zip.label}" filemode="755" includes="*"/>
+            <zipfileset dir="src/scripts" includes="Drop-seq_alignment.sh"  filemode="755" prefix="${zip.label}"/>
+            <zipfileset file="${dist}/loadDotKits.sh" prefix="${zip.label}"/>
+            <!--
+            Don't bother including source because it will be available on github.
+            <zipfileset dir="${src}" prefix="${zip.label}/src/java"/>
+            <zipfileset file="build.xml" fullpath="${zip.label}/build.xml"/>
+            <zipfileset file="src/ant/defs.xml" fullpath="${zip.label}/src/ant/defs.xml"/>
+            -->
+        </zip>
+    </target>
+
+</project>
