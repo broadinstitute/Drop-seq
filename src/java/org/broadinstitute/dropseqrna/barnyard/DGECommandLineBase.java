@@ -39,12 +39,6 @@ public abstract class DGECommandLineBase extends GeneFunctionCommandLineBase {
 	@Argument(doc="The molecular barcode tag.")
 	public String MOLECULAR_BARCODE_TAG="XM";
 	
-	@Argument(doc="The Gene/Exon tag")
-	public String GENE_EXON_TAG="GE";
-
-	@Argument(doc="The strand of the gene(s) the read overlaps.  When there are multiple genes, they will be comma seperated.")
-	public String STRAND_TAG="GS";
-
 	@Argument(doc="The edit distance that molecular barcodes should be combined at within a gene.")
 	public Integer EDIT_DISTANCE=1;
 	
