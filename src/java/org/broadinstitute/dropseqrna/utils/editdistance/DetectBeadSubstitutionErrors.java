@@ -357,8 +357,6 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 		log.info("Gathering UMI counts per cell and filtering out UMI biased barcodes as appropriate");
         for (final List<UMICollection> umiCollectionList : groupingIterator) {
             final String cellBarcode = umiCollectionList.get(0).getCellBarcode();
-            //TODO: Remove this log.
-            log.info(cellBarcode);
             numCellBarocodesTest++;
             BeadSynthesisErrorData bsed = new BeadSynthesisErrorData(cellBarcode);
             for (final UMICollection umis : umiCollectionList) {
