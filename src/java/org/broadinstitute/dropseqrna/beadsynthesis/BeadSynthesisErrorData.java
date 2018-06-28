@@ -23,15 +23,15 @@
  */
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+
 import org.apache.commons.lang.math.NumberUtils;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetric;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
 import org.broadinstitute.dropseqrna.utils.Bases;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
 
 public class BeadSynthesisErrorData {
 
@@ -57,6 +57,15 @@ public class BeadSynthesisErrorData {
 		this.numReads=0;
 		this.numTranscripts=0;
 		this.numUMIs=-1;
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder b = new StringBuilder();
+		b.append("Cell Barcode ["+ this.cellBarcode +"] num reads ["+ this.numReads+"] num transcripts ["+ this.numTranscripts+"]" + " num umis ["+ this.numUMIs+"]");
+		if (this.baseCounts!=null) b.append("\n" + this.baseCounts.toString());
+		if (this.umiCounts!=null) b.append("\n" + this.umiCounts.toString());
+		return b.toString();
 	}
 
 	/**

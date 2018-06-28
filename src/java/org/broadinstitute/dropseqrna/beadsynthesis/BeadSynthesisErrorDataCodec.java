@@ -33,13 +33,14 @@ import java.io.OutputStream;
 
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 
+import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.samtools.util.SortingCollection;
 import htsjdk.samtools.util.SortingCollection.Codec;
 import picard.PicardException;
 
 public class BeadSynthesisErrorDataCodec implements SortingCollection.Codec<BeadSynthesisErrorData> {
-
+	private static final Log log = Log.getInstance(BeadSynthesisErrorDataCodec.class);
 	private ObjectOutputStream outputStream = null;
 	private ObjectInputStream inputReader = null;
 
@@ -68,7 +69,12 @@ public class BeadSynthesisErrorDataCodec implements SortingCollection.Codec<Bead
 		try {
 			this.outputStream.writeObject(val);
 		} catch (final IOException ioe) {
-
+			if (val==null)
+				log.warn("Passed in a null BeadSynthesisErrorData for encoding");
+			else {
+				log.warn("This BeadSynthesisErrorData can't be encoded: " + val.getCellBarcode());
+				log.warn("This BeadSynthesisErrorData full string: " + val.toString());
+			}
 			throw new RuntimeIOException("Could not encode BeadSynthesisErrorData record for a sorting collection: " + ioe.getMessage(), ioe);
 		}
 
