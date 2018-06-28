@@ -23,13 +23,19 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class BaseDistributionMetricCollection {
+public class BaseDistributionMetricCollection implements Serializable {
+
+	/**
+	 *
+	 */
+	private static final long serialVersionUID = -55813371198085699L;
 
 	private Map<Integer, BaseDistributionMetric> collection = null;
 

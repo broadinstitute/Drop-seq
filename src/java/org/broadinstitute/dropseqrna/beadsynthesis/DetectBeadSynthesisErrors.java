@@ -155,6 +155,7 @@ public class DetectBeadSynthesisErrors extends GeneFunctionCommandLineBase {
 
 	private Character PAD_CHARACTER='N';
 	private static DecimalFormat df2 = new DecimalFormat("#.##");
+	private int MAX_BARCODE_ERRORS_IN_RAM=10000;
 
 	@Override
 	protected int doWork() {
@@ -275,7 +276,7 @@ public class DetectBeadSynthesisErrors extends GeneFunctionCommandLineBase {
 		StringInterner  umiStringCache = new StringInterner();
 
 		// a sorting collection so big data can spill to disk before it's sorted and written out as a report.
-		SortingCollection<BeadSynthesisErrorData> sortingCollection= SortingCollection.newInstance(BeadSynthesisErrorData.class, new BeadSynthesisErrorDataCodec(), new BeadSynthesisErrorData.SizeComparator(), this.MAX_RECORDS_IN_RAM);
+		SortingCollection<BeadSynthesisErrorData> sortingCollection= SortingCollection.newInstance(BeadSynthesisErrorData.class, new BeadSynthesisErrorDataCodec(), new BeadSynthesisErrorData.SizeComparator(), this.MAX_BARCODE_ERRORS_IN_RAM);
 
         // gather up summary stats
      	BeadSynthesisErrorsSummaryMetric summary = new BeadSynthesisErrorsSummaryMetric();
@@ -292,13 +293,6 @@ public class DetectBeadSynthesisErrors extends GeneFunctionCommandLineBase {
      	// main data generation loop.
      	// to ease memory usage, after generating the BeadSynthesisErrorData object, use its cell barcode string for registering additional data.
         for (final List<UMICollection> umiCollectionList : groupingIterator) {
-        	if (umiCollectionList.size()==0)
-				log.info("UMI Collection list empty.");
-			else {
-        		String cellBC=umiCollectionList.get(0).getCellBarcode();
-        		log.info(cellBC);
-        	}
-
             BeadSynthesisErrorData bsed = buildBeadSynthesisErrorData(umiCollectionList, umiStringCache, prog);
             // if the cell has too few UMIs, then go to the next cell and skip all processing.
             if (bsed.getNumTranscripts() < this.MIN_UMIS_PER_CELL)

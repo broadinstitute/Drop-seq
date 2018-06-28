@@ -71,10 +71,8 @@ public class BeadSynthesisErrorDataCodec implements SortingCollection.Codec<Bead
 		} catch (final IOException ioe) {
 			if (val==null)
 				log.warn("Passed in a null BeadSynthesisErrorData for encoding");
-			else {
-				log.warn("This BeadSynthesisErrorData can't be encoded: " + val.getCellBarcode());
-				log.warn("This BeadSynthesisErrorData full string: " + val.toString());
-			}
+			else
+				log.warn("This BeadSynthesisErrorData can't be encoded: " + val.toString());
 			throw new RuntimeIOException("Could not encode BeadSynthesisErrorData record for a sorting collection: " + ioe.getMessage(), ioe);
 		}
 

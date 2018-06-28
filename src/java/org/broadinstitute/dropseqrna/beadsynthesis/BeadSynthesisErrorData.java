@@ -23,6 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -33,8 +34,12 @@ import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
 import org.broadinstitute.dropseqrna.utils.Bases;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
-public class BeadSynthesisErrorData {
+public class BeadSynthesisErrorData implements Serializable {
 
+	/**
+	 *
+	 */
+	private static final long serialVersionUID = 2086873042168761563L;
 	private final String cellBarcode;
 	private BaseDistributionMetricCollection baseCounts;
 	private ObjectCounter<String> umiCounts;

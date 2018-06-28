@@ -23,17 +23,23 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.metrics.MetricBase;
-
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class BaseDistributionMetric extends MetricBase {
+import htsjdk.samtools.metrics.MetricBase;
+
+public class BaseDistributionMetric extends MetricBase implements Serializable {
+
+	/**
+	 *
+	 */
+	private static final long serialVersionUID = -644875076890522563L;
 
 	private Map<Character, Integer> map = null;
 
 	public BaseDistributionMetric() {
-		map = new HashMap<Character, Integer>();
+		map = new HashMap<>();
 		map.put(Bases.A.getBase(), 0);
 		map.put(Bases.C.getBase(), 0);
 		map.put(Bases.G.getBase(), 0);
@@ -41,16 +47,16 @@ public class BaseDistributionMetric extends MetricBase {
 		map.put(Bases.N.getBase(), 0);
 	}
 
-	void addBase(Character base) {
+	void addBase(final Character base) {
 		int count = map.get(base);
 		count++;
 		map.put(base, count);
 	}
 
-	public int getCount(Character base) {
+	public int getCount(final Character base) {
 		return (map.get(base));
 	}
-	
+
 	public int getTotalCount () {
 		int count=0;
 		for (Bases b: Bases.values()) {
@@ -60,6 +66,7 @@ public class BaseDistributionMetric extends MetricBase {
 		return count;
 	}
 
+	@Override
 	public String toString() {
 		return this.map.toString();
 	}
