@@ -109,6 +109,11 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	@Argument (doc="The minumum number of reads (unless using the COUNT_TAGS option) for a context to be eligible for collapse.", optional=true)
 	public Integer MIN_COUNT=null;
 
+	@Argument (doc="When collapsing a CONTEXT_TAG and have MIN_COUNT set to a non-null value, do not emit CONTEXT reads that have fewer than MIN_COUNT counts.  "
+			+ "For example, if your context tags were cell and gene and you were collapsing UMI tags and had a MIN_COUNT of 5, then cell/gene pairs with fewer than 5 UMIs "
+			+ "would not have their reads emiited in the output BAM.", optional=false)
+	public Boolean DROP_SMALL_COUNTS=false;
+
 	@Argument(doc="Number of threads to use.  Defaults to 1.")
 	public int NUM_THREADS=1;
 
@@ -138,6 +143,8 @@ public class CollapseTagWithContext extends CommandLineProgram {
 			log.error("If adaptive edit distance is in use, must set a minimum adaptive edit distance!");
 			return 1;
 		}
+		if (this.DROP_SMALL_COUNTS && (this.MIN_COUNT==null || this.MIN_COUNT==0))
+			log.error("If DROP_SMALL_COUNTS is set to true, must set a MIN_COUNT VALUE greater than 0.");
 		PrintStream outMetrics = null;
 		if (this.ADAPTIVE_ED_METRICS_FILE!=null) {
 			outMetrics = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.ADAPTIVE_ED_METRICS_FILE));
@@ -186,7 +193,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
         	}
 
         	// remove the informative reads, as they will get retagged.
-        	List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.COUNT_TAGS, this.OUT_TAG, this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT, verbose, outMetrics);
+        	List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.COUNT_TAGS, this.OUT_TAG, this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT, this.DROP_SMALL_COUNTS, verbose, outMetrics);
 
         	// write out the informative reads, then all the reads that were not altered.
         	result.stream().forEach(writer::addAlignment);
@@ -226,14 +233,21 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		return informativeReads;
 	}
 
-	private List<SAMRecord> processRecordList (final Collection<SAMRecord> informativeRecs, final String collapseTag, final List<String> countTags, final String outTag, final boolean findIndels, final int editDistance, final Integer minEditDistance, final Integer maxEditDistance, final Integer minNumObservations, final boolean verbose, final PrintStream outMetrics) {
+	private List<SAMRecord> processRecordList (final Collection<SAMRecord> informativeRecs, final String collapseTag, final List<String> countTags, final String outTag, final boolean findIndels, final int editDistance, final Integer minEditDistance, final Integer maxEditDistance, final Integer minNumObservations, final boolean dropSmallCounts, final boolean verbose, final PrintStream outMetrics) {
 		if (informativeRecs.size()==0) return Collections.EMPTY_LIST;
 
 		// get context.
 		String context = getContextString(informativeRecs.iterator().next(), this.CONTEXT_TAGS);
-	// get barcode counts.
+		// get barcode counts.
 		ObjectCounter<String> barcodeCounts = getBarcodeCounts (informativeRecs, collapseTag, countTags);
 		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, findIndels, editDistance, minEditDistance, maxEditDistance, verbose, outMetrics, context, minNumObservations);
+		Set<String> expectedBarcodes = null;
+		// already validated that if dropSmallCounts is true, then the minNumObservations is non-null and > 0.
+		if (dropSmallCounts) {
+			expectedBarcodes = new HashSet<>();
+			expectedBarcodes.addAll(collapseMap.keySet());
+			expectedBarcodes.addAll(collapseMap.values());
+		}
 
 		// now that you have a map from children to the parent, retag all the reads.
 		List<SAMRecord> result = new ArrayList<>();
@@ -241,6 +255,10 @@ public class CollapseTagWithContext extends CommandLineProgram {
 			String tagValue = r.getStringAttribute(collapseTag);
 			// if the tag was not set, then don't set it.
 			if (tagValue!=null) {
+				// tag was set,
+				// if the tagValue is not in the expected barocde list and the barcode list is populated, then don't add this read and short circuit to next read.
+				if (expectedBarcodes!=null && !expectedBarcodes.contains(tagValue))
+					continue;
 				// tag was set, set it.
 				// is it in the map?  If so, update the tag value.
 				if (collapseMap.containsKey(tagValue))
