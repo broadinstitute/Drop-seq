@@ -23,13 +23,22 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import htsjdk.samtools.util.Log;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
+
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+
+import htsjdk.samtools.util.Log;
 
 /**
  * A utility class that takes a list of strings (ordered by prevalence to determine which barcodes are merged into which)
@@ -458,9 +467,9 @@ public class MapBarcodesByEditDistance {
 		}
 		// no results found.
 		if (result.size()==0) return -1;
-		// special case: no entries within all of scanned results.  return 0.
+		// special case: no entries within all of scanned results.  return -1.
 		int numPosScanned=(maxEditDistance-minEditDistance)+1;
-		if (result.size()==numPosScanned && resultCount==0) return 0;
+		if (result.size()==numPosScanned && resultCount==0) return -1;
 
 		// there may be ties.  select the first entry (smallest ED)
 		Collections.sort(result);
