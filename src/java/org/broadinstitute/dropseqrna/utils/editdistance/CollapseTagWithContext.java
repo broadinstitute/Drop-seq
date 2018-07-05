@@ -261,16 +261,17 @@ public class CollapseTagWithContext extends CommandLineProgram {
 
 		// get context.
 		String context = getContextString(informativeRecs.iterator().next(), this.CONTEXT_TAGS);
+		if (context.equals("AGCGTCGCATCTATAG"))
+				log.info("STOP");
 		// get barcode counts.
 		ObjectCounter<String> barcodeCounts = getBarcodeCounts (informativeRecs, collapseTag, countTags, countTagsEditDistance);
-		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, findIndels, editDistance, minEditDistance, maxEditDistance, verbose, outMetrics, context, minNumObservations);
+		if (minNumObservations!=null) barcodeCounts.filterByMinCount(minNumObservations);
+		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, findIndels, editDistance, minEditDistance, maxEditDistance, verbose, outMetrics, context);
 		Set<String> expectedBarcodes = null;
 		// already validated that if dropSmallCounts is true, then the minNumObservations is non-null and > 0.
-		if (dropSmallCounts) {
-			expectedBarcodes = new HashSet<>();
-			expectedBarcodes.addAll(collapseMap.keySet());
-			expectedBarcodes.addAll(collapseMap.values());
-		}
+		if (dropSmallCounts)
+			// use all the remaining barcodes that have counts.
+			expectedBarcodes = new HashSet<>(barcodeCounts.getKeys());
 
 		// now that you have a map from children to the parent, retag all the reads.
 		List<SAMRecord> result = new ArrayList<>();
@@ -405,10 +406,9 @@ public class CollapseTagWithContext extends CommandLineProgram {
         return writer;
 	}
 
-	private Map<String, String> collapseBarcodes(final ObjectCounter<String> barcodeCounts, final boolean findIndels, final int editDistance, final Integer minEditDistance, final Integer maxEditDistance, final boolean verbose, final PrintStream outMetrics, final String context, final Integer minNumObservations) {
+	private Map<String, String> collapseBarcodes(final ObjectCounter<String> barcodeCounts, final boolean findIndels, final int editDistance, final Integer minEditDistance, final Integer maxEditDistance, final boolean verbose, final PrintStream outMetrics, final String context) {
 		// order the barcodes by the number of reads each barcode has.
 		if (verbose) log.info("Collapsing [" + barcodeCounts.getSize() +"] barcodes.");
-		if (minNumObservations!=null) barcodeCounts.filterByMinCount(minNumObservations);
 
 		// map of primary barcode to list of child barcodes.
 		Map<String, String> result = new HashMap<>();
