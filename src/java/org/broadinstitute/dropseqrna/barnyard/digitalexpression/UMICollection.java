@@ -23,18 +23,17 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.PeekableIterator;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
-import picard.util.TabbedTextFileWithHeaderParser;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
+
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.PeekableIterator;
+import picard.util.TabbedTextFileWithHeaderParser;
 
 /**
  * Models a collection of UMIs for a gene and cell barcode.
@@ -46,6 +45,7 @@ public class UMICollection {
 	private String cellBarcode;
 	private String geneName;
 	private ObjectCounter<String> molecularBarcodeCounts;
+	private static MapBarcodesByEditDistance mbed =new MapBarcodesByEditDistance(false);
 
 	public UMICollection (final String cellBarcode, final String geneName) {
 		this.cellBarcode = cellBarcode;
@@ -175,7 +175,7 @@ public class UMICollection {
 	 */
 	private ObjectCounter<String> collapseByEditDistance (final ObjectCounter<String> counts, final int editDistance) {
 		// short circuit when ED=0.  Useful for huge data sets.
-		if (editDistance==0) return counts;
+		/*if (editDistance==0) return counts;
 
 		ObjectCounter <String> result = new ObjectCounter<>();
 
@@ -183,14 +183,15 @@ public class UMICollection {
 		Map<String, List<String>> collapseMap = mbed.collapseBarcodes(counts, false, editDistance);
 
 		for (String key: collapseMap.keySet()) {
-			int totalCount = molecularBarcodeCounts.getCountForKey(key);
+			int totalCount = counts.getCountForKey(key);
 			List<String> values = collapseMap.get(key);
 			for (String bc: values) {
-				int count = molecularBarcodeCounts.getCountForKey(bc);
+				int count = counts.getCountForKey(bc);
 				totalCount+=count;
 			}
 			result.setCount(key, totalCount);
-		}
+		}*/
+		ObjectCounter<String> result = mbed.collapseAndMergeBarcodes(counts, false, editDistance);
 		return (result);
 	}
 

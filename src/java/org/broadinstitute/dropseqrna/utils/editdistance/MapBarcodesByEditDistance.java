@@ -82,7 +82,6 @@ public class MapBarcodesByEditDistance {
 	 */
 	public Map<String, String> findIntendedIndelSequences (final Collection<String> repairedCellBarcodes, final List<String> potentialIntendedSequences, final int editDistance) {
 		Map<String, String> result=new HashMap<>();
-		//TODO: test 121117_NoRepair_02-13-2018, barcode TGTATTGTTGG, which should be a full deletion.
 		long startTime = System.currentTimeMillis();
 
 		for (String repairedBC: repairedCellBarcodes) {
@@ -240,6 +239,32 @@ public class MapBarcodesByEditDistance {
 	public Map<String, List<String>> collapseBarcodes (final ObjectCounter<String> barcodes, final boolean findIndels, final int editDistance) {
 		List<String> coreBarcodes = barcodes.getKeysOrderedByCount(true);
 		return (collapseBarcodes(coreBarcodes, barcodes, findIndels, editDistance));
+	}
+
+	/**
+	 * Collapses barcodes by the given edit distance and indel settings.
+	 * Returns an ObjectCounter of the barcodes, with the counts of the barcodes updated to reflect barcodes that were collapsed.
+	 * @param barcodes
+	 * @param findIndels
+	 * @param editDistance
+	 * @return
+	 */
+	public ObjectCounter<String> collapseAndMergeBarcodes (final ObjectCounter<String> barcodes, final boolean findIndels, final int editDistance) {
+		if (editDistance==0) return barcodes;
+		ObjectCounter <String> result = new ObjectCounter<>();
+		Map<String, List<String>> collapseMap = this.collapseBarcodes(barcodes, findIndels, editDistance);
+
+		for (String key: collapseMap.keySet()) {
+			int totalCount = barcodes.getCountForKey(key);
+			List<String> values = collapseMap.get(key);
+			for (String bc: values) {
+				int count = barcodes.getCountForKey(bc);
+				totalCount+=count;
+			}
+			result.setCount(key, totalCount);
+		}
+		return (result);
+
 	}
 
 	public AdaptiveMappingResult collapseBarcodesAdaptive (final ObjectCounter<String> barcodes, final boolean findIndels, final int defaultEditDistance, final int minEditDistance, final int maxEditDistance) {

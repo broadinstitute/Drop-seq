@@ -91,6 +91,11 @@ public class CollapseTagWithContext extends CommandLineProgram {
 			+ "For example, if you wanted to collapse by UMI counts instead of read counts, you could put the UMI tag here.")
 	public List<String> COUNT_TAGS;
 
+	@Argument (doc="If COUNT_TAGS is set and COUNT_TAGS_EDIT_DISTANCE>0, then collapse the COUNT_TAGS in a CONTEXT by the given edit distance.  For example, if you wanted to collapse "
+			+ "by UMIs instead of read counts, and you wanted to further collapse UMIs by edit distance 1, you'd set COUNT_TAGS_EDIT_DISTANCE to 1.  This doesn't do much unless MIN_COUNT is also set "
+			+ "as collapse would only be affected if there is a minimum number of counts for each CONTEXT to be in a COLLAPSE.", optional=true)
+	public Integer COUNT_TAGS_EDIT_DISTANCE=0;
+
 	@Argument(doc="The output tag for the newly collapsed tag values")
 	public String OUT_TAG;
 
@@ -132,9 +137,9 @@ public class CollapseTagWithContext extends CommandLineProgram {
 
 	// make this once and reuse it.
 	private MapBarcodesByEditDistance med;
+	private MapBarcodesByEditDistance medUMI;
 
-	@Override
-	protected int doWork() {
+	private int validateCommands () {
 		if (this.ADAPTIVE_EDIT_DISTANCE & this.ADAPTIVE_ED_MAX==null) {
 			log.error("If adaptive edit distance is in use, must set a maximum adaptive edit distance!");
 			return 1;
@@ -143,14 +148,32 @@ public class CollapseTagWithContext extends CommandLineProgram {
 			log.error("If adaptive edit distance is in use, must set a minimum adaptive edit distance!");
 			return 1;
 		}
-		if (this.DROP_SMALL_COUNTS && (this.MIN_COUNT==null || this.MIN_COUNT==0))
+		if (this.DROP_SMALL_COUNTS && (this.MIN_COUNT==null || this.MIN_COUNT==0)) {
 			log.error("If DROP_SMALL_COUNTS is set to true, must set a MIN_COUNT VALUE greater than 0.");
+			return 1;
+		}
+		if (this.COUNT_TAGS_EDIT_DISTANCE>0 && this.MIN_COUNT==0 && this.COUNT_TAGS!=null) {
+			log.error ("Edit distance for COUNT_TAGS set, but no minimum count for COUNT TAGS set.  Without a count threshold, the edit distance setting will not change your result!");
+			return 1;
+		}
+		if (this.COUNT_TAGS_EDIT_DISTANCE>0 && this.COUNT_TAGS==null) {
+			log.error ("Edit distance for COUNT_TAGS set, but no COUNT TAGS set.  Can't do edit distance collapse on read counts!");
+			return 1;
+		}
+		return 0;
+	}
+	@Override
+	protected int doWork() {
+		int vc = validateCommands();
+		if (vc>0) return vc;
+
+		if (this.COUNT_TAGS_EDIT_DISTANCE>0) this.medUMI = new MapBarcodesByEditDistance(false);
+
 		PrintStream outMetrics = null;
 		if (this.ADAPTIVE_ED_METRICS_FILE!=null) {
 			outMetrics = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.ADAPTIVE_ED_METRICS_FILE));
 			writeMetricsHeader(outMetrics);
 		}
-
 
 		med = new MapBarcodesByEditDistance(false, this.NUM_THREADS, 0);
 		IOUtil.assertFileIsReadable(INPUT);
@@ -193,8 +216,8 @@ public class CollapseTagWithContext extends CommandLineProgram {
         	}
 
         	// remove the informative reads, as they will get retagged.
-        	List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.COUNT_TAGS, this.OUT_TAG, this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT, this.DROP_SMALL_COUNTS, verbose, outMetrics);
-
+        	List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.COUNT_TAGS, this.OUT_TAG, this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT, this.DROP_SMALL_COUNTS, this.COUNT_TAGS_EDIT_DISTANCE, verbose, outMetrics);
+        	// List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.COUNT_TAGS, this.OUT_TAG, this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT, this.DROP_SMALL_COUNTS, null, verbose, outMetrics);
         	// write out the informative reads, then all the reads that were not altered.
         	result.stream().forEach(writer::addAlignment);
         }
@@ -233,13 +256,13 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		return informativeReads;
 	}
 
-	private List<SAMRecord> processRecordList (final Collection<SAMRecord> informativeRecs, final String collapseTag, final List<String> countTags, final String outTag, final boolean findIndels, final int editDistance, final Integer minEditDistance, final Integer maxEditDistance, final Integer minNumObservations, final boolean dropSmallCounts, final boolean verbose, final PrintStream outMetrics) {
+	private List<SAMRecord> processRecordList (final Collection<SAMRecord> informativeRecs, final String collapseTag, final List<String> countTags, final String outTag, final boolean findIndels, final int editDistance, final Integer minEditDistance, final Integer maxEditDistance, final Integer minNumObservations, final boolean dropSmallCounts, final Integer countTagsEditDistance, final boolean verbose, final PrintStream outMetrics) {
 		if (informativeRecs.size()==0) return Collections.EMPTY_LIST;
 
 		// get context.
 		String context = getContextString(informativeRecs.iterator().next(), this.CONTEXT_TAGS);
 		// get barcode counts.
-		ObjectCounter<String> barcodeCounts = getBarcodeCounts (informativeRecs, collapseTag, countTags);
+		ObjectCounter<String> barcodeCounts = getBarcodeCounts (informativeRecs, collapseTag, countTags, countTagsEditDistance);
 		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, findIndels, editDistance, minEditDistance, maxEditDistance, verbose, outMetrics, context, minNumObservations);
 		Set<String> expectedBarcodes = null;
 		// already validated that if dropSmallCounts is true, then the minNumObservations is non-null and > 0.
@@ -283,6 +306,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		// otherwise, for each barcode, extract the unique set of countTag values.
 		StringInterner interner = new StringInterner();
 
+		// to implement edit distance collapse of tag values, this needs to be an object counter.
 		Map<String, Set<String>> countTagValues = new HashMap<>();
 
 		for (SAMRecord r: informativeRecs) {
@@ -293,23 +317,85 @@ public class CollapseTagWithContext extends CommandLineProgram {
 				valuesSet=new HashSet<>();
 				countTagValues.put(barcode, valuesSet);
 			}
+			// if there are multiple count tags, need to distinguish between them.  IE: if your count was of distinct UMI + some strand tag, then you'd need a distinct list of those 2 tags aggregated together, and the count
+			// is the number of unique values.
 			List<String> valsList = new ArrayList<>();
 			for (String countTag: countTags) {
 				String v = r.getStringAttribute(countTag);
 				if (v!=null) valsList.add(v);
 			}
 			String val = interner.intern(StringUtils.join(valsList, ":"));
+
 			valuesSet.add(val);
 		}
+
+		// collapse the tag values if needed for each count tag.
+
+
+
 		// now count the values.
 		ObjectCounter<String> barcodeCounts = new ObjectCounter<>();
 		for (String barcode: countTagValues.keySet()) {
+			// perform collapse here on each object counter.
 			int count = countTagValues.get(barcode).size();
 			barcodeCounts.incrementByCount(barcode, count);
 		}
 		return barcodeCounts;
 	}
 
+	private ObjectCounter<String> getBarcodeCounts (final Collection<SAMRecord> informativeRecs, final String collapseTag, final List<String> countTags, final Integer countTagsEditDistance) {
+		// collapse barcodes based on informative reads that have the necessary tags.
+		// this counts 1 per read.
+		if (countTags==null) {
+			List<String> barcodes = informativeRecs.stream().map(x -> x.getStringAttribute(collapseTag)).collect(Collectors.toList());
+			ObjectCounter<String> barcodeCounts = new ObjectCounter<>();
+			barcodes.stream().forEach(x -> barcodeCounts.increment(x));
+			return barcodeCounts;
+		}
+
+		// otherwise, for each barcode, extract the unique set of countTag values.
+		StringInterner interner = new StringInterner();
+
+		// to implement edit distance collapse of tag values, this needs to be an object counter.
+		Map<String, ObjectCounter<String>> countTagValues = new HashMap<>();
+
+		for (SAMRecord r: informativeRecs) {
+			String barcode = r.getStringAttribute(collapseTag);
+			ObjectCounter<String> valuesSet = countTagValues.get(barcode);
+			// if the set doesn't exist initialize and add...
+			if (valuesSet==null) {
+				valuesSet=new ObjectCounter<>();
+				countTagValues.put(barcode, valuesSet);
+			}
+			// if there are multiple count tags, need to distinguish between them.  IE: if your count was of distinct UMI + some strand tag, then you'd need a distinct list of those 2 tags aggregated together, and the count
+			// is the number of unique values.
+			List<String> valsList = new ArrayList<>();
+			for (String countTag: countTags) {
+				String v = r.getStringAttribute(countTag);
+				if (v!=null) valsList.add(v);
+			}
+			String val = interner.intern(StringUtils.join(valsList, ":"));
+
+			valuesSet.increment(val);
+		}
+
+		// collapse the tag values if needed for each count tag.
+		if (countTagsEditDistance>0)
+			for (String key: countTagValues.keySet()) {
+				ObjectCounter<String> value = countTagValues.get(key);
+				value = medUMI.collapseAndMergeBarcodes(value, false, countTagsEditDistance);
+				countTagValues.put(key, value);
+			}
+
+		// now count the values.
+		ObjectCounter<String> barcodeCounts = new ObjectCounter<>();
+		for (String barcode: countTagValues.keySet()) {
+			// perform collapse here on each object counter.
+			int count = countTagValues.get(barcode).getKeys().size();
+			barcodeCounts.incrementByCount(barcode, count);
+		}
+		return barcodeCounts;
+	}
 	private SAMFileWriter getWriter (final SamReader reader) {
 		SAMFileHeader header = reader.getFileHeader();
 		SamHeaderUtil.addPgRecord(header, this);
