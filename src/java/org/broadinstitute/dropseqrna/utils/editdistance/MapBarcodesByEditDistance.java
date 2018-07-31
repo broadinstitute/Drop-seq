@@ -146,7 +146,9 @@ public class MapBarcodesByEditDistance {
 	public BottomUpCollapseResult bottomUpCollapse (final ObjectCounter<String> barcodes, final int editDistance) {
 
 		BottomUpCollapseResult result = new BottomUpCollapseResult();
-
+		// if there are no barcodes to collapse, return an empty collapse result.
+		if (barcodes.getSize()==0)
+			return result;
 		// ordered from smallest to largest.
 		List<String> barcodeList = barcodes.getKeysOrderedByCount(false);
 		List<char []> barcodeListArrays = barcodeList.stream().map(x-> x.toCharArray()).collect(Collectors.toList());

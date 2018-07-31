@@ -154,6 +154,9 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
         UMIsPerCellResult umiResult=getUMIsPerCell(umiIterator, this.MIN_UMIS_PER_CELL, this.UMI_BIAS_BASE, this.UMI_BIAS_THRESHOLD, null);
         ObjectCounter<String> umiCounts=umiResult.getUmisPerCell();
 
+        if (umiCounts.getSize()==0)
+        	log.warn("No barcodes found for collapse.  This means you have no cell barcodes with at least [" + MIN_UMIS_PER_CELL + "] transcripts and aren't UMI biased at the last base. You might have a problem in your input!");
+
         // how do they collapse bottom up?
         MapBarcodesByEditDistance med = new MapBarcodesByEditDistance(true, this.NUM_THREADS, 10000);
         log.info("Starting Barcode Collapse of [" + umiCounts.getSize()+ "] barcodes");
