@@ -286,7 +286,7 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 
 	private void repairBAM (final BottomUpCollapseResult result) {
 
-		final SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(this.INPUT, false);
+		final SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(this.INPUT, true);
 		SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
 		headerAndIterator.header.addComment("Bottom-up edit distance collapse tag " + this.CELL_BARCODE_TAG +" with edit distance " + this.EDIT_DISTANCE+ " filtering ambiguous neighbors=" + this.FILTER_AMBIGUOUS);
 		SAMFileWriter writer= new SAMFileWriterFactory().setCreateIndex(CREATE_INDEX).makeSAMOrBAMWriter(headerAndIterator.header, true, OUTPUT);
