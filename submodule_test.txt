@@ -1,3 +1,5 @@
 This is a test of a file in submodule.
 This file has a change now.
 A second change to the file.
+A change to the file on a sub-branch.
+
