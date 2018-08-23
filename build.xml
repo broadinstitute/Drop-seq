@@ -93,6 +93,8 @@
     </target>
 
     <taskdef resource="testngtasks" classpathref="test.classpath"/>
+
+    <!-- Unfortunately can't invoke a macro from inside <jacoco:coverage>, so testng invocation is duplicated -->
     <target name="coverage" depends="compile-tests">
         <jacoco:coverage destfile="${jacoco.binary}">
             <testng suitename="Drop-seq-tests" classpathref="test.classpath" outputdir="${test.output}"
@@ -126,6 +128,7 @@
                 </sourcefiles>
             </structure>
 
+            <xml destfile="${jacoco.dir}/jacoco.xml"/>
             <html destdir="${jacoco.dir}"/>
 
         </jacoco:report>
