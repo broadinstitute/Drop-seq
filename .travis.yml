@@ -1,3 +1,5 @@
 language: java
 script: ant test
-after_success: ant coverage-and-report
+after_success:
+- ant coverage-and-report
+- bash <(curl -s https://codecov.io/bash)
