@@ -24,5 +24,5 @@
 package org.broadinstitute.dropseqrna;
 
 public class BugTest {
-    ===
+    public int foo = 1;
 }
