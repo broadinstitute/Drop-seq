@@ -88,7 +88,7 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 	@Argument(doc="Remove smaller barcodes that map at the edit distance to multiple larger barcodes.")
 	public Boolean FILTER_AMBIGUOUS=true;
 
-	@Argument (doc="Only repair substiution patterns that occur at a base as more than <FREQ_COMMON_SUBSTITUTION> of the total changes.  We expect there to be a single dominant barcode change [from say A->C at base 1] due to a synthesis error at that base.  "
+	@Argument (doc="Only repair substitution patterns that occur at a base as more than <FREQ_COMMON_SUBSTITUTION> of the total changes.  We expect there to be a single dominant barcode change [from say A->C at base 1] due to a synthesis error at that base.  "
 			+ "In those cases, we want to perform repair, but we don't want to arbitrarily combine barcodes together.  Set this to 0 to combine everything...but testing has revealed that this will combine barcodes capriciously so we don't recommend it!")
 	public double FREQ_COMMON_SUBSTITUTION=0.8;
 
