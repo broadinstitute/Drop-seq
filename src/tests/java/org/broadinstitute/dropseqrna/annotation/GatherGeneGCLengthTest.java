@@ -23,11 +23,19 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
+import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
+import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.dropseqrna.annotation.GatherGeneGCLength.GCIsoformSummary;
 import org.broadinstitute.dropseqrna.annotation.GatherGeneGCLength.GCResult;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.util.TabbedTextFileWithHeaderParser;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -114,5 +122,61 @@ public class GatherGeneGCLengthTest {
 		Assert.assertEquals(s.getMedianGC(), 54.5, 0.1);
 		Assert.assertEquals(s.getMedianTranscriptLength(), 583);
 
+	}
+
+	private static final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/transcriptome/annotation");
+	private static final String REFERENCE_NAME = "ERCC92";
+	private static final File FASTA = new File(TEST_DATA_DIR, REFERENCE_NAME + ".fasta.gz");
+	private static final File GTF = new File(TEST_DATA_DIR, REFERENCE_NAME + ".gtf.gz");
+
+	@Test
+	public void testBasic() throws IOException {
+		final GatherGeneGCLength clp = new GatherGeneGCLength();
+        final File outputFile = File.createTempFile("GatherGeneGCLengthTest.", ".gc_length_metrics");
+        final File outputTranscriptSequencesFile = File.createTempFile("GatherGeneGCLengthTest.", ".transcript_sequences.fasta");
+        final File outputTranscriptLevelFile = File.createTempFile("GatherGeneGCLengthTest.", ".transcript_level");
+        outputFile.deleteOnExit();
+        outputTranscriptSequencesFile.deleteOnExit();
+        outputTranscriptLevelFile.deleteOnExit();
+        final String[] args = new String[] {
+                "GTF=" + GTF.getAbsolutePath(),
+                "REFERENCE_SEQUENCE=" + FASTA.getAbsolutePath(),
+                "OUTPUT=" + outputFile.getAbsolutePath(),
+                "OUTPUT_TRANSCRIPT_SEQUENCES=" + outputTranscriptSequencesFile.getAbsolutePath(),
+                "OUTPUT_TRANSCRIPT_LEVEL=" + outputTranscriptLevelFile.getAbsolutePath()
+        };
+        Assert.assertEquals(clp.instanceMain(args), 0);
+        final ReferenceSequence transcriptSequence = ReferenceSequenceFileFactory.getReferenceSequenceFile(outputTranscriptSequencesFile, false).nextSequence();
+        final ReferenceSequence genomicSequence = ReferenceSequenceFileFactory.getReferenceSequenceFile(FASTA).nextSequence();
+        // For ERCC, the first sequence is the first gene, which is a single exon
+        final String geneName = "ERCC-00002";
+        final String transcriptName = "DQ459430";
+        Assert.assertEquals(transcriptSequence.getBaseString(), genomicSequence.getBaseString());
+        Assert.assertEquals(transcriptSequence.getName(), geneName + " " + transcriptName);
+        int numG = 0;
+        int numC = 0;
+        for (byte b : transcriptSequence.getBases()) {
+        	if (b == SequenceUtil.G) ++numG;
+        	else if (b == SequenceUtil.C) ++numC;
+		}
+		final double pctG = 100 * numG/(double)transcriptSequence.getBases().length;
+        final double pctC = 100 * numC/(double)transcriptSequence.getBases().length;
+        final double pctGC = 100 * (numC + numG)/(double)transcriptSequence.getBases().length;
+        TabbedTextFileWithHeaderParser.Row metric = new TabbedTextFileWithHeaderParser(outputFile).iterator().next();
+        Assert.assertEquals(metric.getField("GENE"), geneName);
+        Assert.assertEquals(Integer.parseInt(metric.getField("START")), 1);
+        Assert.assertEquals(Integer.parseInt(metric.getField("END")), transcriptSequence.getBases().length);
+        Assert.assertEquals(Double.parseDouble(metric.getField("PCT_GC_UNIQUE_EXON_BASES")), pctGC, 0.05);
+        Assert.assertEquals(Double.parseDouble(metric.getField("PCT_C_ISOFORM_AVERAGE")), pctC, 0.05);
+        Assert.assertEquals(Double.parseDouble(metric.getField("PCT_G_ISOFORM_AVERAGE")), pctG, 0.05);
+        Assert.assertEquals(Integer.parseInt(metric.getField("NUM_TRANSCRIPTS")), 1);
+        TabbedTextFileWithHeaderParser.Row transcriptLevel = new TabbedTextFileWithHeaderParser(outputTranscriptLevelFile).iterator().next();
+        Assert.assertEquals(transcriptLevel.getField("TRANSCRIPT"), transcriptName);
+        Assert.assertEquals(transcriptLevel.getField("CHR"), genomicSequence.getName());
+        Assert.assertEquals(Integer.parseInt(transcriptLevel.getField("START")), 1);
+        Assert.assertEquals(Integer.parseInt(transcriptLevel.getField("END")), transcriptSequence.getBases().length);
+        Assert.assertEquals(Double.parseDouble(transcriptLevel.getField("PCT_GC")), pctGC, 0.05);
+        Assert.assertEquals(Double.parseDouble(transcriptLevel.getField("PCT_C")), pctC, 0.05);
+        Assert.assertEquals(Double.parseDouble(transcriptLevel.getField("PCT_G")), pctG, 0.05);
 	}
 }
