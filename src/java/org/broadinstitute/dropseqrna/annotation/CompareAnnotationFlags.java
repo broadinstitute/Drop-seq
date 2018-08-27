@@ -23,6 +23,7 @@ import java.util.*;
         		oneLineSummary ="Test program don't use.",
         programGroup = DropSeq.class)
 
+@groovy.transform.Generated
 public class CompareAnnotationFlags extends CommandLineProgram {
 
 
