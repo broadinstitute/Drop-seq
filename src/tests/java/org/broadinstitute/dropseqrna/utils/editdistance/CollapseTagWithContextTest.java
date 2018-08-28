@@ -35,7 +35,8 @@ public class CollapseTagWithContextTest {
     private static final File TEST_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.bam");
 
     /**
-     * Very lame test -- just confirms that program doesn't crash and return 0 exit status.
+     * TODO: Very lame test -- just confirms that program doesn't crash and return 0 exit status.  I don't think
+     * any collapsing happens on this input.
      */
     @Test
     public void testBasic() throws IOException {
