@@ -211,15 +211,14 @@ public class BarcodeSubstitutionCollection {
 		BarcodeSubstitutionCollection result = new BarcodeSubstitutionCollection();
 
 		// scan for common problems.
-		List<Integer> positions = this.getPositions();
-		for (int i=0; i<positions.size(); i++) {
-			Collection<BarcodeSubstitutionElement> el = getMostCommonSubsitutions(i,freqThreshold);
+		for (int position : this.getPositions()) {
+			Collection<BarcodeSubstitutionElement> el = getMostCommonSubsitutions(position,freqThreshold);
 			for (BarcodeSubstitutionElement e: el) {
-				int count = this.getCount(e, i);
-				ObjectCounter<BarcodeSubstitutionElement> ob = result.substitutionCountsByPosition.get(i);
+				int count = this.getCount(e, position);
+				ObjectCounter<BarcodeSubstitutionElement> ob = result.substitutionCountsByPosition.get(position);
 				if (ob==null) {
 					ob = new ObjectCounter<>();
-					result.substitutionCountsByPosition.put(i, ob);
+					result.substitutionCountsByPosition.put(position, ob);
 				}
 				ob.incrementByCount(e, count);
 			}
