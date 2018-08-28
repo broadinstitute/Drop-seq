@@ -49,8 +49,6 @@ public class BarcodeListRetrieval {
 	 * @param bamFile
 	 * @param cellBarcodeTag
 	 * @param molecularBarcodeTag
-	 * @param geneBarcodeTag
-	 * @param exonTag
 	 * @param cellBCFile
 	 * @param readQuality
 	 * @param minNumTranscriptsPerCell
@@ -96,51 +94,6 @@ public class BarcodeListRetrieval {
 
 		return (cellBarcodes);
 	}
-
-	public boolean validateGetCellBarcodeListParams(final File bamFile, final String cellBarcodeTag, final String molecularBarcodeTag,
-			final String geneBarcodeTag, final String exonTag, final File cellBCFile, final Integer readQuality, final Integer minNumTranscriptsPerCell,
-			final Integer minNumNumGenesPerCell, final Integer minNumReadsPerCell, final Integer numCoreBarcodes) {
-
-		IOUtil.assertFileIsReadable(bamFile);
-		if (cellBarcodeTag==null) {
-			log.error("cell barcode argument must be set");
-			return false;
-		}
-		if (molecularBarcodeTag==null) {
-			log.error("moleclar barcode argument must be set");
-			return false;
-		}
-		if (cellBCFile!=null)  {
-			IOUtil.assertFileIsReadable(bamFile);
-			return true;
-		}
-
-		// everything below relies on read quality
-		if (readQuality==null) {
-			log.error("Read Quality must be set");
-			return (false);
-		}
-
-		if (minNumNumGenesPerCell!=null)
-			if (geneBarcodeTag==null) {
-				log.error("Gene barcode tag argument must be set to filter by #genes");
-				return false;
-			}
-		if (minNumTranscriptsPerCell!=null) {
-			if (geneBarcodeTag==null) {
-				log.error("Gene barcode tag argument must be set to filter by #transcripts");
-				return false;
-			}
-			if (exonTag==null) {
-				log.error("Exon barcode tag argument must be set to filter by #transcripts");
-				return false;
-			}
-
-		}
-		// if the minNumReadsPerCell is not null or the numCoreBarcodes then we have all the params set correctly and we're good.
-		return true;
-	}
-
 
     /**
      * Returns a list of cell barcodes with more at least MIN_NUM_READS_PER_CELL reads.
