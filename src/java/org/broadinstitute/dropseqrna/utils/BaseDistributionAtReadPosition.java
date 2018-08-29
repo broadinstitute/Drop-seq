@@ -23,6 +23,15 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.util.List;
+
+import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
@@ -30,16 +39,8 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
-import org.apache.commons.lang.StringUtils;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.util.List;
 
 @CommandLineProgramProperties(summary = "Reads each base and generates a composition per-position matrix",
         oneLineSummary = "Reads each base and generates a composition per-position matrix",
@@ -72,7 +73,7 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 		if (this.TAG!=null)
 			result = gatherBaseQualities(INPUT, this.TAG);
 		else
-			result = gatherBaseQualities(INPUT);
+			result = gatherBaseQualities(INPUT, this.READ_NUMBER);
 
 		writeOutput(result, OUTPUT);
 		return (0);
@@ -101,13 +102,11 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 	}
 
 
-	BaseDistributionMetricCollection gatherBaseQualities (final File input) {
+	BaseDistributionMetricCollection gatherBaseQualities (final File input, final int readNumber) {
 		ProgressLogger p = new ProgressLogger(this.log);
 
 		SamReader inputSam = SamReaderFactory.makeDefault().open(input);
 		BaseDistributionMetricCollection c = new BaseDistributionMetricCollection();
-
-
 
 		MAIN_LOOP:
 		for (final SAMRecord samRecord : inputSam) {
@@ -117,15 +116,15 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 			boolean readPaired = samRecord.getReadPairedFlag();
 
 			boolean firstRead=false;
-			if (!readPaired & this.READ_NUMBER==2)
+			if (!readPaired & readNumber==2)
 				continue;
-			else if (!readPaired & this.READ_NUMBER==1)
+			else if (!readPaired & readNumber==1)
 				firstRead=true;
 			else
 				firstRead = samRecord.getFirstOfPairFlag();
 
 			// if you're looking for the first read and this isn't, or looking for the 2nd read and this isn't, then go to the next read.
-			if ((firstRead && this.READ_NUMBER!=1) || (!firstRead && this.READ_NUMBER==1)) continue MAIN_LOOP;
+			if ((firstRead && readNumber!=1) || (!firstRead && readNumber==1)) continue MAIN_LOOP;
 
 			byte [] bases = samRecord.getReadBases();
 
