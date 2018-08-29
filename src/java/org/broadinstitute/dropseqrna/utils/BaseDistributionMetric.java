@@ -47,6 +47,15 @@ public class BaseDistributionMetric extends MetricBase implements Serializable {
 		map.put(Bases.N.getBase(), 0);
 	}
 
+	public BaseDistributionMetric(final int countA, final int countC, final int countG, final int countT, final int countN) {
+		map = new HashMap<>();
+		map.put(Bases.A.getBase(), countA);
+		map.put(Bases.C.getBase(), countC);
+		map.put(Bases.G.getBase(), countG);
+		map.put(Bases.T.getBase(), countT);
+		map.put(Bases.N.getBase(), countN);
+	}
+
 	void addBase(final Character base) {
 		int count = map.get(base);
 		count++;
@@ -70,5 +79,32 @@ public class BaseDistributionMetric extends MetricBase implements Serializable {
 	public String toString() {
 		return this.map.toString();
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + ((map == null) ? 0 : map.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		BaseDistributionMetric other = (BaseDistributionMetric) obj;
+		if (map == null) {
+			if (other.map != null)
+				return false;
+		} else if (!map.equals(other.map))
+			return false;
+		return true;
+	}
+
+
 
 }
