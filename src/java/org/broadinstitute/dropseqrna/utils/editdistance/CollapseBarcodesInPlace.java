@@ -23,11 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.*;
+import java.io.File;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
@@ -36,15 +37,20 @@ import org.broadinstitute.dropseqrna.metrics.BAMTagHistogram;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.IterableAdapter;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.ProgressLogger;
 import picard.PicardException;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.File;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Fold down barcodes, possibly in the context of another barcode (that has been folded down already.)
@@ -99,7 +105,6 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 	@Argument(doc="Number of threads to use.  Defaults to 1.")
 	public int NUM_THREADS=1;
 
-
 	private int REPORT_PROGRESS_INTERVAL=100;
 	private CollapseBarcodeThreaded cbt=null;
 	private int threadedBlockSize=20000;
@@ -153,8 +158,7 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
         return ret;
     }
 
-	private ObjectCounter<String> filterBarcodesByNumReads (final ObjectCounter<String> barcodes, final int minNumReads) {
-
+	ObjectCounter<String> filterBarcodesByNumReads (final ObjectCounter<String> barcodes, final int minNumReads) {
 		ObjectCounter<String> result = new ObjectCounter<>();
 		for (String k: barcodes.getKeys()) {
 			int count = barcodes.getCountForKey(k);
@@ -182,7 +186,7 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 	 * @return A map of each child barcode to it's parent.  Many keys will point to the same value.
 	 */
 
-	private Map<String, String> collapseBarcodes(final ObjectCounter<String> barcodes, final boolean findIndels, final int editDistance) {
+	Map<String, String> collapseBarcodes(final ObjectCounter<String> barcodes, final boolean findIndels, final int editDistance) {
 		List<String> barcodeList = barcodes.getKeysOrderedByCount(true);
 		Map<String, String> result = collapseBarcodes(barcodeList, barcodes, findIndels, editDistance);
 		return (result);
@@ -197,7 +201,7 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 	 * @param editDistance
 	 * @return
 	 */
-	private Map<String, String> collapseBarcodes(final Integer numReadsCore, final Integer numCells, final ObjectCounter<String> barcodes, final boolean findIndels, final int editDistance) {
+	Map<String, String> collapseBarcodes(final Integer numReadsCore, final Integer numCells, final ObjectCounter<String> barcodes, final boolean findIndels, final int editDistance) {
 		if (numReadsCore==null && numCells==null) return (collapseBarcodes(barcodes, findIndels, editDistance));
 		// otherwise, select core barcodes and run.
 		List<String> core=null;
