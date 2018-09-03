@@ -88,7 +88,11 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 	protected int doWork() {
 		if (this.TAG_BARCODED_READ && this.DISCARD_READ) {
 			log.error("If TAG_BARCODED_READ=true and DISCARD_READ=true, you're throwing away the tag with the read. Stopping");
-			System.exit(1);
+			return 1;
+		}
+		if (HARD_CLIP_BASES && DISCARD_READ) {
+			log.error("It doesn't make sense for HARD_CLIP_BASES and DISCARD_READ both to be true.");
+			return 1;
 		}
 		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
@@ -138,9 +142,9 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 			r1=p.getRead1();
 			r2=p.getRead2();
 			if (BARCODED_READ==1)
-				processReadPair(r1, r2, filter, writer, this.DISCARD_READ);
+				processReadPair(r1, r2, filter, writer, this.DISCARD_READ, this.HARD_CLIP_BASES);
 			if (BARCODED_READ==2)
-				processReadPair(r2, r1, filter, writer, this.DISCARD_READ);
+				processReadPair(r2, r1, filter, writer, this.DISCARD_READ, this.HARD_CLIP_BASES);
 			progress.record(r1);
 			progress.record(r2);
 
@@ -203,7 +207,8 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		return (r);
 	}
 
-	void processReadPair (final SAMRecord barcodedRead, final SAMRecord otherRead, final BaseQualityFilter filter, final SAMFileWriter writer, final boolean discardRead) {
+	void processReadPair (SAMRecord barcodedRead, final SAMRecord otherRead, final BaseQualityFilter filter,
+						  final SAMFileWriter writer, final boolean discardRead, final boolean hardClipBases) {
 		int numBadBases= filter.scoreBaseQuality(barcodedRead);
 		String seq = barcodedRead.getReadString();
 		seq=BaseRange.getSequenceForBaseRange(filter.getBaseRanges(), seq);
@@ -221,9 +226,11 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 			if (otherRead.getSecondOfPairFlag()) flag-=128;
 			otherRead.setFlags(flag);
 
-		} else
+		} else {
+			if (hardClipBases) barcodedRead = hardClipBasesFromRead(barcodedRead, filter.getBaseRanges());
 			writer.addAlignment(barcodedRead);
-		writer.addAlignment(otherRead);
+        }
+        writer.addAlignment(otherRead);
 	}
 
 
