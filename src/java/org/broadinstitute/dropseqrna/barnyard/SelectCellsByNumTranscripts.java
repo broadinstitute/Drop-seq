@@ -96,7 +96,7 @@ public class SelectCellsByNumTranscripts
     public Integer EDIT_DISTANCE=1;
 
     private static final Log log = Log.getInstance(SelectCellsByNumTranscripts.class);
-    private static final String ORGANISM_SEPARATOR = "::";
+    static final String ORGANISM_SEPARATOR = "::";
 
     @Override
     protected int doWork() {
