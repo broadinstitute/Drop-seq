@@ -23,13 +23,21 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import junit.framework.Assert;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.testng.annotations.Test;
-import picard.util.TabbedInputParser;
 
-import java.io.File;
-import java.util.*;
+import junit.framework.Assert;
+import picard.util.TabbedInputParser;
 
 public class MapBarcodesByEditDistanceTest {
 
@@ -311,6 +319,141 @@ public class MapBarcodesByEditDistanceTest {
 		Assert.assertEquals(r3.size(),1);
 
 		Assert.assertNotNull(result);
+
+	}
+
+	@Test
+	public void testCollapseBarcodes () {
+		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(false);
+		ObjectCounter<String> barcodes= new ObjectCounter<>();
+
+		barcodes.incrementByCount("AAACCCGGGTTT", 20);  // winner
+		barcodes.incrementByCount("AAACCCGGAGTT", 10);  // indel 1.
+		barcodes.incrementByCount("AAACCCGGGTAT", 8);  // sub 1
+		barcodes.incrementByCount("AAACCCGGGCTT", 6);  // sub 1.
+		// group 2.
+		barcodes.incrementByCount("AAACGGGAGGTA", 2);
+		barcodes.incrementByCount("GTAGACTAGGTG", 2);
+		barcodes.incrementByCount("TGCAGGTGGCCG",2);
+		barcodes.incrementByCount("CCGTGCGTCACA", 2);
+		barcodes.incrementByCount("GGGCCCTATCAT", 2);
+		barcodes.incrementByCount("CACTGCCGTTGG", 2);
+
+		Map<String, List<String>> result = m.collapseBarcodes(barcodes, true, 1);
+		List<String> expected = Arrays.asList("AAACCCGGAGTT", "AAACCCGGGCTT", "AAACCCGGGTAT");
+		List<String> actual = result.get("AAACCCGGGTTT");
+		Assert.assertEquals(expected, actual);
+
+		Assert.assertNull(result.get("AAACCCGGAGTT"));
+		Assert.assertNull(result.get("AAACCCGGGCTT"));
+		Assert.assertNull(result.get("AAACCCGGGTAT"));
+
+
+
+	}
+
+	@Test
+	public void testCollapseAndMergeBarcodes () {
+		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(false);
+		ObjectCounter<String> barcodes= new ObjectCounter<>();
+
+		barcodes.incrementByCount("AAACCCGGGTTT", 20);  // winner
+		barcodes.incrementByCount("AAACCCGGAGTT", 10);  // indel 1.
+		barcodes.incrementByCount("AAACCCGGGTAT", 8);  // sub 1
+		barcodes.incrementByCount("AAACCCGGGCTT", 6);  // sub 1.
+		// group 2.
+		barcodes.incrementByCount("AAACGGGAGGTA", 2);
+		barcodes.incrementByCount("GTAGACTAGGTG", 2);
+		barcodes.incrementByCount("TGCAGGTGGCCG",2);
+		barcodes.incrementByCount("CCGTGCGTCACA", 2);
+		barcodes.incrementByCount("GGGCCCTATCAT", 2);
+		barcodes.incrementByCount("CACTGCCGTTGG", 2);
+
+		ObjectCounter<String> result = m.collapseAndMergeBarcodes(barcodes, true, 1);
+		Assert.assertEquals(44, result.getCountForKey("AAACCCGGGTTT"));
+		Assert.assertEquals(0, result.getCountForKey("AAACCCGGAGTT"));
+		Assert.assertEquals(0, result.getCountForKey("AAACCCGGGTAT"));
+		Assert.assertEquals(0, result.getCountForKey("AAACCCGGGCTT"));
+
+		Assert.assertEquals(2, result.getCountForKey("AAACGGGAGGTA"));
+		Assert.assertEquals(2, result.getCountForKey("GTAGACTAGGTG"));
+		Assert.assertEquals(2, result.getCountForKey("TGCAGGTGGCCG"));
+
+	}
+
+	@Test
+	public void testFindEditDistanceThreshold () {
+		// Group 1:
+		// z=c("AAACCCGGGTTT", "AAACCCGGGTTA", "AAACCCGGGTAT", "AAACCCGGGCTT")
+
+		// Group 2:
+		// z2=c("AAACGGGAGGTA","GTAGACTAGGTG","TGCAGGTGGCCG","CCGTGCGTCACA","GGGCCCTATCAT","CACTGCCGTTGG")
+
+		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
+		Set<String> barcodes= new HashSet<>();
+
+		barcodes.add("AAACCCGGAGTT");  // indel 1.
+		barcodes.add("AAACCCGGGTAT");  // sub 1
+		barcodes.add("AAACCCGGGCTT");  // sub 1.
+		// group 2.
+		barcodes.add("AAACGGGAGGTA");
+		barcodes.add("GTAGACTAGGTG");
+		barcodes.add("TGCAGGTGGCCG");
+		barcodes.add("CCGTGCGTCACA");
+		barcodes.add("GGGCCCTATCAT");
+		barcodes.add("CACTGCCGTTGG");
+
+
+		int threshold = m.findEditDistanceThreshold("AAACCCGGGTTT", barcodes, true, 1, 3);
+		Assert.assertEquals(1, threshold);
+
+		threshold = m.findEditDistanceThreshold("AAACCCGGGTTT", barcodes, false, 1, 3);
+		Assert.assertEquals(2, threshold);
+
+	}
+	@Test (enabled=true)
+	public void testCollapseBarcodesAdaptive () {
+		// Group 1:
+		// z=c("AAACCCGGGTTT", "AAACCCGGGTTA", "AAACCCGGGTAT", "AAACCCGGGCTT")
+
+		// Group 2:
+		// z2=c("AAACGGGAGGTA","GTAGACTAGGTG","TGCAGGTGGCCG","CCGTGCGTCACA","GGGCCCTATCAT","CACTGCCGTTGG")
+
+		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true,2,5);
+		ObjectCounter<String> barcodes= new ObjectCounter<>();
+
+		barcodes.incrementByCount("AAACCCGGGTTT", 20);  // the winner.
+		barcodes.incrementByCount("AAACCCGGAGTT", 18);  // indel 1.
+		barcodes.incrementByCount("AAACCCGGGTAT", 15);  // sub 1
+		barcodes.incrementByCount("AAACCCGGGCTT", 13);  // sub 1.
+
+		barcodes.incrementByCount("AAACGGGAGGTA", 2);   //
+		barcodes.incrementByCount("GTAGACTAGGTG", 2);
+		barcodes.incrementByCount("TGCAGGTGGCCG", 2);
+		barcodes.incrementByCount("CCGTGCGTCACA", 2);
+		barcodes.incrementByCount("GGGCCCTATCAT", 2);
+		barcodes.incrementByCount("CACTGCCGTTGG", 2);
+
+
+		MapBarcodesByEditDistance.AdaptiveMappingResult r = m.collapseBarcodesAdaptive(barcodes, true, 3, 1, 3);
+		Map<String, List<String>> collapse = r.getBarcodeCollapseResult();
+
+		Assert.assertTrue(collapse!=null);
+		// we expect the winner to own the next 3 barcodes.
+		// sorted alphabetically.
+		List<String> expected = Arrays.asList("AAACCCGGAGTT", "AAACCCGGGCTT", "AAACCCGGGTAT");
+		List<String> actual = collapse.get("AAACCCGGGTTT");
+		Assert.assertEquals(expected, actual);
+
+		// these were merged.
+		Assert.assertNull(collapse.get("AAACCCGGAGTT"));
+		Assert.assertNull(collapse.get("AAACCCGGGCTT"));
+		Assert.assertNull(collapse.get("AAACCCGGGTAT"));
+
+		// but those far away barcodes aren't merged.
+		Assert.assertEquals(0, collapse.get("AAACGGGAGGTA").size());
+		Assert.assertEquals(0, collapse.get("CACTGCCGTTGG").size());
+
 
 	}
 
