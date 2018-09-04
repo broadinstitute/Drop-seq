@@ -23,8 +23,19 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
@@ -33,13 +44,14 @@ import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
-import picard.cmdline.StandardOptionDefinitions;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.RuntimeIOException;
+import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
         summary = "Determine the cell barcodes that have a minimum number of transcripts.  For a multi-species BAM, " +
@@ -84,7 +96,7 @@ public class SelectCellsByNumTranscripts
     public Integer EDIT_DISTANCE=1;
 
     private static final Log log = Log.getInstance(SelectCellsByNumTranscripts.class);
-    private static final String ORGANISM_SEPARATOR = "::";
+    static final String ORGANISM_SEPARATOR = "::";
 
     @Override
     protected int doWork() {
@@ -315,7 +327,7 @@ public class SelectCellsByNumTranscripts
         }
     }
 
-    private static void writeBarcodes(final File file, final List<String> barcodes) {
+    static void writeBarcodes(final File file, final List<String> barcodes) {
         final BufferedWriter writer = IOUtil.openFileForBufferedWriting(file);
         try {
             for (final String barcode : barcodes) {
@@ -328,7 +340,7 @@ public class SelectCellsByNumTranscripts
         }
     }
 
-    private static List<String> readBarcodes(final File file) {
+    static List<String> readBarcodes(final File file) {
         try {
             IOUtil.assertFileIsReadable(file);
             final BufferedReader reader = IOUtil.openFileForBufferedReading(file);
