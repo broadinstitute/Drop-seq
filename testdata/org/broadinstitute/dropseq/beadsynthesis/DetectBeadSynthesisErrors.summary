@@ -1,0 +1,9 @@
+
+## METRICS CLASS	org.broadinstitute.dropseqrna.beadsynthesis.BeadSynthesisErrorsSummaryMetric
+NUM_BEADS	NO_ERROR	SYNTHESIS_MISSING_BASE	SINGLE_UMI_ERROR	PRIMER_MATCH	FIXED_FIRST_BASE	OTHER_ERROR_COUNT
+48	25	23	0	0	0	0
+
+## HISTOGRAM	java.lang.Integer
+SYNTHESIS_ERROR_BASE	num cells
+8	23
+

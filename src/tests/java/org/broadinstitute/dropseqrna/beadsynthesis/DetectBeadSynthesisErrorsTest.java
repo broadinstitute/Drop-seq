@@ -23,19 +23,77 @@
  */
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
-import org.junit.Assert;
-import org.testng.annotations.Test;
-
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+
+import org.apache.commons.io.FileUtils;
+import org.broadinstitute.dropseqrna.TranscriptomeException;
+import org.broadinstitute.dropseqrna.utils.CompareBAMTagValues;
+import org.junit.Assert;
+import org.testng.annotations.Test;
 
 
 public class DetectBeadSynthesisErrorsTest {
 
-	DetectBeadSynthesisErrors gbse = new DetectBeadSynthesisErrors();
-	private final String cellBCTag = gbse.CELL_BARCODE_TAG;
-	private final String molBCTag = gbse.MOLECULAR_BARCODE_TAG;
+	// test indel+sub with 100 reads core, 1 read non-core, read quality=10
+	private static File TEST_INDEL = new File ("testdata/org/broadinstitute/dropseq/utils/N701_small.expected_indels.bam");
+	private static File EXPECTED_REPORT = new File ("testdata/org/broadinstitute/dropseq/beadsynthesis/DetectBeadSynthesisErrors.report");
+	private static File EXPECTED_STATS = new File ("testdata/org/broadinstitute/dropseq/beadsynthesis/DetectBeadSynthesisErrors.stats");
+	private static File EXPECTED_SUMMARY = new File ("testdata/org/broadinstitute/dropseq/beadsynthesis/DetectBeadSynthesisErrors.summary");
+	private static File EXPECTED_BAM = new File ("testdata/org/broadinstitute/dropseq/beadsynthesis/DetectBeadSynthesisErrors.bam");
+
+		@Test
+	public void testDoWork() {
+		DetectBeadSynthesisErrors gbse = new DetectBeadSynthesisErrors();
+
+		File report = getTempReportFile("DetectBeadSynthesisErrorsTest", ".report");
+		File stats = getTempReportFile("DetectBeadSynthesisErrorsTest", ".stats");
+		File summary = getTempReportFile("DetectBeadSynthesisErrorsTest", ".summary");
+		File cleanBAM = getTempReportFile("DetectBeadSynthesisErrorsTest", ".bam");
+
+		gbse.INPUT=Arrays.asList(TEST_INDEL);
+		gbse.NUM_BARCODES=1000; // more than the BAM has.
+		gbse.SUMMARY=summary;
+	    gbse.OUTPUT=cleanBAM;
+		gbse.REPORT=report;
+		gbse.OUTPUT_STATS=stats;
+
+		// test custom command line validation
+		gbse.MAX_BARCODE_ERRORS_IN_RAM=5;  // i want to test serialization/deserialization.
+
+		int result = gbse.doWork();
+		Assert.assertEquals(0, result);
+
+		try {
+			boolean t1 = FileUtils.contentEquals(report, EXPECTED_REPORT);
+			boolean t2 = FileUtils.contentEquals(stats, EXPECTED_STATS);
+			boolean t3 = FileUtils.contentEquals(summary, EXPECTED_SUMMARY);
+			Assert.assertTrue(t1);
+			Assert.assertTrue(t2);
+			Assert.assertTrue(t3);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		// test BAM
+		CompareBAMTagValues cbtv = new CompareBAMTagValues();
+		cbtv.INPUT_1=EXPECTED_BAM;
+		cbtv.INPUT_2=cleanBAM;
+		List<String> tags = new ArrayList<>();
+		tags.add("XC");
+		cbtv.TAGS=tags;
+		int r = cbtv.doWork();
+		Assert.assertTrue(r==0);
+
+
+
+
+	}
+
 
 	@Test
 	public void padCellBarcodeTest1() {
@@ -179,5 +237,50 @@ public class DetectBeadSynthesisErrorsTest {
 		Assert.assertEquals(error, actualError);
 		return d;
 	}
+
+	private File getTempReportFile (final String prefix, final String suffix) {
+		File tempFile=null;
+
+		try {
+			tempFile = File.createTempFile(prefix, suffix);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		return tempFile;
+	}
+
+	@Test
+	public void testCustomCommandParsing () {
+		DetectBeadSynthesisErrors gbse = new DetectBeadSynthesisErrors();
+		gbse.INPUT=Arrays.asList(TEST_INDEL);
+		gbse.OUTPUT_STATS=getTempReportFile("DetectBeadSynthesisErrorsTest", ".stats");
+		gbse.SUMMARY=getTempReportFile("DetectBeadSynthesisErrorsTest", ".summary");
+
+		gbse.CELL_BC_FILE=null;
+		gbse.NUM_BARCODES=2;
+		String [] errors = gbse.customCommandLineValidation();
+		Assert.assertNull(errors);
+
+		gbse.CELL_BC_FILE=EXPECTED_REPORT;
+		gbse.NUM_BARCODES=null;
+		errors = gbse.customCommandLineValidation();
+		Assert.assertNull(errors);
+
+	}
+
+	@Test(expectedExceptions=TranscriptomeException.class)
+	public void testCustomCommandParsing2 () {
+		DetectBeadSynthesisErrors gbse = new DetectBeadSynthesisErrors();
+		gbse.INPUT=Arrays.asList(TEST_INDEL);
+		gbse.OUTPUT_STATS=getTempReportFile("DetectBeadSynthesisErrorsTest", ".stats");
+		gbse.SUMMARY=getTempReportFile("DetectBeadSynthesisErrorsTest", ".summary");
+
+		gbse.CELL_BC_FILE=EXPECTED_REPORT;
+		gbse.NUM_BARCODES=2;
+		String [] errors = gbse.customCommandLineValidation();
+		Assert.assertTrue(errors.length>0);
+	}
+
+
 
 }
