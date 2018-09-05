@@ -216,7 +216,9 @@ public class CollapseTagWithContext extends CommandLineProgram {
         	}
 
         	// remove the informative reads, as they will get retagged.
-        	List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.COUNT_TAGS, this.OUT_TAG, this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT, this.DROP_SMALL_COUNTS, this.COUNT_TAGS_EDIT_DISTANCE, verbose, outMetrics);
+        	List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.COUNT_TAGS, this.OUT_TAG,
+					this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT,
+                    this.DROP_SMALL_COUNTS, this.COUNT_TAGS_EDIT_DISTANCE, verbose, outMetrics);
         	// List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.COUNT_TAGS, this.OUT_TAG, this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT, this.DROP_SMALL_COUNTS, null, verbose, outMetrics);
         	// write out the informative reads, then all the reads that were not altered.
         	result.stream().forEach(writer::addAlignment);
@@ -256,13 +258,16 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		return informativeReads;
 	}
 
-	private List<SAMRecord> processRecordList (final Collection<SAMRecord> informativeRecs, final String collapseTag, final List<String> countTags, final String outTag, final boolean findIndels, final int editDistance, final Integer minEditDistance, final Integer maxEditDistance, final Integer minNumObservations, final boolean dropSmallCounts, final Integer countTagsEditDistance, final boolean verbose, final PrintStream outMetrics) {
+	private List<SAMRecord> processRecordList (final Collection<SAMRecord> informativeRecs, final String collapseTag,
+                                               final List<String> countTags, final String outTag, final boolean findIndels,
+                                               final int editDistance, final Integer minEditDistance, final Integer maxEditDistance,
+                                               final Integer minNumObservations, final boolean dropSmallCounts,
+                                               final Integer countTagsEditDistance, final boolean verbose, final PrintStream outMetrics) {
 		if (informativeRecs.size()==0) return Collections.EMPTY_LIST;
 
 		// get context.
 		String context = getContextString(informativeRecs.iterator().next(), this.CONTEXT_TAGS);
-		if (context.equals("AGCGTCGCATCTATAG"))
-				log.info("STOP");
+
 		// get barcode counts.
 		ObjectCounter<String> barcodeCounts = getBarcodeCounts (informativeRecs, collapseTag, countTags, countTagsEditDistance);
 		if (minNumObservations!=null) barcodeCounts.filterByMinCount(minNumObservations);
@@ -294,60 +299,11 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		return result;
 	}
 
-	private ObjectCounter<String> getBarcodeCounts (final Collection<SAMRecord> informativeRecs, final String collapseTag, final List<String> countTags) {
-		// collapse barcodes based on informative reads that have the necessary tags.
-		// this counts 1 per read.
-		if (countTags==null) {
-			List<String> barcodes = informativeRecs.stream().map(x -> x.getStringAttribute(collapseTag)).collect(Collectors.toList());
-			ObjectCounter<String> barcodeCounts = new ObjectCounter<>();
-			barcodes.stream().forEach(x -> barcodeCounts.increment(x));
-			return barcodeCounts;
-		}
-
-		// otherwise, for each barcode, extract the unique set of countTag values.
-		StringInterner interner = new StringInterner();
-
-		// to implement edit distance collapse of tag values, this needs to be an object counter.
-		Map<String, Set<String>> countTagValues = new HashMap<>();
-
-		for (SAMRecord r: informativeRecs) {
-			String barcode = r.getStringAttribute(collapseTag);
-			Set<String> valuesSet = countTagValues.get(barcode);
-			// if the set doesn't exist initialize and add...
-			if (valuesSet==null) {
-				valuesSet=new HashSet<>();
-				countTagValues.put(barcode, valuesSet);
-			}
-			// if there are multiple count tags, need to distinguish between them.  IE: if your count was of distinct UMI + some strand tag, then you'd need a distinct list of those 2 tags aggregated together, and the count
-			// is the number of unique values.
-			List<String> valsList = new ArrayList<>();
-			for (String countTag: countTags) {
-				String v = r.getStringAttribute(countTag);
-				if (v!=null) valsList.add(v);
-			}
-			String val = interner.intern(StringUtils.join(valsList, ":"));
-
-			valuesSet.add(val);
-		}
-
-		// collapse the tag values if needed for each count tag.
-
-
-
-		// now count the values.
-		ObjectCounter<String> barcodeCounts = new ObjectCounter<>();
-		for (String barcode: countTagValues.keySet()) {
-			// perform collapse here on each object counter.
-			int count = countTagValues.get(barcode).size();
-			barcodeCounts.incrementByCount(barcode, count);
-		}
-		return barcodeCounts;
-	}
 
 	private ObjectCounter<String> getBarcodeCounts (final Collection<SAMRecord> informativeRecs, final String collapseTag, final List<String> countTags, final Integer countTagsEditDistance) {
 		// collapse barcodes based on informative reads that have the necessary tags.
 		// this counts 1 per read.
-		if (countTags==null) {
+		if (countTags.isEmpty()) {
 			List<String> barcodes = informativeRecs.stream().map(x -> x.getStringAttribute(collapseTag)).collect(Collectors.toList());
 			ObjectCounter<String> barcodeCounts = new ObjectCounter<>();
 			barcodes.stream().forEach(x -> barcodeCounts.increment(x));
@@ -453,26 +409,6 @@ public class CollapseTagWithContext extends CommandLineProgram {
 					Integer.toString(edmm.getOriginalObservations()), Integer.toString(edmm.getTotalObservations())};
 			out.println(StringUtil.join("\t", line));
 		}
-	}
-
-	/**
-	 * Given a list of tags, order the reads by the tags, then group by the tags.
-	 * This does NOT filter reads.
-	 * @param reader
-	 * @param tags
-	 * @param mapQuality
-	 * @return
-	 */
-	private GroupingIterator<SAMRecord> orderReadsByTags (final SamReader reader, final String collapseTag, final List<String> contextTag, final int mapQuality) {
-		// SORT on the context tags.
-		StringTagComparator [] comparators = contextTag.stream().map(x -> new StringTagComparator(x)).toArray(StringTagComparator[]::new);
-		final MultiComparator<SAMRecord> multiComparator = new MultiComparator<>(comparators);
-
-		CloseableIterator<SAMRecord> sortedIter = SamRecordSortingIteratorFactory.create(
-                reader.getFileHeader(), reader.iterator(), multiComparator, new ProgressLogger(log));
-
-		GroupingIterator<SAMRecord> groupedIterator = new GroupingIterator<>(sortedIter, multiComparator);
-		return groupedIterator;
 	}
 
 	private PeekableGroupingIterator<SAMRecord> orderReadsByTagsPeekable (final SamReader reader, final String collapseTag, final List<String> contextTag, final int mapQuality) {
