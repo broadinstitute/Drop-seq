@@ -24,6 +24,7 @@
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
 import htsjdk.samtools.*;
+import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.samtools.util.StringUtil;
 import org.testng.Assert;
@@ -172,5 +173,104 @@ public class CollapseTagWithContextTest {
         Assert.assertEquals(r3Collapsed.getAttribute(clp.OUT_TAG), r3.getAttribute(clp.COLLAPSE_TAG));
         final SAMRecord r4Collapsed = collapsedRecords.get(r4.getReadName());
         Assert.assertEquals(r4Collapsed.getAttribute(clp.OUT_TAG), r4.getAttribute(clp.COLLAPSE_TAG));
+    }
+
+    @Test
+    public void testWithCountTags() throws IOException {
+        final CollapseTagWithContext clp = new CollapseTagWithContext();
+        clp.INPUT = File.createTempFile("CollapseTagWithContextTest.input.", ".sam");;
+        clp.INPUT.deleteOnExit();
+        clp.COLLAPSE_TAG="XM";
+        clp.OUT_TAG="XN";
+        clp.CONTEXT_TAGS = Arrays.asList("XC");
+        clp.COUNT_TAGS = Arrays.asList("XG");
+        clp.OUTPUT = File.createTempFile("CollapseTagWithContextTest.output.", ".sam");
+        clp.OUTPUT.deleteOnExit();
+        clp.READ_MQ = 0; // Do not filter on mapping quality (these are unmapped reads)
+        final SAMRecordSetBuilder builder = createUnmappedFragments(12);
+        final ArrayList<SAMRecord> records = new ArrayList<>(builder.getRecords());
+        final String collapseTagValue = makeRandomBaseString(8);
+        final String contextTagValue = makeRandomBaseString(6);
+        final String sharedCountTagValue = makeRandomBaseString(10);
+
+        // 8 records with same collapseTagValue, and 2 unrelated countTagValues
+        for (int i = 0; i < 4; ++i) {
+            final SAMRecord rec = records.get(i);
+            rec.setAttribute(clp.COLLAPSE_TAG, collapseTagValue);
+            rec.setAttribute(clp.CONTEXT_TAGS.get(0), contextTagValue);
+            rec.setAttribute(clp.COUNT_TAGS.get(0), sharedCountTagValue);
+        }
+        final String sharedCountTagValue2 = makeRandomBaseString(10);
+        for (int i = 4; i < 8; ++i) {
+            final SAMRecord rec = records.get(i);
+            rec.setAttribute(clp.COLLAPSE_TAG, collapseTagValue);
+            rec.setAttribute(clp.CONTEXT_TAGS.get(0), contextTagValue);
+            rec.setAttribute(clp.COUNT_TAGS.get(0), sharedCountTagValue2);
+        }
+
+        // 4 records with same ed1CollapseTagValue, 2 identical countTagValues, and 2 that are ED 1
+        final String ed1CollapseTagValue = alterBaseString(collapseTagValue, 1);
+        String countTagValue = makeRandomBaseString(10);
+        for (int i = 8; i < 10; ++i) {
+            final SAMRecord rec = records.get(i);
+            rec.setAttribute(clp.COLLAPSE_TAG, ed1CollapseTagValue);
+            rec.setAttribute(clp.CONTEXT_TAGS.get(0), contextTagValue);
+            rec.setAttribute(clp.COUNT_TAGS.get(0), countTagValue);
+        }
+        for (int i = 10; i < records.size(); ++i) {
+            final SAMRecord rec = records.get(i);
+            rec.setAttribute(clp.COLLAPSE_TAG, ed1CollapseTagValue);
+            rec.setAttribute(clp.CONTEXT_TAGS.get(0), contextTagValue);
+            rec.setAttribute(clp.COUNT_TAGS.get(0), alterBaseString(countTagValue, 1));
+        }
+        final SAMFileHeader header = builder.getHeader();
+        header.setSortOrder(SAMFileHeader.SortOrder.queryname);
+        final SAMFileWriter writer = new SAMFileWriterFactory().makeWriter(header, true, clp.INPUT, null);
+        for (final SAMRecord rec : records) {
+            writer.addAlignment(rec);
+        }
+        writer.close();
+        Assert.assertEquals(clp.doWork(), 0);
+        // ed1CollapseTagValue should be selected, because it has 4 distinct values for the COUNT_TAG
+        SamReader samReader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
+        for (final SAMRecord rec : samReader) {
+            Assert.assertEquals(rec.getAttribute(clp.OUT_TAG), ed1CollapseTagValue, rec.getSAMString());
+        }
+        CloserUtil.close(samReader);
+
+        // Test the same input but without COUNT_TAGS, and confirm different result.
+        final CollapseTagWithContext clp2 = new CollapseTagWithContext();
+        clp2.INPUT = clp.INPUT;
+        clp2.COLLAPSE_TAG = clp.COLLAPSE_TAG;
+        clp2.OUT_TAG = clp.OUT_TAG;
+        clp2.CONTEXT_TAGS = clp.CONTEXT_TAGS;
+        clp2.OUTPUT = clp.OUTPUT;
+        clp2.READ_MQ = clp.READ_MQ;
+        Assert.assertEquals(clp2.doWork(), 0);
+        // collapseTagValue should be selected, because it has 3 reads
+        samReader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
+        for (final SAMRecord rec : samReader) {
+            Assert.assertEquals(rec.getAttribute(clp.OUT_TAG), collapseTagValue, rec.getSAMString());
+        }
+        CloserUtil.close(samReader);
+
+        // Test the same input, but collapse COUNT_TAG values with ED=1
+        final CollapseTagWithContext clp3 = new CollapseTagWithContext();
+        clp3.INPUT = clp.INPUT;
+        clp3.COLLAPSE_TAG = clp.COLLAPSE_TAG;
+        clp3.OUT_TAG = clp.OUT_TAG;
+        clp3.CONTEXT_TAGS = clp.CONTEXT_TAGS;
+        clp3.COUNT_TAGS = clp.COUNT_TAGS;
+        clp3.COUNT_TAGS_EDIT_DISTANCE = 1;
+        clp3.OUTPUT = clp.OUTPUT;
+        clp3.READ_MQ = clp.READ_MQ;
+        clp3.MIN_COUNT = 1;
+        Assert.assertEquals(clp3.doWork(), 0);
+        // collapseTagValue should be selected, because it has 3 reads
+        samReader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
+        for (final SAMRecord rec : samReader) {
+            Assert.assertEquals(rec.getAttribute(clp.OUT_TAG), collapseTagValue, rec.getSAMString());
+        }
+        CloserUtil.close(samReader);
     }
 }
