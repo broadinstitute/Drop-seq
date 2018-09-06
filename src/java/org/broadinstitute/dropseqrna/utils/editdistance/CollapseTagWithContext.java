@@ -111,10 +111,10 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	@Argument(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
 	public Integer READ_MQ=10;
 
-	@Argument (doc="The minumum number of reads (unless using the COUNT_TAGS option) for a context to be eligible for collapse.", optional=true)
-	public Integer MIN_COUNT=null;
+	@Argument (doc="The minumum number of reads (unless using the COUNT_TAGS option) for a context to be eligible for collapse.  Must be >= 1.")
+	public int MIN_COUNT=1;
 
-	@Argument (doc="When collapsing a CONTEXT_TAG and have MIN_COUNT set to a non-null value, do not emit CONTEXT reads that have fewer than MIN_COUNT counts.  "
+	@Argument (doc="When collapsing a CONTEXT_TAG, do not emit CONTEXT reads that have fewer than MIN_COUNT counts.  "
 			+ "For example, if your context tags were cell and gene and you were collapsing UMI tags and had a MIN_COUNT of 5, then cell/gene pairs with fewer than 5 UMIs "
 			+ "would not have their reads emiited in the output BAM.", optional=false)
 	public Boolean DROP_SMALL_COUNTS=false;
@@ -148,12 +148,11 @@ public class CollapseTagWithContext extends CommandLineProgram {
 			log.error("If adaptive edit distance is in use, must set a minimum adaptive edit distance!");
 			return 1;
 		}
-		if (this.DROP_SMALL_COUNTS && (this.MIN_COUNT==null || this.MIN_COUNT==0)) {
-			log.error("If DROP_SMALL_COUNTS is set to true, must set a MIN_COUNT VALUE greater than 0.");
-			return 1;
+		if (this.MIN_COUNT < 1) {
+			log.error(String.format("MIN_COUNT(%d) < 1 does not make sense.", MIN_COUNT));
 		}
-		if (this.COUNT_TAGS_EDIT_DISTANCE>0 && this.MIN_COUNT==0 && this.COUNT_TAGS!=null) {
-			log.error ("Edit distance for COUNT_TAGS set, but no minimum count for COUNT TAGS set.  Without a count threshold, the edit distance setting will not change your result!");
+		if (this.DROP_SMALL_COUNTS && (this.MIN_COUNT < 2)) {
+			log.error("If DROP_SMALL_COUNTS is set to true, must set a MIN_COUNT VALUE greater than 1.");
 			return 1;
 		}
 		if (this.COUNT_TAGS_EDIT_DISTANCE>0 && this.COUNT_TAGS==null) {
@@ -219,7 +218,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
         	List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.COUNT_TAGS, this.OUT_TAG,
 					this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT,
                     this.DROP_SMALL_COUNTS, this.COUNT_TAGS_EDIT_DISTANCE, verbose, outMetrics);
-        	// List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.COUNT_TAGS, this.OUT_TAG, this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT, this.DROP_SMALL_COUNTS, null, verbose, outMetrics);
+
         	// write out the informative reads, then all the reads that were not altered.
         	result.stream().forEach(writer::addAlignment);
         }
@@ -261,7 +260,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	private List<SAMRecord> processRecordList (final Collection<SAMRecord> informativeRecs, final String collapseTag,
                                                final List<String> countTags, final String outTag, final boolean findIndels,
                                                final int editDistance, final Integer minEditDistance, final Integer maxEditDistance,
-                                               final Integer minNumObservations, final boolean dropSmallCounts,
+                                               final int minNumObservations, final boolean dropSmallCounts,
                                                final Integer countTagsEditDistance, final boolean verbose, final PrintStream outMetrics) {
 		if (informativeRecs.size()==0) return Collections.EMPTY_LIST;
 
@@ -270,10 +269,10 @@ public class CollapseTagWithContext extends CommandLineProgram {
 
 		// get barcode counts.
 		ObjectCounter<String> barcodeCounts = getBarcodeCounts (informativeRecs, collapseTag, countTags, countTagsEditDistance);
-		if (minNumObservations!=null) barcodeCounts.filterByMinCount(minNumObservations);
+		if (minNumObservations > 1) barcodeCounts.filterByMinCount(minNumObservations);
 		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, findIndels, editDistance, minEditDistance, maxEditDistance, verbose, outMetrics, context);
 		Set<String> expectedBarcodes = null;
-		// already validated that if dropSmallCounts is true, then the minNumObservations is non-null and > 0.
+		// already validated that if dropSmallCounts is true, then the minNumObservations > 1.
 		if (dropSmallCounts)
 			// use all the remaining barcodes that have counts.
 			expectedBarcodes = new HashSet<>(barcodeCounts.getKeys());
