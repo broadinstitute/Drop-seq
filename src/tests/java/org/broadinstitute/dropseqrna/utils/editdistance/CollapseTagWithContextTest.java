@@ -264,7 +264,6 @@ public class CollapseTagWithContextTest {
         clp3.COUNT_TAGS_EDIT_DISTANCE = 1;
         clp3.OUTPUT = clp.OUTPUT;
         clp3.READ_MQ = clp.READ_MQ;
-        clp3.MIN_COUNT = 1;
         Assert.assertEquals(clp3.doWork(), 0);
         // collapseTagValue should be selected, because it has 3 reads
         samReader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
