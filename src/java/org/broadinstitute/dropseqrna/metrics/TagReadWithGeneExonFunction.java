@@ -23,6 +23,22 @@
  */
 package org.broadinstitute.dropseqrna.metrics;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.annotation.AnnotationUtils;
+import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
+import org.broadinstitute.dropseqrna.barnyard.Utils;
+import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
+
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
@@ -37,26 +53,9 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.samtools.util.ProgressLogger;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.broadinstitute.dropseqrna.annotation.AnnotationUtils;
-import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
-import org.broadinstitute.dropseqrna.barnyard.Utils;
-import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
-
 import picard.annotation.Gene;
 import picard.annotation.LocusFunction;
 import picard.cmdline.CommandLineProgram;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.Argument;
 import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
@@ -99,6 +98,7 @@ public class TagReadWithGeneExonFunction extends CommandLineProgram {
     public boolean ALLOW_MULTI_GENE_READS=false;
 
     private ReadTaggingMetric metrics = new ReadTaggingMetric();
+    static String RECORD_SEP=",";
 
     @Override
     protected int doWork() {
@@ -120,7 +120,7 @@ public class TagReadWithGeneExonFunction extends CommandLineProgram {
             pl.record(r);
 
             if (!r.getReadUnmappedFlag())
-                r=	setGeneExons(r, geneOverlapDetector);
+                r=	setAnnotations(r, geneOverlapDetector);
             writer.addAlignment(r);
         }
 
@@ -130,29 +130,43 @@ public class TagReadWithGeneExonFunction extends CommandLineProgram {
         if (SUMMARY==null) return 0;
 
         //process summary
-        MetricsFile<ReadTaggingMetric, Integer> outFile = new MetricsFile<ReadTaggingMetric, Integer>();
+        MetricsFile<ReadTaggingMetric, Integer> outFile = new MetricsFile<>();
         outFile.addMetric(this.metrics);
         outFile.write(this.SUMMARY);
         return 0;
 
     }
 
-    public SAMRecord setGeneExons (final SAMRecord r, final OverlapDetector<Gene> geneOverlapDetector) {
+    public SAMRecord setAnnotations (final SAMRecord r, final OverlapDetector<Gene> geneOverlapDetector) {
         Map<Gene, LocusFunction> map = AnnotationUtils.getInstance().getLocusFunctionForReadByGene(r, geneOverlapDetector);
         Set<Gene> exonsForRead = AnnotationUtils.getInstance().getConsistentExons (r, map.keySet(), ALLOW_MULTI_GENE_READS);
 
-        List<Gene> genes = new ArrayList<Gene>();
+        List<Gene> genes = new ArrayList<>();
 
         for (Gene g: exonsForRead) {
-
             LocusFunction f = map.get(g);
             if (f==LocusFunction.CODING || f==LocusFunction.UTR)
                 genes.add(g);
         }
-        LocusFunction f = AnnotationUtils.getInstance().getLocusFunction(map.values(), false);
 
-        if (USE_STRAND_INFO)
-            genes = getGenesConsistentWithReadStrand(genes, r);
+        List<LocusFunction> allPassingFunctions = new ArrayList<>();
+        if (USE_STRAND_INFO) {
+        	// constrain gene exons to read strand.
+			genes = getGenesConsistentWithReadStrand(genes, r);
+			// only retain functional map entries that are on the correct strand.
+			for (Gene g: map.keySet()) {
+				boolean strandCheck=readAnnotationMatchStrand(g, r);
+				if (strandCheck) allPassingFunctions.add(map.get(g));
+			}
+        } else
+			allPassingFunctions=new ArrayList<>(map.values());
+
+        // if strand tag is used, only add locus function values for passing genes.
+        for (Gene g: genes)
+			allPassingFunctions.add(map.get(g));
+
+        LocusFunction f = AnnotationUtils.getInstance().getLocusFunction(allPassingFunctions, false);
+
 
         if (genes.size()>1 && this.ALLOW_MULTI_GENE_READS==false)
             log.error("There should only be 1 gene assigned to a read for DGE purposes.");
@@ -184,14 +198,13 @@ public class TagReadWithGeneExonFunction extends CommandLineProgram {
     private List<Gene> getGenesConsistentWithReadStrand(final List<Gene> genes, final SAMRecord r) {
         this.metrics.TOTAL_READS++;
 
-        List<Gene> sameStrand = new ArrayList<Gene>();
-        List<Gene> oppositeStrand = new ArrayList<Gene>();
+        List<Gene> sameStrand = new ArrayList<>();
+        List<Gene> oppositeStrand = new ArrayList<>();
 
-        boolean negativeStrandRead = r.getReadNegativeStrandFlag();
         for (Gene g: genes) {
-            boolean geneNegativeStrand = g.isNegativeStrand();
+        	boolean strandCheck=readAnnotationMatchStrand(g, r);
             // if the read and gene are on the same strand, both positive or negative...
-            if ((negativeStrandRead && geneNegativeStrand) || (!negativeStrandRead && !geneNegativeStrand))
+            if (strandCheck)
                 sameStrand.add(g);
             else
                 oppositeStrand.add(g);
@@ -199,12 +212,12 @@ public class TagReadWithGeneExonFunction extends CommandLineProgram {
 
         if (sameStrand.size()==0 && oppositeStrand.size()>0) {
             this.metrics.READS_WRONG_STRAND++;
-            return new ArrayList<Gene>();
+            return new ArrayList<>();
         }
 
         if (sameStrand.size()>1) {
             this.metrics.AMBIGUOUS_READS_REJECTED++;
-            return new ArrayList<Gene>();
+            return new ArrayList<>();
         }
 
         // otherwise, the read is unambiguously assigned to a gene on the correct strand - the sameStrandSize must be 1 as it's not 0 and not > 1.
@@ -216,7 +229,13 @@ public class TagReadWithGeneExonFunction extends CommandLineProgram {
 
     }
 
-    private String getCompoundGeneName (final Collection<Gene> genes) {
+    private boolean readAnnotationMatchStrand (final Gene gene, final SAMRecord r) {
+    	boolean negativeStrandRead = r.getReadNegativeStrandFlag();
+    	boolean geneNegativeStrand = gene.isNegativeStrand();
+    	return negativeStrandRead==geneNegativeStrand;
+    }
+
+    String getCompoundGeneName (final Collection<Gene> genes) {
 
         if (genes.isEmpty()) return (null);
 
@@ -227,14 +246,14 @@ public class TagReadWithGeneExonFunction extends CommandLineProgram {
 
 
         while (iter.hasNext()) {
-            result.append(",");
+            result.append(RECORD_SEP);
             result.append(iter.next().getName());
         }
 
         return (result.toString());
     }
 
-    private String getCompoundStrand (final Collection<Gene> genes) {
+    String getCompoundStrand (final Collection<Gene> genes) {
 
         if (genes.isEmpty()) return (null);
 
@@ -243,7 +262,7 @@ public class TagReadWithGeneExonFunction extends CommandLineProgram {
         result.append(Utils.strandToString(iter.next().isPositiveStrand()));
 
         while (iter.hasNext()) {
-            result.append(",");
+            result.append(RECORD_SEP);
             result.append(Utils.strandToString(iter.next().isPositiveStrand()));
         }
 

@@ -84,6 +84,13 @@ public class CompareBAMTagValues extends CommandLineProgram {
 		for (String tag: tags) {
 			Object o1 = r1.getAttribute(tag);
 			Object o2 = r2.getAttribute(tag);
+			if (o1==null && o2==null) return true;
+			if ((o1==null && o2!=null ) || (o1!=null && o2==null)) {
+				log.error("Read tag values differ for tag: ["+ tag.toString()+ "] R1 is null [" + String.valueOf(o1==null) + "] R2 is null [" + String.valueOf(o2==null)+"]");
+				return false;
+			}
+
+
 			if (!o1.equals(o2)) {
 				log.error("Read tag values differ for tag: ["+ tag.toString()+ "] "  + r1.toString()+ "[" +o1.toString()+ "] "+ r2.toString() +" [" + o2.toString()+"]");
 				return false;
