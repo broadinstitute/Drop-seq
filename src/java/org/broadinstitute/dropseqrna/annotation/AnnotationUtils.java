@@ -23,19 +23,29 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.commons.collections4.map.HashedMap;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+
 import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.OverlapDetector;
-import org.apache.commons.collections4.map.HashedMap;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import picard.annotation.Gene;
 import picard.annotation.Gene.Transcript;
 import picard.annotation.Gene.Transcript.Exon;
 import picard.annotation.LocusFunction;
-
-import java.util.*;
 
 public class AnnotationUtils {
 
@@ -47,10 +57,11 @@ public class AnnotationUtils {
 	private static Map<LocusFunction, Integer> functionScores;
 
 	private AnnotationUtils() {
-		functionScores = new HashMap<LocusFunction, Integer>();
-		functionScores.put(LocusFunction.CODING, new Integer (4));
-		functionScores.put(LocusFunction.UTR, new Integer (3));
-		functionScores.put(LocusFunction.INTRONIC, new Integer (2));
+		functionScores = new HashMap<>();
+		functionScores.put(LocusFunction.CODING, new Integer (5));
+		functionScores.put(LocusFunction.UTR, new Integer (4));
+		functionScores.put(LocusFunction.INTRONIC, new Integer (3));
+		functionScores.put(LocusFunction.RIBOSOMAL, new Integer (2));
 		functionScores.put(LocusFunction.INTERGENIC, new Integer (1));
 	}
 
@@ -74,7 +85,7 @@ public class AnnotationUtils {
 	public Map<Gene, List<LocusFunction>> getFunctionalDataForRead (final SAMRecord rec, final OverlapDetector<Gene> geneOverlapDetector) {
 		List<AlignmentBlock> alignmentBlocks = rec.getAlignmentBlocks();
 
-		Map<AlignmentBlock, Map<Gene, List<LocusFunction>>> map = new HashMap<AlignmentBlock, Map<Gene, List<LocusFunction>>>();
+		Map<AlignmentBlock, Map<Gene, List<LocusFunction>>> map = new HashMap<>();
 		// gather the locus functions for each alignment block.
 		for (AlignmentBlock block: alignmentBlocks) {
 			Interval interval = getInterval(rec.getReferenceName(), block);
@@ -94,15 +105,15 @@ public class AnnotationUtils {
 	 * @return A map from each gene that is overlapped to its functional annotation(s).
 	 */
 	private Map<Gene, List<LocusFunction>> getFunctionalDataForInterval (final Interval interval, final OverlapDetector<Gene> geneOverlapDetector) {
-		Map<Gene, List<LocusFunction>> result = new HashMap<Gene, List<LocusFunction>>();
+		Map<Gene, List<LocusFunction>> result = new HashMap<>();
 
 		final Collection<Gene> overlappingGenes = geneOverlapDetector.getOverlaps(interval);
 		for (Gene g: overlappingGenes) {
-			List<LocusFunction> locusFunctionsForGene = new ArrayList<LocusFunction>();
+			List<LocusFunction> locusFunctionsForGene = new ArrayList<>();
 
 			LocusFunction [] locusFunctionArray = getLocusFunctionsByInterval(interval, g);
 			// simplify to the unique list of functions.
-			ObjectCounter<LocusFunction> o = new ObjectCounter<LocusFunction>();
+			ObjectCounter<LocusFunction> o = new ObjectCounter<>();
 			for (LocusFunction f: locusFunctionArray)
 				o.increment(f);
 			for (LocusFunction f: o.getKeys())
@@ -135,11 +146,11 @@ public class AnnotationUtils {
 		}
 
 		// walk through alignment blocks and retain genes in the common set.
-		Map<Gene, List<LocusFunction>> result = new HashedMap<Gene, List<LocusFunction>>();
+		Map<Gene, List<LocusFunction>> result = new HashedMap<>();
 		for (AlignmentBlock b: map.keySet())
 			for (Gene g: commonGenes) {
 				List<LocusFunction> tempResult = result.get(g);
-				if (tempResult==null) tempResult = new ArrayList<LocusFunction>();
+				if (tempResult==null) tempResult = new ArrayList<>();
 				List<LocusFunction> lf = map.get(b).get(g);
 				tempResult.addAll(lf);
 				result.put(g, tempResult);
@@ -148,7 +159,7 @@ public class AnnotationUtils {
 		// remove any repeats of a locus function for a gene - so if two blocks are both coding, only have 1 coding in the result.
 		for (Gene g: result.keySet()) {
 			List<LocusFunction> lf = result.get(g);
-			Set<LocusFunction> s = new HashSet<LocusFunction>(lf);
+			Set<LocusFunction> s = new HashSet<>(lf);
 			lf.clear();
 			lf.addAll(s);
 		}
@@ -179,7 +190,7 @@ public class AnnotationUtils {
 		List<AlignmentBlock> alignmentBlocks = rec.getAlignmentBlocks();
 
         LocusFunction [] blockSummaryFunction = new LocusFunction[alignmentBlocks.size()];
-        Set<Gene> temp = new HashSet<Gene>();
+        Set<Gene> temp = new HashSet<>();
         temp.add(g);
 
         for (int i=0; i<alignmentBlocks.size(); i++) {
@@ -197,7 +208,7 @@ public class AnnotationUtils {
 
 
 	public Map<Gene, LocusFunction> getLocusFunctionForReadByGene (final SAMRecord rec, final OverlapDetector<Gene> geneOverlapDetector) {
-		Map<Gene, LocusFunction> result = new HashMap<Gene, LocusFunction>();
+		Map<Gene, LocusFunction> result = new HashMap<>();
 		final Interval readInterval = new Interval(rec.getReferenceName(), rec.getAlignmentStart(), rec.getAlignmentEnd(), rec.getReadNegativeStrandFlag(), rec.getReadName());
 		final Collection<Gene> overlappingGenes = geneOverlapDetector.getOverlaps(readInterval);
 
@@ -222,7 +233,7 @@ public class AnnotationUtils {
 	//TODO: if this is used in the future, make it strand specific.
 	public Set<Gene> getConsistentExons (final SAMRecord rec, final Set<Gene> genes, final boolean allowMultiGeneReads) {
 
-		Set<Gene> result = new HashSet<Gene>();
+		Set<Gene> result = new HashSet<>();
 		String refName = rec.getReferenceName();
 		List<AlignmentBlock> alignmentBlocks = rec.getAlignmentBlocks();
 		for (AlignmentBlock b: alignmentBlocks) {
@@ -238,14 +249,14 @@ public class AnnotationUtils {
 				result=blockGenes;
 			*/
 		}
-		if (!allowMultiGeneReads & result.size()>1) return new HashSet<Gene>();
+		if (!allowMultiGeneReads & result.size()>1) return new HashSet<>();
 		return result;
 	}
 
 
 
 	private Set<Gene> getAlignmentBlockonGeneExon(final String refName, final AlignmentBlock b, final Set<Gene> genes) {
-		Set<Gene> result = new HashSet<Gene>();
+		Set<Gene> result = new HashSet<>();
 		for (Gene g: genes)
 			if (getAlignmentBlockOverlapsExon(refName, b, g))
 				result.add(g);
@@ -342,7 +353,12 @@ public class AnnotationUtils {
 
 
 
-
+	/**
+	 * Generates the locus function at each base of the interval.
+	 * @param interval
+	 * @param overlappingGenes
+	 * @return
+	 */
 	public LocusFunction[] getLocusFunctionsByInterval (final Interval i, final Gene gene) {
 		// Get functional class for each position in the alignment block.
         final LocusFunction[] locusFunctions = new LocusFunction[i.length()];
@@ -357,7 +373,7 @@ public class AnnotationUtils {
 
 
 	Map<String, String> parseOptionalFields(final String optional) {
-		Map<String, String> result = new HashMap<String, String>();
+		Map<String, String> result = new HashMap<>();
 		String [] o = optional.split(";");
 		for (String s: o) {
 			s=s.replaceAll("\"", "");
