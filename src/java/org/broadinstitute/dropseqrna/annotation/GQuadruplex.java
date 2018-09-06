@@ -23,13 +23,13 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.StringUtil;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.StringUtil;
 
 public class GQuadruplex {
 
@@ -53,7 +53,6 @@ public class GQuadruplex {
 	public Interval getMatchInterval() {
 		return interval;
 	}
-
 
 	public String getG1 () {
 		return sequence[0];
@@ -90,7 +89,7 @@ public class GQuadruplex {
 
 	public static List<GQuadruplex> find (final String seqName, final String seq) {
 		Matcher matcher = pattern.matcher(seq);
-		List<GQuadruplex> result = new ArrayList<GQuadruplex>();
+		List<GQuadruplex> result = new ArrayList<>();
 		while (matcher.find()) {
 			int start = matcher.start();
 			int end = matcher.end();
