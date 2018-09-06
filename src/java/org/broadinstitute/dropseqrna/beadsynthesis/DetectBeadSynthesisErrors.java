@@ -155,7 +155,7 @@ public class DetectBeadSynthesisErrors extends GeneFunctionCommandLineBase {
 
 	private Character PAD_CHARACTER='N';
 	private static DecimalFormat df2 = new DecimalFormat("#.##");
-	private int MAX_BARCODE_ERRORS_IN_RAM=10000;
+	int MAX_BARCODE_ERRORS_IN_RAM=10000;
 
 	@Override
 	protected int doWork() {
@@ -464,10 +464,8 @@ public class DetectBeadSynthesisErrors extends GeneFunctionCommandLineBase {
 
 	private BeadSynthesisErrorsSummaryMetric addDataToSummary (final BeadSynthesisErrorData bsde, final BeadSynthesisErrorsSummaryMetric summary) {
 		BeadSynthesisErrorType t = bsde.getErrorType(EXTREME_BASE_RATIO, this.detectPrimerTool, this.EDIT_DISTANCE);
-		if (t==null) {
-			log.info("STOP");
+		if (t==null)
 			t = bsde.getErrorType(EXTREME_BASE_RATIO, this.detectPrimerTool, this.EDIT_DISTANCE);
-		}
 		summary.NUM_BEADS++;
 		switch (t) {
 			case SYNTH_MISSING_BASE: summary.SYNTHESIS_MISSING_BASE++; summary.incrementSynthesisMissingBase(bsde.getPolyTErrorPosition(this.EXTREME_BASE_RATIO)); break;
@@ -667,8 +665,7 @@ public class DetectBeadSynthesisErrors extends GeneFunctionCommandLineBase {
 		line.add(Integer.toString(is.getRelatedSequences().size()));
 		line.add(getNullableString(is.getDeletedBase()));
 		line.add(getNullableString(is.getDeletedBasePos()));
-		if (is.getMedianRelatedSequenceUMIs()<this.MIN_UMIS_PER_CELL)
-			log.info("STOP");
+		// if (is.getMedianRelatedSequenceUMIs()<this.MIN_UMIS_PER_CELL)
 		if (is.getDeletionRate()==null)
 			line.add("NA");
 		else
@@ -707,8 +704,8 @@ public class DetectBeadSynthesisErrors extends GeneFunctionCommandLineBase {
 	        IOUtil.assertFileIsWritable(this.SUMMARY);
 	        if (this.REPORT!=null) IOUtil.assertFileIsWritable(this.REPORT);
 
-	        if (this.CELL_BARCODE_TAG!=null & this.NUM_BARCODES!=null)
-	        	throw new TranscriptomeException("Must specify at most one of CELL_BARCODE_TAG or  NUM_BARCODES");
+	        if (this.CELL_BC_FILE!=null & this.NUM_BARCODES!=null)
+	        	throw new TranscriptomeException("Must specify at most one of CELL_BC_FILE or  NUM_BARCODES");
 
 	        if (OUTPUT!=null) IOUtil.assertFileIsWritable(this.OUTPUT);
 	        return super.customCommandLineValidation();
