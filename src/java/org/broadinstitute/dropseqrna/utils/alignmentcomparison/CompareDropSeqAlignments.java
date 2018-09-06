@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
 		+ "all contigs for a mapping for non-unique contigs will be listed.  This can be helpful to detect if additional contigs [such as alternative haplotypes] create mapping problems that make some subset of genes invisible to the dropseq toolkit.",
 oneLineSummary = "Compare two alignments",
 programGroup = DropSeq.class)
+@groovy.transform.Generated
 public class CompareDropSeqAlignments extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(CompareDropSeqAlignments.class);
