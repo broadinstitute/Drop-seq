@@ -748,10 +748,10 @@ public class DGEMatrix {
                 final SparseMatrix mat = (SparseMatrix)expressionMatrix;
                 final MatrixIterator it = mat.nonZeroIterator();
                 while (it.hasNext()) {
-                    // Ensure these are called before next()
+					final double val = it.next();
                     final int row = it.rowIndex();
                     final int col = it.columnIndex();
-                    writeMatrixMarketTriplet(writer, row, col, it.next(), formatAsInteger, transpose);
+					writeMatrixMarketTriplet(writer, row, col, val, formatAsInteger, transpose);
                 }
             } else
 				for (int i = 0; i < expressionMatrix.rows(); ++i)
