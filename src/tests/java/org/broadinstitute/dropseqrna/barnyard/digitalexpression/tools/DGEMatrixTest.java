@@ -32,16 +32,16 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-public class DGEMatrixTests {
+public class DGEMatrixTest {
 
-	private final File exampleOne = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalexpression/dge_example1.txt.gz");
-	private final File exampleTwo = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalexpression/dge_example2.txt.gz");
-	private final File exampleThree = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalexpression/dge_example3.txt.gz");
-	private final File preMergedExample = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalexpression/dge_example_merged.txt.gz");
-	private final File preMergedExample2 = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalexpression/dge_example_merged2.txt.gz");
-	private final File matrixMarketMatrixFile = new File ("testdata/org/broadinstitute/dropseq/private/barnyard/digitalexpression/tenXMatrixMarket.mtx");
-	private final File matrixMarketCellFile = new File ("testdata/org/broadinstitute/dropseq/private/barnyard/digitalexpression/tenXMatrixMarketCellBarcodes.tsv");
-	private final File matrixMarketGeneFile = new File ("testdata/org/broadinstitute/dropseq/private/barnyard/digitalexpression/tenXMatrixMarketGenes.tsv");
+	private final File exampleOne = new File("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/dge_example1.txt.gz");
+	private final File exampleTwo = new File("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/dge_example2.txt.gz");
+	private final File exampleThree = new File("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/dge_example3.txt.gz");
+	private final File preMergedExample = new File("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/dge_example_merged.txt.gz");
+	private final File preMergedExample2 = new File("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/dge_example_merged2.txt.gz");
+	private final File matrixMarketMatrixFile = new File ("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/tenXMatrixMarket.mtx");
+	private final File matrixMarketCellFile = new File ("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/tenXMatrixMarketCellBarcodes.tsv");
+	private final File matrixMarketGeneFile = new File ("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/tenXMatrixMarketGenes.tsv");
 
 
 

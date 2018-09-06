@@ -29,12 +29,12 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class MatrixTransformTests {
+public class MatrixTransformTest {
 
-	private final File exampleOne = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalexpression/dge_example1.txt.gz");
-	private final File exampleTwo = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalexpression/dge_example2.txt.gz");
-	private final File preMergedExample = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalexpression/dge_example_merged.txt.gz");
-	// a=read.table("/Users/nemesh/dropseqrna/transcriptome_java/testdata/org/broadinstitute/dropseq/private/barnyard/digitalexpression/dge_example1.txt.gz", header=T, stringsAsFactors=F, row.names=1)
+	private final File exampleOne = new File("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/dge_example1.txt.gz");
+	private final File exampleTwo = new File("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/dge_example2.txt.gz");
+	private final File preMergedExample = new File("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/dge_example_merged.txt.gz");
+	// a=read.table("/Users/nemesh/dropseqrna/transcriptome_java/testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/dge_example1.txt.gz", header=T, stringsAsFactors=F, row.names=1)
 	@Test
 	public void testNormalizeRows() {
 		DGEMatrix result= DGEMatrix.parseFile(exampleOne);				
