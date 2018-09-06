@@ -23,6 +23,8 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequence;
@@ -32,11 +34,14 @@ import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.MetaData;
+import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import picard.PicardException;
 import picard.annotation.Gene;
 import picard.cmdline.CommandLineProgram;
+import picard.cmdline.StandardOptionDefinitions;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 @CommandLineProgramProperties(
@@ -54,6 +59,10 @@ import java.util.*;
     @Argument(doc="Gene annotation file in GTF format")
     public File GTF;
 
+    @Argument(optional = true, shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME,
+            doc="Write report in json format, for unit testing only.")
+    public File OUTPUT;
+
     public static void main(final String[] args) {
         new ValidateReference().instanceMainWithExit(args);
     }
@@ -69,6 +78,19 @@ import java.util.*;
             IUPAC_TABLE[Character.toLowerCase(c)] = true;
         }
     }
+
+    static class Messages {
+        List<String> transcriptsWithNoExons = new ArrayList<>();
+        String baseErrors;
+        List<String> sequencesOnlyInReference = new ArrayList<>();
+        List<String> sequencesOnlyInGtf = new ArrayList<>();
+        List<String> geneBiotypes = new ArrayList<>();
+        double fractionOfSequencesOnlyInReference;
+        double fractionOfSequencesOnlyInGtf;
+        double fractionOfGenomeOfSequencesOnlyInReference;
+    }
+
+    private Messages messages = new Messages();
 
     @Override
     protected int doWork() {
@@ -86,50 +108,68 @@ import java.util.*;
         final Set<String> sequencesInGtf = new LinkedHashSet<>();
         final Set<String> transcriptTypes = new LinkedHashSet<>();
 
-        final List<String> transcriptsWithNoExons = new ArrayList<>();
 
         for (final GeneFromGTF gene : geneAnnotations) {
             sequencesInGtf.add(gene.getContig());
             transcriptTypes.add(gene.getTranscriptType());
             for (final Gene.Transcript transcript : gene) {
                 if (transcript.exons.length == 0) {
-                    transcriptsWithNoExons.add(String.format("Gene %s, Transcript %s on sequence %s has no exons",
+                    messages.transcriptsWithNoExons.add(String.format("Gene %s, Transcript %s on sequence %s has no exons",
                             gene.getGeneID(), transcript.name, gene.getContig()));
                 }
             }
         }
-
-        if (!transcriptsWithNoExons.isEmpty()) {
-            System.out.println(transcriptsWithNoExons.size() + "  transcript(s) have no exons");
-            for (int i = 0; i < Math.min(100, transcriptsWithNoExons.size()); ++i) {
-                System.out.println(transcriptsWithNoExons.get(i));
-            }
-        }
+        messages.geneBiotypes.addAll(transcriptTypes);
 
         validateReferenceBases(REFERENCE_SEQUENCE);
 
-        final Set<String> onlyInReference = subtract(sequencesInReference, sequencesInGtf);
-        final Set<String> onlyInGtf = gtfReader.getUnrecognizedSequences();
+        messages.sequencesOnlyInReference.addAll(subtract(sequencesInReference, sequencesInGtf));
+        messages.sequencesOnlyInGtf.addAll(gtfReader.getUnrecognizedSequences());
 
-        System.out.println("\nSequences only in reference FASTA:");
-        logCollection(onlyInReference);
-
-        System.out.println("\nSequences only in GTF:");
-        logCollection(onlyInGtf);
-
-        System.out.println("\ngene_biotype values:");
-        logCollection(transcriptTypes);
-
-        final double fractionOfSequencesOnlyInReference = onlyInReference.size()/(double)sequencesInReference.size();
+        messages.fractionOfSequencesOnlyInReference = messages.sequencesOnlyInReference.size()/(double)sequencesInReference.size();
         long sizeOfOnlyInReference = 0;
-        for (final String s : onlyInReference) {
+        for (final String s : messages.sequencesOnlyInReference) {
             sizeOfOnlyInReference += sequenceDictionary.getSequence(s).getSequenceLength();
         }
-        final double fractionOfGenomeOfSequencesOnlyInReference = sizeOfOnlyInReference/(double)sequenceDictionary.getReferenceLength();
-        final double fractionOfSequencesOnlyInGtf = onlyInGtf.size()/(double)sequencesInGtf.size();
-        System.out.println("\nFraction of sequences only in reference FASTA: " + fractionOfSequencesOnlyInReference);
-        System.out.println("\n(Sum of lengths of sequences only in reference FASTA)/(size of genome): " + fractionOfGenomeOfSequencesOnlyInReference);
-        System.out.println("\nFraction of sequences only in GTF: " + fractionOfSequencesOnlyInGtf);
+        messages.fractionOfGenomeOfSequencesOnlyInReference = sizeOfOnlyInReference/(double)sequenceDictionary.getReferenceLength();
+        messages.fractionOfSequencesOnlyInGtf = messages.sequencesOnlyInGtf.size()/(double)sequencesInGtf.size();
+
+        // print all the problems.
+        if (messages.baseErrors != null) {
+            System.err.println(messages.baseErrors);
+        }
+
+        if (!messages.transcriptsWithNoExons.isEmpty()) {
+            System.out.println(messages.transcriptsWithNoExons.size() + "  transcript(s) have no exons");
+            for (int i = 0; i < Math.min(100, messages.transcriptsWithNoExons.size()); ++i) {
+                System.out.println(messages.transcriptsWithNoExons.get(i));
+            }
+        }
+
+        System.out.println("\nSequences only in reference FASTA:");
+        logCollection(messages.sequencesOnlyInReference);
+
+        System.out.println("\nSequences only in GTF:");
+        logCollection(messages.sequencesOnlyInGtf);
+
+        System.out.println("\ngene_biotype values:");
+        logCollection(messages.geneBiotypes);
+
+
+
+        System.out.println("\nFraction of sequences only in reference FASTA: " + messages.fractionOfSequencesOnlyInReference);
+        System.out.println("\n(Sum of lengths of sequences only in reference FASTA)/(size of genome): " + messages.fractionOfGenomeOfSequencesOnlyInReference);
+        System.out.println("\nFraction of sequences only in GTF: " + messages.fractionOfSequencesOnlyInGtf);
+
+        if (OUTPUT != null) {
+            final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            try {
+                ErrorCheckingPrintStream writer = new ErrorCheckingPrintStream(OUTPUT);
+                writer.print(gson.toJson(messages));
+            } catch (IOException e) {
+                throw new RuntimeException("Exception writing " + OUTPUT.getAbsolutePath(), e);
+            }
+        }
 
         return 0;
     }
@@ -157,8 +197,8 @@ import java.util.*;
         while ((sequence = refSeqFile.nextSequence()) != null) {
             for (final byte base: sequence.getBases()) {
                 if (!IUPAC_TABLE[base]) {
-                    System.err.println(String.format("WARNING: AT least one invalid base '%c' (decimal %d) in reference sequence named %s",
-                            StringUtil.byteToChar(base), base, sequence.getName()));
+                    messages.baseErrors = String.format("WARNING: AT least one invalid base '%c' (decimal %d) in reference sequence named %s",
+                            StringUtil.byteToChar(base), base, sequence.getName());
                     break;
                 }
             }
