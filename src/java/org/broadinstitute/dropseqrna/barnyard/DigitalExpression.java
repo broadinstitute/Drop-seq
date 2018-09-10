@@ -23,12 +23,18 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.metrics.MetricBase;
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -38,18 +44,22 @@ import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderCodec;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderLibrary;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.editdistance.EDUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
-import picard.cmdline.StandardOptionDefinitions;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintStream;
-import java.util.*;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.metrics.MetricBase;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.SortingCollection;
+import htsjdk.samtools.util.StringUtil;
+import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
         summary = "Measures the digital expression of a library.  " +
@@ -315,48 +325,6 @@ public class DigitalExpression extends DGECommandLineBase {
     }
 
 
-    /**
-     * Collapses a bunch of strings by the edit distance.
-     * If edit distance computations indicate it's greater than threshold edit distance, then the threshold is returned.
-     * This is to avoid hard work on indel calculations when edit distance between two strings is high.
-     * You can safely set threshold to be 3 * edit distance.
-     * @param barcodes
-     * @param editDistance
-     * @return
-     */
-    public ObjectCounter <String> collapseByEditDistance (final ObjectCounter<String> barcodes, final int editDistance) {
-        // map the barcode to the object so I can look up counts
-
-
-        ObjectCounter <String> result = new ObjectCounter<>();
-        List<String> barcodeList = barcodes.getKeysOrderedByCount(true);
-
-        // short circuit for ED=0
-        if (this.EDIT_DISTANCE==0) {
-            for (String barcode: barcodeList) {
-                int count=barcodes.getCountForKey(barcode);
-                result.setCount(barcode, count);
-            }
-            return (result);
-        }
-
-        while (barcodeList.isEmpty()==false) {
-            String b = barcodeList.get(0);
-            barcodeList.remove(b);
-            // this is still the "old" single core version.  Molecular barcode counts are small, so this may be ok.
-            Set<String> closeBC = EDUtils.getInstance().getStringsWithinEditDistanceWithIndel(b,barcodeList, editDistance);
-            barcodeList.removeAll(closeBC);
-            // for counting.
-            closeBC.add(b);
-            int totalCount = 0;
-            for (String bc: closeBC) {
-                int count = barcodes.getCountForKey(bc);
-                totalCount+=count;
-            }
-            result.setCount(b, totalCount);
-        }
-        return (result);
-    }
 
 
     private void writeStats (final String gene, final Map<String, Integer> countMap, final List<String> cellBarcodes, final PrintStream out) {
@@ -466,5 +434,49 @@ public class DigitalExpression extends DGECommandLineBase {
         System.exit(new DigitalExpression().instanceMain(args));
     }
 
+    /**
+     * Collapses a bunch of strings by the edit distance.
+     * If edit distance computations indicate it's greater than threshold edit distance, then the threshold is returned.
+     * This is to avoid hard work on indel calculations when edit distance between two strings is high.
+     * You can safely set threshold to be 3 * edit distance.
+     * @param barcodes
+     * @param editDistance
+     * @return
+     */
+    /*
+    public ObjectCounter <String> collapseByEditDistance (final ObjectCounter<String> barcodes, final int editDistance) {
+        // map the barcode to the object so I can look up counts
+
+
+        ObjectCounter <String> result = new ObjectCounter<>();
+        List<String> barcodeList = barcodes.getKeysOrderedByCount(true);
+
+        // short circuit for ED=0
+        if (this.EDIT_DISTANCE==0) {
+            for (String barcode: barcodeList) {
+                int count=barcodes.getCountForKey(barcode);
+                result.setCount(barcode, count);
+            }
+            return (result);
+        }
+
+        while (barcodeList.isEmpty()==false) {
+            String b = barcodeList.get(0);
+            barcodeList.remove(b);
+            // this is still the "old" single core version.  Molecular barcode counts are small, so this may be ok.
+            Set<String> closeBC = EDUtils.getInstance().getStringsWithinEditDistanceWithIndel(b,barcodeList, editDistance);
+            barcodeList.removeAll(closeBC);
+            // for counting.
+            closeBC.add(b);
+            int totalCount = 0;
+            for (String bc: closeBC) {
+                int count = barcodes.getCountForKey(bc);
+                totalCount+=count;
+            }
+            result.setCount(b, totalCount);
+        }
+        return (result);
+    }
+	*/
 
 }

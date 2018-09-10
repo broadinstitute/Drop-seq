@@ -23,6 +23,15 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+
+import org.apache.commons.io.FileUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintWriter;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
@@ -30,11 +39,8 @@ import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-import picard.annotation.LocusFunction;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
+import picard.annotation.LocusFunction;
 
 
 public class DigitalExpressionTest {
@@ -67,6 +73,12 @@ public class DigitalExpressionTest {
 	 */
 
 	private static final File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.bam");
+	private static final File IN_CELL_BARCODE_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.cellbarcodes.txt");
+
+	// expected results for standard coding strand specific DGE
+	private static final File EXPECTED_OUTFILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.dge.txt");
+	private static final File EXPECTED_OUTFILE_SUMMARY = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.dge_summary.txt");
+	private static final File EXPECTED_OUTFILE_LONG = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.dge_long.txt");
 
 	private String GENE_NAME_TAG="gn";
 	private String GENE_STRAND_TAG="gs";
@@ -90,6 +102,69 @@ public class DigitalExpressionTest {
 		return (umiIterator);
 	}
 
+	// DigitalExpression I=5cell3gene_retagged.bam SUMMARY=5cell3gene.dge_summary.txt O=5cell3gene.dge.txt OUTPUT_LONG_FORMAT=5cell3gene.dge_long.txt CELL_BC_FILE=5cell3gene.cellbarcodes.txt
+
+	@Test
+	public void testDoWork () {
+		File outFile=null;
+		File summaryFile=null;
+		File cellBarcodesFile=null;
+		File longOutput=null;
+		try {
+			outFile = File.createTempFile("testDigitalExpression.", ".digital_expression.txt");
+			summaryFile = File.createTempFile("testDigitalExpression.", ".digital_expression_summary.txt");
+	        cellBarcodesFile = File.createTempFile("testDigitalExpression.", ".selectedCellBarcodes.txt");
+	        longOutput=File.createTempFile("testDigitalExpression.", ".digital_expression_long.txt");
+	        outFile.deleteOnExit();
+			summaryFile.deleteOnExit();
+	        cellBarcodesFile.deleteOnExit();
+	        longOutput.deleteOnExit();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+        final DigitalExpression de = new DigitalExpression();
+		de.INPUT = IN_FILE;
+		de.CELL_BC_FILE = IN_CELL_BARCODE_FILE;
+		de.OUTPUT = outFile;
+		de.SUMMARY = summaryFile;
+        de.OUTPUT_LONG_FORMAT=longOutput;
+        // the headers aren't going to match up because they contain specific path info.
+        // de.UNIQUE_EXPERIMENT_ID = "test";
+
+        int result = de.doWork();
+        Assert.assertEquals(result, 0);
+
+        try {
+			Assert.assertTrue (FileUtils.contentEquals(outFile, EXPECTED_OUTFILE));
+			Assert.assertTrue (FileUtils.contentEquals(summaryFile, EXPECTED_OUTFILE_SUMMARY));
+			Assert.assertTrue (FileUtils.contentEquals(longOutput, EXPECTED_OUTFILE_LONG));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	@Test ()
+	public void testCustomCommandLineValidation1 () {
+		// if header is set, then must have a UEI.
+		final DigitalExpression de = new DigitalExpression();
+		de.OUTPUT_HEADER=true;
+        de.UNIQUE_EXPERIMENT_ID="foo";
+        String [] o = de.customCommandLineValidation();
+        Assert.assertNull(o);
+
+        de.UNIQUE_EXPERIMENT_ID=null;
+        o = de.customCommandLineValidation();
+        Assert.assertNotNull(o);
+
+        de.OUTPUT_HEADER=null;
+        o = de.customCommandLineValidation();
+        Assert.assertNull(o);
+
+
+
+	}
 
 	@Test(groups={"dropseq", "transcriptome"})
 	public void DGEIntegrationTest () {
@@ -286,6 +361,7 @@ public class DigitalExpressionTest {
         de.CELL_BC_FILE = cellBarcodesFile;
         de.OUTPUT_HEADER = outputHeader;
         de.UNIQUE_EXPERIMENT_ID = "UIE" + new Random().nextInt();
+
         Assert.assertEquals(de.doWork(), 0);
         return outFile;
 	}
