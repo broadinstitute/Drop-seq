@@ -23,14 +23,14 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import java.util.Comparator;
+import java.util.regex.Pattern;
+
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMTagUtil;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.StringUtil;
-
-import java.util.Comparator;
-import java.util.regex.Pattern;
 
 /**
  * When assigning intervals as tags to a BAM, the interval information is stored as a string.
@@ -67,12 +67,13 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
     	this.dict=dict;
     }
 
-
+    /*
     public int compareOld(final SAMRecord rec1, final SAMRecord rec2) {
     	Interval i1 = getIntervalForTag(rec1);
     	Interval i2 = getIntervalForTag(rec2);
     	return (compare(i1,i2, this.dict));
     }
+	*/
 
     @Override
     public int compare(final SAMRecord rec1, final SAMRecord rec2) {
@@ -176,6 +177,7 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
      * @param rec
      * @return
      */
+    /*
     private Interval getIntervalForTag (final SAMRecord rec) {
     	Object strIntervalRec = rec.getAttribute(tag);
     	if (!(strIntervalRec instanceof String))
@@ -183,6 +185,7 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
     	Interval result = fromString((String) strIntervalRec );
     	return (result);
     }
+	*/
 
     /**
      * Parse the string representation of an Interval object
@@ -244,6 +247,7 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
      * @param intervalString the interval encoded as a string
      * @return The Interval object represented by this string.
      */
+    /*
     public static Interval fromStringOld (final String intervalString) {
     	// at most there are 5 fields.  This takes care of having any characters in names.
 
@@ -291,6 +295,7 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
     	return (result);
     }
 
+	*/
 
 
     /**
