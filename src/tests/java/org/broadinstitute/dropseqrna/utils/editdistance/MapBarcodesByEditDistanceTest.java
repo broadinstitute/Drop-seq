@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.testng.annotations.Test;
 
@@ -172,13 +173,19 @@ public class MapBarcodesByEditDistanceTest {
 	}
 
 	private ObjectCounter<String> getRandomBarcodes (final int barcodeLength, final int numBarcodes) {
-		List<String> barcodes = CollapseBarcodeThreadedTest.getRandomBarcodes(barcodeLength, numBarcodes);
+		List<String> barcodes = getRandomBarcodesAsList(barcodeLength, numBarcodes);
 		ObjectCounter<String> b = new ObjectCounter<>();
 		barcodes.stream().forEach(x -> b.increment(x));
 		return b;
 	}
 
-
+	public static List<String> getRandomBarcodesAsList (final int numBases, final int numBarcodes) {
+		char [] bases = {'A', 'C', 'G', 'T', 'N'};
+		List<String> result = new ArrayList<>(numBarcodes);
+		for (int i=0; i<numBarcodes; i++)
+			result.add(RandomStringUtils.random(numBases, bases));
+		return (result);
+	}
 
 	@Test(enabled=true)
 	public void collapseBarcodesLarge() {
@@ -460,3 +467,7 @@ public class MapBarcodesByEditDistanceTest {
 
 
 }
+
+
+
+

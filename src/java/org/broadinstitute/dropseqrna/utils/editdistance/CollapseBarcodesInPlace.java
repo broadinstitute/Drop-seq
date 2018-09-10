@@ -105,15 +105,9 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 	@Argument(doc="Number of threads to use.  Defaults to 1.")
 	public int NUM_THREADS=1;
 
-	private int REPORT_PROGRESS_INTERVAL=100;
-	private CollapseBarcodeThreaded cbt=null;
-	private int threadedBlockSize=20000;
-
 	@Override
 	protected int doWork() {
 		log.info("Number of cores selected [" + Integer.toString(this.NUM_THREADS) + "]");
-
-		if (this.NUM_THREADS>1) cbt= new CollapseBarcodeThreaded(this.threadedBlockSize, this.NUM_THREADS);
 
 		IOUtil.assertFileIsWritable(OUTPUT);
 		for (final File inputFile: INPUT)
@@ -123,7 +117,6 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 
 		return 0;
 	}
-
 
 	public void processOnlyPrimary () {
         final SamHeaderAndIterator inputs = openInputs();
