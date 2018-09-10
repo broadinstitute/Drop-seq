@@ -73,7 +73,7 @@ public class FilterBAMByTagTest {
 		f.INPUT=UNPAIRED_INPUT_FILE;
 		f.OUTPUT=getTempReportFile("unpaired_input", ".bam");
 		f.TAG="XC";
-		f.PAIRED_MODE=true;
+		f.PAIRED_MODE=false;
 		f.TAG_VALUES_FILE=PAIRED_INPUT_CELL_BARCODES;
 		int result = f.doWork();
 		Assert.assertEquals(0, result);
