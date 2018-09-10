@@ -15,6 +15,8 @@ public class GatherMolecularBarcodeDistributionByGeneTest {
 
 
 	@Test
+	// Note: This is a very basic test, because the output is basically the same as DGE testing, so we're covering the same ground.
+	// The only difference is in the output of the read counts per UMI, and that's explicitly tested in the input vs output files here.
 	public void testDoWork() {
 
 		File outFile=null;
