@@ -23,22 +23,80 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.testng.annotations.Test;
+
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordSetBuilder;
 import junit.framework.Assert;
-import org.testng.annotations.Test;
-
-import java.util.*;
 
 public class FilterBAMByTagTest {
 
-	@Test(enabled = true, groups = { "dropseq", "transcriptome" })
+	private static File PAIRED_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged.bam");
+	private static File UNPAIRED_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged.bam");
+	private static File PAIRED_INPUT_FILE_FILTERED=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged_filtered.bam");
+	private static File UNPAIRED_INPUT_FILE_FILTERED=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged_filtered.bam");
+	private static File PAIRED_INPUT_CELL_BARCODES=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged.cell_barcodes.txt");
+
+	@Test
+	public void testDoWorkPaired () {
+		FilterBAMByTag f = new FilterBAMByTag();
+		f.INPUT=PAIRED_INPUT_FILE;
+		f.OUTPUT=getTempReportFile("paired_input", ".bam");
+		f.TAG="XC";
+		f.PAIRED_MODE=true;
+		f.TAG_VALUES_FILE=PAIRED_INPUT_CELL_BARCODES;
+		int result = f.doWork();
+		Assert.assertEquals(0, result);
+
+		CompareBAMTagValues cbtv = new CompareBAMTagValues();
+		cbtv.INPUT_1=PAIRED_INPUT_FILE_FILTERED;
+		cbtv.INPUT_2=f.OUTPUT;
+		List<String> tags = new ArrayList<>();
+		tags.add("XC");
+		cbtv.TAGS=tags;
+		int r = cbtv.doWork();
+		Assert.assertTrue(r==0);
+
+	}
+
+	@Test
+	public void testDoWorkUnPaired () {
+		FilterBAMByTag f = new FilterBAMByTag();
+		f.INPUT=UNPAIRED_INPUT_FILE;
+		f.OUTPUT=getTempReportFile("unpaired_input", ".bam");
+		f.TAG="XC";
+		f.PAIRED_MODE=false;
+		f.TAG_VALUES_FILE=PAIRED_INPUT_CELL_BARCODES;
+		int result = f.doWork();
+		Assert.assertEquals(0, result);
+
+		CompareBAMTagValues cbtv = new CompareBAMTagValues();
+		cbtv.INPUT_1=UNPAIRED_INPUT_FILE_FILTERED;
+		cbtv.INPUT_2=f.OUTPUT;
+		List<String> tags = new ArrayList<>();
+		tags.add("XC");
+		cbtv.TAGS=tags;
+		int r = cbtv.doWork();
+		Assert.assertTrue(r==0);
+
+	}
+
+
+	@Test(enabled = true)
 	public void filterReadTest() {
 		SAMRecord readHasAttribute = new SAMRecord(null);
 		String tag = "XT";
 		readHasAttribute.setAttribute(tag, "1");
 
-		Set<String> values = new HashSet<String>();
+		Set<String> values = new HashSet<>();
 		values.add("1");
 
 		SAMRecord readNoAttribute = new SAMRecord(null);
@@ -83,7 +141,7 @@ public class FilterBAMByTagTest {
 	 * @return
 	 */
 	private List<SAMRecord> getPairedRead () {
-		List<SAMRecord> result = new ArrayList<SAMRecord> ();
+		List<SAMRecord> result = new ArrayList<> ();
 
 		SAMRecordSetBuilder builder = new SAMRecordSetBuilder();
 		builder.addUnmappedPair("test");
@@ -97,7 +155,7 @@ public class FilterBAMByTagTest {
 
 	}
 
-	@Test(enabled = true, groups = { "dropseq", "transcriptome" })
+	@Test(enabled = true)
 	public void filterByReadNumberTest() {
 		FilterBAMByTag t = new FilterBAMByTag();
 
@@ -128,6 +186,17 @@ public class FilterBAMByTagTest {
 		flag2= t.retainByReadNumber(recFirstPaired, 2);
 		Assert.assertTrue(flag1);
 		Assert.assertFalse(flag2);
+	}
+
+	private File getTempReportFile (final String prefix, final String suffix) {
+		File tempFile=null;
+
+		try {
+			tempFile = File.createTempFile(prefix, suffix);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		return tempFile;
 	}
 
 }

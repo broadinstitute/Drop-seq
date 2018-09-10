@@ -23,10 +23,11 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import htsjdk.samtools.util.Log;
-import org.apache.commons.lang.StringUtils;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-import java.util.*;
+import htsjdk.samtools.util.Log;
 
 public class LevenshteinDistanceResult {
 
@@ -208,7 +209,8 @@ public class LevenshteinDistanceResult {
 	 * THIS IS NOT YET READY FOR PRIME TIME, BUT IS CLOSE.
 	 * @return
 	 */
-	@SuppressWarnings("unused")
+	/*
+	 * @SuppressWarnings("unused")
 	private List<String [] > getAllOperationsMultiPath () {
 		int l1 = distance.length-1;
 		int l2 = distance[0].length-1;
@@ -240,7 +242,10 @@ public class LevenshteinDistanceResult {
 		return done;
 
 	}
+	*/
 
+	// NOT USED.
+	/*
 	List<Operations> getOperations (final Operations ol) {
 		List<Operations> result = new ArrayList<>();
 
@@ -290,7 +295,9 @@ public class LevenshteinDistanceResult {
 		}
 		return (result);
 	}
+	*/
 
+	/*
 	private class Operations {
 		private int rowIndex;
 		private int colIndex;
@@ -325,6 +332,7 @@ public class LevenshteinDistanceResult {
 		 * This flips that so you can read from the front.
 		 * @return
 		 */
+		/*
 		@SuppressWarnings("unused")
 		public String [] getOperations () {
 			String [] r = new String [operations.size()];
@@ -367,7 +375,7 @@ public class LevenshteinDistanceResult {
         }
 
 	}
-
+	*/
 
 
 

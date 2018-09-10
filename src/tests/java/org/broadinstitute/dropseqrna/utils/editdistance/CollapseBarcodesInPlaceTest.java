@@ -132,6 +132,53 @@ public class CollapseBarcodesInPlaceTest {
 		Assert.assertTrue(result==1);
 	}
 
+	@Test
+	public void testDoWorkSubstitution1Threaded () {
+		CollapseBarcodesInPlace p = new CollapseBarcodesInPlace();
+		p.NUM_THREADS=2;
+		File out = getTempReportFile();
+		out.deleteOnExit();
+		List<File> files = new ArrayList<>();
+		files.add(this.TEST_DATA);
+		p.INPUT=files;
+		p.PRIMARY_BARCODE="XC";
+		p.FIND_INDELS=false;
+		p.OUT_BARCODE="ZC";
+		p.MIN_NUM_READS_CORE=100;
+		// test data from unmapped BAM.
+		p.READ_QUALITY=10;
+		p.MIN_NUM_READS_NONCORE=1;
+		p.OUTPUT=out;
+		p.doWork();
+
+		// the two expected data sets differ.
+		CompareBAMTagValues cbtv = new CompareBAMTagValues();
+		cbtv.INPUT_1=TEST_SUB;
+		cbtv.INPUT_2=TEST_INDEL;
+		List<String> tags = new ArrayList<>();
+		tags.add("ZC");
+		cbtv.TAGS=tags;
+		int result = cbtv.doWork();
+		Assert.assertTrue(result==1);
+
+		// test against the correct answer for substiution
+		cbtv = new CompareBAMTagValues();
+		cbtv.INPUT_1=TEST_SUB;
+		cbtv.INPUT_2=out;
+		tags = new ArrayList<>();
+		tags.add("ZC");
+		cbtv.TAGS=tags;
+		result = cbtv.doWork();
+		Assert.assertTrue(result==0);
+
+		// test against the wrong answer for substitution
+		cbtv = new CompareBAMTagValues();
+		cbtv.INPUT_1=TEST_INDEL;
+		cbtv.INPUT_2=out;
+		cbtv.TAGS=tags;
+		result = cbtv.doWork();
+		Assert.assertTrue(result==1);
+	}
 	private File getTempReportFile () {
 		File tempFile=null;
 

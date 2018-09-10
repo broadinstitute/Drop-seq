@@ -23,18 +23,26 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.Interval;
-import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
-import org.testng.Assert;
-import org.testng.annotations.Test;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+
+import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordSetBuilder;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.Interval;
 
 public class IntervalTagComparatorTest {
 
@@ -278,6 +286,56 @@ public class IntervalTagComparatorTest {
 		Assert.assertEquals(expected,  comp);
 	}
 
+	@Test
+	public void testCompare () {
+		SamReader inputSam = SamReaderFactory.makeDefault().open(dictFile);
+		SAMSequenceDictionary dict= inputSam.getFileHeader().getSequenceDictionary();
+		CloserUtil.close(inputSam);
+		Interval i1=new Interval ("1", 5, 10);
+		Interval i2=new Interval ("1", 7, 10);
+		int result = IntervalTagComparator.compare(i1, i2, dict);
+		// result negative because i1 before i2.
+		Assert.assertTrue(result<0);
+
+		// result 0 because i1 == i2.
+		i1=new Interval ("1", 7, 10, true, "foo");
+		i2=new Interval ("1", 7, 10, true, "foo");
+		result = IntervalTagComparator.compare(i1, i2, dict);
+		Assert.assertTrue(result==0);
+
+		// result 1 because i1 > i2.  Sorted on name.
+		i1=new Interval ("1", 7, 10, true, "foo");
+		i2=new Interval ("1", 7, 10, true, "bar");
+		result = IntervalTagComparator.compare(i1, i2, dict);
+		Assert.assertTrue(result>0);
+
+		// result 1 because i1 start > i2 start.
+		i1=new Interval ("1", 8, 10);
+		i2=new Interval ("1", 7, 10);
+		result = IntervalTagComparator.compare(i1, i2, dict);
+		Assert.assertTrue(result>0);
+
+		// result 1 because i1 contig > i2 contig.
+		i1=new Interval ("2", 8, 10);
+		i2=new Interval ("1", 7, 10);
+		result = IntervalTagComparator.compare(i1, i2, dict);
+		Assert.assertTrue(result>0);
+
+		// result 2 because i1 contig < i2 contig.
+		i1=new Interval ("1", 8, 10);
+		i2=new Interval ("2", 7, 10);
+		result = IntervalTagComparator.compare(i1, i2, dict);
+		Assert.assertTrue(result<0);
+
+		// result 2 because i1 contig < i2 contig.
+		i1=new Interval ("1", 8, 10);
+		i2=new Interval ("2", 7, 10);
+		result = IntervalTagComparator.compare(i1, i2, null);
+		Assert.assertTrue(result<0);
+
+
+
+	}
 
 
 	private List<SAMRecord> getRecords () {
