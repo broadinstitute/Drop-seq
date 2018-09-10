@@ -27,7 +27,7 @@ import org.apache.commons.lang.StringUtils;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
-public class ModifiedLevenshteinDistanceTest {
+public class LevenshteinDistanceResultTest {
 
 	@Test(enabled=true, groups={"transcriptome", "dropseq"})
 	public void websiteTest () {
