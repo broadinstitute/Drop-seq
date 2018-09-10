@@ -13,7 +13,6 @@ public class GatherMolecularBarcodeDistributionByGeneTest {
 	private static final File IN_CELL_BARCODE_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.cellbarcodes.txt");
 	private static final File OUT_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.molBC.txt");
 
-
 	@Test
 	// Note: This is a very basic test, because the output is basically the same as DGE testing, so we're covering the same ground.
 	// The only difference is in the output of the read counts per UMI, and that's explicitly tested in the input vs output files here.
