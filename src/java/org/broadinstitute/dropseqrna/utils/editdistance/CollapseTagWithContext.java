@@ -40,7 +40,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.MultiComparator;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.PeekableGroupingIterator;
@@ -139,7 +138,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	private MapBarcodesByEditDistance med;
 	private MapBarcodesByEditDistance medUMI;
 
-	private int validateCommands () {
+	int validateCommands () {
 		if (this.ADAPTIVE_EDIT_DISTANCE & this.ADAPTIVE_ED_MAX==null) {
 			log.error("If adaptive edit distance is in use, must set a maximum adaptive edit distance!");
 			return 1;
@@ -150,6 +149,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		}
 		if (this.MIN_COUNT < 1) {
 			log.error(String.format("MIN_COUNT(%d) < 1 does not make sense.", MIN_COUNT));
+			return 1;
 		}
 		if (this.DROP_SMALL_COUNTS && (this.MIN_COUNT < 2)) {
 			log.error("If DROP_SMALL_COUNTS is set to true, must set a MIN_COUNT VALUE greater than 1.");

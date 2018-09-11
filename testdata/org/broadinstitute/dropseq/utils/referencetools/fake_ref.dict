@@ -1,0 +1,5 @@
+@HD	VN:1.5
+@SQ	SN:fake_contig_1	LN:100	M5:a8d371333db847a8400e01bdccd65703	UR:file:/Users/nemesh/dropseqrna/transcriptome_java/public/testdata/org/broadinstitute/dropseq/utils/referencetools/fake_ref.fasta	SP:FAKE
+@SQ	SN:fake_contig_2	LN:90	M5:56b648562fbba44bc4e97d9cbbb8c0e1	UR:file:/Users/nemesh/dropseqrna/transcriptome_java/public/testdata/org/broadinstitute/dropseq/utils/referencetools/fake_ref.fasta	SP:FAKE
+@SQ	SN:fake_contig_3	LN:80	M5:fabb47819e1aabfbdd005be4399be505	UR:file:/Users/nemesh/dropseqrna/transcriptome_java/public/testdata/org/broadinstitute/dropseq/utils/referencetools/fake_ref.fasta	SP:FAKE
+@SQ	SN:fake_contig_4	LN:70	M5:a5de97429b170e3f86bd2e9521698721	UR:file:/Users/nemesh/dropseqrna/transcriptome_java/public/testdata/org/broadinstitute/dropseq/utils/referencetools/fake_ref.fasta	SP:FAKE

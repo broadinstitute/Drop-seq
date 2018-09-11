@@ -23,25 +23,29 @@
  */
 package org.broadinstitute.dropseqrna.metrics;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.*;
+import java.io.File;
+import java.io.PrintStream;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.CustomBAMIterators;
-import org.broadinstitute.dropseqrna.utils.StringTagComparator;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
-import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
+
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.File;
-import java.io.PrintStream;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 @CommandLineProgramProperties(
         summary = "For a given BAM tag, how many unique values of a second BAM tag are present?",
@@ -150,7 +154,7 @@ private static final Log log = Log.getInstance(BAMTagofTagCounts.class);
 
 		return (result);
 	}
-	// TODO: Need to make SECONDARY_DELIMITER be a passed in variable
+
 	private Set<String> addTagToCollection (final String data, final Set<String> collection) {
 		if (SECONDARY_DELIMITER!=null) {
 			String [] d2= data.split(this.SECONDARY_DELIMITER);
@@ -176,25 +180,6 @@ private static final Log log = Log.getInstance(BAMTagofTagCounts.class);
 		out.println(h);
 	}
 
-	public CloseableIterator<SAMRecord> getReadsInTagOrder (final File bamFile) {
-		SamReader reader = SamReaderFactory.makeDefault().open(INPUT);
-		SAMSequenceDictionary dict= reader.getFileHeader().getSequenceDictionary();
-		List<SAMProgramRecord> programs =reader.getFileHeader().getProgramRecords();
-
-		final SAMFileHeader writerHeader = new SAMFileHeader();
-        writerHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
-        writerHeader.setSequenceDictionary(dict);
-        for (SAMProgramRecord spr : programs)
-			writerHeader.addProgramRecord(spr);
-
-        log.info("Reading in records for TAG name sorting");
-        final ProgressLogger progressLogger = new ProgressLogger(log, 1000000);
-        final CloseableIterator<SAMRecord> result =
-                SamRecordSortingIteratorFactory.create(writerHeader, reader.iterator(), new StringTagComparator(this.PRIMARY_TAG), progressLogger);
-
-		log.info("Sorting finished.");
-		return (result);
-	}
 
 	/** Stock main method. */
 	public static void main(final String[] args) {

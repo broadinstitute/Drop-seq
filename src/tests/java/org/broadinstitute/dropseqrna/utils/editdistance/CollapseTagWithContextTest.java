@@ -23,16 +23,29 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.SequenceUtil;
-import htsjdk.samtools.util.StringUtil;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordSetBuilder;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.SequenceUtil;
+import htsjdk.samtools.util.StringUtil;
 
 public class CollapseTagWithContextTest {
 
@@ -52,25 +65,28 @@ public class CollapseTagWithContextTest {
         clp.OUT_TAG="XN";
         clp.CONTEXT_TAGS = Arrays.asList("XC", "XG");
         clp.OUTPUT = File.createTempFile("CollapseTagWithContextTest.", ".bam");
+        clp.ADAPTIVE_ED_METRICS_FILE=File.createTempFile("CollapseTagWithContextTest.", ".metrics.txt");
+        clp.ADAPTIVE_ED_METRICS_FILE.deleteOnExit();
         clp.OUTPUT.deleteOnExit();
+        clp.ADAPTIVE_ED_MIN=1;
+        clp.ADAPTIVE_ED_MAX=3;
+        clp.ADAPTIVE_EDIT_DISTANCE=true;
         clp.ADAPTIVE_ED_METRICS_FILE = File.createTempFile("CollapseTagWithContextTest.", ".adaptive_ed_metrics");
         clp.ADAPTIVE_ED_METRICS_FILE.deleteOnExit();
         Assert.assertEquals(clp.doWork(), 0);
     }
 
-    private final SAMRecordSetBuilder createUnmappedFragments(int numRecords) {
+    private final SAMRecordSetBuilder createUnmappedFragments(final int numRecords) {
         final SAMRecordSetBuilder builder = new SAMRecordSetBuilder();
-        for (int i = 0; i < numRecords; ++i) {
-            builder.addUnmappedFragment("read" + (i+1));
-        }
+        for (int i = 0; i < numRecords; ++i)
+			builder.addUnmappedFragment("read" + (i+1));
         return builder;
     }
 
     private final String makeRandomBaseString(final int length) {
         final byte[] bases = new byte[length];
-        for(int i = 0; i < length; ++i) {
-            bases[i] = getRandomBase();
-        }
+        for(int i = 0; i < length; ++i)
+			bases[i] = getRandomBase();
         return StringUtil.bytesToString(bases);
     }
 
@@ -80,24 +96,21 @@ public class CollapseTagWithContextTest {
 
     private final byte alterBase(final byte base) {
         byte ret = getRandomBase();
-        while (ret == base) {
-            ret = getRandomBase();
-        }
+        while (ret == base)
+			ret = getRandomBase();
         return ret;
     }
 
     private final String alterBaseString(final String baseString, final int numChanges) {
         final byte[] bases = StringUtil.stringToBytes(baseString);
-        if (numChanges > baseString.length()) {
-            throw new IllegalArgumentException("Too many changes requested");
-        }
+        if (numChanges > baseString.length())
+			throw new IllegalArgumentException("Too many changes requested");
         final Set<Integer> mutatedPositions = new HashSet<>();
         int changesSoFar = 0;
         while (changesSoFar < numChanges) {
             int positionToChange = random.nextInt(bases.length);
-            while (mutatedPositions.contains(positionToChange)) {
-                positionToChange = random.nextInt(bases.length);
-            }
+            while (mutatedPositions.contains(positionToChange))
+				positionToChange = random.nextInt(bases.length);
             mutatedPositions.add(positionToChange);
             bases[positionToChange] = alterBase(bases[positionToChange]);
             ++changesSoFar;
@@ -148,9 +161,8 @@ public class CollapseTagWithContextTest {
         final SAMFileHeader header = builder.getHeader();
         header.setSortOrder(SAMFileHeader.SortOrder.queryname);
         final SAMFileWriter writer = new SAMFileWriterFactory().makeWriter(header, true, clp.INPUT, null);
-        for (final SAMRecord rec : records) {
-            writer.addAlignment(rec);
-        }
+        for (final SAMRecord rec : records)
+			writer.addAlignment(rec);
         // Add one more read with same value for collapse tag as read 1, so that value will be the one that wins.
         final SAMRecord r5 = (SAMRecord)r1.clone();
         r5.setReadName("read5");
@@ -161,9 +173,8 @@ public class CollapseTagWithContextTest {
 
         final Map<String, SAMRecord> collapsedRecords = new HashMap<>();
         final SamReader samReader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
-        for (final SAMRecord rec : samReader) {
-            collapsedRecords.put(rec.getReadName(), rec);
-        }
+        for (final SAMRecord rec : samReader)
+			collapsedRecords.put(rec.getReadName(), rec);
         final SAMRecord r1Collapsed = collapsedRecords.get(r1.getReadName());
         Assert.assertEquals(r1Collapsed.getAttribute(clp.COLLAPSE_TAG), r1.getAttribute(clp.COLLAPSE_TAG));
         Assert.assertEquals(r1Collapsed.getAttribute(clp.OUT_TAG), r1Collapsed.getAttribute(clp.COLLAPSE_TAG));
@@ -226,16 +237,14 @@ public class CollapseTagWithContextTest {
         final SAMFileHeader header = builder.getHeader();
         header.setSortOrder(SAMFileHeader.SortOrder.queryname);
         final SAMFileWriter writer = new SAMFileWriterFactory().makeWriter(header, true, clp.INPUT, null);
-        for (final SAMRecord rec : records) {
-            writer.addAlignment(rec);
-        }
+        for (final SAMRecord rec : records)
+			writer.addAlignment(rec);
         writer.close();
         Assert.assertEquals(clp.doWork(), 0);
         // ed1CollapseTagValue should be selected, because it has 4 distinct values for the COUNT_TAG
         SamReader samReader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
-        for (final SAMRecord rec : samReader) {
-            Assert.assertEquals(rec.getAttribute(clp.OUT_TAG), ed1CollapseTagValue, rec.getSAMString());
-        }
+        for (final SAMRecord rec : samReader)
+			Assert.assertEquals(rec.getAttribute(clp.OUT_TAG), ed1CollapseTagValue, rec.getSAMString());
         CloserUtil.close(samReader);
 
         // Test the same input but without COUNT_TAGS, and confirm different result.
@@ -249,9 +258,8 @@ public class CollapseTagWithContextTest {
         Assert.assertEquals(clp2.doWork(), 0);
         // collapseTagValue should be selected, because it has 3 reads
         samReader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
-        for (final SAMRecord rec : samReader) {
-            Assert.assertEquals(rec.getAttribute(clp.OUT_TAG), collapseTagValue, rec.getSAMString());
-        }
+        for (final SAMRecord rec : samReader)
+			Assert.assertEquals(rec.getAttribute(clp.OUT_TAG), collapseTagValue, rec.getSAMString());
         CloserUtil.close(samReader);
 
         // Test the same input, but collapse COUNT_TAG values with ED=1
@@ -267,9 +275,42 @@ public class CollapseTagWithContextTest {
         Assert.assertEquals(clp3.doWork(), 0);
         // collapseTagValue should be selected, because it has 3 reads
         samReader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
-        for (final SAMRecord rec : samReader) {
-            Assert.assertEquals(rec.getAttribute(clp.OUT_TAG), collapseTagValue, rec.getSAMString());
-        }
+        for (final SAMRecord rec : samReader)
+			Assert.assertEquals(rec.getAttribute(clp.OUT_TAG), collapseTagValue, rec.getSAMString());
         CloserUtil.close(samReader);
+    }
+
+    @Test
+    public void testValidateCommands () {
+    	final CollapseTagWithContext clp = new CollapseTagWithContext();
+    	// set up completely valid
+
+    	clp.ADAPTIVE_EDIT_DISTANCE=true;
+    	clp.ADAPTIVE_ED_MIN=1;
+    	clp.ADAPTIVE_ED_MAX=3;
+    	clp.MIN_COUNT=2;
+    	clp.DROP_SMALL_COUNTS=false;
+    	clp.COUNT_TAGS_EDIT_DISTANCE=1;
+    	clp.COUNT_TAGS=Arrays.asList("XC");
+    	Assert.assertTrue(clp.validateCommands()==0);
+
+    	clp.ADAPTIVE_ED_MAX=null;
+    	Assert.assertTrue(clp.validateCommands()==1);
+    	clp.ADAPTIVE_ED_MIN=null;
+    	clp.ADAPTIVE_ED_MAX=1;
+    	Assert.assertTrue(clp.validateCommands()==1);
+    	clp.ADAPTIVE_ED_MIN=1;
+    	clp.MIN_COUNT=0;
+    	Assert.assertTrue(clp.validateCommands()==1);
+    	clp.MIN_COUNT=1;
+    	clp.DROP_SMALL_COUNTS=true;
+    	Assert.assertTrue(clp.validateCommands()==1);
+    	clp.MIN_COUNT=2;
+    	clp.COUNT_TAGS_EDIT_DISTANCE=1;
+    	clp.COUNT_TAGS=null;
+    	Assert.assertTrue(clp.validateCommands()==1);
+
+
+
     }
 }

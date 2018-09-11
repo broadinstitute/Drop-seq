@@ -23,12 +23,20 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
-import htsjdk.samtools.util.*;
-
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.IterableAdapter;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.RuntimeIOException;
+import htsjdk.samtools.util.StringUtil;
 
 public class DgeHeaderCodec {
 
@@ -45,18 +53,16 @@ public class DgeHeaderCodec {
     private enum LibraryRecordTag {INPUT, INPUT_DGE, REFERENCE, UEI, PREFIX}
     private enum CommandRecordTag {CL};
 
-    static boolean isRecordStartChar(int c) {
+    static boolean isRecordStartChar(final int c) {
         return c == RECORD_START || c == RECORD_START_PREV;
     }
 
     public void encode(final Writer writer, final DgeHeader header) {
         writeLine(writer, buildFirstLine(header));
-        for (final String prefix : new IterableAdapter<>(header.iterateLibraries())) {
-            writeLine(writer, buildLibraryLine(header.getLibrary(prefix)));
-        }
-        for (final DgeHeaderCommand command: new IterableAdapter<>(header.iterateCommands())) {
-            writeLine(writer, buildCommandLine(command));
-        }
+        for (final String prefix : new IterableAdapter<>(header.iterateLibraries()))
+			writeLine(writer, buildLibraryLine(header.getLibrary(prefix)));
+        for (final DgeHeaderCommand command: new IterableAdapter<>(header.iterateCommands()))
+			writeLine(writer, buildCommandLine(command));
     }
 
     public void encode(final File file, final DgeHeader header) {
@@ -91,9 +97,8 @@ public class DgeHeaderCodec {
         dgeRecord.addFieldIfNotNull(LibraryRecordTag.REFERENCE, library.getReference());
         dgeRecord.addFieldIfNotNull(LibraryRecordTag.UEI, library.getUei());
         dgeRecord.addFieldIfNotNull(LibraryRecordTag.PREFIX, library.getPrefix());
-        for (final Map.Entry<String, String> entry: new IterableAdapter<>(library.iterateOtherTags())) {
-            dgeRecord.addFieldIfNotNull(entry.getKey(), entry.getValue());
-        }
+        for (final Map.Entry<String, String> entry: new IterableAdapter<>(library.iterateOtherTags()))
+			dgeRecord.addFieldIfNotNull(entry.getKey(), entry.getValue());
         return dgeRecord.build();
     }
 
@@ -106,14 +111,13 @@ public class DgeHeaderCodec {
     private static class OutputRecordBuilder {
         private final ArrayList<String> fields = new ArrayList<>();
 
-        public OutputRecordBuilder(String recordType) {
+        public OutputRecordBuilder(final String recordType) {
             fields.add(RECORD_START + recordType);
         }
 
         public void addFieldIfNotNull(final Object key, final Object value) {
-            if (value != null) {
-                fields.add(key + KV_SEPARATOR + value);
-            }
+            if (value != null)
+				fields.add(key + KV_SEPARATOR + value);
         }
 
         public String build() {
@@ -127,9 +131,8 @@ public class DgeHeaderCodec {
      * @param reader When method returns, reader is positioned at start of first line after header
      */
     public DgeHeader decode(final BufferedReader reader, final String inputName) {
-        if (!reader.markSupported()) {
-            throw new IllegalArgumentException("reader.markSupported == false");
-        }
+        if (!reader.markSupported())
+			throw new IllegalArgumentException("reader.markSupported == false");
         return decode(new DgeBufferedReader(reader), inputName);
     }
     /**
@@ -137,9 +140,8 @@ public class DgeHeaderCodec {
      * @param inputStream When method returns, input stream is positioned at start of first line after header
      */
     public DgeHeader decode(final BufferedInputStream inputStream, final String inputName) {
-        if (!inputStream.markSupported()) {
-            throw new IllegalArgumentException("reader.markSupported == false");
-        }
+        if (!inputStream.markSupported())
+			throw new IllegalArgumentException("reader.markSupported == false");
         return decode(new DgeBufferedInputStream(inputStream), inputName);
     }
 
@@ -154,24 +156,20 @@ public class DgeHeaderCodec {
             String line;
             while ((line = reader.readHeaderLine()) != null) {
                 if (line.startsWith(DGE_RECORD_LABEL + FIELD_SEPARATOR)) {
-                    if (first) {
-                        parseFirstLine(ret, line, inputName);
-                    } else {
-                        log.warn("DGE header line seen after first line in " + inputName);
-                    }
+                    if (first)
+						parseFirstLine(ret, line, inputName);
+					else
+						log.warn("DGE header line seen after first line in " + inputName);
                 } else if (line.startsWith(LIBRARY_RECORD_LABEL + FIELD_SEPARATOR)) {
                     DgeHeaderLibrary library = parseLibrary(line, inputName);
-                    if (library != null) {
-                        ret.addLibrary(library);
-                    }
+                    if (library != null)
+						ret.addLibrary(library);
                 } else if (line.startsWith(COMMAND_RECORD_LABEL + FIELD_SEPARATOR)) {
                     DgeHeaderCommand command = parseCommand(line, inputName);
-                    if (command != null) {
-                        ret.addCommand(command);
-                    }
-                } else {
-                    log.warn("Strange DGE header line seen in " + inputName + ";" + line);
-                }
+                    if (command != null)
+						ret.addCommand(command);
+                } else
+					log.warn("Strange DGE header line seen in " + inputName + ";" + line);
                 first = false;
             }
             return ret;
@@ -190,7 +188,7 @@ public class DgeHeaderCodec {
     private class DgeBufferedReader implements DgeHeaderLineReader {
         private final BufferedReader reader;
 
-        public DgeBufferedReader(BufferedReader reader) {
+        public DgeBufferedReader(final BufferedReader reader) {
             this.reader = reader;
         }
 
@@ -198,9 +196,9 @@ public class DgeHeaderCodec {
         public String readHeaderLine() throws IOException {
             reader.mark(1);
             int c = reader.read();
-            if (isRecordStartChar(c)) {
-                return reader.readLine();
-            } else {
+            if (isRecordStartChar(c))
+				return reader.readLine();
+			else {
                 reader.reset();
                 return null;
             }
@@ -212,16 +210,16 @@ public class DgeHeaderCodec {
         // Could be local to readHeaderLine, but time is saved by allocating once.
         private char[] lineBuffer = new char[10000];;
 
-        public DgeBufferedInputStream(BufferedInputStream inputStream) {
+        public DgeBufferedInputStream(final BufferedInputStream inputStream) {
             this.inputStream = inputStream;
         }
         @Override
         public String readHeaderLine() throws IOException {
             inputStream.mark(1);
             int c = inputStream.read();
-            if (isRecordStartChar(c)) {
-                return readToEndOfLine();
-            } else {
+            if (isRecordStartChar(c))
+				return readToEndOfLine();
+			else {
                 inputStream.reset();
                 return null;
             }
@@ -238,20 +236,17 @@ public class DgeHeaderCodec {
             while (true) {
                 final int b = inputStream.read();
 
-                if (b == -1) {
-                    // eof reached.  Return the last line, or null if this is a new line
-                    if (linePosition > 0) {
-                        return new String(lineBuffer, 0, linePosition);
-                    } else {
-                        return null;
-                    }
-                }
+                if (b == -1)
+					// eof reached.  Return the last line, or null if this is a new line
+                    if (linePosition > 0)
+						return new String(lineBuffer, 0, linePosition);
+					else
+						return null;
 
                 final char c = (char) (b & 0xFF);
                 if (c == LINEFEED || c == CARRIAGE_RETURN) {
-                    if (c == CARRIAGE_RETURN && peek() == LINEFEED) {
-                        inputStream.read(); // <= skip the trailing \n in case of \r\n termination
-                    }
+                    if (c == CARRIAGE_RETURN && peek() == LINEFEED)
+						inputStream.read(); // <= skip the trailing \n in case of \r\n termination
 
                     return new String(lineBuffer, 0, linePosition);
                 } else {
@@ -285,6 +280,8 @@ public class DgeHeaderCodec {
      * Checks the next character.  If '@', that char is consumed.  If not, the char read is pushed back into the reader.
      * @return true if next character is '@'
      */
+    // TODO: Not used.  Delete?
+    /*
     private boolean isHeaderLine(final BufferedReader reader) throws IOException {
         reader.mark(1);
         int c = reader.read();
@@ -295,23 +292,22 @@ public class DgeHeaderCodec {
             return false;
         }
     }
-
+	*/
     private void parseFirstLine(final DgeHeader header, final String line, final String inputName) {
         final LinkedHashMap<String, String> fields = parseLine(line, DGE_RECORD_LABEL, inputName);
         for (final Map.Entry<String, String> entry: fields.entrySet()) {
             final String key = entry.getKey();
             final String value = entry.getValue();
-            if (key.equals(DgeRecordTag.VERSION.name())) {
-                header.setVersion(value);
-            } else if (key.equals(DgeRecordTag.EXPRESSION_FORMAT.name())) {
-                try {
+            if (key.equals(DgeRecordTag.VERSION.name()))
+				header.setVersion(value);
+			else if (key.equals(DgeRecordTag.EXPRESSION_FORMAT.name()))
+				try {
                     header.setExpressionFormat(DgeHeader.ExpressionFormat.valueOf(value));
                 } catch (IllegalArgumentException e) {
                     log.info("Unrecognized expression format '" + value + "' in " + inputName);
                 }
-            } else {
-                log.info("Unrecognized field name '" + key + "' in @DGE record of " + inputName);
-            }
+			else
+				log.info("Unrecognized field name '" + key + "' in @DGE record of " + inputName);
         }
     }
 
@@ -342,7 +338,7 @@ public class DgeHeaderCodec {
         return ret;
     }
 
-    private DgeHeaderCommand parseCommand(String line, String inputName) {
+    private DgeHeaderCommand parseCommand(final String line, final String inputName) {
         final LinkedHashMap<String, String> fields = parseLine(line, COMMAND_RECORD_LABEL, inputName);
         final String commandLine = fields.get(CommandRecordTag.CL.name());
         if (commandLine == null) {
@@ -356,9 +352,8 @@ public class DgeHeaderCodec {
 
     private LinkedHashMap<String, String> parseLine(final String line, final String recordType, final String inputName) {
         final String[] fields = line.split(FIELD_SEPARATOR);
-        if (!recordType.equals(fields[0])) {
-            throw new IllegalStateException("Line did not have expected record type");
-        }
+        if (!recordType.equals(fields[0]))
+			throw new IllegalStateException("Line did not have expected record type");
         final LinkedHashMap<String, String> ret = new LinkedHashMap<>();
         for (int i = 1; i < fields.length; ++i) {
             final String[] kvPair = fields[i].split(KV_SEPARATOR, 2);
@@ -368,13 +363,12 @@ public class DgeHeaderCodec {
             } else {
                 final String key = kvPair[0];
                 final String value = kvPair[1];
-                if (key.isEmpty() || value.isEmpty()) {
-                    log.warn("Strange key-value pair in DGE header line seen in " + inputName + ";" + line);
-                } else if (ret.containsKey(key)) {
-                    log.warn("Key " + key + " appears more than once in DGE Header lineseen in " + inputName + ";" + line);
-                } else {
-                    ret.put(key, value);
-                }
+                if (key.isEmpty() || value.isEmpty())
+					log.warn("Strange key-value pair in DGE header line seen in " + inputName + ";" + line);
+				else if (ret.containsKey(key))
+					log.warn("Key " + key + " appears more than once in DGE Header lineseen in " + inputName + ";" + line);
+				else
+					ret.put(key, value);
             }
         }
         return ret;
