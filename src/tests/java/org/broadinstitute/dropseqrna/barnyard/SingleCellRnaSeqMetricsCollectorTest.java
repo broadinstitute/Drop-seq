@@ -23,15 +23,19 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.metrics.MetricsFile;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.testng.annotations.Test;
+
+import htsjdk.samtools.metrics.MetricsFile;
 import picard.analysis.RnaSeqMetrics;
 import picard.analysis.directed.RnaSeqMetricsCollector;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 public class SingleCellRnaSeqMetricsCollectorTest {
 
@@ -47,26 +51,28 @@ public class SingleCellRnaSeqMetricsCollectorTest {
 	 * java -jar /seq/software/picard/current/bin/picard.jar CollectRnaSeqMetrics I=2MouseCells.bam_downsampled_CGTCACTTGCAC.bam O=CGTCACTTGCAC.rna_seq_metrics.txt REF_FLAT=/broad/mccarroll/software/metadata/individual_reference/mm10/mm10.refFlat RIBOSOMAL_INTERVALS=/broad/mccarroll/software/metadata/individual_reference/mm10/mm10.rRNA.intervals STRAND_SPECIFICITY=NONE
 	 * /broad/mccarroll/software/dropseq/prod/SingleCellRnaSeqMetricsCollector I=2MouseCells.bam_downsampled.bam O=2MouseCells.bam_downsampled.rna_seq_metrics.txt CELL_BARCODE_TAG=XC ANNOTATIONS_FILE=/broad/mccarroll/software/metadata/individual_reference/mm10/mm10.refFlat RIBOSOMAL_INTERVALS=/broad/mccarroll/software/metadata/individual_reference/mm10/mm10.rRNA.intervals NUM_CORE_BARCODES=2 READ_MQ=0
 	 *
-	 * Unfortunately this test relies on external data as well, so it can't be run as an automatic test so it's left disabled for normal testing.
 	 */
 
-	@Test(enabled=false)
+	private File IN_BAM=  new File("testdata/org/broadinstitute/transcriptome/barnyard/2MouseCells.bam_downsampled.bam");
+
+	@Test(enabled=true)
 	public void test1() {
 		SingleCellRnaSeqMetricsCollector c = new SingleCellRnaSeqMetricsCollector();
 		String cellBarcodeTag = "XC";
-		List<String> cellBarcodes = new ArrayList<String>();
+		List<String> cellBarcodes = new ArrayList<>();
 		cellBarcodes.add("TTCGCCCGGCTT");
 		cellBarcodes.add("CGTCACTTGCAC");
 
 		File inBAM=  new File("testdata/org/broadinstitute/transcriptome/barnyard/2MouseCells.bam_downsampled.bam");
-		File annotationsFile = new File ("/broad/mccarroll/software/metadata/individual_reference/mm10/mm10.refFlat");
-		File rRNAIntervalsFile = new File ("/broad/mccarroll/software/metadata/individual_reference/mm10/mm10.rRNA.intervals");
+		File annotationsFile = new File ("testdata/org/broadinstitute/transcriptome/barnyard/mm10.refFlat.gz");
+		File rRNAIntervalsFile = new File ("testdata/org/broadinstitute/transcriptome/barnyard/mm10.rRNA.intervals");
 		int readMQ=0;
 
+		// c.MT_SEQUENCE=Arrays.asList("MT");
 		RnaSeqMetricsCollector collector = c.getRNASeqMetricsCollector(cellBarcodeTag, cellBarcodes, inBAM,
 	    		RnaSeqMetricsCollector.StrandSpecificity.NONE,0.8, readMQ, annotationsFile, rRNAIntervalsFile);
 
-		final MetricsFile<RnaSeqMetrics, Integer> file = new MetricsFile<RnaSeqMetrics, Integer>();
+		final MetricsFile<RnaSeqMetrics, Integer> file = new MetricsFile<>();
 		collector.addAllLevelsToFile(file);
 		List<RnaSeqMetrics> metrics =  file.getMetrics();
 
@@ -90,7 +96,58 @@ public class SingleCellRnaSeqMetricsCollectorTest {
 				Assert.assertEquals(19997L, m.INTERGENIC_BASES);
 			}
 		}
+	}
+
+	@Test(enabled=true)
+	public void testDoWork() {
+		SingleCellRnaSeqMetricsCollector c = new SingleCellRnaSeqMetricsCollector();
+
+		File annotationsFile = new File ("testdata/org/broadinstitute/transcriptome/barnyard/mm10.refFlat.gz");
+		File rRNAIntervalsFile = new File ("testdata/org/broadinstitute/transcriptome/barnyard/mm10.rRNA.intervals");
+		File cellBarcodeFile=new File ("testdata/org/broadinstitute/transcriptome/barnyard/SingleCellRnaSeqMetricsCollector.cellBarcodes.txt");
+		File expectedOutFile=new File ("testdata/org/broadinstitute/transcriptome/barnyard/SingleCellRnaSeqMetricsCollector.expected_output.txt");
+
+		File outFile=null;
+		try {
+			outFile = File.createTempFile("SingleCellRnaSeqMetricsCollector.", ".output.txt");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		outFile.deleteOnExit();
+
+		c.INPUT=this.IN_BAM;
+		c.MT_SEQUENCE=Arrays.asList("MT");
+		c.OUTPUT=outFile;
+		c.ANNOTATIONS_FILE=annotationsFile;
+		c.RIBOSOMAL_INTERVALS=rRNAIntervalsFile;
+		c.STRAND_SPECIFICITY = RnaSeqMetricsCollector.StrandSpecificity.NONE;
+		c.CELL_BC_FILE=cellBarcodeFile;
+		c.READ_MQ=0;
+		int r = c.doWork();
+		Assert.assertTrue(r==0);
+
+		try {
+			Assert.assertTrue (FileUtils.contentEquals(outFile, expectedOutFile));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 
 
 	}
+
+	@Test
+	public void testGetCellBarcodes () {
+		// test the alternate path for getting cell barcodes.
+		SingleCellRnaSeqMetricsCollector c = new SingleCellRnaSeqMetricsCollector();
+		List<String> cb = c.getCellBarcodes(null, this.IN_BAM, "XC", 0, 10);
+		Assert.assertNotNull(cb);
+		List<String> expected = Arrays.asList("CGTCACTTGCAC", "TTCGCCCGGCTT");
+		Assert.assertEquals(expected, cb);
+
+	}
+
+
 }
