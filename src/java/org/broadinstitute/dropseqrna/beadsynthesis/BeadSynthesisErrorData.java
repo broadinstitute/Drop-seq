@@ -80,6 +80,7 @@ public class BeadSynthesisErrorData implements Serializable {
 	 * @param errorType
 	 * @return
 	 */
+	/*
 	static BeadSynthesisErrorData getInstance(final String cellBarcode, final BeadSynthesisErrorType errorType, final BaseDistributionMetricCollection baseCounts) {
 		BeadSynthesisErrorData r = new BeadSynthesisErrorData(cellBarcode);
 		r.baseCounts=baseCounts;
@@ -91,6 +92,7 @@ public class BeadSynthesisErrorData implements Serializable {
 		r.numUMIs=0;
 		return null;
 	}
+	*/
 
 	//maybe add a finalize() method that gets the count of the total UMIs in the object counter, caches the number, and throws away the object counter since that might be expensive
 	// to store.

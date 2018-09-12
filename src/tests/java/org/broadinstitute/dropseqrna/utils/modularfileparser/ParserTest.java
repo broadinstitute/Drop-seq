@@ -21,31 +21,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.broadinstitute.dropseqrna.utils;
+package org.broadinstitute.dropseqrna.utils.modularfileparser;
 
-import java.util.Comparator;
+import java.io.File;
 
-import htsjdk.samtools.SAMRecord;
+import org.testng.annotations.Test;
 
-public class ReadNameComparator implements Comparator<SAMRecord>{
+import junit.framework.Assert;
 
-	public ReadNameComparator() {
-    }
+public class ParserTest {
 
-	@Override
-    public int compare(final SAMRecord rec1, final SAMRecord rec2) {
-        final String s1 = rec1.getReadName();
-        final String s2 = rec2.getReadName();
+	private File testFile1= new File ("testdata/org/broadinstitute/transcriptome/utils/modularfileparser/ClozUK_CNV_Loci.txt");
+    private File bedFile = new File ("testdata/org/broadinstitute/transcriptome/utils/modularfileparser/testBed.bed.txt");
 
-        if (s1 != null) {
-            if (s2 == null)
-                return 1;
-			else
-				return s1.compareTo(s2);
-        } else if (s2 != null)
-			return -1;
-		else
-			return 0;
-    }
+	@Test()
+	//TODO: these tests kinda suck.
+	public void DelimiterParserTest() {
 
+		Parser p = new DelimiterParser("\t");
+		ModularFileParser mfp = null;
+		mfp = new ModularFileParser(p, testFile1, 0);
+		String [] body = null;
+		while ((body=mfp.readNextLine())!=null)
+			Assert.assertNotNull(body);
+	}
+
+	@Test()
+	//TODO: these tests kinda suck.
+	public void BEDParserTest() {
+		BEDFileParser p = new BEDFileParser(" ");
+		ModularFileParser mfp = new ModularFileParser(p, bedFile, 1);
+		String [] body = null;
+		while ((body=mfp.readNextLine())!=null)
+			Assert.assertNotNull(body);
+		String [] header =p.getDefaultHeader();
+		Assert.assertNotNull(header);
+	}
 }

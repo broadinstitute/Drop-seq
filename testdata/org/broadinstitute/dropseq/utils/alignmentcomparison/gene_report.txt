@@ -1,0 +1,5 @@
+#INPUT_1=/Users/nemesh/dropseqrna/transcriptome_java/public/testdata/org/broadinstitute/dropseq/utils/alignmentcomparison/old_alignment.bam	INPUT_2=/Users/nemesh/dropseqrna/transcriptome_java/public/testdata/org/broadinstitute/dropseq/utils/alignmentcomparison/new_alignment.bam	READ_QUALITY=10	GENE_EXON_TAG=GE
+GENE	CONTIG	ORIGINAL_READS	SAME_MAPPING	NO_GENE	SAME_GENE_MULTIREAD	DIFFERENT_GENE	DIFFERENT_GENE_MULTIREAD	MULTI_GENE_MAPPING	OTHER_UNIQUE_GENES	OTHER_MULTIMAPPING_GNES	OTHER_CONTIGS
+CHUK	HUMAN_10	4	4	0	0	0	0	0	{}	{}	{HUMAN_GL000224.1=1}
+NKTR	HUMAN_3	4	3	0	0	1	0	0	{NKTR2=1}	{}	{HUMAN_22=1, HUMAN_4=1}
+SNRPA1	HUMAN_15	4	2	0	0	2	0	0	{SNRPA2=2}	{}	{HUMAN_16=1}

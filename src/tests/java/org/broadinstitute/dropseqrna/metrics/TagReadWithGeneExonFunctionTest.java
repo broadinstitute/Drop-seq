@@ -27,11 +27,14 @@ public class TagReadWithGeneExonFunctionTest {
 	File testBAMFile= new File ("testdata/org/broadinstitute/dropseq/metrics/NucBYReg4Reg.MOUSE.GCTAAGTAAGAT.Elp2.fixed.bam");
 	File annotationsFile=new File ("testdata/org/broadinstitute/dropseq/metrics/mm10_Elp2.gtf");
 
+
 	@Test
 	public void testDoWork() {
 		TagReadWithGeneExonFunction t = new TagReadWithGeneExonFunction();
 		File tempBAM = getTempReportFile("TagReadWithGeneExonFunctionTest", ".bam");
 		File tempSummary=getTempReportFile("TagReadWithGeneExonFunctionTest", ".summary");
+		tempBAM.deleteOnExit();
+		tempSummary.deleteOnExit();
 
 		t.INPUT=testBAMFile;
 		t.OUTPUT=tempBAM;

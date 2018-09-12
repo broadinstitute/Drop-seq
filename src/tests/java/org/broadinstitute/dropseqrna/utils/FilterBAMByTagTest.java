@@ -45,7 +45,9 @@ public class FilterBAMByTagTest {
 	private static File UNPAIRED_INPUT_FILE_FILTERED=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged_filtered.bam");
 	private static File PAIRED_INPUT_CELL_BARCODES=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged.cell_barcodes.txt");
 
-	@Test
+	private static File UNPAIRED_INPUT_FILE_FILTERED_AAAGTAGAGTGG=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged_filtered_AAAGTAGAGTGG.bam");
+
+	@Test (enabled=true)
 	public void testDoWorkPaired () {
 		FilterBAMByTag f = new FilterBAMByTag();
 		f.INPUT=PAIRED_INPUT_FILE;
@@ -53,6 +55,7 @@ public class FilterBAMByTagTest {
 		f.TAG="XC";
 		f.PAIRED_MODE=true;
 		f.TAG_VALUES_FILE=PAIRED_INPUT_CELL_BARCODES;
+		f.OUTPUT.deleteOnExit();
 		int result = f.doWork();
 		Assert.assertEquals(0, result);
 
@@ -75,6 +78,7 @@ public class FilterBAMByTagTest {
 		f.TAG="XC";
 		f.PAIRED_MODE=false;
 		f.TAG_VALUES_FILE=PAIRED_INPUT_CELL_BARCODES;
+		f.OUTPUT.deleteOnExit();
 		int result = f.doWork();
 		Assert.assertEquals(0, result);
 
@@ -86,6 +90,25 @@ public class FilterBAMByTagTest {
 		cbtv.TAGS=tags;
 		int r = cbtv.doWork();
 		Assert.assertTrue(r==0);
+
+		// test alternate path without tag values file.
+		f.INPUT=UNPAIRED_INPUT_FILE;
+		f.OUTPUT=getTempReportFile("unpaired_input_single_cell", ".bam");
+		f.TAG="XC";
+		f.TAG_VALUE="AAAGTAGAGTGG";
+		f.TAG_VALUES_FILE=null;
+		f.PAIRED_MODE=false;
+		f.OUTPUT.deleteOnExit();
+		result = f.doWork();
+		Assert.assertEquals(0, result);
+
+
+		cbtv.INPUT_1=UNPAIRED_INPUT_FILE_FILTERED_AAAGTAGAGTGG;
+		cbtv.INPUT_2=f.OUTPUT;
+		cbtv.TAGS=tags;
+		r = cbtv.doWork();
+		Assert.assertTrue(r==0);
+
 
 	}
 
@@ -197,6 +220,17 @@ public class FilterBAMByTagTest {
 			e1.printStackTrace();
 		}
 		return tempFile;
+	}
+
+	@Test
+	public void testArgErrors () {
+		FilterBAMByTag f = new FilterBAMByTag();
+		f.INPUT=PAIRED_INPUT_FILE;
+		f.OUTPUT=getTempReportFile("paired_input", ".bam");
+		f.PAIRED_MODE=true;
+		f.OUTPUT.deleteOnExit();
+		Assert.assertSame(1, f.doWork());
+
 	}
 
 }

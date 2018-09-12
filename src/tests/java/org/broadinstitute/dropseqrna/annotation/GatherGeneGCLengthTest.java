@@ -23,21 +23,21 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
-import htsjdk.samtools.reference.ReferenceSequence;
-import htsjdk.samtools.reference.ReferenceSequenceFile;
-import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
-import htsjdk.samtools.reference.ReferenceSequenceFileWalker;
-import htsjdk.samtools.util.SequenceUtil;
-import org.broadinstitute.dropseqrna.annotation.GatherGeneGCLength.GCIsoformSummary;
-import org.broadinstitute.dropseqrna.annotation.GatherGeneGCLength.GCResult;
-import org.testng.Assert;
-import org.testng.annotations.Test;
-import picard.util.TabbedTextFileWithHeaderParser;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.broadinstitute.dropseqrna.annotation.GatherGeneGCLength.GCIsoformSummary;
+import org.broadinstitute.dropseqrna.annotation.GatherGeneGCLength.GCResult;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.util.SequenceUtil;
+import picard.annotation.Gene;
+import picard.util.TabbedTextFileWithHeaderParser;
 
 
 
@@ -71,7 +71,7 @@ public class GatherGeneGCLengthTest {
 		Assert.assertEquals(61.17085, gc2.getGCPercent(), 0.1);
 		Assert.assertEquals(837, gc2.getRegionLength());
 
-		List<GCResult> list = new ArrayList<GCResult>();
+		List<GCResult> list = new ArrayList<>();
 		list.add(gc1);
 		list.add(gc2);
 
@@ -83,6 +83,7 @@ public class GatherGeneGCLengthTest {
 
 	}
 
+	@SuppressWarnings("unlikely-arg-type")
 	@Test
 	public void testNegativeStrandGene () {
 		GatherGeneGCLength d = new GatherGeneGCLength();
@@ -111,16 +112,26 @@ public class GatherGeneGCLengthTest {
 		Assert.assertEquals(54.5, gc3.getGCPercent(), 0.1);
 		Assert.assertEquals(583, gc3.getRegionLength());
 
-		List<GCResult> list = new ArrayList<GCResult>();
+		List<GCResult> list = new ArrayList<>();
 		list.add(gc1);
 		list.add(gc2);
 		list.add(gc3);
 
-		GCIsoformSummary s = d.new GCIsoformSummary(null, list);
+		Gene g = new Gene("1", 1, 10, false, "testGene");
+		GCIsoformSummary s = d.new GCIsoformSummary(g, list);
 		Assert.assertEquals(s.getMedianC(), 22.8, 0.1);
 		Assert.assertEquals(s.getMedianG(), 30.2, 0.1);
 		Assert.assertEquals(s.getMedianGC(), 54.5, 0.1);
 		Assert.assertEquals(s.getMedianTranscriptLength(), 583);
+
+		// additional testing for coverage
+		Assert.assertTrue(gc3.equals(gc3));
+		Assert.assertFalse(gc3.equals(gc2));
+		Assert.assertFalse(gc3.equals(null));
+		Assert.assertFalse(gc3.equals(new String ("foo")));
+		Assert.assertNotNull(gc3.toString());
+		Assert.assertNotNull(s.toString());
+
 
 	}
 
@@ -155,10 +166,9 @@ public class GatherGeneGCLengthTest {
         Assert.assertEquals(transcriptSequence.getName(), geneName + " " + transcriptName);
         int numG = 0;
         int numC = 0;
-        for (byte b : transcriptSequence.getBases()) {
-        	if (b == SequenceUtil.G) ++numG;
+        for (byte b : transcriptSequence.getBases())
+			if (b == SequenceUtil.G) ++numG;
         	else if (b == SequenceUtil.C) ++numC;
-		}
 		final double pctG = 100 * numG/(double)transcriptSequence.getBases().length;
         final double pctC = 100 * numC/(double)transcriptSequence.getBases().length;
         final double pctGC = 100 * (numC + numG)/(double)transcriptSequence.getBases().length;

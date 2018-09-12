@@ -1,26 +1,59 @@
 package org.broadinstitute.dropseqrna.metrics;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.OverlapDetector;
-import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
-import org.broadinstitute.dropseqrna.annotation.GeneFromGTF;
-import org.testng.Assert;
-import org.testng.annotations.Test;
-import picard.annotation.Gene;
-import picard.annotation.LocusFunction;
-
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
+import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
+import org.broadinstitute.dropseqrna.annotation.GeneFromGTF;
+import org.broadinstitute.dropseqrna.utils.CompareBAMTagValues;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.OverlapDetector;
+import picard.annotation.Gene;
+import picard.annotation.LocusFunction;
 
 
 public class TagReadWithGeneFunctionTest {
 
 	File testBAMFile= new File ("testdata/org/broadinstitute/dropseq/metrics/NucBYReg4Reg.MOUSE.GCTAAGTAAGAT.Elp2.fixed.bam");
 	File annotationsFile=new File ("testdata/org/broadinstitute/dropseq/metrics/mm10_Elp2.gtf");
+	File OUT_BAM = new File ("testdata/org/broadinstitute/dropseq/metrics/NucBYReg4Reg.MOUSE.GCTAAGTAAGAT.Elp2.gene_function_tagged.bam");
 
+	@Test
+	public void testDoWork() throws IOException {
+		TagReadWithGeneFunction t = new TagReadWithGeneFunction();
+		File tempBAM = File.createTempFile("TagReadWithGeneFunctionTest", ".bam");
+		tempBAM.deleteOnExit();
+		File tempSummary=File.createTempFile("TagReadWithGeneFunctionTest", ".summary");
+		tempSummary.deleteOnExit();
+
+		t.INPUT=testBAMFile;
+		t.OUTPUT=tempBAM;
+		t.ANNOTATIONS_FILE=annotationsFile;
+		t.SUMMARY=tempSummary;
+		int returnVal = t.doWork();
+		Assert.assertTrue(returnVal==0);
+
+		// test output BAM
+		CompareBAMTagValues cbtv = new CompareBAMTagValues();
+		cbtv.INPUT_1=OUT_BAM;
+		cbtv.INPUT_2=tempBAM;
+		List<String> tags = new ArrayList<>(Arrays.asList("XC", "gn", "gs", "gf", "XF"));
+		cbtv.TAGS=tags;
+		int r = cbtv.doWork();
+		Assert.assertTrue(r==0);
+
+	}
 
 	@Test
 	public void testTagIntronRead () {
@@ -98,7 +131,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 90, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -117,7 +150,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 90, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -136,7 +169,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 90, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -155,7 +188,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 90, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -175,7 +208,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 90, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -195,7 +228,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 90, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -216,7 +249,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 90, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 
 		// gene with 2 exons, 1 coding from 50-60, 1 coding from 150-160. Negative strand gene.
@@ -227,7 +260,7 @@ public class TagReadWithGeneFunctionTest {
 		geneOverlapDetector.addLhs(gene2, gene2);
 
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
-		List <Gene> genes = new ArrayList <Gene> (geneOverlapDetector.getAll());
+		List <Gene> genes = new ArrayList <> (geneOverlapDetector.getAll());
 		Collections.sort(genes, TagReadWithGeneFunction.GENE_NAME_COMPARATOR);
 
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -254,7 +287,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 100, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 
 		// gene with 2 exons, 1 coding from 50-60, 1 coding from 150-160. Negative strand gene.
@@ -265,7 +298,7 @@ public class TagReadWithGeneFunctionTest {
 		geneOverlapDetector.addLhs(gene2, gene2);
 
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
-		List <Gene> genes = new ArrayList <Gene> (geneOverlapDetector.getAll());
+		List <Gene> genes = new ArrayList <> (geneOverlapDetector.getAll());
 		Collections.sort(genes, TagReadWithGeneFunction.GENE_NAME_COMPARATOR);
 
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -291,7 +324,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 90, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 
 		// gene with 2 exons, 1 coding from 50-60, 1 coding from 150-160. Negative strand gene.
@@ -302,7 +335,7 @@ public class TagReadWithGeneFunctionTest {
 		geneOverlapDetector.addLhs(gene2, gene2);
 
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
-		List <Gene> genes = new ArrayList <Gene> (geneOverlapDetector.getAll());
+		List <Gene> genes = new ArrayList <> (geneOverlapDetector.getAll());
 		Collections.sort(genes, TagReadWithGeneFunction.GENE_NAME_COMPARATOR);
 
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -328,7 +361,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 100, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 
 		// gene with 2 exons, 1 coding from 50-60, 1 coding from 150-160. Negative strand gene.
@@ -339,7 +372,7 @@ public class TagReadWithGeneFunctionTest {
 		geneOverlapDetector.addLhs(gene2, gene2);
 
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
-		List <Gene> genes = new ArrayList <Gene> (geneOverlapDetector.getAll());
+		List <Gene> genes = new ArrayList <> (geneOverlapDetector.getAll());
 		Collections.sort(genes, TagReadWithGeneFunction.GENE_NAME_COMPARATOR);
 
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -363,7 +396,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 90, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -390,7 +423,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 100, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 
 		// gene with 2 exons, 1 coding from 50-60, 1 coding from 150-160. Negative strand gene.
@@ -401,7 +434,7 @@ public class TagReadWithGeneFunctionTest {
 		geneOverlapDetector.addLhs(gene2, gene2);
 
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
-		List <Gene> genes = new ArrayList <Gene> (geneOverlapDetector.getAll());
+		List <Gene> genes = new ArrayList <> (geneOverlapDetector.getAll());
 		Collections.sort(genes, TagReadWithGeneFunction.GENE_NAME_COMPARATOR);
 
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -422,7 +455,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 100, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 
 		// gene with 2 exons, 1 coding from 50-60, 1 coding from 150-160. Positive strand gene.
@@ -433,7 +466,7 @@ public class TagReadWithGeneFunctionTest {
 		geneOverlapDetector.addLhs(gene2, gene2);
 
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
-		List <Gene> genes = new ArrayList <Gene> (geneOverlapDetector.getAll());
+		List <Gene> genes = new ArrayList <> (geneOverlapDetector.getAll());
 		Collections.sort(genes, TagReadWithGeneFunction.GENE_NAME_COMPARATOR);
 
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -456,11 +489,11 @@ public class TagReadWithGeneFunctionTest {
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
 		tx.addExon(150, 160);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
-		List <Gene> genes = new ArrayList <Gene> (geneOverlapDetector.getAll());
+		List <Gene> genes = new ArrayList <> (geneOverlapDetector.getAll());
 		Collections.sort(genes, TagReadWithGeneFunction.GENE_NAME_COMPARATOR);
 
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -481,11 +514,11 @@ public class TagReadWithGeneFunctionTest {
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
 		tx.addExon(150, 160);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
-		List <Gene> genes = new ArrayList <Gene> (geneOverlapDetector.getAll());
+		List <Gene> genes = new ArrayList <> (geneOverlapDetector.getAll());
 		Collections.sort(genes, TagReadWithGeneFunction.GENE_NAME_COMPARATOR);
 
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);
@@ -506,7 +539,7 @@ public class TagReadWithGeneFunctionTest {
 		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 100, 2, "trans1", "trans1", "coding");
 		tx.addExon(1, 10);
 		tx.addExon(91, 100);
-		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<Gene>(0, 0);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
 		geneOverlapDetector.addLhs(gene, gene);
 
 		// gene with 2 exons, 1 coding from 50-60, 1 coding from 150-160. Positive strand gene.
@@ -517,7 +550,7 @@ public class TagReadWithGeneFunctionTest {
 		geneOverlapDetector.addLhs(gene2, gene2);
 
 		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
-		List <Gene> genes = new ArrayList <Gene> (geneOverlapDetector.getAll());
+		List <Gene> genes = new ArrayList <> (geneOverlapDetector.getAll());
 		Collections.sort(genes, TagReadWithGeneFunction.GENE_NAME_COMPARATOR);
 
 		r=tagger.setAnnotations(r, geneOverlapDetector, false);

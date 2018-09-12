@@ -23,52 +23,39 @@
  */
 package org.broadinstitute.dropseqrna.utils.readpairs;
 
-import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.dropseqrna.junctionlibrary.JunctionSamUtils;
+
+import htsjdk.samtools.SAMRecord;
 
 public class ReadPair {
 
 		private SAMRecord read1=null;
 		private SAMRecord read2=null;
-		
+
 		/**
 		public ReadPair (SAMRecord read1) {
 			this.read1=read1;
 		}
 		*/
-		
-		public ReadPair (SAMRecord read1, SAMRecord read2) {
-			if (read1.getFirstOfPairFlag()) {
+
+		public ReadPair (final SAMRecord read1, final SAMRecord read2) {
+			if (read1.getFirstOfPairFlag())
 				this.read1 = read1;
-			}
-			if (read1.getSecondOfPairFlag()) {
+			if (read1.getSecondOfPairFlag())
 				this.read2=read1;
-			}
-			if (read2.getFirstOfPairFlag()) {
+			if (read2.getFirstOfPairFlag())
 				this.read1=read2;
-			}
-			if (read2.getSecondOfPairFlag()) {
+			if (read2.getSecondOfPairFlag())
 				this.read2=read2;
-			}
 		}
-		
-		
-		
-		
-		public ReadPair getFlippedReadPair () {
-			ReadPair p = new ReadPair();
-			p.setRead2(this.getRead1());
-			p.setRead1(this.getRead2());
-			return (p);
-		}
-		
+
 		public ReadPair() {}
-		
+
 		public SAMRecord getRead1() {
 			return read1;
 		}
 
-		public void setRead1(SAMRecord read1) {
+		public void setRead1(final SAMRecord read1) {
 			this.read1 = read1;
 		}
 
@@ -76,57 +63,52 @@ public class ReadPair {
 			return read2;
 		}
 
-		public void setRead2(SAMRecord read2) {
+		public void setRead2(final SAMRecord read2) {
 			this.read2 = read2;
 		}
-		
+
 		public SAMRecord getFirstRead() {
-			if (read1.getFirstOfPairFlag()) {
+			if (read1.getFirstOfPairFlag())
 				return this.read1;
-			}
-			if (read2.getFirstOfPairFlag()) {
+			if (read2.getFirstOfPairFlag())
 				return this.read2;
-			}
 			return null;
 		}
-		
+
 		public SAMRecord getSecondRead() {
-			if (read1.getFirstOfPairFlag()) {
+			if (read1.getFirstOfPairFlag())
 				return this.read2;
-			}
-			if (read2.getFirstOfPairFlag()) {
+			if (read2.getFirstOfPairFlag())
 				return this.read1;
-			}
 			return null;
 		}
-		
+
 		public SAMRecord getLeftRead () {
-			if (this.read1.getAlignmentStart()<=this.read2.getAlignmentStart()) {
+			if (this.read1.getAlignmentStart()<=this.read2.getAlignmentStart())
 				return this.read1;
-			}
 			return this.read2;
 		}
-		
+
 		public SAMRecord getRightRead () {
-			if (this.read2.getAlignmentStart()>=this.read1.getAlignmentStart()) {
+			if (this.read2.getAlignmentStart()>=this.read1.getAlignmentStart())
 				return this.read2;
-			}
 			return this.read1;
 		}
-		
+
 		public boolean testProperlyPaired() {
 			 return (JunctionSamUtils.getInstance().testPairedRead(this.read1, this.read2));
 		}
-		
-				
+
+
+		@Override
 		public String toString () {
 			StringBuilder b = new StringBuilder();
 			b.append(samToString(this.read1)+"\n");
 			b.append(samToString(this.read2)+"\n");
 			return b.toString();
 		}
-		
-		private String samToString (SAMRecord r) {
+
+		private String samToString (final SAMRecord r) {
 			StringBuilder b = new StringBuilder();
 			b.append(" read name " + r.getReadName());
 			b.append(" is first read " + r.getFirstOfPairFlag());
@@ -138,6 +120,6 @@ public class ReadPair {
 			b.append(" mate unmapped " + r.getMateUnmappedFlag());
 			b.append(" mate reference " + r.getMateReferenceName());
 			b.append(" mate start pos " + r.getMateAlignmentStart());
-			return b.toString();	
+			return b.toString();
 		}
 }
