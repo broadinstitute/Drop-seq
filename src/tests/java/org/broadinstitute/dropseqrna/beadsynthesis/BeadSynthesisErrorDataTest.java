@@ -23,6 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
@@ -41,16 +45,19 @@ public class BeadSynthesisErrorDataTest {
 		double threshold = 0.9;
 
 		BeadSynthesisErrorData d = new BeadSynthesisErrorData("ATACAGTCTACA");
-		for (String umi : umis) {
-			d.addUMI(umi);
-		}
+		// to test adding a collection of UMIs.
+		List<String> umiCollection = Arrays.stream(umis).collect(Collectors.toList());
+		d.addUMI(umiCollection);
+
+		d.getErrorType(threshold);
+		d.finalize();
 		boolean hasError = d.hasSynthesisError(threshold);
 		Assert.assertTrue(hasError);
 
 		int errorPositionExpected = 8;
 		int errorPosition = d.getErrorBase(threshold);
 		Assert.assertEquals(errorPositionExpected, errorPosition);
-		
+
 		// base 1: 12 16 32 40
 		// base 2: 32 28 24 16
 		// base 3: 16 20 28 36
@@ -68,11 +75,125 @@ public class BeadSynthesisErrorDataTest {
 		Assert.assertEquals(0.48, metric[5], 0.001);
 		Assert.assertEquals(0.40, metric[6], 0.001);
 		Assert.assertEquals(1.0, metric[7], 0.001);
-		
+
 		int errorBase = d.getPolyTErrorPosition(0.9);
 		Assert.assertEquals(8, errorBase);
 		// for debugging to hit cache.
 		errorBase = d.getPolyTErrorPosition(0.9);
 		Assert.assertEquals(8, errorBase);
+
+		String s = d.toString();
+		Assert.assertNotNull(s);
+
+		Assert.assertTrue(d.hasSynthesisError(threshold));
+
+		boolean biasedBase8 = d.isPolyTBiasedAtPosition(8,  threshold);
+		Assert.assertTrue(biasedBase8);
+
+		boolean biasedBase7 = d.isPolyTBiasedAtPosition(7,  threshold);
+		Assert.assertFalse(biasedBase7);
+
+		double lastBaseBias = d.getPolyTFrequencyLastBase();
+		Assert.assertEquals(1, lastBaseBias, 0.01);
+
+		d.incrementReads(this.umis.length);
+		int numReads = d.getNumReads();
+		Assert.assertEquals(this.umis.length, numReads);
+
 	}
+
+	@Test(expectedExceptions=IllegalArgumentException.class)
+	public void testOutOfBounds () {
+		BeadSynthesisErrorData d = new BeadSynthesisErrorData("ATACAGTCTACA");
+		// to test adding a collection of UMIs.
+		List<String> umiCollection = Arrays.stream(umis).collect(Collectors.toList());
+		d.addUMI(umiCollection);
+		d.isPolyTBiasedAtPosition(12, 0.9);
+	}
+
+	@Test
+	public void testSingleUMIError () {
+		double threshold = 0.9;
+
+		BeadSynthesisErrorData d = new BeadSynthesisErrorData("ATACAGTCTACA");
+		for (String umi : this.umis)
+			d.addUMI(umis[0]);
+		BeadSynthesisErrorType t= d.getErrorType(threshold);
+		Assert.assertEquals(BeadSynthesisErrorType.SINGLE_UMI, t);
+
+
+	}
+
+	@Test
+	public void testFixedFirstBase () {
+		double threshold = 0.9;
+
+		BeadSynthesisErrorData d = new BeadSynthesisErrorData("ATACAGTCTACA");
+		for (String umi : this.umis) {
+			// fix the first base.
+			String newUMI = "A"+ umi.substring(0,7);
+			d.addUMI(newUMI);
+		}
+		BeadSynthesisErrorType t= d.getErrorType(threshold);
+		Assert.assertEquals(BeadSynthesisErrorType.FIXED_FIRST_BASE, t);
+	}
+
+	@Test
+	public void testOtherError () {
+		double threshold = 0.9;
+
+		BeadSynthesisErrorData d = new BeadSynthesisErrorData("ATACAGTCTACA");
+		for (String umi : this.umis) {
+			// fix the first base, last base already fixed.
+			String newUMI = "A"+ umi;
+			d.addUMI(newUMI);
+		}
+		BeadSynthesisErrorType t= d.getErrorType(threshold);
+		Assert.assertEquals(BeadSynthesisErrorType.OTHER_ERROR, t);
+	}
+
+	@Test
+	public void testNoError () {
+		double threshold = 0.9;
+
+		BeadSynthesisErrorData d = new BeadSynthesisErrorData("ATACAGTCTACA");
+		for (String umi : this.umis) {
+			// fix the first base, last base already fixed.
+			String newUMI = umi.substring(0,7);
+			d.addUMI(newUMI);
+		}
+		BeadSynthesisErrorType t= d.getErrorType(threshold);
+		Assert.assertEquals(BeadSynthesisErrorType.NO_ERROR, t);
+
+	}
+
+	@Test
+	public void testDetectPrimer () {
+		double threshold = 0.9;
+		String UMI = this.umis[0];
+		String primer = UMI;
+		DetectPrimerInUMI dp = new DetectPrimerInUMI(primer);
+		BeadSynthesisErrorData d = new BeadSynthesisErrorData("ATACAGTCTACA");
+		d.addUMI(UMI);
+		BeadSynthesisErrorType t= d.getErrorType(threshold, dp, new Integer (1));
+		Assert.assertEquals(BeadSynthesisErrorType.PRIMER, t);
+
+		d = new BeadSynthesisErrorData("ATACAGTCTACA");
+		for (String umi : this.umis) {
+			// fix the first base, last base already fixed.
+			String newUMI = umi.substring(0,7);
+			d.addUMI(newUMI);
+		}
+		t= d.getErrorType(threshold, dp, new Integer (1));
+		Assert.assertEquals(BeadSynthesisErrorType.NO_ERROR, t);
+
+	}
+
+
+
+
+
+
+
+
 }

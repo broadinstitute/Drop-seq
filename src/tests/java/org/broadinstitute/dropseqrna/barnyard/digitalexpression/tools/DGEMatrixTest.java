@@ -23,14 +23,15 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression.tools;
 
-import htsjdk.samtools.util.TestUtil;
-import org.junit.Assert;
-import org.testng.annotations.Test;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+
+import org.junit.Assert;
+import org.testng.annotations.Test;
+
+import htsjdk.samtools.util.TestUtil;
 
 public class DGEMatrixTest {
 
@@ -367,6 +368,33 @@ public class DGEMatrixTest {
 
     }
 
+    /*
+    @Test
+    public void testWriteDenseDGEFile () {
+    	// round trip.
+
+    	File temp=null;
+    	try {
+			temp = File.createTempFile("DenseDGE", ".txt.gz");
+			temp.deleteOnExit();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+    	DGEMatrix result= DGEMatrix.parseFile(exampleOne);
+    	result.writeDenseDgeFile(temp, false);
+    	DGEMatrix resultNew= DGEMatrix.parseFile(temp);
+    	Assert.assertTrue(result.getCellBarcodes().equals(resultNew.getCellBarcodes()));
+    	Assert.assertTrue(result.getGenes().equals(resultNew.getGenes()));
+
+    	Assert.assertTrue(result.getExpressionMatrix().equals(resultNew.getExpressionMatrix()));
+
+
+
+    }
+	*/
+
+
     private File writeMatrixMarket(final DGEMatrix mat) throws IOException {
         final File tempDir = TestUtil.getTempDirectory("DGEMatrixTest.", ".tmp");
         tempDir.deleteOnExit();
@@ -381,4 +409,6 @@ public class DGEMatrixTest {
         Assert.assertEquals(dge1.getCellBarcodes(), dge2.getCellBarcodes());
         Assert.assertEquals(dge1.getMatrix(), dge2.getMatrix());
     }
+
+
 }

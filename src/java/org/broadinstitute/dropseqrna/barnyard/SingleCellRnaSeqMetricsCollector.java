@@ -23,9 +23,14 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
@@ -34,6 +39,24 @@ import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMProgramRecord;
+import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.CollectionUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.samtools.util.ProgressLogger;
 import picard.analysis.MetricAccumulationLevel;
 import picard.analysis.RnaSeqMetrics;
 import picard.analysis.directed.RnaSeqMetricsCollector;
@@ -41,14 +64,6 @@ import picard.annotation.Gene;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 import picard.metrics.PerUnitMetricCollector;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 /**
  * An adaptation of the Picard RnaSeqMetricsCollector to collect per-cell data.  In particular, the exon/intron/genic/intragenic/rRNA levels.
@@ -138,7 +153,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
      * If there's a cell barcode file that is non-null, use that to get a list of cell barcodes.
      * Otherwise, gather up the top <numCoreBarcodes> cells ordered by number of reads.
      */
-    private List<String> getCellBarcodes(final File cellBCFile, final File bamFile, final String cellBarcodeTag, final int readMQ, final Integer numCoreBarcodes) {
+    List<String> getCellBarcodes(final File cellBCFile, final File bamFile, final String cellBarcodeTag, final int readMQ, final Integer numCoreBarcodes) {
     	if (cellBCFile!=null) {
     		List<String>cellBarcodes = ParseBarcodeFile.readCellBarcodeFile(cellBCFile);
     		log.info("Found " + cellBarcodes.size()+ " cell barcodes in file");
@@ -311,7 +326,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 
             @Override
             public void acceptRecord(final SAMRecord rec) {
-                if (MT_SEQUENCE.contains(rec.getReferenceName()) && !rec.getReadFailsVendorQualityCheckFlag() &&
+                if (MT_SEQUENCE!=null &&  MT_SEQUENCE.contains(rec.getReferenceName()) && !rec.getReadFailsVendorQualityCheckFlag() &&
                         !rec.isSecondaryOrSupplementary() && !rec.getReadUnmappedFlag()) {
 
                     metrics.PF_BASES += rec.getReadLength();

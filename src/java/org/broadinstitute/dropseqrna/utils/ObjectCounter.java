@@ -23,7 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Keeps track of the number of times an object has been seen.
@@ -60,7 +65,7 @@ public class ObjectCounter<T extends Comparable<T>> {
 		incrementByCount(object, -1);
 	}
 
-	public void decrementByCOunt (final T object, final int count) {
+	public void decrementByCount (final T object, final int count) {
 		int count2=count *-1;
 		incrementByCount(object, count2);
 	}
@@ -153,7 +158,7 @@ public class ObjectCounter<T extends Comparable<T>> {
 	 */
 	public T getMin() {
 		T min=null;
-		int minCount=0;
+		int minCount=Integer.MAX_VALUE;
 		for (T key: this.getKeys()) {
 			int count=this.getCountForKey(key);
 			if (count<minCount) {

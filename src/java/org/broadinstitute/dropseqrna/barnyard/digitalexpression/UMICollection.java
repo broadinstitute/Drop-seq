@@ -130,67 +130,7 @@ public class UMICollection {
 	 * @param threshold
 	 * @return
 	 */
-
-	/*
-	private ObjectCounter<String> collapseByEditDistanceOld (ObjectCounter<String> counts, int editDistance) {
-		ObjectCounter <String> result = new ObjectCounter<String>();
-		List<String> barcodeList = counts.getKeysOrderedByCount(true);
-
-		// short circuit for ED=0
-		if (editDistance==0) {
-			for (String barcode: barcodeList) {
-				int count=counts.getCountForKey(barcode);
-				result.setCount(barcode, count);
-			}
-			return (result);
-		}
-
-		while (barcodeList.isEmpty()==false) {
-			String b = barcodeList.get(0);
-			barcodeList.remove(b);
-			// this is still the "old" single core version.  Molecular barcode counts are small, so this is OK.
-			// Set<String> closeBC = EDUtils.getInstance().getStringsWithinEditDistanceWithIndel(b,barcodeList, editDistance);
-			Set<String> closeBC = EDUtils.getInstance().getStringsWithinHammingDistance(b, barcodeList, editDistance);
-
-			barcodeList.removeAll(closeBC);
-			// for counting.
-			closeBC.add(b);
-			int totalCount = 0;
-			for (String bc: closeBC) {
-				int count = molecularBarcodeCounts.getCountForKey(bc);
-				totalCount+=count;
-			}
-			result.setCount(b, totalCount);
-		}
-		return (result);
-	}
-	*/
-
-	/**
-	 * For a list of molecular barcodes, collapse them by edit distance.
-	 * @param counts
-	 * @param editDistance
-	 * @param threshold
-	 * @return
-	 */
 	private ObjectCounter<String> collapseByEditDistance (final ObjectCounter<String> counts, final int editDistance) {
-		// short circuit when ED=0.  Useful for huge data sets.
-		/*if (editDistance==0) return counts;
-
-		ObjectCounter <String> result = new ObjectCounter<>();
-
-		MapBarcodesByEditDistance mbed = new MapBarcodesByEditDistance(false, 0);
-		Map<String, List<String>> collapseMap = mbed.collapseBarcodes(counts, false, editDistance);
-
-		for (String key: collapseMap.keySet()) {
-			int totalCount = counts.getCountForKey(key);
-			List<String> values = collapseMap.get(key);
-			for (String bc: values) {
-				int count = counts.getCountForKey(bc);
-				totalCount+=count;
-			}
-			result.setCount(key, totalCount);
-		}*/
 		ObjectCounter<String> result = mbed.collapseAndMergeBarcodes(counts, false, editDistance);
 		return (result);
 	}

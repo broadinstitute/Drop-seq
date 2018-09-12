@@ -23,9 +23,9 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.SAMRecord;
-
 import java.util.Comparator;
+
+import htsjdk.samtools.SAMRecord;
 
 public class ReadNameComparator implements Comparator<SAMRecord>{
 

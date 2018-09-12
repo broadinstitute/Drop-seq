@@ -23,17 +23,24 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.*;
-import org.junit.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
-import picard.sam.ValidateSamFile;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.junit.Assert;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import picard.sam.ValidateSamFile;
 
 public class FilterBAMTest {
 
@@ -41,64 +48,64 @@ public class FilterBAMTest {
 	public void testCigarFilter() {
 		FilterBAM b = new FilterBAM();
 		b.SUM_MATCHING_BASES=40;
-		
-		
+
+
 		SAMRecord r = new SAMRecord(null);
 		r.setCigarString("50M");
 		boolean rejFlag = b.rejectOnCigar(r);
 		Assert.assertFalse(rejFlag);
-		
+
 		boolean result = b.filterRead(r);
 		Assert.assertFalse(result);
-		
-		
+
+
 		r.setCigarString("20M");
 		rejFlag = b.rejectOnCigar(r);
 		Assert.assertTrue(rejFlag);
-		
+
 		result = b.filterRead(r);
 		Assert.assertTrue(result);
-		
+
 		r.setCigarString("20S25M30H");
 		rejFlag = b.rejectOnCigar(r);
 		Assert.assertTrue(rejFlag);
-		
+
 		result = b.filterRead(r);
 		Assert.assertTrue(result);
-		
+
 		r.setCigarString("20M10S20M");
 		rejFlag = b.rejectOnCigar(r);
 		Assert.assertFalse(rejFlag);
-		
+
 		result = b.filterRead(r);
 		Assert.assertFalse(result);
-		
-		
-		
-		
+
+
+
+
 	}
-	
+
 	@Test(enabled=true, groups = { "dropseq","transcriptome" })
 	public void testNonPrimary() {
 		FilterBAM b = new FilterBAM();
 		b.RETAIN_ONLY_PRIMARY_READS=true;
-		
+
 		SAMRecord r = new SAMRecord(null);
 		r.setSecondaryAlignment(true);
 		boolean result = b.filterRead(r);
 		Assert.assertTrue(result);
-		
+
 		r = new SAMRecord(null);
 		r.setSecondaryAlignment(false);
 		result = b.rejectNonPrimaryReads(r);
 		Assert.assertFalse(result);
-		
+
 		b.RETAIN_ONLY_PRIMARY_READS=false;
 		r.setSecondaryAlignment(true);
 		result = b.filterRead(r);
 		Assert.assertFalse(result);
 	}
-	
+
 	@Test(enabled=true, groups = { "dropseq", "transcriptome" })
 	public void testMapQuality () {
 		FilterBAM b = new FilterBAM();
@@ -106,18 +113,18 @@ public class FilterBAMTest {
 		SAMRecord r = new SAMRecord(null);
 		r.setMappingQuality(12);
 		Assert.assertFalse(b.filterRead(r));
-		
+
 		r.setMappingQuality(9);
 		Assert.assertTrue(b.filterRead(r));
-		
+
 		b.MINIMUM_MAPPING_QUALITY=null;
 		Assert.assertFalse(b.filterRead(r));
 	}
-	
+
 	@Test(enabled=true, groups = { "dropseq", "transcriptome" })
 	public void testSoftMatch () {
 		FilterBAM b = new FilterBAM();
-		List<String> retained = new ArrayList<String>();
+		List<String> retained = new ArrayList<>();
 		retained.add("HUMAN");
 		b.REF_SOFT_MATCHED_RETAINED=retained;
 		b.buildPatterns();
@@ -126,36 +133,46 @@ public class FilterBAMTest {
 		Assert.assertFalse(b.filterRead(r));
 		r.setReferenceName("CHIMP_CHR1");
 		Assert.assertTrue(b.filterRead(r));
-		
+
 		retained.add("CHIMP");
 		b.REF_SOFT_MATCHED_RETAINED=retained;
 		b.buildPatterns();
 		Assert.assertFalse(b.filterRead(r));
-		
-		
+
+		r.setReferenceName("HUMAN_CHR1");
+		List<String> matches = Arrays.asList("HUMAN");
+		Assert.assertTrue(b.softMatchReference(matches, r));
+		matches = Arrays.asList("MOUSE");
+		Assert.assertFalse(b.softMatchReference(matches, r));
+
+
 	}
-	
+
 	@Test(enabled=true, groups = { "dropseq", "transcriptome" })
 	public void testExactMatch () {
 		FilterBAM b = new FilterBAM();
-		List<String> retained = new ArrayList<String>();
+		List<String> retained = new ArrayList<>();
 		retained.add("HUMAN_CHR1");
 		b.REF_HARD_MATCHED_RETAINED=retained;
 		b.buildPatterns();
 		SAMRecord r = new SAMRecord(null);
 		r.setReferenceName("HUMAN_CHR1");
 		Assert.assertFalse(b.filterRead(r));
+		Assert.assertTrue(b.exactMatchReference(retained, r));
 		r.setReferenceName("CHIMP_CHR1");
 		Assert.assertTrue(b.filterRead(r));
-		
-		
+		Assert.assertFalse(b.exactMatchReference(retained, r));
+
+
+
+
 	}
-	
+
 	@Test(enabled=true, groups = { "dropseq", "transcriptome" })
 	public void testRejectOnTags () {
 		FilterBAM b = new FilterBAM();
 		b.TAG_REJECT_COMBINE_FLAG="UNION";
-		List<String> tags = new ArrayList<String>();
+		List<String> tags = new ArrayList<>();
 		tags.add("XE");
 		tags.add("XZ");
 		b.TAG_REJECT=tags;
@@ -163,12 +180,36 @@ public class FilterBAMTest {
 		r.setAttribute("XE", "Foo");
 		boolean result = b.filterRead(r);
 		Assert.assertTrue(result);
+
+		r = new SAMRecord(null);
+		r.setAttribute("ZZ", "Foo");
+		result = b.filterRead(r);
+		Assert.assertFalse(result);
+
 		// if you need to see 2 tags and only see 1, then you don't reject the read.
 		b.TAG_REJECT_COMBINE_FLAG="INTERSECT";
 		result = b.rejectOnTags(tags, r);
 		Assert.assertFalse(result);
-		
 	}
+
+	@Test(enabled=true, groups = { "dropseq", "transcriptome" })
+	public void testAcceptOnTags () {
+		FilterBAM b = new FilterBAM();
+		List<String> tags = new ArrayList<>();
+		tags.add("XE");
+		tags.add("XZ");
+		b.TAG_RETAIN=tags;
+		SAMRecord r = new SAMRecord(null);
+		r.setAttribute("XE", "Foo");
+		boolean result = b.filterRead(r);
+		Assert.assertFalse(result);
+
+		r = new SAMRecord(null);
+		r.setAttribute("QQ", "Foo");
+		result = b.filterRead(r);
+		Assert.assertTrue(result);
+	}
+
 
 	private SAMRecord makeAlignment(final SAMFileHeader header,
 									final int referenceIndex,
@@ -191,9 +232,9 @@ public class FilterBAMTest {
 		rec.setAttribute("NM", 0);
 		rec.setReadPairedFlag(true);
 		rec.setFirstOfPairFlag(true);
-		if (mateReferenceIndex == SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX) {
+		if (mateReferenceIndex == SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX)
 			rec.setMateUnmappedFlag(true);
-		} else {
+		else {
 		    rec.setMateReferenceIndex(mateReferenceIndex);
 		    rec.setMateAlignmentStart(mateAlignmentStart);
         }
@@ -221,10 +262,9 @@ public class FilterBAMTest {
         header.setReadGroups(readGroups);
 
         final SAMFileWriter writer = new SAMFileWriterFactory().makeWriter(header, false, inputSamFile, referenceFasta);
-		for (int i = 0; i < sd.getSequences().size(); ++i) {
+		for (int i = 0; i < sd.getSequences().size(); ++i)
 			writer.addAlignment(makeAlignment(header, i, i+1, SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX, 0,
                     "read" + i, readGroupRecord.getId()));
-		}
 
 		// Add some read with mate info, some that have same-species mate, and some that have other-species mate
         writer.addAlignment(makeAlignment(header, 0, 1, 2, 1,
@@ -252,7 +292,7 @@ public class FilterBAMTest {
 
 	@Test(dataProvider = "testEndToEndDataProvider")
 	public void testEndToEnd(final String organism1, final String organism2, final boolean stripPrefix,
-                             final boolean dropSequences, boolean soft, boolean retain) throws IOException {
+                             final boolean dropSequences, final boolean soft, final boolean retain) throws IOException {
 		final File inputSam = createInputSam();
 		final File outputSam = File.createTempFile("FilterBAMTest." +
                 String.format("stripPrefix_%s;dropSequences_%s;soft_%s;retain_%s", stripPrefix, dropSequences, soft, retain) + ".",
@@ -268,18 +308,14 @@ public class FilterBAMTest {
         }
         final String ref_filter;
         if (soft) {
-            if (retain) {
-                ref_filter = "REF_SOFT_MATCHED_RETAINED";
-            } else {
-                ref_filter = "REF_SOFT_MATCHED_REJECTED";
-            }
-        } else {
-            if (retain) {
-                ref_filter = "REF_HARD_MATCHED_RETAINED";
-            } else {
-                ref_filter = "REF_HARD_MATCHED_REJECTED";
-            }
-        }
+            if (retain)
+				ref_filter = "REF_SOFT_MATCHED_RETAINED";
+			else
+				ref_filter = "REF_SOFT_MATCHED_REJECTED";
+        } else if (retain)
+			ref_filter = "REF_HARD_MATCHED_RETAINED";
+		else
+			ref_filter = "REF_HARD_MATCHED_REJECTED";
         args.add(ref_filter + "=" + organism1);
         final int ret = new FilterBAM().instanceMain(args.toArray(new String[args.size()]));
         Assert.assertEquals(0, ret);
@@ -289,15 +325,11 @@ public class FilterBAMTest {
 	@DataProvider(name="testEndToEndDataProvider")
     public Object[][] testEndToEndDataProvider() {
 	    final ArrayList<Object[]> ret = new ArrayList<>();
-	    for (final boolean stripPrefix : Arrays.asList(true, false)) {
-	        for (final boolean dropSequences: Arrays.asList(true, false)) {
-	            for (final boolean soft: Arrays.asList(true, false)) {
-	                for (final boolean retain : Arrays.asList(true, false)) {
-	                    ret.add(new Object[]{"HUMAN_", "MOUSE_", stripPrefix, dropSequences, soft, retain});
-                    }
-                }
-            }
-        }
+	    for (final boolean stripPrefix : Arrays.asList(true, false))
+			for (final boolean dropSequences: Arrays.asList(true, false))
+				for (final boolean soft: Arrays.asList(true, false))
+					for (final boolean retain : Arrays.asList(true, false))
+						ret.add(new Object[]{"HUMAN_", "MOUSE_", stripPrefix, dropSequences, soft, retain});
         return ret.toArray(new Object[ret.size()][]);
     }
 }

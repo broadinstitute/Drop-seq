@@ -23,19 +23,28 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.*;
+import java.io.File;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.modularfileparser.DelimiterParser;
 import org.broadinstitute.dropseqrna.utils.modularfileparser.ModularFileParser;
+
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.File;
-import java.util.HashSet;
-import java.util.Set;
 
 @CommandLineProgramProperties(summary = "Filters a BAM file based on a TAG and a file containing a list of values.  This is pretty similar to grepping with a file, but is faster and makes a proper BAM.", oneLineSummary = "Filters a BAM file based on a TAG and a file containing a list of values.", programGroup = DropSeq.class)
 public class FilterBAMByTag extends CommandLineProgram {
@@ -68,7 +77,7 @@ public class FilterBAMByTag extends CommandLineProgram {
 	protected int doWork() {
 		if (TAG_VALUES_FILE == null && TAG == null) {
 			log.error("You must set either a file of tag values, or a single tag value.");
-			System.exit(1);
+			return(1);
 		}
 
 		IOUtil.assertFileIsReadable(INPUT);

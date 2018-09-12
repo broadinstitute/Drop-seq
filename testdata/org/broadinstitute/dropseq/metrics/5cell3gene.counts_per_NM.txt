@@ -1,0 +1,10 @@
+#INPUT=/Users/nemesh/dropseqrna/transcriptome_java/public/testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.bam	TAG=NM	FILTER_PCR_DUPLICATES=false	READ_QUALITY=10
+3616	0
+848	1
+273	2
+76	3
+45	4
+24	5
+8	6
+2	7
+1	8

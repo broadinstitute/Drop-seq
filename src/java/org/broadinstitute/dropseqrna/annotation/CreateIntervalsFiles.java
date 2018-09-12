@@ -23,6 +23,14 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.cmdline.MetaData;
+
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamReaderFactory;
@@ -30,16 +38,9 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.cmdline.MetaData;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 import picard.util.TabbedTextFileWithHeaderParser;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 @CommandLineProgramProperties(
         summary = "Create standard Drop-seq intervals files: consensus_introns, genes, rRNA, exons, intergenic",
@@ -94,22 +95,20 @@ import java.util.List;
         final IntervalList mtIntervals;
         final IntervalList nonAutosomeIntervals;
 
-        if (MT_SEQUENCE.isEmpty()) {
-            mtIntervals = null;
-        } else {
-            mtIntervals = new IntervalList(createSubsetSamHeader(samHeader, MT_SEQUENCE));
-        }
+        if (MT_SEQUENCE.isEmpty())
+			mtIntervals = null;
+		else
+			mtIntervals = new IntervalList(createSubsetSamHeader(samHeader, MT_SEQUENCE));
 
-        if (NON_AUTOSOME_SEQUENCE.isEmpty()) {
-            nonAutosomeIntervals = null;
-        } else {
-            nonAutosomeIntervals = new IntervalList(createSubsetSamHeader(samHeader, NON_AUTOSOME_SEQUENCE));
-        }
+        if (NON_AUTOSOME_SEQUENCE.isEmpty())
+			nonAutosomeIntervals = null;
+		else
+			nonAutosomeIntervals = new IntervalList(createSubsetSamHeader(samHeader, NON_AUTOSOME_SEQUENCE));
 
 
         final TabbedTextFileWithHeaderParser parser = new TabbedTextFileWithHeaderParser(REDUCED_GTF);
-        for (TabbedTextFileWithHeaderParser.Row row : parser) {
-            try {
+        for (TabbedTextFileWithHeaderParser.Row row : parser)
+			try {
                 final String chr = row.getField(ReducedGtfColumn.chr.name());
                 final int start = Integer.parseInt(row.getField(ReducedGtfColumn.start.name()));
                 final int end = Integer.parseInt(row.getField(ReducedGtfColumn.end.name()));
@@ -118,74 +117,66 @@ import java.util.List;
                 final String strand = row.getField(ReducedGtfColumn.strand.name());
                 final String name;
 
-                if (annotationType.equals(AnnotationType.gene.name())) {
-                    name = row.getField(ReducedGtfColumn.gene_name.name());
-                } else {
-                    name = makeIntervalName(chr, start, end);
-                }
+                if (annotationType.equals(AnnotationType.gene.name()))
+					name = row.getField(ReducedGtfColumn.gene_name.name());
+				else
+					name = makeIntervalName(chr, start, end);
                 final Interval interval = new Interval(chr, start, end, strand.equals("-"), name);
 
                 if (annotationType.equals(AnnotationType.gene.name())) {
                     genes.add(interval);
-                    if (transcriptType.contains(TranscriptType.rRNA.name())) {
-                        // e.g. transcriptType "Mt_rRNA" is considered rRNA
+                    if (transcriptType.contains(TranscriptType.rRNA.name()))
+						// e.g. transcriptType "Mt_rRNA" is considered rRNA
                         rRNA.add(interval);
-                    }
-                    if (MT_SEQUENCE.contains(chr)) {
-                        mtIntervals.add(interval);
-                    }
-                } else if (annotationType.equals(AnnotationType.exon.name())) {
-                    exons.add(interval);
-                } else if (annotationType.equals(AnnotationType.consensus_intron.name())) {
-                    consensusIntrons.add(interval);
-                }
+                    if (MT_SEQUENCE.contains(chr))
+						mtIntervals.add(interval);
+                } else if (annotationType.equals(AnnotationType.exon.name()))
+					exons.add(interval);
+				else if (annotationType.equals(AnnotationType.consensus_intron.name()))
+					consensusIntrons.add(interval);
             } catch (NumberFormatException e) {
                 throw new RuntimeException(String.format("Bad numeric value in file %s, line:\n %s",
                         REDUCED_GTF.getAbsolutePath(), row.getCurrentLine()), e);
             }
-        }
         CloserUtil.close(parser);
 
         final IntervalList genome = new IntervalList(samHeader);
-        for (final SAMSequenceRecord sequenceRecord : samHeader.getSequenceDictionary().getSequences()) {
-            genome.add(new Interval(sequenceRecord.getSequenceName(), 1, sequenceRecord.getSequenceLength()));
-        }
+        for (final SAMSequenceRecord sequenceRecord : samHeader.getSequenceDictionary().getSequences())
+			genome.add(new Interval(sequenceRecord.getSequenceName(), 1, sequenceRecord.getSequenceLength()));
 
         final IntervalList inverted = IntervalList.invert(genes);
         final IntervalList intergenic = new IntervalList(samHeader);
-        for (final Interval interval : inverted.getIntervals()) {
-            intergenic.add(new Interval(interval.getContig(), interval.getStart(), interval.getEnd(), false,
+        for (final Interval interval : inverted.getIntervals())
+			intergenic.add(new Interval(interval.getContig(), interval.getStart(), interval.getEnd(), false,
                     makeIntervalName(interval.getContig(), interval.getStart(), interval.getEnd())));
-        }
         write(genes, "genes");
         write(exons, "exons");
         write(consensusIntrons, "consensus_introns");
         write(rRNA, "rRNA");
         write(intergenic, "intergenic");
-        if (mtIntervals != null) {
-            write(mtIntervals, "mt");
-        }
+        if (mtIntervals != null)
+			write(mtIntervals, "mt");
 
-        if (nonAutosomeIntervals != null) {
-            write(nonAutosomeIntervals, "non_autosomes");
-        }
+        if (nonAutosomeIntervals != null)
+			write(nonAutosomeIntervals, "non_autosomes");
 
         return 0;
     }
 
+    /*
     private SAMFileHeader createMtSamHeader(final SAMFileHeader samHeader) {
         final SAMFileHeader mtHeader = samHeader.clone();
         final List<SAMSequenceRecord> mtSequences = new ArrayList<>(MT_SEQUENCE.size());
         for (final String mtSequence: MT_SEQUENCE) {
             final SAMSequenceRecord sequenceRecord = mtHeader.getSequence(mtSequence);
-            if (sequenceRecord == null) {
-                throw new RuntimeException("MT sequence '" + mtSequence + "' not found in sequence dictionary");
-            }
+            if (sequenceRecord == null)
+				throw new RuntimeException("MT sequence '" + mtSequence + "' not found in sequence dictionary");
             mtSequences.add(sequenceRecord);
         }
         mtHeader.getSequenceDictionary().setSequences(mtSequences);
         return mtHeader;
     }
+	*/
 
     /**
      * Create a SAM header with a subset of the sequences
@@ -198,9 +189,8 @@ import java.util.List;
         final List<SAMSequenceRecord> sequenceRecords = new ArrayList<>(sequenceNames.size());
         for (final String sequence: sequenceNames) {
             final SAMSequenceRecord sequenceRecord = ret.getSequence(sequence);
-            if (sequenceRecord == null) {
-                throw new RuntimeException("Sequence '" + sequence + "' specified on command line but not found in sequence dictionary");
-            }
+            if (sequenceRecord == null)
+				throw new RuntimeException("Sequence '" + sequence + "' specified on command line but not found in sequence dictionary");
             sequenceRecords.add(sequenceRecord);
         }
         ret.getSequenceDictionary().setSequences(sequenceRecords);

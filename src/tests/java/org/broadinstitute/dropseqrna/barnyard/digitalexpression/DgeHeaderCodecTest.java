@@ -23,11 +23,18 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.StringReader;
+import java.io.StringWriter;
+
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.*;
 
 public class DgeHeaderCodecTest {
 
@@ -53,6 +60,16 @@ public class DgeHeaderCodecTest {
         final BufferedReader reader = new BufferedReader(new StringReader(writer.toString()));
         final DgeHeader decodedHeader = codec.decode(reader, "test input");
         Assert.assertEquals(decodedHeader, header);
+
+        try {
+			File out = File.createTempFile("DgeHeaderCodecTest.", ".header.txt");
+			out.deleteOnExit();
+			codec.encode(out, decodedHeader);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+
     }
 
     /**

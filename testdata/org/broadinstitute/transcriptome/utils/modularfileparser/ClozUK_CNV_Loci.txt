@@ -1,0 +1,19 @@
+Locus/Gene	Location (Mb)	Type
+GNB1, CALML6, TMEM52, KIAA1751, GABRD, PRKCZ	chr1:1.85-2.11	Duplication
+AQP12A, KIF1A	chr2:241.63-241.75	Duplication
+ELOVL6	chr4:110.97-111.12	Duplication
+FAM149A, FLJ38576, CYP4V2	chr4:187.05-187.14	Duplication
+IRGM, ZNF300, SMIM3	chr5:150.16-150.30	Deletion
+PHACTR2	chr6:144-144.15	Duplication
+GLIS3	chr9:3.82-4.3	Deletion
+SLC1A1	chr9:4.49-4.59	Deletion
+ALDH2, MAPKAPK5	chr12:112.21-124.11	Duplication
+CGNL1	chr15:57.67-57.84	Duplication
+GCOM1, MYZAP	chr15:57.88-58.01	Deletion
+16p12.1 (7 genes)	chr16:21.95-22.43	Deletion
+CRLF3	chr17:29.11-29.15	Duplication
+ATAD5, ADAP2	chr17:29.16-29.29	Duplication
+GALR1	chr18:74.96-74.98	Duplication
+PTPRT 	chr20:40.7-41.82	Deletion
+COL18A1	chr21:46.88-46.93	Duplication
+22q11.2 	chr22:19,02-20,26	Duplication
