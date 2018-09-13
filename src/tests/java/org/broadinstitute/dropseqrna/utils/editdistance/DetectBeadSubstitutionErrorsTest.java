@@ -23,22 +23,23 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloserUtil;
-import org.testng.Assert;
-import org.testng.annotations.Test;
-import picard.util.TabbedTextFileWithHeaderParser;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import picard.util.TabbedTextFileWithHeaderParser;
+
 public class DetectBeadSubstitutionErrorsTest {
-    private static final File TEST_FILE = new File("testdata/org/broadinstitute/transcriptome/utils/editdistance/DetectBeadSubstitutionErrors.sam");
+    private static final File TEST_FILE = new File("testdata/org/broadinstitute/transcriptome/utils/editdistance/DetectBeadSubstitutionErrors.bam");
 
     private static final String BIG_BARCODE = "AGTGAGACAAGG";
     private static final Set<String> SMALL_BARCODES = new HashSet<>(Arrays.asList(
@@ -70,9 +71,8 @@ public class DetectBeadSubstitutionErrorsTest {
             Assert.assertTrue(Boolean.parseBoolean(row.getField("repaired")));
         }
         final SamReader reader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
-        for (final SAMRecord rec : reader) {
-            Assert.assertEquals(rec.getStringAttribute("XC"), BIG_BARCODE);
-        }
+        for (final SAMRecord rec : reader)
+			Assert.assertEquals(rec.getStringAttribute("XC"), BIG_BARCODE);
         CloserUtil.close(reader);
     }
 }

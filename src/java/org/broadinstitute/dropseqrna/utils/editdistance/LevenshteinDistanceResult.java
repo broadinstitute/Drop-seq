@@ -76,7 +76,7 @@ public class LevenshteinDistanceResult {
 	public Integer getEditDistanceIndelCorrected() {
 		String [] ops=null;
 		if (this.substitutionCost!=2 || this.deletionCost!=1 || this.insertionCost!=1) {
-			log.info("Edit distances I expected were [2/1/1] for substitution,insertion,deletion.  You had [" + this.substitutionCost + "/"+ this.insertionCost + "/" + this.deletionCost+". Recalculating with expected costs.");
+			log.info("Edit distances I expected were [2/1/1] for substitution,insertion,deletion.  You had [" + this.substitutionCost + "/"+ this.insertionCost + "/" + this.deletionCost+"]. Recalculating with expected costs.");
 			LevenshteinDistanceResult r = LevenshteinDistance.computeLevenshteinDistanceResult(this.stringOne, this.stringTwo, 1,1,2);
 			ops = getOperations(r.distance);
 		} else
@@ -165,7 +165,9 @@ public class LevenshteinDistanceResult {
 	 */
 	private static class AdjacentScores {
 
-		@SuppressWarnings("unused")
+
+		/**
+		 * @SuppressWarnings("unused")
 		public enum Operation {
 			M("M"),S("S"),I("I"),D("D");
 
@@ -177,7 +179,7 @@ public class LevenshteinDistanceResult {
 				return this.name;
 			}
 		}
-
+		*/
 		static int getCurrentScore (final int rowIndex, final int colIndex, final int distance [] []) {
 			return distance[rowIndex][colIndex];
 		}
