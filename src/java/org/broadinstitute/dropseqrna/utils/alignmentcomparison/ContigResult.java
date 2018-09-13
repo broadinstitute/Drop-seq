@@ -10,11 +10,11 @@
  */
 package org.broadinstitute.dropseqrna.utils.alignmentcomparison;
 
-import com.google.common.collect.ComparisonChain;
-import com.google.common.collect.Ordering;
-
 import java.util.Arrays;
 import java.util.List;
+
+import com.google.common.collect.ComparisonChain;
+import com.google.common.collect.Ordering;
 
 public class ContigResult implements Comparable<ContigResult> {
 
@@ -26,13 +26,6 @@ public class ContigResult implements Comparable<ContigResult> {
 	private String newContig;
 	private List<String> newContigs;
 	private final boolean newReadMapsUniquely;
-
-	public ContigResult (final String oldContig, final String newContig, final boolean newReadMapsUniquely) {
-		this.oldContig=oldContig;
-		this.newContig=newContig;
-		this.newContigs=null;
-		this.newReadMapsUniquely=newReadMapsUniquely;
-	}
 
 	public ContigResult (final String oldContig, final List<String> newContigs, final boolean newReadMapsUniquely) {
 		this.oldContig=oldContig;
@@ -96,11 +89,11 @@ public class ContigResult implements Comparable<ContigResult> {
 
 	@Override
 	public int compareTo(final ContigResult o) {
-		ComparisonChain.start().compare(this.oldContig, o.getOldContig())
+		return ComparisonChain.start().compare(this.oldContig, o.getOldContig())
 		.compare(this.getNewContigs(), o.getNewContigs(), Ordering.<String>natural().lexicographical())
 		.compareTrueFirst(this.newReadMapsUniquely, o.newReadMapsUniquely)
 		.result();
-		return 0;
+
 	}
 
 	@Override

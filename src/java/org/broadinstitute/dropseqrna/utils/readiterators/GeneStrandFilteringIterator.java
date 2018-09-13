@@ -23,11 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import htsjdk.samtools.SAMRecord;
+import java.util.Iterator;
+
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
-import java.util.Iterator;
+import htsjdk.samtools.SAMRecord;
 
 /**
  * Filters reads where the read strand and gene strand disagree.
@@ -51,10 +52,6 @@ public class GeneStrandFilteringIterator extends FilteredIterator<SAMRecord>{
 	 * @return
 	 */
 	public boolean filterOut(final SAMRecord rec) {
-		/*
-		if (rec.getReadName().equals("HN7TNBGXX:4:11609:2753:3252"))
-			System.out.println("STOP");
-		*/
 		String geneStrand = rec.getStringAttribute(strandTag);
 		if (geneStrand==null) return false;
 

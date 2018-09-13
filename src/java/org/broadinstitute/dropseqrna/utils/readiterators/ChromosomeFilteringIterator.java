@@ -23,13 +23,14 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+
+import htsjdk.samtools.SAMRecord;
 
 public class ChromosomeFilteringIterator extends FilteredIterator<SAMRecord>{
 
@@ -67,9 +68,10 @@ public class ChromosomeFilteringIterator extends FilteredIterator<SAMRecord>{
 		// short circuit if there are no contigs to filter.
 		if (this.contigsToFilter==null) return false;
 		// if you're excluding contigs, then return true to filter if the record is contained in the contigs
-		if (this.excludeContig) return this.contigsToFilter.contains(rec.getContig());
+		String contig = rec.getContig();
+		if (this.excludeContig) return this.contigsToFilter.contains(contig);
 		// if you're including contigs, then return false if the record is contained in the contigs.
-		return !this.contigsToFilter.contains(rec.getContig());
+		return !this.contigsToFilter.contains(contig);
 
 	}
 

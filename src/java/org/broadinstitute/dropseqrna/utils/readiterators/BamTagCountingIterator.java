@@ -23,11 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import htsjdk.samtools.SAMRecord;
+import java.util.Iterator;
+
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
-import java.util.Iterator;
+import htsjdk.samtools.SAMRecord;
 
 public class BamTagCountingIterator extends FilteredIterator<SAMRecord> {
 
@@ -41,6 +42,9 @@ public class BamTagCountingIterator extends FilteredIterator<SAMRecord> {
 	}
 
 	@Override
+	/**
+	 * This always returns false, but the ObjectCounter is useful.
+	 */
 	public boolean filterOut(final SAMRecord rec) {
 		if (this.tag==null) return false;
 		String value = rec.getStringAttribute(tag);
