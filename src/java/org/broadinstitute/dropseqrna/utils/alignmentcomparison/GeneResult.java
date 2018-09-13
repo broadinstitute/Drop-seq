@@ -10,10 +10,13 @@
  */
 package org.broadinstitute.dropseqrna.utils.alignmentcomparison;
 
-import htsjdk.samtools.util.StringUtil;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
-import java.util.Collection;
+import htsjdk.samtools.util.StringUtil;
 
 /**
  * For each gene, how many of the reads uniquely mapped to the first gene mapped to the same gene in the second data set
@@ -78,16 +81,18 @@ public class GeneResult {
 	 * @param genes The genes for each read.
 	 */
 	public void addMapping (final Collection <String> genes, final Collection<String> contigs, final int numReads) {
-		boolean hasOriginalGene=genes.contains(this.originalGene);
+		List<String> genesModified = new ArrayList<>(genes);
+		boolean hasOriginalGene=genesModified.contains(this.originalGene);
 		// check for the no-gene tag, set the flag, and remove it from the list.
-		boolean hasReadNotOnAnyGene = genes.contains(this.noGeneTag);
-		genes.remove(this.noGeneTag);
+		boolean hasReadNotOnAnyGene = genesModified.contains(this.noGeneTag);
+		genesModified.remove(this.noGeneTag);
 		// always incremented.
 		countOriginalReads++;
 
 		// handle mappings to other contigs.
-		contigs.remove(this.originalContig);
-		for (String c: contigs)
+		List<String> modifiedContigs = new ArrayList<>(contigs);
+		modifiedContigs.remove(this.originalContig);
+		for (String c: modifiedContigs)
 			this.otherContigs.increment(c);
 
 		// the only mapping is to the same gene.
@@ -98,38 +103,38 @@ public class GeneResult {
 
 		// need to handle cases where a read maps to the same gene multiple times at low map quality.
 		// kinda weird...I'm gonna call these intronic/intergenic, but they aren't really.
-		if (hasOriginalGene & genes.size()==1 & numReads>1 & !hasReadNotOnAnyGene) {
+		if (hasOriginalGene & genesModified.size()==1 & numReads>1 & !hasReadNotOnAnyGene) {
 			countSameGeneMapsNonUniqueCount++;
 			return;
 		}
 
 		// there's only one mapping to the original gene, but there are multiple reads that map to no other genes.
-		if (hasOriginalGene & genes.size()==1 & numReads>1 & hasReadNotOnAnyGene) {
+		if (hasOriginalGene & genesModified.size()==1 & numReads>1 & hasReadNotOnAnyGene) {
 			countSameGeneMapsNonUniqueCount++;
 			return;
 		}
 
 		// doesn't map to a gene anymore.
-		if (!hasOriginalGene & genes.size()==0 & hasReadNotOnAnyGene) {
+		if (!hasOriginalGene & genesModified.size()==0 & hasReadNotOnAnyGene) {
 			this.countIntronicOrIntergenic++;
 			return;
 		}
 		// doesn't map to original gene but maps to some other gene.
-		if (!hasOriginalGene & genes.size()==1)
+		if (!hasOriginalGene & genesModified.size()==1)
 			// maps to one other gene uniquely.
 			if (numReads==1) {
 				countDifferentUniqueGene++;
-				uniqueMapOtherGene.increment(genes.iterator().next());
+				uniqueMapOtherGene.increment(genesModified.iterator().next());
 				return;
 			} else { // maps to one other gene non-uniquely.
 				countDifferentGeneNonUniqueCount++;
 				return;
 			}
 		// there's more than 1 gene mapped.
-		if (genes.size()>1) {
-			genes.remove(this.originalGene);
+		if (genesModified.size()>1) {
+			genesModified.remove(this.originalGene);
 			countMultiGeneMappingCount++;
-			for (String gene: genes)
+			for (String gene: genesModified)
 				this.nonUniqueMapOtherGene.increment(gene);
 			return;
 		}

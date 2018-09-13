@@ -87,7 +87,7 @@ public class CompareDropSeqAlignments extends CommandLineProgram {
 	public String TRIM_CONTIG_STRING="chr";
 
 	private StringInterner stringInterner = new StringInterner();
-	final String noGeneTag="NO_GENE";
+	final static String noGeneTag="NO_GENE";
 
 	// groups of contigs: alt, random, HLA, decoy
 	@Override

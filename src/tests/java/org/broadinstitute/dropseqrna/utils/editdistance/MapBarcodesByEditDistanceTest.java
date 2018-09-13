@@ -164,6 +164,60 @@ public class MapBarcodesByEditDistanceTest {
 
 	}
 
+	@Test
+	public void testBottomUpCollapseThreaded() {
+		MapBarcodesByEditDistance mbed=new MapBarcodesByEditDistance(true, 100, 2);
+		ObjectCounter<String> barcodes = new ObjectCounter<>();
+		// initialize with test data
+		// unambiguous pair
+		barcodes.incrementByCount("GTACAAAATATC", 1003);
+		barcodes.incrementByCount("GTACAAAATATA", 4287);
+
+		// unambiguous pair
+		barcodes.incrementByCount("CCGCCGTTCGAA", 1016);
+		barcodes.incrementByCount("CCGCAGTTCGAA", 3108);
+
+		//ambiguous
+		barcodes.incrementByCount("TAGAATCCCAAG", 20);
+		barcodes.incrementByCount("TAGAATCACAAG", 39);
+		barcodes.incrementByCount("TAGAATCGCAAG", 5199);
+
+		//ambiguous
+		barcodes.incrementByCount("CCGGAGACTATA", 20);
+		barcodes.incrementByCount("CCGGAGACGATA", 23);
+		barcodes.incrementByCount("CCGGAGACCATA", 2202);
+		barcodes.incrementByCount("CCGGAGACAATA", 4165);
+
+		Set<String> expectedAmbiguous = new HashSet<>(Arrays.asList("TAGAATCCCAAG", "CCGGAGACTATA", "CCGGAGACGATA"));
+
+
+		// no neighbors
+		barcodes.incrementByCount("ACTGTAGAAGGG", 172);
+
+		// run and validate
+		BottomUpCollapseResult result= mbed.bottomUpCollapse(barcodes, 1);
+
+		// validate unambiguous
+		String larger = result.getLargerRelatedBarcode("GTACAAAATATC");
+		Assert.assertEquals("GTACAAAATATA", larger);
+		larger = result.getLargerRelatedBarcode("CCGCCGTTCGAA");
+		Assert.assertEquals("CCGCAGTTCGAA", larger);
+		larger = result.getLargerRelatedBarcode("CCGGAGACCATA");
+		Assert.assertEquals("CCGGAGACAATA", larger);
+		larger = result.getLargerRelatedBarcode("TAGAATCACAAG");
+		Assert.assertEquals("TAGAATCGCAAG", larger);
+
+		// validate ambiguous
+		Collection<String> ambiguous = result.getAmbiguousBarcodes();
+		Assert.assertTrue(ambiguous.containsAll(expectedAmbiguous));
+		Assert.assertTrue(expectedAmbiguous.containsAll(ambiguous));
+
+		// validate no neighbor
+		larger = result.getLargerRelatedBarcode("ACTGTAGAAGGG");
+		Assert.assertNull(larger);
+
+	}
+
 	@Test(enabled=false)
 	public void testBottomUpSpeed () {
 		MapBarcodesByEditDistance mbed=new MapBarcodesByEditDistance(true, 1, 10000);
@@ -302,7 +356,7 @@ public class MapBarcodesByEditDistanceTest {
 		// MEST1 goes into TEST1.
 		barcodes.incrementByCount("MEST1", 1);
 
-		MapBarcodesByEditDistance mapper = new  MapBarcodesByEditDistance(false, 4, 0);
+		MapBarcodesByEditDistance mapper = new  MapBarcodesByEditDistance(false, 1, 0);
 		List<String>coreBarcodes  = barcodes.getKeysOrderedByCount(true);
 
 		Map<String, List<String>> result = mapper.collapseBarcodes(coreBarcodes, barcodes, false, 1);
@@ -464,7 +518,14 @@ public class MapBarcodesByEditDistanceTest {
 
 	}
 
-
+	@Test(expectedExceptions=IllegalArgumentException.class)
+	public void testBarcodesSameLength () {
+		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true,2,5);
+		ObjectCounter <String> barcodes = new ObjectCounter<>();
+		barcodes.increment("FOO");
+		barcodes.increment("TOOLONG");
+		m.bottomUpCollapse (barcodes, 1);
+	}
 
 }
 

@@ -24,17 +24,16 @@
 package org.broadinstitute.dropseqrna.readtrimming;
 
 
-import htsjdk.samtools.util.SequenceUtil;
-import htsjdk.samtools.util.StringUtil;
-import org.broadinstitute.dropseqrna.TranscriptomeException;
-
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
+
+import htsjdk.samtools.util.SequenceUtil;
+import htsjdk.samtools.util.StringUtil;
 
 public class TrimSequenceTemplate {
 
@@ -46,7 +45,7 @@ public class TrimSequenceTemplate {
 	private byte[] ignoredBases;
 	public static final byte A = 'A', C = 'C', G = 'G', T = 'T';
 
-	public TrimSequenceTemplate(String sequence, String ignoredBases) {
+	public TrimSequenceTemplate(final String sequence, final String ignoredBases) {
 		this.sequence = sequence;
 		this.reverseComplement = SequenceUtil.reverseComplement(this.sequence);
 		bases = StringUtil.stringToBytes(this.sequence);
@@ -56,7 +55,7 @@ public class TrimSequenceTemplate {
 				.stringToBytes(ignoredBases);
 	}
 
-	public TrimSequenceTemplate(String barcode) {
+	public TrimSequenceTemplate(final String barcode) {
 		this.sequence = barcode;
 		this.reverseComplement = SequenceUtil.reverseComplement(this.sequence);
 		bases = StringUtil.stringToBytes(this.sequence);
@@ -75,13 +74,13 @@ public class TrimSequenceTemplate {
 	/**
 	 * Test to see if this read matches this barcode. If any base of a barcode
 	 * starts with N or n, then ignore that position.
-	 * 
+	 *
 	 * @param testString
 	 *            The read to look for this barcode in. The barcode should be at
 	 *            the start of the read for this method.  The entire barcode is expected for a match.
 	 * @return true if this barcode is found in the read.
 	 */
-	public boolean hasForwardMatch(String testString) {
+	public boolean hasForwardMatch(final String testString) {
 		byte[] testBases = StringUtil.stringToBytes(testString);
 		int numBasesCanMatch = 0;
 		int numBasesMatch = 0;
@@ -89,15 +88,14 @@ public class TrimSequenceTemplate {
 			if (isIgnoreBase(this.bases[i]))
 				continue;
 			numBasesCanMatch++;
-			if (SequenceUtil.basesEqual(testBases[i], bases[i])) {
+			if (SequenceUtil.basesEqual(testBases[i], bases[i]))
 				numBasesMatch++;
-			}
 		}
 		if (numBasesCanMatch == numBasesMatch)
 			return (true);
 		return false;
 	}
-	
+
 	/**
 	 * Does the testString have part (or all) of the template in it?
 	 * The test string starting at position 1 may have some portion of the template.
@@ -110,27 +108,25 @@ public class TrimSequenceTemplate {
 	 * @param mismatchesAllowed
 	 * @return The position in the template
 	 */
-	public int getPositionInTemplate (String testString, int minMatch, int mismatchesAllowed) {
+	public int getPositionInTemplate (final String testString, final int minMatch, final int mismatchesAllowed) {
 		byte [] read = StringUtil.stringToBytes(testString);
 		// If the read's too short we can't possibly match it
         if (read == null || read.length < minMatch) return -1;
-        
+
         // read = 48 length
-        // template seq = 41 length		
+        // template seq = 41 length
         // Walk forwards
         READ_LOOP:
         for (int start = 0; start<this.bases.length; start++) {
         	final int length = Math.min((this.bases.length - start), read.length);
             int mismatches = 0;
-            
+
             for (int i = 0; i < length; i++) {
             	int idx=i+start;
             	//char base = (char)this.bases[idx];
             	//char readBase = (char) read[i];
-                if (!SequenceUtil.isNoCall(this.bases[i]) && !SequenceUtil.basesEqual(this.bases[idx], read[i])) {
-                	if (++mismatches > mismatchesAllowed) continue READ_LOOP;
-                	
-                }
+                if (!SequenceUtil.isNoCall(this.bases[i]) && !SequenceUtil.basesEqual(this.bases[idx], read[i]))
+					if (++mismatches > mismatchesAllowed) continue READ_LOOP;
             }
             // If we got this far without breaking out, then it matches.  Make sure it matches at least the min run of bases to return a result.
             int lengthMatch=this.bases.length-start-mismatches;
@@ -139,57 +135,56 @@ public class TrimSequenceTemplate {
         }
         return -1;
 	}
-	
+
 	/**
 	 * Does the testString have part (or all) of the template in it?
 	 * The test string starting at position 1 may have some portion of the template.
 	 * For example, ANY bases of the template could have the 8 bases in the middle of a 30 base testString.
 	 * This is more flexible and slow than getPositionInTemplate, as it will let any portion of the template occur anywhere in the read.
 	 * @param testString A string to test against the template
-	 * @param minMatch The number of bases that must match in both 
+	 * @param minMatch The number of bases that must match in both
 	 * @param mismatchesAllowed How many mismatches can there be between the template and the read
 	 * @return The position in the read, 0 based.
 	 */
-	public int getPositionInRead (String testString, int minMatch, int mismatchesAllowed) {
+	public int getPositionInRead (final String testString, final int minMatch, final int mismatchesAllowed) {
 		byte [] read = StringUtil.stringToBytes(testString);
 		// If the read's too short we can't possibly match it
         if (read == null || read.length < minMatch) return -1;
-        
+
         int maxNumMatches=0;
         int bestReadStartPos=0;
-        
+
         int lastViableReadIndex=read.length-minMatch+1;
         // Walk forwards
         READ_LOOP:  // walks through the read, looking for the template.
         for (int readIndex = 0; readIndex<lastViableReadIndex; readIndex++) {
             int mismatches = 0;
             int numMatches= 0;
-            
-            // can only search as far as you have left in the read. 
+
+            // can only search as far as you have left in the read.
             final int searchLength = Math.min(this.bases.length, read.length-readIndex);
             if (searchLength<minMatch) break;  // if you don't have enough search space left to match a min number of bases you give up.
             for (int templateIndex = 0; templateIndex < searchLength; templateIndex++) {
             	int tempReadIndex=templateIndex+readIndex;
-            	//char templateBase = (char)this.bases[templateIndex];
-            	//char readBase = (char) read[tempReadIndex];
-                if (SequenceUtil.isNoCall(read[tempReadIndex]) || SequenceUtil.basesEqual(this.bases[templateIndex], read[tempReadIndex])) {
+            	char templateBase = (char)this.bases[templateIndex];
+            	char readBase = (char) read[tempReadIndex];
+                if (SequenceUtil.isNoCall(read[tempReadIndex]) || !SequenceUtil.basesEqual(this.bases[templateIndex], read[tempReadIndex])) {
                 	if (++mismatches > mismatchesAllowed) continue READ_LOOP;
-                } else {
-                	numMatches++;
-                }
+                } else
+					numMatches++;
                 if (numMatches>maxNumMatches) {
                 	maxNumMatches=numMatches;
                 	bestReadStartPos=readIndex;
                 }
             }
-            
+
         }
         if (maxNumMatches<minMatch) return (-1);
-        return bestReadStartPos;        
+        return bestReadStartPos;
 	}
-	
-	
-	
+
+
+
 
 	/**
 	 * Does this read have the barcode anywhere in it? The Barcode would be seen
@@ -197,7 +192,7 @@ public class TrimSequenceTemplate {
 	 * exact match test, so a barcode should not have an ignored base, but the
 	 * actual base as observed on the other strand. This is to filter out
 	 * barcodes on short inserts.
-	 * 
+	 *
 	 * @param readString
 	 *            The read string.
 	 * @param barcode
@@ -206,7 +201,7 @@ public class TrimSequenceTemplate {
 	 *         if it doesn't exist. This is 1 based - IE: base 1 is the first
 	 *         base.
 	 */
-	public static int findBarcodeIndexReverseMatch(String readString,String barcode) {
+	public static int findBarcodeIndexReverseMatch(final String readString,final String barcode) {
 		String bc = SequenceUtil.reverseComplement(barcode);
 		int index = readString.indexOf(bc);
 		if (index > -1)
@@ -214,16 +209,14 @@ public class TrimSequenceTemplate {
 		return index;
 	}
 
-	public boolean isIgnoreBase(Byte base) {
+	public boolean isIgnoreBase(final Byte base) {
 		return (baseInBaseList(base, this.ignoredBases));
 	}
 
-	public static boolean baseInBaseList(Byte base, byte[] baseList) {
-		for (Byte b : baseList) {
-			if (SequenceUtil.basesEqual(b, base)) {
+	public static boolean baseInBaseList(final Byte base, final byte[] baseList) {
+		for (Byte b : baseList)
+			if (SequenceUtil.basesEqual(b, base))
 				return true;
-			}
-		}
 		return false;
 	}
 
@@ -231,39 +224,22 @@ public class TrimSequenceTemplate {
 		return this.ignoredBases;
 	}
 
-	public static Collection<TrimSequenceTemplate> parseBarcodesFromFile(File f) {
-		List<TrimSequenceTemplate> result = new ArrayList<TrimSequenceTemplate>();
-		try {
-			BufferedReader input = new BufferedReader(new FileReader(f));
-			try {
-				String line = null; // not declared within while loop
-				while ((line = input.readLine()) != null) {
-					String[] strLine = line.split("\t");
-					TrimSequenceTemplate b = new TrimSequenceTemplate(
-							strLine[0]);
-					result.add(b);
-				}
-			} finally {
-				input.close();
-			}
-		} catch (IOException ex) {
-			throw new TranscriptomeException("Could not read file: "
-					+ f.toString());
-		}
-
-		return (result);
+	public static Collection<TrimSequenceTemplate> parseBarcodesFromFile(final File f) {
+		List<String> templates = ParseBarcodeFile.readCellBarcodeFile(f);
+		List<TrimSequenceTemplate>result = templates.stream().map(x->new TrimSequenceTemplate(x)).collect(Collectors.toList());
+		return result;
 	}
 
 	/**
 	 * If a barcode has ignore bases, then expand those bases to A/C/G/T.
 	 * Otherwise, return the barcode. This is recursive, so multiple ignored
 	 * bases will be expanded.
-	 * 
+	 *
 	 * @return
 	 */
 	public static Collection<TrimSequenceTemplate> expandBarcode(
-			TrimSequenceTemplate b, byte[] ignoredBases) {
-		Collection<TrimSequenceTemplate> result = new ArrayList<TrimSequenceTemplate>();
+			final TrimSequenceTemplate b, final byte[] ignoredBases) {
+		Collection<TrimSequenceTemplate> result = new ArrayList<>();
 		result.add(b);
 		byte[] bases = StringUtil.stringToBytes(b.getSequence());
 		for (int i = 0; i < bases.length; i++) {
@@ -306,6 +282,7 @@ public class TrimSequenceTemplate {
 		return (result);
 	}
 
+	@Override
 	public String toString() {
 		return this.sequence;
 	}

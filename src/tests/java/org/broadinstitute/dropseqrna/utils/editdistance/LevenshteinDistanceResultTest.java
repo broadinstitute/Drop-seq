@@ -143,6 +143,8 @@ public class LevenshteinDistanceResultTest {
 		int ed2 = r.getEditDistanceIndelCorrected();
 		Assert.assertEquals(expectedED, ed2);
 
+
+
 	}
 
 	@Test(enabled=true)
@@ -156,6 +158,24 @@ public class LevenshteinDistanceResultTest {
 			int ed11= r.getEditDistanceIndelCorrected();
 
 			Assert.assertEquals(ed1, 2);
+			Assert.assertEquals(ed11, 1);
+			String []  ops = r.getOperations();
+			for (int i=0; i<ops.length; i++)
+				Assert.assertEquals(opsExpected[i], ops[i]);
+		}
+	}
+
+	@Test(enabled=true)
+	public void testIndelOnlyWrongThresholds() {
+		String bc1="AAAAGTGAGGAC";
+		String [] bc2 ={"AAAAGTGAGGCA", "AAAAGTGAGGCC", "AAAAGTGAGGCG", "AAAAGTGAGGCT"};
+		String [] opsExpected={"M", "M", "M", "M", "M", "M", "M", "M", "M", "M", "D", "M", "I"};
+		for (String element : bc2) {
+			LevenshteinDistanceResult r = LevenshteinDistance.computeLevenshteinDistanceResult(bc1,element, 2,2,4);
+			int ed1 = r.getEditDistance();
+			int ed11= r.getEditDistanceIndelCorrected();
+
+			Assert.assertEquals(ed1, 4);
 			Assert.assertEquals(ed11, 1);
 			String []  ops = r.getOperations();
 			for (int i=0; i<ops.length; i++)
