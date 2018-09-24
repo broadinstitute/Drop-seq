@@ -23,5 +23,51 @@
  */
 package org.broadinstitute.dropseqrna.readtrimming;
 
+import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.TestUtil;
+import org.testng.Assert;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Arrays;
+
 public class PolyATrimmerTest {
+    private static final File INPUT = new File("testdata/org/broadinstitute/dropseq/readtrimming/N701.subset.tagged_filtered_start_seq_trimmed.sam");
+
+    // There are already tests of the real work, so just confirm that CLP runs to completion.
+    @Test(dataProvider = "testClpDataProvider")
+    public void testClp(final boolean newTrimmer) throws IOException {
+        final File tempDir = Files.createTempDirectory("PolyATrimmerTest.").toFile();
+        final Log.LogLevel saveLogLevel = Log.getGlobalLogLevel();
+        Log.setGlobalLogLevel(Log.LogLevel.DEBUG);
+        try {
+            final PolyATrimmer clp = new PolyATrimmer();
+            clp.INPUT = INPUT;
+            clp.OUTPUT = File.createTempFile("PolyATrimmerTest.", ".sam");
+            clp.OUTPUT.deleteOnExit();
+            clp.OUTPUT_SUMMARY = File.createTempFile("PolyATrimmerTest.", ".summary");
+            clp.OUTPUT_SUMMARY.deleteOnExit();
+            clp.TMP_DIR = Arrays.asList(tempDir);
+            clp.MISMATCHES = 0;
+            clp.NUM_BASES = 6;
+            clp.VALIDATION_STRINGENCY = ValidationStringency.STRICT;
+            clp.USE_NEW_TRIMMER = newTrimmer;
+            Assert.assertEquals(clp.doWork(), 0);
+        } finally {
+            Log.setGlobalLogLevel(saveLogLevel);
+            TestUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    @DataProvider(name="testClpDataProvider")
+    public Object[][]testClpDataProvider() {
+        return new Object[][]{
+                new Object[]{true},
+                new Object[]{false},
+        };
+    }
 }
