@@ -275,24 +275,6 @@ public class DgeHeaderCodec {
         }
     }
 
-    /**
-     *
-     * Checks the next character.  If '@', that char is consumed.  If not, the char read is pushed back into the reader.
-     * @return true if next character is '@'
-     */
-    // TODO: Not used.  Delete?
-    /*
-    private boolean isHeaderLine(final BufferedReader reader) throws IOException {
-        reader.mark(1);
-        int c = reader.read();
-        if (isRecordStartChar(c)) {
-            return true;
-        } else {
-            reader.reset();
-            return false;
-        }
-    }
-	*/
     private void parseFirstLine(final DgeHeader header, final String line, final String inputName) {
         final LinkedHashMap<String, String> fields = parseLine(line, DGE_RECORD_LABEL, inputName);
         for (final Map.Entry<String, String> entry: fields.entrySet()) {

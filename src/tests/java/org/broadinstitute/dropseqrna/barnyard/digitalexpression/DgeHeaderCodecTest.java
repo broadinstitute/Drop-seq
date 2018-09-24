@@ -173,6 +173,8 @@ public class DgeHeaderCodecTest {
         final String testVersion = "1234";
         header.setVersion(testVersion);
         header.setExpressionFormat(DgeHeader.ExpressionFormat.log10_normalized);
+        header.addCommand("Test command line 1");
+        header.addCommand("Test command line 2");
         if (numLibraries > 0) {
             final DgeHeaderLibrary lib1 = new DgeHeaderLibrary("uei1");
             lib1.setInput(new File("/this/is/a/dummy/file"));
