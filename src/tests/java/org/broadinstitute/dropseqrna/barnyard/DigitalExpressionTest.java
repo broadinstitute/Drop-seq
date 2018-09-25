@@ -65,7 +65,7 @@ public class DigitalExpressionTest {
 	 * HUMAN_15:101821715-101835487:SNRPA1
 	 * HUMAN_3:42642106-42690227:NKTR
 	 *
-	 * /fg/software/gap/gap_analysis/FilterBAMByTag I=100cells_star_bq10_noPseudoGenes.bam O=test.bam TAG=ZC TAG_VALUES_FILE=bc.txt ACCEPT_TAG=true
+	 * /fg/software/gap/gap_analysis/FilterBamByTag I=100cells_star_bq10_noPseudoGenes.bam O=test.bam TAG=ZC TAG_VALUES_FILE=bc.txt ACCEPT_TAG=true
 	 * samtools view -H test.bam > 5cell3gene.sam
 	 * samtools view test.bam |grep -f genes.txt >> 5cell3gene.sam
 	 * samtools view -Sb 5cell3gene.sam > 5cell3gene.bam

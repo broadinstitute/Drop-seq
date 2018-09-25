@@ -36,7 +36,7 @@ import org.testng.annotations.Test;
 import htsjdk.samtools.util.CollectionUtil;
 
 
-public class ReduceGTFTest {
+public class ReduceGtfTest {
 
 	File GTF_FILE1 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_ISG15.gtf.gz");
 	File GTF_FILE2 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_ISG15_FAM41C.gtf.gz");
@@ -52,7 +52,7 @@ public class ReduceGTFTest {
 
 
     private Iterator<GTFRecord> parseGtf(final File file) {
-        ReduceGTF r = new ReduceGTF();
+        ReduceGtf r = new ReduceGtf();
         r.SEQUENCE_DICTIONARY = SD;
         r.GTF = file;
         return r.parseGTF();
@@ -63,11 +63,11 @@ public class ReduceGTFTest {
 
     @Test
     public void testDoWork () {
-    	ReduceGTF r = new ReduceGTF();
+    	ReduceGtf r = new ReduceGtf();
     	r.GTF=GTF_FILE5;
     	r.SEQUENCE_DICTIONARY=SD;
-    	File o = getTempReportFile("ReduceGTF", ".reduced.gtf.gz");
-    	// File o2 = getTempReportFile("ReduceGTF", ".reduced.gtf");
+    	File o = getTempReportFile("ReduceGtf", ".reduced.gtf.gz");
+    	// File o2 = getTempReportFile("ReduceGtf", ".reduced.gtf");
     	o.deleteOnExit();
     	// o2.deleteOnExit();
     	//r.OUTPUT=GTF_FILE5_REDUCED;

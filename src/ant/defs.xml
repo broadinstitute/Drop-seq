@@ -104,9 +104,8 @@
     </sequential>
 </macrodef>
 
-        <!-- Create script to invoke the given main program.  main-class is no longer necessary: should it be deleted? -->
+        <!-- Create script to invoke the given main program. -->
 <macrodef name="package-command">
-    <attribute name="main-class"/>
     <attribute name="title"/>
     <attribute name="visibility"/>
     <sequential>

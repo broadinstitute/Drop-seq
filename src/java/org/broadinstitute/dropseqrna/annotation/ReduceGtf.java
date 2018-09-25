@@ -59,9 +59,9 @@ import java.util.Set;
         oneLineSummary = "Parse and simplify a GTF file into an easier to use format.",
         programGroup = MetaData.class
 )
-public class ReduceGTF extends CommandLineProgram {
+public class ReduceGtf extends CommandLineProgram {
 
-    private static final Log log = Log.getInstance(ReduceGTF.class);
+    private static final Log log = Log.getInstance(ReduceGtf.class);
     private static final List<String> DEFAULT_FEATURE_TYPES = CollectionUtil.makeList("gene", "transcript", "exon");
 
     private static final List<String> DEFAULT_IGNORED_FUNC_TYPES = CollectionUtil.makeList(
@@ -179,7 +179,7 @@ public class ReduceGTF extends CommandLineProgram {
 
 	/** Stock main method. */
 	public static void main(final String[] args) {
-		System.exit(new ReduceGTF().instanceMain(args));
+		System.exit(new ReduceGtf().instanceMain(args));
 	}
 
 

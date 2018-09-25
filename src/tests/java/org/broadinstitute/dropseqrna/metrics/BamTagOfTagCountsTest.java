@@ -7,7 +7,7 @@ import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
-public class BAMTagofTagCountsTest {
+public class BamTagOfTagCountsTest {
 
 	private static final File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.bam");
 	private static final File EXPECTED_OUT1 = new File("testdata/org/broadinstitute/transcriptome/barnyard/tag_of_tag_XC_XM.txt");
@@ -17,12 +17,12 @@ public class BAMTagofTagCountsTest {
 	public void testDoWorkXCXM() {
 		File outFile=null;
 		try {
-			outFile = File.createTempFile("BAMTagofTagCounts.", ".out.txt");
+			outFile = File.createTempFile("BamTagOfTagCounts.", ".out.txt");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
-		BAMTagofTagCounts b = new BAMTagofTagCounts();
+		BamTagOfTagCounts b = new BamTagOfTagCounts();
 		b.INPUT=IN_FILE;
 		b.PRIMARY_TAG="XC";
 		b.READ_QUALITY=0;
@@ -43,12 +43,12 @@ public class BAMTagofTagCountsTest {
 	public void testDoWorkXCNM() {
 		File outFile=null;
 		try {
-			outFile = File.createTempFile("BAMTagofTagCounts.", ".out.txt");
+			outFile = File.createTempFile("BamTagOfTagCounts.", ".out.txt");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
-		BAMTagofTagCounts b = new BAMTagofTagCounts();
+		BamTagOfTagCounts b = new BamTagOfTagCounts();
 		b.INPUT=IN_FILE;
 		b.PRIMARY_TAG="XC";
 		b.READ_QUALITY=0;

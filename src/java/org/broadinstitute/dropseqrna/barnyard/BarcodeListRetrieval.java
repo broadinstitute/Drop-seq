@@ -26,8 +26,8 @@ package org.broadinstitute.dropseqrna.barnyard;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.*;
-import org.broadinstitute.dropseqrna.metrics.BAMTagHistogram;
-import org.broadinstitute.dropseqrna.metrics.BAMTagofTagCounts;
+import org.broadinstitute.dropseqrna.metrics.BamTagHistogram;
+import org.broadinstitute.dropseqrna.metrics.BamTagOfTagCounts;
 import org.broadinstitute.dropseqrna.metrics.TagOfTagResults;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
@@ -119,7 +119,7 @@ public class BarcodeListRetrieval {
      */
     public List<String> getListCellBarcodesByReadCount(final CloseableIterator<SAMRecord> input, final String cellBarcodeTag, final int readQuality, final Integer minNumReads, final Integer numReadsCore) {
 
-        BAMTagHistogram bth = new BAMTagHistogram();
+        BamTagHistogram bth = new BamTagHistogram();
         ObjectCounter<String> cellBarcodes = bth.getBamTagCounts (input, cellBarcodeTag, readQuality, false);
 
         List<String> result=null;
@@ -135,7 +135,7 @@ public class BarcodeListRetrieval {
     public List<String> getListCellBarcodesByGeneCount(final File input, final String cellBarcodeTag, final String geneExonTag, final int readQuality, final int minNumGenes) {
 		List<String> result = new ArrayList<String>();
 
-		BAMTagofTagCounts tot = new BAMTagofTagCounts();
+		BamTagOfTagCounts tot = new BamTagOfTagCounts();
 		TagOfTagResults<String,String> results = tot.getResults(input, cellBarcodeTag, geneExonTag, false, readQuality);
 		for (String key: results.getKeys()) {
 			int count = results.getCount(key);
@@ -171,7 +171,7 @@ public class BarcodeListRetrieval {
 
 	/*
 	public List<String> getListCellBarcodesByGeneCount(File input, String cellBarcodeTag, int readQuality, int minNumGenes) {
-		BAMTagofTagCounts bt = new BAMTagofTagCounts();
+		BamTagOfTagCounts bt = new BamTagOfTagCounts();
 		// bt.
 	}
 	*/

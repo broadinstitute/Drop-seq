@@ -33,7 +33,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.metrics.BAMTagHistogram;
+import org.broadinstitute.dropseqrna.metrics.BamTagHistogram;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
@@ -127,7 +127,7 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 
 		// gather up the barcodes that exist in the BAM
         final SamHeaderAndIterator inputs2 = openInputs();
-		ObjectCounter<String> barcodes = new BAMTagHistogram().getBamTagCounts(inputs2.iterator, this.PRIMARY_BARCODE,this.READ_QUALITY, this.FILTER_PCR_DUPLICATES);
+		ObjectCounter<String> barcodes = new BamTagHistogram().getBamTagCounts(inputs2.iterator, this.PRIMARY_BARCODE,this.READ_QUALITY, this.FILTER_PCR_DUPLICATES);
         CloserUtil.close(inputs2.iterator);
 
 		// filter barcodes by #reds in each barcode.

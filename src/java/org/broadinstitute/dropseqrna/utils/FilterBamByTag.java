@@ -47,9 +47,9 @@ import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(summary = "Filters a BAM file based on a TAG and a file containing a list of values.  This is pretty similar to grepping with a file, but is faster and makes a proper BAM.", oneLineSummary = "Filters a BAM file based on a TAG and a file containing a list of values.", programGroup = DropSeq.class)
-public class FilterBAMByTag extends CommandLineProgram {
+public class FilterBamByTag extends CommandLineProgram {
 
-	private final Log log = Log.getInstance(FilterBAMByTag.class);
+	private final Log log = Log.getInstance(FilterBamByTag.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
 	public File INPUT;
@@ -220,6 +220,6 @@ public class FilterBAMByTag extends CommandLineProgram {
 
 	/** Stock main method. */
 	public static void main(final String[] args) {
-		System.exit(new FilterBAMByTag().instanceMain(args));
+		System.exit(new FilterBamByTag().instanceMain(args));
 	}
 }

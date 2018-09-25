@@ -41,12 +41,12 @@ public class SingleCellRnaSeqMetricsCollectorTest {
 
 	/**
 	 * Data for this test is generated from the following procedure (data is from the Barnyard_Runs2014/9-27-14_NextSeq/bams directory):
-	 * /broad/mccarroll/software/dropseq/prod/BAMTagHistogram I=/broad/mccarroll/evan/Barnyard_Runs2015/4-19-15_NextSeq/mm10/bams/P3Bipolars.bam O=P3Bipolars_reads_histogram.txt TAG=XC READ_QUALITY=10
+	 * /broad/mccarroll/software/dropseq/prod/BamTagHistogram I=/broad/mccarroll/evan/Barnyard_Runs2015/4-19-15_NextSeq/mm10/bams/P3Bipolars.bam O=P3Bipolars_reads_histogram.txt TAG=XC READ_QUALITY=10
 	 * head -n 10 P3Bipolars_reads_histogram.txt |cut -f 2 |tail -n 2 > 2mouse_cells.txt
-	 * /broad/mccarroll/software/dropseq/jn_branch/FilterBAMByTag I=/broad/mccarroll/evan/Barnyard_Runs2015/4-19-15_NextSeq/mm10/bams/P3Bipolars.bam O=2MouseCells.bam TAG=XC TAG_VALUES_FILE=2mouse_cells.txt
+	 * /broad/mccarroll/software/dropseq/jn_branch/FilterBamByTag I=/broad/mccarroll/evan/Barnyard_Runs2015/4-19-15_NextSeq/mm10/bams/P3Bipolars.bam O=2MouseCells.bam TAG=XC TAG_VALUES_FILE=2mouse_cells.txt
 	 * java -jar /seq/software/picard/current/bin/picard.jar DownsampleSam I=2MouseCells.bam O=2MouseCells.bam_downsampled.bam P=0.05
-	 * /broad/mccarroll/software/dropseq/jn_branch/FilterBAMByTag I=2MouseCells.bam_downsampled.bam O=2MouseCells.bam_downsampled_CGTCACTTGCAC.bam TAG=XC TAG_VALUE=CGTCACTTGCAC
-	 * /broad/mccarroll/software/dropseq/jn_branch/FilterBAMByTag I=2MouseCells.bam_downsampled.bam O=2MouseCells.bam_downsampled_TTCGCCCGGCTT.bam TAG=XC TAG_VALUE=TTCGCCCGGCTT
+	 * /broad/mccarroll/software/dropseq/jn_branch/FilterBamByTag I=2MouseCells.bam_downsampled.bam O=2MouseCells.bam_downsampled_CGTCACTTGCAC.bam TAG=XC TAG_VALUE=CGTCACTTGCAC
+	 * /broad/mccarroll/software/dropseq/jn_branch/FilterBamByTag I=2MouseCells.bam_downsampled.bam O=2MouseCells.bam_downsampled_TTCGCCCGGCTT.bam TAG=XC TAG_VALUE=TTCGCCCGGCTT
 	 * java -jar /seq/software/picard/current/bin/picard.jar CollectRnaSeqMetrics I=2MouseCells.bam_downsampled_TTCGCCCGGCTT.bam O=TTCGCCCGGCTT.rna_seq_metrics.txt REF_FLAT=/broad/mccarroll/software/metadata/individual_reference/mm10/mm10.refFlat RIBOSOMAL_INTERVALS=/broad/mccarroll/software/metadata/individual_reference/mm10/mm10.rRNA.intervals STRAND_SPECIFICITY=NONE
 	 * java -jar /seq/software/picard/current/bin/picard.jar CollectRnaSeqMetrics I=2MouseCells.bam_downsampled_CGTCACTTGCAC.bam O=CGTCACTTGCAC.rna_seq_metrics.txt REF_FLAT=/broad/mccarroll/software/metadata/individual_reference/mm10/mm10.refFlat RIBOSOMAL_INTERVALS=/broad/mccarroll/software/metadata/individual_reference/mm10/mm10.rRNA.intervals STRAND_SPECIFICITY=NONE
 	 * /broad/mccarroll/software/dropseq/prod/SingleCellRnaSeqMetricsCollector I=2MouseCells.bam_downsampled.bam O=2MouseCells.bam_downsampled.rna_seq_metrics.txt CELL_BARCODE_TAG=XC ANNOTATIONS_FILE=/broad/mccarroll/software/metadata/individual_reference/mm10/mm10.refFlat RIBOSOMAL_INTERVALS=/broad/mccarroll/software/metadata/individual_reference/mm10/mm10.rRNA.intervals NUM_CORE_BARCODES=2 READ_MQ=0
