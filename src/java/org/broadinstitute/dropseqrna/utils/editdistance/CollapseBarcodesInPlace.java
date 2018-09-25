@@ -85,8 +85,8 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 	@Argument(doc="The output barcode tag for the newly collapsed barcodes")
 	public String OUT_BARCODE;
 
-	@Argument(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
-	public Integer READ_QUALITY=10;
+	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis.  Set to 0 to not filter reads by map quality.")
+	public int MINIMUM_MAPPING_QUALITY = 10;
 
 	@Argument(doc="Number of reads a barcode would need to have in order to have other barcodes get merged into it.  All barcodes are candidates to be merged into another barcode." +
 			"For cell barcodes you probably want to set this to a relatively high number like 100, since we expect cells to have thousands or more reads, and this signficantly speeds up analysis.  " +
@@ -127,7 +127,7 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 
 		// gather up the barcodes that exist in the BAM
         final SamHeaderAndIterator inputs2 = openInputs();
-		ObjectCounter<String> barcodes = new BamTagHistogram().getBamTagCounts(inputs2.iterator, this.PRIMARY_BARCODE,this.READ_QUALITY, this.FILTER_PCR_DUPLICATES);
+		ObjectCounter<String> barcodes = new BamTagHistogram().getBamTagCounts(inputs2.iterator, this.PRIMARY_BARCODE,this.MINIMUM_MAPPING_QUALITY, this.FILTER_PCR_DUPLICATES);
         CloserUtil.close(inputs2.iterator);
 
 		// filter barcodes by #reds in each barcode.

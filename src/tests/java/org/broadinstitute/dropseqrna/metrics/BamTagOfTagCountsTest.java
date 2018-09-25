@@ -25,7 +25,7 @@ public class BamTagOfTagCountsTest {
 		BamTagOfTagCounts b = new BamTagOfTagCounts();
 		b.INPUT=IN_FILE;
 		b.PRIMARY_TAG="XC";
-		b.READ_QUALITY=0;
+		b.MINIMUM_MAPPING_QUALITY=0;
 		b.SECONDARY_TAG="XM";
 		b.OUTPUT=outFile;
 		int r = b.doWork();
@@ -51,7 +51,7 @@ public class BamTagOfTagCountsTest {
 		BamTagOfTagCounts b = new BamTagOfTagCounts();
 		b.INPUT=IN_FILE;
 		b.PRIMARY_TAG="XC";
-		b.READ_QUALITY=0;
+		b.MINIMUM_MAPPING_QUALITY=0;
 		b.SECONDARY_TAG="NM";
 		b.OUTPUT=outFile;
 		int r = b.doWork();
