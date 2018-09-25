@@ -36,16 +36,7 @@
     <property name="test.output" location="dist/test"/>
     <property name="javadoc" location="javadoc"/>
     <property name="picard.executable.dir" location="../../3rdParty/picard"/>
-    <property name="jacoco.dir" location="jacoco_reports"/>
-    <property name="jacoco.binary" location="${jacoco.dir}/jacoco.exec"/>
-
-    <!-- load macro definitions etc from ant/defs.xml -->
-    &defs;
-
-    <taskdef uri="antlib:org.jacoco.ant" resource="org/jacoco/ant/antlib.xml">
-        <classpath path="lib/test/jacocoant.jar"/>
-    </taskdef>
-
+    <property name="public.dir" location="."/>
 
     <!-- INIT -->
     <path id="classpath">
@@ -60,6 +51,10 @@
             <include name="*.jar"/>
         </fileset>
     </path>
+
+    <!-- load macro definitions etc from ant/defs.xml -->
+    &defs;
+
 
     <!-- CLEAN -->
     <target name="clean">
@@ -91,51 +86,6 @@
     <target name="single-test" depends="compile-tests" description="Run a single unit test">
         <single-test classes="${classes.test}" classpathrefid="test.classpath" destdir="${test.output}"/>
     </target>
-
-    <taskdef resource="testngtasks" classpathref="test.classpath"/>
-
-    <!-- Unfortunately can't invoke a macro from inside <jacoco:coverage>, so testng invocation is duplicated -->
-    <target name="coverage" depends="compile-tests">
-        <jacoco:coverage destfile="${jacoco.binary}">
-            <testng suitename="Drop-seq-tests" classpathref="test.classpath" outputdir="${test.output}"
-                    failureproperty="tests.failed" excludedgroups="slow" workingDir="${basedir}"
-                    verbose="${testng.verbosity}">
-                <classpath>
-                    <pathelement path="${classes.test}"/>
-                </classpath>
-                <classfileset dir="${classes.test}">
-                    <include name="**/Test*.class"/>
-                    <include name="**/*Test.class"/>
-                </classfileset>
-                <jvmarg value="-Xmx1G"/>
-            </testng>
-        </jacoco:coverage>
-    </target>
-
-    <target name="coverage-report">
-        <jacoco:report>
-
-            <executiondata>
-                <file file="${jacoco.binary}"/>
-            </executiondata>
-
-            <structure name="Drop-seq">
-                <classfiles>
-                    <fileset dir="${classes}"/>
-                </classfiles>
-                <sourcefiles encoding="UTF-8">
-                    <fileset dir="src"/>
-                </sourcefiles>
-            </structure>
-
-            <xml destfile="${jacoco.dir}/jacoco.xml"/>
-            <html destdir="${jacoco.dir}"/>
-
-        </jacoco:report>
-    </target>
-
-    <target name="coverage-and-report" depends="coverage, coverage-report"
-            description="Run unit test suite with coverage and generate report"/>
 
     <target name="javadoc" description="Generates javadoc.">
         <javadoc
