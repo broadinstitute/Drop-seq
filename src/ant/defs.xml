@@ -59,13 +59,13 @@
     </sequential>
 </macrodef>
 
-        <!-- TEST -->
+<!-- TEST -->
+<taskdef resource="testngtasks" classpathref="test.classpath"/>
 <macrodef name="test">
     <attribute name="destdir"/>
     <attribute name="classpathrefid"/>
     <attribute name="classes"/>
     <sequential>
-        <taskdef resource="testngtasks" classpathref="test.classpath"/>
         <testng suitename="Drop-seq-tests" classpathref="@{classpathrefid}" outputdir="@{destdir}"
                 failureproperty="tests.failed" excludedgroups="slow" workingDir="${basedir}"
                 verbose="${testng.verbosity}">
@@ -87,7 +87,6 @@
     <attribute name="classpathrefid"/>
     <attribute name="classes"/>
     <sequential>
-        <taskdef resource="testngtasks" classpathref="test.classpath"/>
         <fail unless="test.name" message="Please provide input test: -Dtest.name=..." />
         <testng suitename="Drop-seq-tests" classpathref="@{classpathrefid}" outputdir="@{destdir}"
                 failureproperty="tests.failed" excludedgroups="slow" workingDir="${basedir}"
@@ -119,3 +118,59 @@
         <chmod perm="ug+rx" file="${dist}/@{title}"/>
     </sequential>
 </macrodef>
+
+<!-- jacoco stuff
+ public.dir must be defined before this file is included.
+ Add this:
+ xmlns:jacoco="antlib:org.jacoco.ant"
+ to the <project> element in the file where this file is included.
+ -->
+<property name="jacoco.dir" location="jacoco_reports"/>
+<property name="jacoco.binary" location="${jacoco.dir}/jacoco.exec"/>
+
+<taskdef uri="antlib:org.jacoco.ant" resource="org/jacoco/ant/antlib.xml">
+    <classpath path="${public.dir}/lib/test/jacocoant.jar"/>
+</taskdef>
+
+<!-- Unfortunately can't invoke a macro from inside <jacoco:coverage>, so testng invocation is duplicated -->
+<target name="coverage" depends="compile-tests">
+<jacoco:coverage destfile="${jacoco.binary}">
+    <testng suitename="Drop-seq-tests" classpathref="test.classpath" outputdir="${test.output}"
+            failureproperty="tests.failed" excludedgroups="slow" workingDir="${basedir}"
+            verbose="${testng.verbosity}">
+        <classpath>
+            <pathelement path="${classes.test}"/>
+        </classpath>
+        <classfileset dir="${classes.test}">
+            <include name="**/Test*.class"/>
+            <include name="**/*Test.class"/>
+        </classfileset>
+        <jvmarg value="-Xmx1G"/>
+    </testng>
+</jacoco:coverage>
+</target>
+
+<target name="coverage-report">
+<jacoco:report>
+
+    <executiondata>
+        <file file="${jacoco.binary}"/>
+    </executiondata>
+
+    <structure name="Drop-seq">
+        <classfiles>
+            <fileset dir="${classes}"/>
+        </classfiles>
+        <sourcefiles encoding="UTF-8">
+            <fileset dir="src"/>
+        </sourcefiles>
+    </structure>
+
+    <xml destfile="${jacoco.dir}/jacoco.xml"/>
+    <html destdir="${jacoco.dir}"/>
+
+</jacoco:report>
+</target>
+
+<target name="coverage-and-report" depends="coverage, coverage-report"
+        description="Run unit test suite with coverage and generate report"/>
