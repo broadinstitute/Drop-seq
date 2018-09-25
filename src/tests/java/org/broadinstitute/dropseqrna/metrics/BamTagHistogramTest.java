@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 import junit.framework.Assert;
 import picard.util.TabbedInputParser;
 
-public class BAMTagHistogramTest {
+public class BamTagHistogramTest {
 
 	private static final File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.bam");
 	private static final File EXPECTED_RESULT = new File ("testdata/org/broadinstitute/dropseq/metrics/5cell3gene.counts_per_XC.txt");
@@ -16,9 +16,9 @@ public class BAMTagHistogramTest {
 
 	@Test
 	public void doWorkStringTag() throws IOException {
-		File outFile = File.createTempFile("BAMTagHistogramTest.", ".counts_XC.txt");
+		File outFile = File.createTempFile("BamTagHistogramTest.", ".counts_XC.txt");
 		outFile.deleteOnExit();
-		BAMTagHistogram bth = new BAMTagHistogram();
+		BamTagHistogram bth = new BamTagHistogram();
 		bth.INPUT=IN_FILE;
 		bth.OUTPUT=outFile;
 		bth.READ_QUALITY=10;
@@ -33,9 +33,9 @@ public class BAMTagHistogramTest {
 	@Test
 	public void doWorkIntegerTag() throws IOException {
 		File outFile=null;
-		outFile = File.createTempFile("BAMTagHistogramTest.", ".counts_NM.txt");
+		outFile = File.createTempFile("BamTagHistogramTest.", ".counts_NM.txt");
 		outFile.deleteOnExit();
-		BAMTagHistogram bth = new BAMTagHistogram();
+		BamTagHistogram bth = new BamTagHistogram();
 		bth.INPUT=IN_FILE;
 		bth.OUTPUT=outFile;
 		bth.READ_QUALITY=10;

@@ -42,11 +42,11 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import picard.sam.ValidateSamFile;
 
-public class FilterBAMTest {
+public class FilterBamTest {
 
 	@Test(enabled=true, groups = { "dropseq","transcriptome" })
 	public void testCigarFilter() {
-		FilterBAM b = new FilterBAM();
+		FilterBam b = new FilterBam();
 		b.SUM_MATCHING_BASES=40;
 
 
@@ -87,7 +87,7 @@ public class FilterBAMTest {
 
 	@Test(enabled=true, groups = { "dropseq","transcriptome" })
 	public void testNonPrimary() {
-		FilterBAM b = new FilterBAM();
+		FilterBam b = new FilterBam();
 		b.RETAIN_ONLY_PRIMARY_READS=true;
 
 		SAMRecord r = new SAMRecord(null);
@@ -108,7 +108,7 @@ public class FilterBAMTest {
 
 	@Test(enabled=true, groups = { "dropseq", "transcriptome" })
 	public void testMapQuality () {
-		FilterBAM b = new FilterBAM();
+		FilterBam b = new FilterBam();
 		b.MINIMUM_MAPPING_QUALITY=10;
 		SAMRecord r = new SAMRecord(null);
 		r.setMappingQuality(12);
@@ -123,7 +123,7 @@ public class FilterBAMTest {
 
 	@Test(enabled=true, groups = { "dropseq", "transcriptome" })
 	public void testSoftMatch () {
-		FilterBAM b = new FilterBAM();
+		FilterBam b = new FilterBam();
 		List<String> retained = new ArrayList<>();
 		retained.add("HUMAN");
 		b.REF_SOFT_MATCHED_RETAINED=retained;
@@ -150,7 +150,7 @@ public class FilterBAMTest {
 
 	@Test(enabled=true, groups = { "dropseq", "transcriptome" })
 	public void testExactMatch () {
-		FilterBAM b = new FilterBAM();
+		FilterBam b = new FilterBam();
 		List<String> retained = new ArrayList<>();
 		retained.add("HUMAN_CHR1");
 		b.REF_HARD_MATCHED_RETAINED=retained;
@@ -170,7 +170,7 @@ public class FilterBAMTest {
 
 	@Test(enabled=true, groups = { "dropseq", "transcriptome" })
 	public void testRejectOnTags () {
-		FilterBAM b = new FilterBAM();
+		FilterBam b = new FilterBam();
 		b.TAG_REJECT_COMBINE_FLAG="UNION";
 		List<String> tags = new ArrayList<>();
 		tags.add("XE");
@@ -194,7 +194,7 @@ public class FilterBAMTest {
 
 	@Test(enabled=true, groups = { "dropseq", "transcriptome" })
 	public void testAcceptOnTags () {
-		FilterBAM b = new FilterBAM();
+		FilterBam b = new FilterBam();
 		List<String> tags = new ArrayList<>();
 		tags.add("XE");
 		tags.add("XZ");
@@ -242,8 +242,8 @@ public class FilterBAMTest {
 	}
 
 	private File createInputSam() throws IOException {
-		final File inputSamFile = File.createTempFile("FilterBAMTest.", ".sam");
-		final File referenceFasta = File.createTempFile("FilterBAMTest.", ".fasta");
+		final File inputSamFile = File.createTempFile("FilterBamTest.", ".sam");
+		final File referenceFasta = File.createTempFile("FilterBamTest.", ".fasta");
 		inputSamFile.deleteOnExit();
 		referenceFasta.deleteOnExit();
 
@@ -294,7 +294,7 @@ public class FilterBAMTest {
 	public void testEndToEnd(final String organism1, final String organism2, final boolean stripPrefix,
                              final boolean dropSequences, final boolean soft, final boolean retain) throws IOException {
 		final File inputSam = createInputSam();
-		final File outputSam = File.createTempFile("FilterBAMTest." +
+		final File outputSam = File.createTempFile("FilterBamTest." +
                 String.format("stripPrefix_%s;dropSequences_%s;soft_%s;retain_%s", stripPrefix, dropSequences, soft, retain) + ".",
                 ".sam");
 		outputSam.deleteOnExit();
@@ -317,7 +317,7 @@ public class FilterBAMTest {
 		else
 			ref_filter = "REF_HARD_MATCHED_REJECTED";
         args.add(ref_filter + "=" + organism1);
-        final int ret = new FilterBAM().instanceMain(args.toArray(new String[args.size()]));
+        final int ret = new FilterBam().instanceMain(args.toArray(new String[args.size()]));
         Assert.assertEquals(0, ret);
         Assert.assertTrue(validateSamFile(outputSam));
 	}

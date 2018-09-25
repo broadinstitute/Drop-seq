@@ -37,7 +37,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordSetBuilder;
 import junit.framework.Assert;
 
-public class FilterBAMByTagTest {
+public class FilterBamByTagTest {
 
 	private static File PAIRED_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged.bam");
 	private static File UNPAIRED_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged.bam");
@@ -49,7 +49,7 @@ public class FilterBAMByTagTest {
 
 	@Test (enabled=true)
 	public void testDoWorkPaired () {
-		FilterBAMByTag f = new FilterBAMByTag();
+		FilterBamByTag f = new FilterBamByTag();
 		f.INPUT=PAIRED_INPUT_FILE;
 		f.OUTPUT=getTempReportFile("paired_input", ".bam");
 		f.TAG="XC";
@@ -72,7 +72,7 @@ public class FilterBAMByTagTest {
 
 	@Test
 	public void testDoWorkUnPaired () {
-		FilterBAMByTag f = new FilterBAMByTag();
+		FilterBamByTag f = new FilterBamByTag();
 		f.INPUT=UNPAIRED_INPUT_FILE;
 		f.OUTPUT=getTempReportFile("unpaired_input", ".bam");
 		f.TAG="XC";
@@ -124,7 +124,7 @@ public class FilterBAMByTagTest {
 
 		SAMRecord readNoAttribute = new SAMRecord(null);
 
-		FilterBAMByTag t = new FilterBAMByTag();
+		FilterBamByTag t = new FilterBamByTag();
 		// read has attribute, accept any value, want to retain read.
 		boolean flag1 = t.filterRead(readHasAttribute, tag, null, true);
 		Assert.assertFalse(flag1);
@@ -180,7 +180,7 @@ public class FilterBAMByTagTest {
 
 	@Test(enabled = true)
 	public void filterByReadNumberTest() {
-		FilterBAMByTag t = new FilterBAMByTag();
+		FilterBamByTag t = new FilterBamByTag();
 
 		// record paired and read is 1st
 		List<SAMRecord> recs = getPairedRead ();
@@ -224,7 +224,7 @@ public class FilterBAMByTagTest {
 
 	@Test
 	public void testArgErrors () {
-		FilterBAMByTag f = new FilterBAMByTag();
+		FilterBamByTag f = new FilterBamByTag();
 		f.INPUT=PAIRED_INPUT_FILE;
 		f.OUTPUT=getTempReportFile("paired_input", ".bam");
 		f.PAIRED_MODE=true;

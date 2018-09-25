@@ -50,9 +50,9 @@ import java.util.List;
 @CommandLineProgramProperties(summary = "Create a histogram of values for the given tag",
         oneLineSummary = "Create a histogram of values for the given tag",
         programGroup = DropSeq.class)
-public class BAMTagHistogram extends CommandLineProgram {
+public class BamTagHistogram extends CommandLineProgram {
 
-	private static final Log log = Log.getInstance(BAMTagHistogram.class);
+	private static final Log log = Log.getInstance(BamTagHistogram.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. (???)")
 	public File INPUT;
@@ -152,7 +152,7 @@ public class BAMTagHistogram extends CommandLineProgram {
 
 	/** Stock main method. */
 	public static void main(final String[] args) {
-		System.exit(new BAMTagHistogram().instanceMain(args));
+		System.exit(new BamTagHistogram().instanceMain(args));
 	}
 
 	/*

@@ -48,8 +48,8 @@ import java.util.regex.Pattern;
 @CommandLineProgramProperties(summary = "Filters a BAM file by various qualities to produce a new subset of the BAM containing the reads of interest.",
         oneLineSummary = "Filters a BAM file by various qualities to produce a new subset of the BAM containing the reads of interest.",
         programGroup = DropSeq.class)
-public class FilterBAM extends CommandLineProgram{
-	private final Log log = Log.getInstance(FilterBAM.class);
+public class FilterBam extends CommandLineProgram{
+	private final Log log = Log.getInstance(FilterBam.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
 	public File INPUT;
@@ -116,7 +116,7 @@ public class FilterBAM extends CommandLineProgram{
 		REF_SOFT_MATCHED_RETAINED, REF_SOFT_MATCHED_REJECTED, REF_HARD_MATCHED_RETAINED, REF_HARD_MATCHED_REJECTED
 	}
 	
-	public FilterBAM() {
+	public FilterBam() {
 	}
 	
 	@Override
@@ -420,6 +420,6 @@ public class FilterBAM extends CommandLineProgram{
 	
 	/** Stock main method. */
 	public static void main(final String[] args) {
-		System.exit(new FilterBAM().instanceMain(args));
+		System.exit(new FilterBam().instanceMain(args));
 	}
 }

@@ -53,9 +53,9 @@ import picard.cmdline.StandardOptionDefinitions;
         programGroup = DropSeq.class
 )
 
-public class BAMTagofTagCounts extends CommandLineProgram {
+public class BamTagOfTagCounts extends CommandLineProgram {
 
-private static final Log log = Log.getInstance(BAMTagofTagCounts.class);
+private static final Log log = Log.getInstance(BamTagOfTagCounts.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. (???)")
 	public File INPUT;
@@ -183,7 +183,7 @@ private static final Log log = Log.getInstance(BAMTagofTagCounts.class);
 
 	/** Stock main method. */
 	public static void main(final String[] args) {
-		System.exit(new BAMTagofTagCounts().instanceMain(args));
+		System.exit(new BamTagOfTagCounts().instanceMain(args));
 	}
 
 
