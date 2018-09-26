@@ -21,7 +21,7 @@ public class BamTagHistogramTest {
 		BamTagHistogram bth = new BamTagHistogram();
 		bth.INPUT=IN_FILE;
 		bth.OUTPUT=outFile;
-		bth.READ_QUALITY=10;
+		bth.MINIMUM_MAPPING_QUALITY=10;
 		bth.TAG="XC";
 
 		int r = bth.doWork();
@@ -38,7 +38,7 @@ public class BamTagHistogramTest {
 		BamTagHistogram bth = new BamTagHistogram();
 		bth.INPUT=IN_FILE;
 		bth.OUTPUT=outFile;
-		bth.READ_QUALITY=10;
+		bth.MINIMUM_MAPPING_QUALITY=10;
 		bth.TAG="NM";
 
 		int r = bth.doWork();

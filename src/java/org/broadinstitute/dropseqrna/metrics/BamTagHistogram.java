@@ -23,24 +23,29 @@
  */
 package org.broadinstitute.dropseqrna.metrics;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.*;
+import java.io.File;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.IterableAdapter;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.File;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 
 /**
  * For a bam file, generate the histogram of values for a particular BAM tag.
@@ -66,15 +71,15 @@ public class BamTagHistogram extends CommandLineProgram {
 	@Argument(doc="Filter PCR Duplicates.")
 	public boolean FILTER_PCR_DUPLICATES=false;
 
-	@Argument(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
-	public Integer READ_QUALITY=10;
+	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis.  Set to 0 to not filter reads by map quality.")
+	public Integer MINIMUM_MAPPING_QUALITY=10;
 
 	@Override
 	protected int doWork() {
 		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
 
-		ObjectCounter<String> counter=getBamTagCounts(INPUT, this.TAG, this.READ_QUALITY, this.FILTER_PCR_DUPLICATES);
+		ObjectCounter<String> counter=getBamTagCounts(INPUT, this.TAG, this.MINIMUM_MAPPING_QUALITY, this.FILTER_PCR_DUPLICATES);
 		List<String> tagsByCount=counter.getKeysOrderedByCount(true);
 
 		PrintStream writer = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
@@ -96,7 +101,7 @@ public class BamTagHistogram extends CommandLineProgram {
 		header.add("INPUT="+this.INPUT.getAbsolutePath());
 		header.add("TAG="+this.TAG);
 		header.add("FILTER_PCR_DUPLICATES="+this.FILTER_PCR_DUPLICATES);
-		header.add("READ_QUALITY="+this.READ_QUALITY);
+		header.add("READ_QUALITY="+this.MINIMUM_MAPPING_QUALITY);
 		String h = StringUtils.join(header, "\t");
 		writer.print("#");
 		writer.println(h);

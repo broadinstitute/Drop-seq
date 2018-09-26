@@ -23,6 +23,17 @@
  */
 package org.broadinstitute.dropseqrna.metrics;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.TranscriptomeException;
+import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
@@ -31,18 +42,8 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.TranscriptomeException;
-import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 @CommandLineProgramProperties(
         summary = "Calculate the number of reads that are in the BAM, that are mapped, mapped + HQ, mapped + HQ + not PCR duplicated",
@@ -57,18 +58,18 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The file to write stats to.")
 	public File OUTPUT;
-	
-	@Argument(doc="The minimum map quality for a read to be considered high quality")
-	public Integer MAP_QUALITY=10;
-	
+
+	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis.  Set to 0 to not filter reads by map quality.")
+	public int MINIMUM_MAPPING_QUALITY = 10;
+
 	@Argument(doc="Optionally aggregate reads by a tag and output per-tag metrics.  The map quality scores histogram will still be computed globally.", optional=true)
 	public String TAG=null;
 
     @Argument(doc="Include non-PF reads when gathering metrics")
     public boolean INCLUDE_NON_PF_READS=false;
-	
+
 	private String GLOBAL="all";
-	
+
 	/** Stock main method. */
 	public static void main(final String[] args) {
 		System.exit(new GatherReadQualityMetrics().instanceMain(args));
@@ -77,7 +78,7 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 	/**
 	 * Do the work after command line has been parsed. RuntimeException may be
 	 * thrown by this method, and are reported appropriately.
-	 * 
+	 *
 	 * @return program exit status.
 	 */
 	@Override
@@ -85,11 +86,10 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
 		Map<String, ReadQualityMetrics> metricsMap = gatherMetrics(INPUT);
-		MetricsFile<ReadQualityMetrics, Integer> outFile = new MetricsFile<ReadQualityMetrics, Integer>();
+		MetricsFile<ReadQualityMetrics, Integer> outFile = new MetricsFile<>();
 		outFile.addHistogram(metricsMap.get(this.GLOBAL).getHistogram());
-		for (ReadQualityMetrics metrics: metricsMap.values()) {
+		for (ReadQualityMetrics metrics: metricsMap.values())
 			outFile.addMetric(metrics);
-		}
 		BufferedWriter w = IOUtil.openFileForBufferedWriting(OUTPUT);
 		outFile.write(w);
 		// close properly.
@@ -103,46 +103,45 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 
 	public Map<String, ReadQualityMetrics> gatherMetrics(final File inputSamOrBamFile) {
 		ProgressLogger p = new ProgressLogger(this.log);
-		Map<String, ReadQualityMetrics> result = new HashMap<String, ReadQualityMetrics>();
-		
-		ReadQualityMetrics globalMetrics = new ReadQualityMetrics(this.MAP_QUALITY, this.GLOBAL, true);
-				
+		Map<String, ReadQualityMetrics> result = new HashMap<>();
+
+		ReadQualityMetrics globalMetrics = new ReadQualityMetrics(this.MINIMUM_MAPPING_QUALITY, this.GLOBAL, true);
+
 		SamReader in = SamReaderFactory.makeDefault().open(INPUT);
-		
-		for (final SAMRecord r : in) {
-            if (!r.getReadFailsVendorQualityCheckFlag() || INCLUDE_NON_PF_READS) {
+
+		for (final SAMRecord r : in)
+			if (!r.getReadFailsVendorQualityCheckFlag() || INCLUDE_NON_PF_READS) {
                 p.record(r);
 
                 globalMetrics.addRead(r);
                 // gather per tag metrics if required.
                 result = addMetricsPerTag(r, result);
             }
-		}
-		
+
 		CloserUtil.close(in);
-		result.put(this.GLOBAL, globalMetrics); 
+		result.put(this.GLOBAL, globalMetrics);
 		return (result);
 	}
-	
-	private Map<String, ReadQualityMetrics> addMetricsPerTag (SAMRecord r, Map<String, ReadQualityMetrics> result) {
+
+	private Map<String, ReadQualityMetrics> addMetricsPerTag (final SAMRecord r, final Map<String, ReadQualityMetrics> result) {
 		// short circuit 1 - no aggregate requested, don't bother.
 		if (this.TAG==null) return (result);
-		
+
 		// short circuit 2 - no tag on the read, don't bother.
 		String tag = r.getStringAttribute(this.TAG);
 		if (tag==null) return (result);
-		
+
 		ReadQualityMetrics m = result.get(tag);
 		if (m==null) {
-			m = new ReadQualityMetrics(this.MAP_QUALITY, tag, false);
+			m = new ReadQualityMetrics(this.MINIMUM_MAPPING_QUALITY, tag, false);
 			result.put(tag, m);
 		}
 		m.addRead(r);
 		return (result);
 	}
-	
-	
-	
-	
+
+
+
+
 
 }
