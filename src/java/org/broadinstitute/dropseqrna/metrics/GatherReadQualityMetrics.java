@@ -59,7 +59,7 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The file to write stats to.")
 	public File OUTPUT;
 
-	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis.  Set to 0 to not filter reads by map quality.")
+	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis. Set to 0 to not filter reads by map quality.")
 	public int MINIMUM_MAPPING_QUALITY = 10;
 
 	@Argument(doc="Optionally aggregate reads by a tag and output per-tag metrics.  The map quality scores histogram will still be computed globally.", optional=true)

@@ -71,7 +71,7 @@ public class BamTagHistogram extends CommandLineProgram {
 	@Argument(doc="Filter PCR Duplicates.")
 	public boolean FILTER_PCR_DUPLICATES=false;
 
-	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis.  Set to 0 to not filter reads by map quality.")
+	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis. Set to 0 to not filter reads by map quality.")
 	public Integer MINIMUM_MAPPING_QUALITY=10;
 
 	@Override
