@@ -57,7 +57,7 @@ public class MaskReferenceSequence extends CommandLineProgram {
 	@Argument (doc="The number of bases per line in the output file")
 	public Integer OUTPUT_LINE_LENGTH=50;
 
-	@Argument (doc="A contig name to ignore, or a partial name that will be used as a pattern.  If the contig name contains any of the strings in this list it will be set to N.  This option can be used multiple times", mutex={"INTERVAL_LIST"})
+	@Argument (doc="A contig name to ignore, or a partial name that will be used as a pattern.  If the contig name contains any of the strings in this list it will be set to N.  This option can be used multiple times", mutex={"INTERVALS"})
 	public List<String> CONTIG_PATTERN_TO_IGNORE;
 
 	@Argument (doc="A file containing one or more intervals that will have their bases set to N. This file is in Interval format - tab seperated with fields: chr start end strand name\"", mutex={"CONTIG_PATTERN_TO_IGNORE"})
