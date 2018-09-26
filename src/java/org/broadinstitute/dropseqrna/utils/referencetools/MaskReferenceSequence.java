@@ -60,8 +60,8 @@ public class MaskReferenceSequence extends CommandLineProgram {
 	@Argument (doc="A contig name to ignore, or a partial name that will be used as a pattern.  If the contig name contains any of the strings in this list it will be set to N.  This option can be used multiple times", mutex={"INTERVAL_LIST"})
 	public List<String> CONTIG_PATTERN_TO_IGNORE;
 
-	@Argument (doc="A file containing one or more intervals that will have their bases set to N.", mutex={"CONTIG_PATTERN_TO_IGNORE"})
-	public File INTERVAL_LIST;
+	@Argument (doc="A file containing one or more intervals that will have their bases set to N. This file is in Interval format - tab seperated with fields: chr start end strand name\"", mutex={"CONTIG_PATTERN_TO_IGNORE"})
+	public File INTERVALS;
 
 	@Override
 	protected int doWork() {
@@ -74,7 +74,7 @@ public class MaskReferenceSequence extends CommandLineProgram {
 
 		FastaSequenceFileWriter writer = new FastaSequenceFileWriter(OUTPUT, OUTPUT_LINE_LENGTH);
 		if (this.CONTIG_PATTERN_TO_IGNORE!=null && !this.CONTIG_PATTERN_TO_IGNORE.isEmpty()) processByWholeContig(ref, writer, this.CONTIG_PATTERN_TO_IGNORE);
-		if (this.INTERVAL_LIST!=null) processByPartialContig(ref, writer, this.INTERVAL_LIST);
+		if (this.INTERVALS!=null) processByPartialContig(ref, writer, this.INTERVALS);
 
 		CloserUtil.close(ref);
 		CloserUtil.close(writer);

@@ -60,8 +60,8 @@ public class TagReadWithInterval extends CommandLineProgram {
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted.")
 	public File INPUT;
 
-	@Argument(doc = "The list of Loci to gather start/end read positons for.  This file is in Interval format - tab seperated with fields: chr start end strand name")
-	public File LOCI;
+	@Argument(doc = "The list of intervals to tag onto reads in the BAM.  This file is in Interval format - tab seperated with fields: chr start end strand name")
+	public File INTERVALS;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM, written with new interval tag")
 	public File OUTPUT;
@@ -80,7 +80,7 @@ public class TagReadWithInterval extends CommandLineProgram {
 
 		SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(header, true, OUTPUT);
 
-		IntervalList loci = IntervalList.fromFile(this.LOCI);
+		IntervalList loci = IntervalList.fromFile(this.INTERVALS);
 		OverlapDetector<Interval> od =getOverlapDetector (loci);
 		ProgressLogger processLogger = new ProgressLogger(log);
 

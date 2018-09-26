@@ -29,7 +29,7 @@ public class TagReadWithIntervalTest {
 		}
 
 		t.INPUT=IN_BAM;
-		t.LOCI=IN_INTERVAL;
+		t.INTERVALS=IN_INTERVAL;
 		// t.OUTPUT=outBAM;
 		t.OUTPUT=outBAM;
 		int r = t.doWork();
