@@ -71,7 +71,7 @@ public class FilterBam extends CommandLineProgram{
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
 	public File OUTPUT;
 
-	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis.  Set to 0 to not filter reads by map quality.")
+	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis.  Reads are not filtered on map quality by default.")
 	public Integer MINIMUM_MAPPING_QUALITY = null;
 
 	@Argument(doc = "Should PCR duplicates be filtered?", optional=true)
