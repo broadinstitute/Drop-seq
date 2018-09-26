@@ -18,7 +18,7 @@ public class GatherReadQualityMetricsTest {
 		File outFile = File.createTempFile("GatherReadQualityMetricsTest.", ".read_quality_metrics.txt");
 		GatherReadQualityMetrics g = new GatherReadQualityMetrics();
 		g.INPUT=IN_FILE;
-		g.MAP_QUALITY=10;
+		g.MINIMUM_MAPPING_QUALITY=10;
 		g.OUTPUT=outFile;
 		g.TAG="XC";
 
