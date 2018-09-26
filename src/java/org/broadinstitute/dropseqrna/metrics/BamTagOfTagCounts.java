@@ -75,8 +75,8 @@ private static final Log log = Log.getInstance(BamTagOfTagCounts.class);
 	@Argument(doc="Filter PCR Duplicates.  Defaults to true")
 	public boolean FILTER_PCR_DUPLICATES=true;
 
-	@Argument(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
-	public Integer READ_QUALITY=10;
+	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis.  Set to 0 to not filter reads by map quality.")
+	public int MINIMUM_MAPPING_QUALITY = 10;
 
 	@Argument(doc="If the secondary tag can occur multiple times, break it up with this delimiter.", optional=true)
 	public String SECONDARY_DELIMITER;
@@ -92,7 +92,7 @@ private static final Log log = Log.getInstance(BamTagOfTagCounts.class);
 
 		writeHeader(out);
 
-		TagOfTagResults<String,String> results= getResults(this.INPUT, this.PRIMARY_TAG, this.SECONDARY_TAG, this.FILTER_PCR_DUPLICATES, this.READ_QUALITY);
+		TagOfTagResults<String,String> results= getResults(this.INPUT, this.PRIMARY_TAG, this.SECONDARY_TAG, this.FILTER_PCR_DUPLICATES, this.MINIMUM_MAPPING_QUALITY);
 
 		for (String k: results.getKeys()) {
 			Set<String> values = results.getValues(k);

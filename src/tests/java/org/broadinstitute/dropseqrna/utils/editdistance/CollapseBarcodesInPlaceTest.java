@@ -96,7 +96,7 @@ public class CollapseBarcodesInPlaceTest {
 		p.OUT_BARCODE="ZC";
 		p.MIN_NUM_READS_CORE=100;
 		// test data from unmapped BAM.
-		p.READ_QUALITY=10;
+		p.MINIMUM_MAPPING_QUALITY=10;
 		p.MIN_NUM_READS_NONCORE=1;
 		// p.OUTPUT=new File ("testdata/org/broadinstitute/dropseq/utils/N701_small.expected_subsitutions.bam");
 		// p.OUTPUT=new File ("testdata/org/broadinstitute/dropseq/utils/N701_small.expected_indels.bam");
@@ -146,7 +146,7 @@ public class CollapseBarcodesInPlaceTest {
 		p.OUT_BARCODE="ZC";
 		p.MIN_NUM_READS_CORE=100;
 		// test data from unmapped BAM.
-		p.READ_QUALITY=10;
+		p.MINIMUM_MAPPING_QUALITY=10;
 		p.MIN_NUM_READS_NONCORE=1;
 		p.OUTPUT=out;
 		p.doWork();

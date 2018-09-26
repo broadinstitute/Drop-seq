@@ -109,7 +109,7 @@ public class MergeDgeSparseTest {
         } else {
             merger.FILTERED_GENE_RE = Collections.emptyList();
         }
-        merger.SELECTED_CELL_BARCODES = selectedCellsFiles;
+        merger.CELL_BC_FILE = selectedCellsFiles;
 
         Assert.assertEquals(merger.doWork(), 0);
 

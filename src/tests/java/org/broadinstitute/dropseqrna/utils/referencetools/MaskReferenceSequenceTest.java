@@ -27,7 +27,7 @@ public class MaskReferenceSequenceTest {
 		MaskReferenceSequence m = new MaskReferenceSequence();
 		String [] args = new String [4];
 		args[0]="OUTPUT="+outFile.getAbsolutePath();
-		args[1]="INTERVAL_LIST="+INTERVAL_FILE.getAbsolutePath();
+		args[1]="INTERVALS="+INTERVAL_FILE.getAbsolutePath();
 		args[2]="REFERENCE_SEQUENCE="+IN_REF.getAbsolutePath();
 		args[3]="OUTPUT_LINE_LENGTH=50";
 
