@@ -1,0 +1,4 @@
+# Just a comment
+ERCC_00042	ERCC	start_codon	1	3	0	+	.	gene_id bogus-gene; transcript_id bogus-transcript;gene_name bogus-gene; gene_biotype "test-biotype"; transcript_name bogus-transcript;
+ERCC_00043	ERCC	start_codon	1	3	0	+	.	gene_id bogus-gene; transcript_id bogus-transcript;gene_name bogus-gene; gene_biotype "test-biotype2"; transcript_name bogus-transcript;
+ERCC_00042	ERCC	start_codon	1	3	0	+	.	gene_id bogus-gene; transcript_id bogus-transcript;gene_name bogus-gene; transcript_name bogus-transcript;
