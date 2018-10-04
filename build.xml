@@ -153,6 +153,7 @@
         <package-command visibility="public" title="CompareDropSeqAlignments"/>
         <package-command visibility="public" title="MaskReferenceSequence"/>
         <package-command visibility="public" title="MergeDgeSparse"/>
+        <package-command visibility="public" title="FilterGtf"/>
     </target>
 
 
@@ -168,6 +169,7 @@
             <zipfileset dir="${picard.executable.dir}" includes="*.*" prefix="${zip.label}/3rdParty/picard"/>
             <zipfileset dir="${dist}/scripts" prefix="${zip.label}" filemode="755" includes="*"/>
             <zipfileset dir="src/scripts" includes="Drop-seq_alignment.sh"  filemode="755" prefix="${zip.label}"/>
+            <zipfileset dir="src/scripts" includes="create_Drop-seq_reference_metadata.sh"  filemode="755" prefix="${zip.label}"/>
             <zipfileset file="${dist}/loadDotKits.sh" prefix="${zip.label}"/>
             <!--
             Don't bother including source because it will be available on github.
