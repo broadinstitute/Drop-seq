@@ -23,20 +23,27 @@
  */
 package org.broadinstitute.dropseqrna.cluster;
 
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeader;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderCodec;
-import org.broadinstitute.dropseqrna.matrixmarket.MatrixMarketConstants;
-import org.broadinstitute.dropseqrna.matrixmarket.MatrixMarketReader;
-import picard.util.TabbedInputParser;
-
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.lang.reflect.Array;
-import java.util.*;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Set;
+
+import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeader;
+import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderCodec;
+import org.broadinstitute.dropseqrna.matrixmarket.MatrixMarketConstants;
+import org.broadinstitute.dropseqrna.matrixmarket.MatrixMarketReader;
+
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import picard.util.TabbedInputParser;
 
 /**
  * Reads a DGE text file (in tabular or Drop-seq Matrix Market format) and stores it in sparse format.
@@ -52,7 +59,7 @@ public class SparseDge {
         int cellIndex;
         final int value;
 
-        Triplet(int geneIndex, int cellIndex, int value) {
+        Triplet(final int geneIndex, final int cellIndex, final int value) {
             this.geneIndex = geneIndex;
             this.cellIndex = cellIndex;
             this.value = value;
@@ -77,11 +84,10 @@ public class SparseDge {
             this.input = input;
             final BufferedInputStream inputStream = new BufferedInputStream(IOUtil.openFileForReading(input));
             final RawLoadedDge rawLoadedDge;
-            if (MatrixMarketReader.isMatrixMarketInteger(input)) {
-                rawLoadedDge = loadDropSeqSparseDge(inputStream, input, geneEnumerator);
-            } else {
-                rawLoadedDge = loadTabularDge(inputStream, input, geneEnumerator);
-            }
+            if (MatrixMarketReader.isMatrixMarketInteger(input))
+				rawLoadedDge = loadDropSeqSparseDge(inputStream, input, geneEnumerator);
+			else
+				rawLoadedDge = loadTabularDge(inputStream, input, geneEnumerator);
             CloserUtil.close(inputStream);
             header = rawLoadedDge.header;
             triplets = rawLoadedDge.rawTriplets;
@@ -96,9 +102,8 @@ public class SparseDge {
         // Sort cells by rawNumTranscripts (descending)
         // Need Integer in order to use Arrays.sort() with custom comparator
         final Integer[] indices = new Integer[rawLoadedDge.rawCellBarcode.length];
-        for (int i = 0; i < indices.length; ++i) {
-            indices[i] = i;
-        }
+        for (int i = 0; i < indices.length; ++i)
+			indices[i] = i;
         Arrays.sort(indices, (o1, o2) -> Integer.compare(rawLoadedDge.rawNumTranscripts[o2], rawLoadedDge.rawNumTranscripts[o1]));
 
         // Sort cell-oriented outputs according to new sort order
@@ -114,13 +119,11 @@ public class SparseDge {
 
         // Renumber triplet according to new sort order
         final int[] oldToNewCellIndexMapping = new int[indices.length];
-        for (int i = 0; i < indices.length; ++i) {
-            oldToNewCellIndexMapping[indices[i]] = i;
-        }
+        for (int i = 0; i < indices.length; ++i)
+			oldToNewCellIndexMapping[indices[i]] = i;
 
-        for (final Triplet t: triplets) {
-            t.cellIndex = oldToNewCellIndexMapping[t.cellIndex];
-        }
+        for (final Triplet t: triplets)
+			t.cellIndex = oldToNewCellIndexMapping[t.cellIndex];
     }
 
     public int getNumCells() {
@@ -144,9 +147,8 @@ public class SparseDge {
     }
 
     public void prefixCellBarcodes(final String prefix) {
-        for (int i = 0; i < cellBarcode.length; ++i) {
-            cellBarcode[i] = prefix + cellBarcode[i];
-        }
+        for (int i = 0; i < cellBarcode.length; ++i)
+			cellBarcode[i] = prefix + cellBarcode[i];
     }
 
     public DgeHeader getHeader() {
@@ -158,9 +160,8 @@ public class SparseDge {
     }
 
     public void discardSmallestCells(final int numCellsToKeep) {
-        if (numCellsToKeep >= this.cellBarcode.length) {
-            return;
-        }
+        if (numCellsToKeep >= this.cellBarcode.length)
+			return;
         numTranscripts = Arrays.copyOfRange(numTranscripts, 0, numCellsToKeep);
         numGenes = Arrays.copyOfRange(numGenes, 0, numCellsToKeep);
         cellBarcode = Arrays.copyOfRange(cellBarcode, 0, numCellsToKeep);
@@ -170,56 +171,47 @@ public class SparseDge {
 
     public void retainOnlyTheseCells(final Set<String> cellBarcodesToRetain) {
         final BitSet cellsToDiscard = new BitSet(cellBarcode.length);
-        for (int i = 0; i < cellBarcode.length; ++i) {
-            if (!cellBarcodesToRetain.contains(cellBarcode[i])) {
-                cellsToDiscard.set(i);
-            }
-        }
+        for (int i = 0; i < cellBarcode.length; ++i)
+			if (!cellBarcodesToRetain.contains(cellBarcode[i]))
+				cellsToDiscard.set(i);
         discardCells(cellsToDiscard);
     }
 
     public void discardCellsWithFewGenes(final int minGenes) {
         final BitSet cellsToDiscard = new BitSet(numGenes.length);
-        for (int i = 0; i < numGenes.length; ++i) {
-            if (numGenes[i] < minGenes) {
-                cellsToDiscard.set(i);
-            }
-        }
+        for (int i = 0; i < numGenes.length; ++i)
+			if (numGenes[i] < minGenes)
+				cellsToDiscard.set(i);
         discardCells(cellsToDiscard);
     }
 
     public void discardCellsWithFewTranscripts(final int minTranscripts) {
         final BitSet cellsToDiscard = new BitSet(numTranscripts.length);
-        for (int i = 0; i < numTranscripts.length; ++i) {
-            if (numTranscripts[i] < minTranscripts) {
-                cellsToDiscard.set(i);
-            }
-        }
+        for (int i = 0; i < numTranscripts.length; ++i)
+			if (numTranscripts[i] < minTranscripts)
+				cellsToDiscard.set(i);
         discardCells(cellsToDiscard);
     }
 
-    private void discardCells(BitSet cellsToDiscard) {
+    private void discardCells(final BitSet cellsToDiscard) {
         if (!cellsToDiscard.isEmpty()) {
             final int[] cellIndexMap = new int[getNumCells()];
             int newCellIndex = 0;
-            for (int i = 0; i < cellIndexMap.length; ++i) {
-                if (cellsToDiscard.get(i)) {
-                    cellIndexMap[i] = -1;
-                } else {
-                    cellIndexMap[i] = newCellIndex++;
-                }
-            }
+            for (int i = 0; i < cellIndexMap.length; ++i)
+				if (cellsToDiscard.get(i))
+					cellIndexMap[i] = -1;
+				else
+					cellIndexMap[i] = newCellIndex++;
             numTranscripts = removeElements(numTranscripts, cellsToDiscard);
             numGenes = removeElements(numGenes, cellsToDiscard);
             cellBarcode = removeElements(cellBarcode, cellsToDiscard);
             final Iterator<Triplet> it = triplets.iterator();
             while (it.hasNext()) {
                 final Triplet t = it.next();
-                if (cellsToDiscard.get(t.cellIndex)) {
-                    it.remove();
-                } else {
-                    t.cellIndex = cellIndexMap[t.cellIndex];
-                }
+                if (cellsToDiscard.get(t.cellIndex))
+					it.remove();
+				else
+					t.cellIndex = cellIndexMap[t.cellIndex];
             }
         }
     }
@@ -244,16 +236,14 @@ public class SparseDge {
             final int indexToDiscard = cellsToDiscard.nextSetBit(from);
             if (indexToDiscard == -1) {
                 // Capture trailing cells to include after last discarded cell
-                if (srcLength - from > 0) {
-                    System.arraycopy(src, from, dest, to, srcLength - from);
-                }
+                if (srcLength - from > 0)
+					System.arraycopy(src, from, dest, to, srcLength - from);
                 break;
             }
             final int length = indexToDiscard - from;
-            if (length > 0) {
-                //noinspection SuspiciousSystemArraycopy
+            if (length > 0)
+				//noinspection SuspiciousSystemArraycopy
                 System.arraycopy(src, from, dest, to, length);
-            }
             to += length;
             from = indexToDiscard + 1;
         }
@@ -277,12 +267,10 @@ public class SparseDge {
         final RawLoadedDge ret = new RawLoadedDge();
         ret.header = new DgeHeaderCodec().decode(inputStream, input.getAbsolutePath());
 
-
         TabbedInputParser parser = new TabbedInputParser(false, inputStream);
         String headers[] = parser.next();
-        if (!headers[0].equals(GENE)) {
-            throw new RuntimeException("Unexpected first word in DGE: '" + headers[0] + "' in file " + input.getAbsolutePath());
-        }
+        if (!headers[0].equals(GENE))
+			throw new RuntimeException("Unexpected first word in DGE: '" + headers[0] + "' in file " + input.getAbsolutePath());
         // Initialized to 0 by default
         ret.rawNumTranscripts = new int[headers.length - 1];
         ret.rawNumGenes = new int[headers.length - 1];
@@ -293,19 +281,16 @@ public class SparseDge {
         while (parser.hasNext()) {
             ++i;
             final String[] dgeLine = parser.next();
-            if (dgeLine.length != ret.rawCellBarcode.length + 1) {
-                throw new RuntimeException("Unexpected number of cellIndex in file " + input.getAbsolutePath() + "; line " + i);
-            }
+            if (dgeLine.length != ret.rawCellBarcode.length + 1)
+				throw new RuntimeException("Unexpected number of cellIndex in file " + input.getAbsolutePath() + "; line " + i);
             final int geneId = geneEnumerator.getGeneIndex(dgeLine[0]);
-            if (geneId == -1) {
-                // E.g. for an MT gene
+            if (geneId == -1)
+				// E.g. for an MT gene
                 continue;
-            }
             for (int j = 0; j < dgeLine.length - 1; ++j) {
                 final String expressionStr = dgeLine[j+1];
-                if (expressionStr.equals("0")) {
-                    continue;
-                }
+                if (expressionStr.equals("0"))
+					continue;
                 final int expression = Integer.parseInt(expressionStr);
                 ret.rawNumTranscripts[j] += expression;
                 ++ret.rawNumGenes[j];
@@ -327,15 +312,13 @@ public class SparseDge {
         ret.rawCellBarcode = mmReader.getColNames().toArray(new String[mmReader.getColNames().size()]);
         final String[] genes = mmReader.getRowNames().toArray(new String[mmReader.getRowNames().size()]);
         final int[] geneIndices = new int[genes.length];
-        for (int i = 0; i < genes.length; ++i) {
-            geneIndices[i] = geneEnumerator.getGeneIndex(genes[i]);
-        }
+        for (int i = 0; i < genes.length; ++i)
+			geneIndices[i] = geneEnumerator.getGeneIndex(genes[i]);
         for (final MatrixMarketReader.Element element: mmReader) {
             final int geneId = geneIndices[element.row];
-            if (geneId == -1) {
-                // E.g. for an MT gene
+            if (geneId == -1)
+				// E.g. for an MT gene
                 continue;
-            }
             final int expression = ((MatrixMarketReader.IntElement) element).val;
             ret.rawNumTranscripts[element.col] += expression;
             ++ret.rawNumGenes[element.col];

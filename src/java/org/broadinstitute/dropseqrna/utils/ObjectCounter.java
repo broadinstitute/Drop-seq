@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Keeps track of the number of times an object has been seen.
@@ -208,6 +209,19 @@ public class ObjectCounter<T extends Comparable<T>> {
 				result.put(key, value);
 		}
 		this.countMap=result;
+	}
+
+	/**
+	 * Subset this set of counts to a subset of the keys.
+	 * @param keys A collection of keys to restrict the data to.
+	 */
+	public void subset (final Set<T> keys) {
+		Map<T, Integer> newMap = new HashMap<>();
+		for (T k: countMap.keySet())
+			if (keys.contains(k))
+				newMap.put(k, this.countMap.get(k));
+
+		this.countMap=newMap;
 	}
 
 	@Override

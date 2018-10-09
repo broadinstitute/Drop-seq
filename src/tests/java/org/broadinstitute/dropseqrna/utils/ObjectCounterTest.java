@@ -64,8 +64,21 @@ public class ObjectCounterTest {
 		both.clear();
 		Assert.assertSame(0, both.getCounts().size());
 
+	}
 
+	@Test
+	public void testSubset () {
+		ObjectCounter<String> o = new ObjectCounter<>();
+		o.increment("FOO");
+		o.incrementByCount("BAR", 4);
+		o.increment("ZOO");
+		o.incrementByCount("ZAR", 4);
 
+		Set<String> subsetKeys = new HashSet<>	(Arrays.asList("FOO", "ZOO", "MOO"));
+		o.subset(subsetKeys);
+
+		for (String k: o.getKeys())
+			Assert.assertTrue(subsetKeys.contains(k));
 
 
 	}

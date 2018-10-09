@@ -23,9 +23,20 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression.tools;
 
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
@@ -40,11 +51,12 @@ import org.la4j.iterator.MatrixIterator;
 import org.la4j.matrix.SparseMatrix;
 import org.la4j.matrix.sparse.CRSMatrix;
 import org.la4j.vector.functor.VectorAccumulator;
+
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
 import picard.util.BasicInputParser;
 import picard.util.TabbedInputParser;
-
-import java.io.*;
-import java.util.*;
 
 /**
  * This class is designed to hold a matrix of gene expression, addressable by gene name and cell barcode
