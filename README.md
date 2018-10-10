@@ -6,3 +6,7 @@ You may also use this address to be added to the Drop-seq Google group.
 
 We are not accepting pull requests at this time.  After we have implemented continuous integration and code coverage we 
 will entertain pull requests. 
+
+See https://github.com/broadinstitute/Drop-seq/releases to download binaries.
+
+See [Drop-seq alignment cookbook](doc/Drop-seq_Alignment_Cookbook.pdf) for detailed usage of these tools.

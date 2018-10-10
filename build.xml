@@ -171,12 +171,7 @@
             <zipfileset dir="src/scripts" includes="Drop-seq_alignment.sh"  filemode="755" prefix="${zip.label}"/>
             <zipfileset dir="src/scripts" includes="create_Drop-seq_reference_metadata.sh"  filemode="755" prefix="${zip.label}"/>
             <zipfileset file="${dist}/loadDotKits.sh" prefix="${zip.label}"/>
-            <!--
-            Don't bother including source because it will be available on github.
-            <zipfileset dir="${src}" prefix="${zip.label}/src/java"/>
-            <zipfileset file="build.xml" fullpath="${zip.label}/build.xml"/>
-            <zipfileset file="src/ant/defs.xml" fullpath="${zip.label}/src/ant/defs.xml"/>
-            -->
+            <zipfileset file="doc/Drop-seq_Alignment_Cookbook.pdf" prefix="${zip.label}"/>
         </zip>
     </target>
 
