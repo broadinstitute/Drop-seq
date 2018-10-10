@@ -44,7 +44,7 @@ public class TestUtils {
 	 */
 	public static boolean testFilesSame (final File expected, final File actual) {
 		TabbedInputParser e = new TabbedInputParser(true, expected);
-		TabbedInputParser a = new TabbedInputParser(true, expected);
+		TabbedInputParser a = new TabbedInputParser(true, actual);
 		while (e.hasNext() && a.hasNext()) {
 			e.next();
 			a.next();
