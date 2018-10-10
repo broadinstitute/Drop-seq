@@ -110,9 +110,10 @@ then echo > /dev/null
 else error_exit "STAR executable must be on the path"
 fi
 
-gene_intervals=$(dirname $reference)/$(basename $reference .fasta).genes.intervals
-exon_intervals=$(dirname $reference)/$(basename $reference .fasta).exon.intervals
-refflat=$(dirname $reference)/$(basename $reference .fasta).refFlat
+reference_basename=$(basename $(basename $reference .gz) .fasta)
+gene_intervals=$(dirname $reference)/$reference_basename.genes.intervals
+exon_intervals=$(dirname $reference)/$reference_basename.exon.intervals
+refflat=$(dirname $reference)/$reference_basename.refFlat
 picard_jar=${dropseq_root}/3rdParty/picard/picard.jar
 
 unmapped_bam=$1
