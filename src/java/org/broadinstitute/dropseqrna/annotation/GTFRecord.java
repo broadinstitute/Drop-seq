@@ -153,7 +153,7 @@ public class GTFRecord implements Comparable<GTFRecord> {
             ret = addErrorIfNull(ret, "Missing transcript_id", transcriptID);
         }
         // check for comma in gene name
-        if (geneName.contains(","))
+        if (geneName != null && geneName.contains(","))
         	ret = addError(ret, "Reserved character ',' in gene name ["+ geneName +"]");
         return ret;
     }
