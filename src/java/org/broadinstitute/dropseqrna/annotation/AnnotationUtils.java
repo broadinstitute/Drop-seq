@@ -378,6 +378,9 @@ public class AnnotationUtils {
 		for (String s: o) {
 			s=s.replaceAll("\"", "");
 			s=s.trim();
+			if (s.isEmpty()) {
+			    continue;
+            }
 			String [] z= s.split(" ");
 			String k = z[0];
 			String v = z[1];
