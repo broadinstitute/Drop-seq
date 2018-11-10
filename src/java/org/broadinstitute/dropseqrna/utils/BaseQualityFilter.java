@@ -10,10 +10,12 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.SAMRecord;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import org.broadinstitute.dropseqrna.TranscriptomeException;
+
+import htsjdk.samtools.SAMRecord;
 
 /**
  * Finds if specified potions of a read are below a minimum base quality.
@@ -36,8 +38,12 @@ public class BaseQualityFilter {
 		int numBasesBelowQuality=0;
 		byte [] qual= barcodedRead.getBaseQualities();
 		char [] seq = barcodedRead.getReadString().toUpperCase().toCharArray();
+
 		for (BaseRange b: baseRanges)
 			for (int i=b.getStart()-1; i<b.getEnd(); i++) {
+				if (i> (seq.length-1))
+					throw new TranscriptomeException("Base [" + Integer.toString(i+1) + "] was requested, but the read isn't long enough ["+ barcodedRead.getReadString()+"]");
+
 				byte q = qual[i];
 				char s = seq[i];
 
