@@ -80,6 +80,9 @@ public class DigitalExpressionTest {
 	private static final File EXPECTED_OUTFILE_SUMMARY = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.dge_summary.txt");
 	private static final File EXPECTED_OUTFILE_LONG = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.dge_long.txt");
 
+	private static final File EXPECTED_OUTPUT_SINGLE_CELL=new File("testdata/org/broadinstitute/transcriptome/barnyard/1_cell.dge.txt");
+			//
+
 	private String GENE_NAME_TAG="gn";
 	private String GENE_STRAND_TAG="gs";
 	private String GENE_FUNCTION_TAG="gf";
@@ -139,6 +142,38 @@ public class DigitalExpressionTest {
 			Assert.assertTrue (FileUtils.contentEquals(outFile, EXPECTED_OUTFILE));
 			Assert.assertTrue (FileUtils.contentEquals(summaryFile, EXPECTED_OUTFILE_SUMMARY));
 			Assert.assertTrue (FileUtils.contentEquals(longOutput, EXPECTED_OUTFILE_LONG));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	//TODO: set up the proper output files.
+	@Test (enabled=true)
+	public void testDoWorkSingleBarcode () {
+		File outFile=null;
+		File cellBarcodesFile=null;
+		try {
+			outFile = File.createTempFile("testDigitalExpression.", ".digital_expression.txt");
+	        cellBarcodesFile = File.createTempFile("testDigitalExpression.", ".selectedCellBarcodes.txt");
+	        outFile.deleteOnExit();
+	        cellBarcodesFile.deleteOnExit();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+        final DigitalExpression de = new DigitalExpression();
+		de.INPUT = IN_FILE;
+		de.NUM_CORE_BARCODES=1;
+		de.OUTPUT = outFile;
+        // the headers aren't going to match up because they contain specific path info.
+        // de.UNIQUE_EXPERIMENT_ID = "test";
+
+        int result = de.doWork();
+        Assert.assertEquals(result, 0);
+
+        try {
+			Assert.assertTrue (FileUtils.contentEquals(outFile, EXPECTED_OUTPUT_SINGLE_CELL));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
