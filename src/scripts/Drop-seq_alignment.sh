@@ -154,7 +154,7 @@ files_to_delete=$"files_to_delete $tmpdir/unaligned_tagged_trimmed_smart.bam"
 
 $echo_prefix ${dropseq_root}/PolyATrimmer OUTPUT=${tagged_unmapped_bam} OUTPUT_SUMMARY=${outdir}/polyA_trimming_report.txt \
   MISMATCHES=0 NUM_BASES=6 NEW=true INPUT=$tmpdir/unaligned_tagged_trimmed_smart.bam
-files_to_delete=$"files_to_delete $tmpdir/${tagged_unmapped_bam}"
+files_to_delete=$"files_to_delete ${tagged_unmapped_bam}"
 
 
 # Stage 2: alignment
