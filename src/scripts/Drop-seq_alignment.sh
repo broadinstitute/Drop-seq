@@ -133,28 +133,28 @@ tag_with_gene_exon=""
 $echo_prefix ${dropseq_root}/TagBamWithReadSequenceExtended SUMMARY=${outdir}/unaligned_tagged_Cellular.bam_summary.txt \
   BASE_RANGE=1-12 BASE_QUALITY=10 BARCODED_READ=1 DISCARD_READ=false TAG_NAME=XC NUM_BASES_BELOW_QUALITY=1 \
   INPUT=${unmapped_bam} OUTPUT=$tmpdir/unaligned_tagged_Cell.bam
-files_to_delete=$"files_to_delete $tmpdir/unaligned_tagged_Cell.bam"
+files_to_delete="$files_to_delete $tmpdir/unaligned_tagged_Cell.bam"
 
 # molecular tag
 $echo_prefix ${dropseq_root}/TagBamWithReadSequenceExtended SUMMARY=${outdir}/unaligned_tagged_Molecular.bam_summary.txt \
   BASE_RANGE=13-20 BASE_QUALITY=10 BARCODED_READ=1 DISCARD_READ=true TAG_NAME=XM NUM_BASES_BELOW_QUALITY=1 \
   INPUT=$tmpdir/unaligned_tagged_Cell.bam OUTPUT=$tmpdir/unaligned_tagged_CellMolecular.bam
-files_to_delete=$"files_to_delete $tmpdir/unaligned_tagged_CellMolecular.bam"
+files_to_delete="$files_to_delete $tmpdir/unaligned_tagged_CellMolecular.bam"
 
 # quality filter
 $echo_prefix ${dropseq_root}/FilterBam TAG_REJECT=XQ INPUT=$tmpdir/unaligned_tagged_CellMolecular.bam \
   OUTPUT=$tmpdir/unaligned_tagged_filtered.bam
-files_to_delete=$"files_to_delete $tmpdir/unaligned_tagged_filtered.bam"
+files_to_delete="$files_to_delete $tmpdir/unaligned_tagged_filtered.bam"
 
 # read trimming
 $echo_prefix ${dropseq_root}/TrimStartingSequence OUTPUT_SUMMARY=${outdir}/adapter_trimming_report.txt \
   SEQUENCE=AAGCAGTGGTATCAACGCAGAGTGAATGGG MISMATCHES=0 NUM_BASES=5 INPUT=$tmpdir/unaligned_tagged_filtered.bam \
   OUTPUT=$tmpdir/unaligned_tagged_trimmed_smart.bam
-files_to_delete=$"files_to_delete $tmpdir/unaligned_tagged_trimmed_smart.bam"
+files_to_delete="$files_to_delete $tmpdir/unaligned_tagged_trimmed_smart.bam"
 
 $echo_prefix ${dropseq_root}/PolyATrimmer OUTPUT=${tagged_unmapped_bam} OUTPUT_SUMMARY=${outdir}/polyA_trimming_report.txt \
   MISMATCHES=0 NUM_BASES=6 NEW=true INPUT=$tmpdir/unaligned_tagged_trimmed_smart.bam
-files_to_delete=$"files_to_delete ${tagged_unmapped_bam}"
+files_to_delete="$files_to_delete ${tagged_unmapped_bam}"
 
 
 # Stage 2: alignment
