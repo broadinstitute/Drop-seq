@@ -64,8 +64,9 @@ while getopts ":m:v" options; do
 done
 shift $(($OPTIND - 1))
 
-if [ -z "$TMPDIR" ]
-then export TMPDIR=/broad/hptmp/$USER
+broad_tmpdir_root=/broad/hptmp
+if [ -z "$TMPDIR" -a -d $broad_tmpdir_root ]
+then export TMPDIR=$broad_tmpdir_root/$USER
 fi
 
 if (( $verbose ))
