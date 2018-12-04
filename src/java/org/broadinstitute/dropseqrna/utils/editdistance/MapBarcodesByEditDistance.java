@@ -377,8 +377,6 @@ public class MapBarcodesByEditDistance {
 			count++;
 			coreBarcodes.remove(b);
 			barcodeList.remove(b);
-			if (b.equals("TACTAAAACCGTCCGTGGGA"))
-				log.info("STOP");
 			// find the edit distance threshold.
 			int [] edList = getEditDistanceDistributioneMultithreaded(b, allBarcodes, findIndels);
 			// filter out ed=0.
@@ -599,7 +597,7 @@ public class MapBarcodesByEditDistance {
 	 * @param editDistance
 	 * @return
 	 */
-	private int [] getEditDistanceDistributioneMultithreaded(final String barcode, final Collection<String> comparisonBarcodes, final boolean findIndels) {
+	public int [] getEditDistanceDistributioneMultithreaded(final String barcode, final Collection<String> comparisonBarcodes, final boolean findIndels) {
 		int [] result=null;
 		try {
 			if (findIndels)
