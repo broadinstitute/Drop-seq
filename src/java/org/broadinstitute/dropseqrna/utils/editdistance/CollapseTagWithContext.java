@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.utils.editdistance;
 import java.io.File;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -134,6 +135,9 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	@Argument (doc="If provided, writes out some metrics about each barcode that is merged.", optional=true)
 	public File ADAPTIVE_ED_METRICS_FILE;
 
+	@Argument (doc="If true, add an additional column that contains a comma separated list of edit distances from the current CONTEXT_TAG to all other CONTEXT_TAGS.  This will make files significantly larger!")
+	public boolean ADAPTIVE_ED_METRICS_ED_LIST=false;
+
 	// make this once and reuse it.
 	private MapBarcodesByEditDistance med;
 	private MapBarcodesByEditDistance medUMI;
@@ -171,7 +175,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		PrintStream outMetrics = null;
 		if (this.ADAPTIVE_ED_METRICS_FILE!=null) {
 			outMetrics = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.ADAPTIVE_ED_METRICS_FILE));
-			writeMetricsHeader(outMetrics);
+			writeMetricsHeader(this.ADAPTIVE_ED_METRICS_ED_LIST, outMetrics);
 		}
 
 		med = new MapBarcodesByEditDistance(false, this.NUM_THREADS, 0);
@@ -217,7 +221,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
         	// remove the informative reads, as they will get retagged.
         	List<SAMRecord> result = processRecordList(informativeRecs, this.COLLAPSE_TAG, this.COUNT_TAGS, this.OUT_TAG,
 					this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT,
-                    this.DROP_SMALL_COUNTS, this.COUNT_TAGS_EDIT_DISTANCE, verbose, outMetrics);
+                    this.DROP_SMALL_COUNTS, this.COUNT_TAGS_EDIT_DISTANCE, verbose, outMetrics, this.ADAPTIVE_ED_METRICS_ED_LIST);
 
         	// write out the informative reads, then all the reads that were not altered.
         	result.stream().forEach(writer::addAlignment);
@@ -261,7 +265,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
                                                final List<String> countTags, final String outTag, final boolean findIndels,
                                                final int editDistance, final Integer minEditDistance, final Integer maxEditDistance,
                                                final int minNumObservations, final boolean dropSmallCounts,
-                                               final Integer countTagsEditDistance, final boolean verbose, final PrintStream outMetrics) {
+                                               final Integer countTagsEditDistance, final boolean verbose, final PrintStream outMetrics, final boolean writeEditDistanceDistribution) {
 		if (informativeRecs.size()==0) return Collections.EMPTY_LIST;
 
 		// get context.
@@ -270,7 +274,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		// get barcode counts.
 		ObjectCounter<String> barcodeCounts = getBarcodeCounts (informativeRecs, collapseTag, countTags, countTagsEditDistance);
 		if (minNumObservations > 1) barcodeCounts.filterByMinCount(minNumObservations);
-		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, findIndels, editDistance, minEditDistance, maxEditDistance, verbose, outMetrics, context);
+		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, findIndels, editDistance, minEditDistance, maxEditDistance, verbose, outMetrics, context, writeEditDistanceDistribution);
 		Set<String> expectedBarcodes = null;
 		// already validated that if dropSmallCounts is true, then the minNumObservations > 1.
 		if (dropSmallCounts)
@@ -361,7 +365,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
         return writer;
 	}
 
-	private Map<String, String> collapseBarcodes(final ObjectCounter<String> barcodeCounts, final boolean findIndels, final int editDistance, final Integer minEditDistance, final Integer maxEditDistance, final boolean verbose, final PrintStream outMetrics, final String context) {
+	private Map<String, String> collapseBarcodes(final ObjectCounter<String> barcodeCounts, final boolean findIndels, final int editDistance, final Integer minEditDistance, final Integer maxEditDistance, final boolean verbose, final PrintStream outMetrics, final String context, final boolean writeEditDistanceDistribution) {
 		// order the barcodes by the number of reads each barcode has.
 		if (verbose) log.info("Collapsing [" + barcodeCounts.getSize() +"] barcodes.");
 
@@ -371,7 +375,8 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		if (ADAPTIVE_EDIT_DISTANCE) {
 			AdaptiveMappingResult amr= med.collapseBarcodesAdaptive(barcodeCounts, findIndels, editDistance, minEditDistance, maxEditDistance);
 			r = amr.getBarcodeCollapseResult();
-			writeMetrics(context, amr, outMetrics);
+
+			writeMetrics(writeEditDistanceDistribution, context, amr, outMetrics);
 		}
 		else r = med.collapseBarcodes(barcodeCounts, findIndels, editDistance);
 
@@ -392,21 +397,35 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		return StringUtils.join(result, ",");
 	}
 
-	private void writeMetricsHeader (final PrintStream out) {
-		String [] header = {"CONTEXT", "COLLAPSE", "NUM_COLLAPSED", "ADAPTIVE_ED_DISCOVERED", "ADAPTIVE_ED_USED", "NUM_OBS_ORIGINAL", "NUM_OBS_MERGED"};
+	private void writeMetricsHeader (final boolean writeEditDistanceDistribution, final PrintStream out) {
+		List<String> header = new ArrayList(Arrays.asList("CONTEXT", "COLLAPSE", "NUM_COLLAPSED", "ADAPTIVE_ED_DISCOVERED", "ADAPTIVE_ED_USED", "NUM_OBS_ORIGINAL", "NUM_OBS_MERGED"));
+		if (writeEditDistanceDistribution)
+			header.add("ED_DISTRIBUTION");
 		out.println(StringUtil.join("\t", header));
 	}
 
-	private void writeMetrics (final String context, final AdaptiveMappingResult r, final PrintStream out) {
+	private void writeMetrics (final boolean writeEditDistanceDistribution, final String context, final AdaptiveMappingResult r, final PrintStream out) {
 		if (out==null) return;
 		List<EditDistanceMappingMetric> metricList= r.getMetricResult();
 
 		for (EditDistanceMappingMetric edmm: metricList) {
 			edmm.getOriginalObservations();
 			// Steve reports the number of barcodes including the one that everything is merged into.
-			String [] line = {context, edmm.getBarcode(), Integer.toString(edmm.getNumMergedBarcodes()+1), Integer.toString(edmm.getEditDistanceDiscovered()), Integer.toString(edmm.getEditDistanceUsed()),
-					Integer.toString(edmm.getOriginalObservations()), Integer.toString(edmm.getTotalObservations())};
+			List<String> line = new ArrayList<>(Arrays.asList(context, edmm.getBarcode(), Integer.toString(edmm.getNumMergedBarcodes()+1), Integer.toString(edmm.getEditDistanceDiscovered()), Integer.toString(edmm.getEditDistanceUsed()),
+					Integer.toString(edmm.getOriginalObservations()), Integer.toString(edmm.getTotalObservations())));
+
+			if (writeEditDistanceDistribution) {
+				int [] edList = edmm.getEdList();
+				if (edList.length>0) {
+					Integer[] x = Arrays.stream( edList ).boxed().toArray( Integer[]::new );
+					String edFormatted = StringUtil.join(",", x);
+					line.add(edFormatted);
+				} else
+					line.add("NA");
+
+			}
 			out.println(StringUtil.join("\t", line));
+
 		}
 	}
 

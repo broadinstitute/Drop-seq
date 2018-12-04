@@ -18,14 +18,16 @@ public class EditDistanceMappingMetric {
 	private final int editDistanceDiscovered;
 	private final int originalObservations;
 	private final int totalObservations;
+	private final int [] edList;
 
-	public EditDistanceMappingMetric (final String barcode, final int numMergedBarcodes, final int editDistanceUsed, final int editDistanceDiscovered, final int originalObservations, final int totalObservations) {
+	public EditDistanceMappingMetric (final String barcode, final int numMergedBarcodes, final int editDistanceUsed, final int editDistanceDiscovered, final int originalObservations, final int totalObservations, final int [] edList) {
 		this.barcode=barcode;
 		this.numMergedBarcodes=numMergedBarcodes;
 		this.editDistanceDiscovered=editDistanceDiscovered;
 		this.editDistanceUsed=editDistanceUsed;
 		this.totalObservations=totalObservations;
 		this.originalObservations=originalObservations;
+		this.edList=edList;
 	}
 
 	public String getBarcode() {
@@ -42,6 +44,10 @@ public class EditDistanceMappingMetric {
 
 	public int getEditDistanceDiscovered() {
 		return editDistanceDiscovered;
+	}
+
+	public int[] getEdList() {
+		return edList;
 	}
 
 	@Override

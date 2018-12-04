@@ -377,9 +377,13 @@ public class MapBarcodesByEditDistance {
 			count++;
 			coreBarcodes.remove(b);
 			barcodeList.remove(b);
-
+			if (b.equals("TACTAAAACCGTCCGTGGGA"))
+				log.info("STOP");
 			// find the edit distance threshold.
-			int editDistanceDiscovered=findEditDistanceThreshold(b, allBarcodes, findIndels, minEditDistance, maxEditDistance);
+			int [] edList = getEditDistanceDistributioneMultithreaded(b, allBarcodes, findIndels);
+			// filter out ed=0.
+			edList = Arrays.stream( edList ).filter(x-> x>0).toArray();
+			int editDistanceDiscovered=findEditDistanceThreshold(edList, minEditDistance, maxEditDistance);
 
 			// constrain to min/max edit distances.  Retain the original discovered edit distance.
 			int editDistance=editDistanceDiscovered;
@@ -392,7 +396,8 @@ public class MapBarcodesByEditDistance {
 			// Steve reports all barcodes, not just collapsed ones.
 			// if (closeBC.size()>0) {
 				int mergedObservations=getMergedNumObservations(b, closeBC, barcodes);
-				EditDistanceMappingMetric metric = new EditDistanceMappingMetric(b, closeBC.size(), editDistance, editDistanceDiscovered, barcodes.getCountForKey(b), mergedObservations);
+				// add the edit distance distribution for this entitiy to all other entities here.
+				EditDistanceMappingMetric metric = new EditDistanceMappingMetric(b, closeBC.size(), editDistance, editDistanceDiscovered, barcodes.getCountForKey(b), mergedObservations, edList);
 				metrics.add(metric);
 			// }
 
@@ -473,6 +478,9 @@ public class MapBarcodesByEditDistance {
 	*/
 
 	public Integer findEditDistanceThreshold (final String targetBarcode, final Set<String> allBarcodes, final boolean findIndels, final int minEditDistance, final int maxEditDistance) {
+		if (targetBarcode.equals("TACTAAAACCGTCCGTGGGA"))
+			log.info("STOP");
+
 		int [] edList = getEditDistanceDistributioneMultithreaded(targetBarcode, allBarcodes, findIndels);
 		// build and populate an object counter.
 		ObjectCounter<Integer> counts = new ObjectCounter<>();
@@ -490,6 +498,43 @@ public class MapBarcodesByEditDistance {
 			if (count==0) {
 				resultCount=count;
 				result.add(i);
+			}
+		}
+		// no results found.
+		if (result.size()==0) return -1;
+		// special case: no entries within all of scanned results.  return -1.
+		int numPosScanned=(maxEditDistance-minEditDistance)+1;
+		if (result.size()==numPosScanned && resultCount==0) return -1;
+
+		// there may be ties.  select the first entry (smallest ED)
+		Collections.sort(result);
+		int threshold=result.get(0);
+		threshold=threshold-1; // steve reports the last filled position, not the empty one.
+		return threshold;
+	}
+
+	public Integer findEditDistanceThreshold (final int [] edList, final int minEditDistance, final int maxEditDistance) {
+		// build and populate an object counter.
+		ObjectCounter<Integer> counts = new ObjectCounter<>();
+		Arrays.stream(edList).forEach(x -> counts.increment(x));
+		// System.out.println(Arrays.toString(edList));
+
+		// loop through to find the minimum count point, from the lowest edit distance to the maximum ED.
+		// int maxED = Arrays.stream(edList).max().getAsInt();
+		List<Integer> result = new ArrayList<>();
+		int resultCount=Integer.MAX_VALUE;
+		// find the minimum positions in the object counter.  This may include keys that don't exist (ie: they are 0.)
+		// if there are multiple minimums, then select the lowest.
+		for (int i=minEditDistance; i<=maxEditDistance; i++) {
+			int count = counts.getCountForKey(i);
+			// a lower or equal count.
+			if (count<=resultCount) {
+				// if this is a lower count, then it's the only result.
+				// if this is the same count, then add it to the result.
+				if (count<resultCount) result.clear();
+				result.add(i);
+				resultCount=count;
+
 			}
 		}
 		// no results found.
