@@ -24,6 +24,7 @@
 package org.broadinstitute.dropseqrna.cluster;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -87,6 +88,10 @@ public class MergeDgeSparse
             doc="If set, write a DGE header that is the result of merging the headers of the input DGEs.")
     public File DGE_HEADER_OUTPUT_FILE;
 
+    @Argument(optional = true,
+    doc="If set, write a list of cell barcodes that have been filtered by any of the filtering mechanisms.")
+    public File DISCARDED_CELLS_FILE;
+
     @Argument(doc="Remove genes with fewer than this many cells.  This filtering is done after all the cell-based filters.")
     public int MIN_CELLS = Defaults.MIN_CELLS;
 
@@ -149,6 +154,7 @@ public class MergeDgeSparse
         List<SparseDge> dges = loadDataSets(dataSets);
 
         writeCellSizesFile(dges);
+        writeDiscardedCellsFile(dges);
 
         writeDgeHeader(dataSets);
 
@@ -283,6 +289,24 @@ public class MergeDgeSparse
 				for (int i = 0; i < dge.getNumCells(); ++i)
 					cellSizeWriter.writeSize(dge.getCellBarcode(i), dge.getNumTranscripts(i));
             cellSizeWriter.close();
+        }
+    }
+
+    private void writeDiscardedCellsFile(final List<SparseDge> dges) {
+        if (DISCARDED_CELLS_FILE != null) {
+            try {
+                LOG.info("Writing " + DISCARDED_CELLS_FILE.getAbsolutePath());
+                final BufferedWriter writer = IOUtil.openFileForBufferedWriting(DISCARDED_CELLS_FILE);
+                for (final SparseDge dge : dges) {
+                    for (final String cell_barcode: dge.getDiscardedCells()) {
+                        writer.write(cell_barcode);
+                        writer.newLine();
+                    }
+                }
+                writer.close();
+            } catch (IOException e) {
+                throw new RuntimeIOException("Exception writing " + DISCARDED_CELLS_FILE.getAbsolutePath(), e);
+            }
         }
     }
 
