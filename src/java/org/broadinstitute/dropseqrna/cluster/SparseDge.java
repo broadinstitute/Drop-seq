@@ -28,13 +28,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.lang.reflect.Array;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Set;
+import java.util.*;
 
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeader;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderCodec;
@@ -71,8 +65,8 @@ public class SparseDge {
     private int numTranscripts[];
     private int numGenes[];
     private String cellBarcode[];
-    // Faster than HashSet and much faster than ArrayList at removing elements
     private final Collection<Triplet> triplets;
+    private final ArrayList<String> discardedCells = new ArrayList<>();
 
     /**
      * Load a DGE into a sparse in-memory format.
@@ -197,11 +191,14 @@ public class SparseDge {
         if (!cellsToDiscard.isEmpty()) {
             final int[] cellIndexMap = new int[getNumCells()];
             int newCellIndex = 0;
-            for (int i = 0; i < cellIndexMap.length; ++i)
-				if (cellsToDiscard.get(i))
-					cellIndexMap[i] = -1;
-				else
-					cellIndexMap[i] = newCellIndex++;
+            for (int i = 0; i < cellIndexMap.length; ++i) {
+                if (cellsToDiscard.get(i)) {
+                    cellIndexMap[i] = -1;
+                } else {
+                    cellIndexMap[i] = newCellIndex++;
+                }
+            }
+            captureDiscardedCellBarcodes(cellsToDiscard);
             numTranscripts = removeElements(numTranscripts, cellsToDiscard);
             numGenes = removeElements(numGenes, cellsToDiscard);
             cellBarcode = removeElements(cellBarcode, cellsToDiscard);
@@ -214,6 +211,11 @@ public class SparseDge {
 					t.cellIndex = cellIndexMap[t.cellIndex];
             }
         }
+    }
+
+    private void captureDiscardedCellBarcodes(final BitSet cellsToDiscard) {
+        discardedCells.ensureCapacity(discardedCells.size() + cellsToDiscard.cardinality());
+        cellsToDiscard.stream().forEach(index -> discardedCells.add(cellBarcode[index]));
     }
 
     private int[]removeElements(final int[] array, final BitSet cellsToDiscard) {
@@ -325,5 +327,9 @@ public class SparseDge {
             ret.rawTriplets.add(new Triplet(geneId, element.col, expression));
         }
         return ret;
+    }
+
+    public Collection<String> getDiscardedCells() {
+        return Collections.unmodifiableCollection(discardedCells);
     }
 }

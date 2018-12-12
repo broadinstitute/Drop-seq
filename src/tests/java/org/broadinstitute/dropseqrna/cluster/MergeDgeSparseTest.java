@@ -83,6 +83,7 @@ public class MergeDgeSparseTest {
         final File dgeHeaderOutputFile = new File(tempDir, "test.dge_header.txt");  dgeHeaderOutputFile.deleteOnExit();
         final File rawDgeOutputFile = new File(tempDir, "test.raw.dge.txt");        rawDgeOutputFile.deleteOnExit();
         final File scaledDgeOutputFile = new File(tempDir, "test.scaled.dge.txt");  scaledDgeOutputFile.deleteOnExit();
+        final File discardedCellsOutputFile = new File(tempDir, "test.discarded_cells.txt"); discardedCellsOutputFile.deleteOnExit();
 
         final MergeDgeSparse merger = new MergeDgeSparse();
         merger.YAML = outputYaml;
@@ -110,6 +111,7 @@ public class MergeDgeSparseTest {
             merger.FILTERED_GENE_RE = Collections.emptyList();
         }
         merger.CELL_BC_FILE = selectedCellsFiles;
+        merger.DISCARDED_CELLS_FILE = discardedCellsOutputFile;
 
         Assert.assertEquals(merger.doWork(), 0);
 
