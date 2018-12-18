@@ -245,7 +245,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	 * @param writer
 	 * @return
 	 */
-	private List<SAMRecord> getInformativeRead (final SAMRecord r, final List<SAMRecord> informativeReads, final String collapseTag, final String outTag,
+	public static List<SAMRecord> getInformativeRead (final SAMRecord r, final List<SAMRecord> informativeReads, final String collapseTag, final String outTag,
 			final FilteredIterator<SAMRecord> mapFilter, final FilteredIterator<SAMRecord> tagFilter, final SAMFileWriter writer, final ProgressLogger pl) {
 		pl.record(r);
 		boolean informative = !mapFilter.filterOut(r) && !tagFilter.filterOut(r);
@@ -441,16 +441,16 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		return groupedIterator;
 	}
 
-	private boolean testReadInformative (final SAMRecord r, final FilteredIterator<SAMRecord> mapFilter, final FilteredIterator<SAMRecord> tagFilter) {
+	public static boolean testReadInformative (final SAMRecord r, final FilteredIterator<SAMRecord> mapFilter, final FilteredIterator<SAMRecord> tagFilter) {
 		return (!mapFilter.filterOut(r) && !tagFilter.filterOut(r));
 	}
 
-	private FilteredIterator<SAMRecord> getMapFilteringIterator (final int mapQuality) {
+	public static FilteredIterator<SAMRecord> getMapFilteringIterator (final int mapQuality) {
 		FilteredIterator<SAMRecord> mapFilteringIterator = new MapQualityFilteredIterator(Collections.emptyIterator(), mapQuality, false);
 		return mapFilteringIterator;
 	}
 
-	private FilteredIterator<SAMRecord> getMissingTagIterator (final String collapseTag, final List<String> contextTag) {
+	public static FilteredIterator<SAMRecord> getMissingTagIterator (final String collapseTag, final List<String> contextTag) {
 		List<String> allTags = new ArrayList<>(contextTag);
 		allTags.add(collapseTag);
 		String[] tagArray = allTags.stream().toArray(String[]::new);
