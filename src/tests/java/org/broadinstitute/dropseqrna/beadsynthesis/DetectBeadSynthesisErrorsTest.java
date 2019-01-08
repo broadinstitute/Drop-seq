@@ -55,6 +55,11 @@ public class DetectBeadSynthesisErrorsTest {
 		File summary = getTempReportFile("DetectBeadSynthesisErrorsTest", ".summary");
 		File cleanBAM = getTempReportFile("DetectBeadSynthesisErrorsTest", ".bam");
 
+		report.deleteOnExit();
+		stats.deleteOnExit();
+		summary.deleteOnExit();
+		cleanBAM.deleteOnExit();
+
 		gbse.INPUT=Arrays.asList(TEST_INDEL);
 		gbse.NUM_BARCODES=1000; // more than the BAM has.
 		gbse.SUMMARY=summary;
