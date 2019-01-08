@@ -23,17 +23,18 @@
  */
 package org.broadinstitute.dropseqrna.readtrimming;
 
-import htsjdk.samtools.ValidationStringency;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.TestUtil;
-import org.testng.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
+
+import org.testng.Assert;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+
+import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.TestUtil;
 
 public class PolyATrimmerTest {
     private static final File INPUT = new File("testdata/org/broadinstitute/dropseq/readtrimming/N701.subset.tagged_filtered_start_seq_trimmed.sam");
@@ -52,6 +53,7 @@ public class PolyATrimmerTest {
             clp.OUTPUT_SUMMARY = File.createTempFile("PolyATrimmerTest.", ".summary");
             clp.OUTPUT_SUMMARY.deleteOnExit();
             clp.TMP_DIR = Arrays.asList(tempDir);
+            tempDir.deleteOnExit();
             clp.MISMATCHES = 0;
             clp.NUM_BASES = 6;
             clp.VALIDATION_STRINGENCY = ValidationStringency.STRICT;
