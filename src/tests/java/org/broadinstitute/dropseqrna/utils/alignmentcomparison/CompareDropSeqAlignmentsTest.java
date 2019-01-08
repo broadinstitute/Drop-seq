@@ -30,11 +30,12 @@ public class CompareDropSeqAlignmentsTest {
 		File outContigReport=null;
 		try {
 			outGeneReport = File.createTempFile("CompareDropSeqAlignmentsTest.", ".gene_report.txt");
+			outGeneReport.deleteOnExit();
 			outContigReport = File.createTempFile("CompareDropSeqAlignmentsTest.", ".contig_report.txt");
+			outContigReport.deleteOnExit();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
 
 		c.INPUT_1=OLD;
 		c.INPUT_2=NEW;

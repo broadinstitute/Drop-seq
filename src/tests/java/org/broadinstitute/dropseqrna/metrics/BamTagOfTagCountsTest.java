@@ -28,6 +28,7 @@ public class BamTagOfTagCountsTest {
 		b.MINIMUM_MAPPING_QUALITY=0;
 		b.SECONDARY_TAG="XM";
 		b.OUTPUT=outFile;
+		b.OUTPUT.deleteOnExit();
 		int r = b.doWork();
 		Assert.assertTrue(r==0);
 
@@ -54,6 +55,7 @@ public class BamTagOfTagCountsTest {
 		b.MINIMUM_MAPPING_QUALITY=0;
 		b.SECONDARY_TAG="NM";
 		b.OUTPUT=outFile;
+		b.OUTPUT.deleteOnExit();
 		int r = b.doWork();
 		Assert.assertTrue(r==0);
 

@@ -56,10 +56,11 @@ public class DetectBeadSubstitutionErrorsTest {
         final DetectBeadSubstitutionErrors clp = new DetectBeadSubstitutionErrors();
         clp.INPUT = Arrays.asList(TEST_FILE);
         clp.OUTPUT_REPORT = File.createTempFile("DetectBeadSubstitutionErrorsTest.", ".substitution_report.txt");
-        clp.OUTPUT = File.createTempFile("DetectBeadSubstitutionErrorsTest.", ".sam");
         clp.OUTPUT_REPORT.deleteOnExit();
-        clp.OUTPUT_SUMMARY = File.createTempFile("DetectBeadSubstitutionErrorsTest.", "substitution_summary.txt");
+        clp.OUTPUT = File.createTempFile("DetectBeadSubstitutionErrorsTest.", ".sam");
         clp.OUTPUT.deleteOnExit();
+        clp.OUTPUT_SUMMARY = File.createTempFile("DetectBeadSubstitutionErrorsTest.", "substitution_summary.txt");
+        clp.OUTPUT_SUMMARY.deleteOnExit();
         Assert.assertEquals(clp.doWork(), 0);
         final TabbedTextFileWithHeaderParser parser = new TabbedTextFileWithHeaderParser(clp.OUTPUT_REPORT);
         int numRows = 0;
