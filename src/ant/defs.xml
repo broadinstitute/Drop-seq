@@ -40,6 +40,7 @@
 <property name="jdk.url" value="http://docs.oracle.com/javase/8/docs/api/"/>
 
 <property environment="env"/>
+<property name="env.TMPDIR" value="/tmp"/>
 
 
 <macrodef name="compile">
@@ -77,6 +78,7 @@
                 <include name="**/*Test.class"/>
             </classfileset>
             <jvmarg value="-Xmx1G"/>
+            <jvmarg value="-Djava.io.tmpdir=${env.TMPDIR}"/>
         </testng>
         <fail if="tests.failed" message="There were failed unit tests"/>
     </sequential>
@@ -99,6 +101,7 @@
                 <include name="**/${test.name}.class"/>
             </classfileset>
             <jvmarg value="-Xmx1G"/>
+            <jvmarg value="-Djava.io.tmpdir=${env.TMPDIR}"/>
         </testng>
         <fail if="tests.failed" message="There were failed unit tests"/>
     </sequential>
