@@ -48,6 +48,57 @@ public class MapBarcodesByEditDistanceTest {
 	private static File repairedBC = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/repairedBC.txt");
 	private static File intendedBC = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/potential_intendedBC.txt");
 
+
+	@Test
+	public void testFindRelatedBarcodesByMutationalCollapse1() {
+		String coreBC = "ACGTG";
+		// ACGTA->AAGTA=1 (accept)
+		// ACGTA->AATTA=2 & AAGTA->AATTA=1 (accept)
+		// ACGTA->AATTA=3 & AAGTA->AATTA=1 (accept)
+		// ACGTA->TATTC=4 & AATTA->TATTC=2 (reject)
+		List<String> relatedBarcodes=Arrays.asList("ACGTA", "AAGTA", "AATTA", "TATTC");
+		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
+		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodes, false, 1, 5);
+		Set<String> expected = new HashSet<>(Arrays.asList("ACGTA", "AAGTA", "AATTA"));
+		Assert.assertEquals(expected, actual);
+	}
+
+
+	@Test
+	public void testFindRelatedBarcodesByMutationalCollapse2() {
+		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
+
+		// core one:
+		// ACGTAAT->AAGTAAT=1 (accept)
+		// ACGTAAT->AATTAAT=2 & AAGTAT->AATTAAT=1 (accept)
+		// ACGTAAT->AATTAAT=3 & AAGTAAT->AATTAAT=1 (accept)
+		// ACGTAAT->TATTCAT=4 & AATTAAT->TATTCAT=2 (reject)
+		List<String> relatedBarcodesOne=Arrays.asList("AAGTAAT", "AATTAAT", "AATTAAT", "TATTCAT");
+		String coreBC="ACGTAAT";
+
+		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesOne, false, 1, 5);
+		Set<String> expected = new HashSet<>(Arrays.asList("AAGTAAT", "AATTAAT", "AATTAAT"));
+		Assert.assertEquals(expected, actual);
+
+		// core two:
+		// GGCCATG->GACCATG=1 (accept)
+		// GGCCATG->GACCATA=2 & GACCATG->GACCATA=1 (accept)
+		// GGCCATG->AACCATA=3 & GACCATA->AACCATA=1 (accept)
+		// GGCCATG->AATCATA=4 & AACCATA->AATCATA=1 (accept)
+		// GGCCATG->ACTCATA=4 & AGCCATA->ACTCATA=2 (reject)
+		List<String> relatedBarcodesTwo=Arrays.asList("GACCATG", "GACCATA", "AACCATA", "AATCATA", "ACTCATA");
+		coreBC="GGCCATG";
+
+		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesTwo, false, 1, 5);
+		expected = new HashSet<>(Arrays.asList("GACCATG", "GACCATA", "AACCATA", "AATCATA"));
+		Assert.assertEquals(expected, actual);
+
+
+
+
+	}
+
+
 	@Test
 	public void testFindIntendedIndelSequences() {
 		// A set of data collapsed by R.

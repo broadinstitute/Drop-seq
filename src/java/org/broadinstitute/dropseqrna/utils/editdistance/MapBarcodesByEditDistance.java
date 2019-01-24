@@ -141,6 +141,75 @@ public class MapBarcodesByEditDistance {
 
 	}
 
+	/**
+	 * Find barcodes related to the core barcode.
+	 * For minEditDistance=1:
+	 * First find all barcodes related by ED=1.  Then find any barcodes that are related to the ED=1 barcodes by ED=1 AND related to the core barcode at ED=2.
+	 * Iterate to the max edit distance.
+	 *
+	 * @param barcode The barcode to find neighbors for
+	 * @param allBarcodes All barcodes to search
+	 * @param findIndels Should we find indels, or hamming distance only?
+	 * @param minEditDistance The minimum edit distance to search
+	 * @param maxEditDistance The maximum edit distance to search
+	 * @return
+	 */
+	public Set<String> findRelatedBarcodesByMutationalCollapse (final String barcode, final List<String> allBarcodes, final boolean findIndels, final int minEditDistance, final int maxEditDistance) {
+
+		// store results for each edit distance here.
+		Map<Integer, List<String>> validBarcodes = new HashMap<> ();
+
+		// map from the initial barcode to all the other barcodes, group by edit distance.
+		Map<Integer, Set<String>> barcodesAtED = new HashMap<>();
+		int [] edList = getEditDistanceDistributioneMultithreaded(barcode, allBarcodes, findIndels);
+		for (int i=0; i<allBarcodes.size(); i++) {
+			int ed = edList[i];
+			if (ed<=maxEditDistance) {
+				Set<String> bcSet = barcodesAtED.get(ed);
+				if (bcSet==null) {
+					bcSet=new HashSet<>();
+					barcodesAtED.put(ed, bcSet);
+				}
+				bcSet.add(allBarcodes.get(i));
+			}
+		}
+
+		for (int editDistance=minEditDistance; editDistance<=maxEditDistance; editDistance++) {
+			// short circuit this edit distance if there are no barcodes at the edit distance.
+			if (!barcodesAtED.containsKey(editDistance)) continue;
+
+			// test barcodes in this iteration.  Either the starting barcode, or all neighbors that were editDistance-1 of the current distance.
+			List<String> validBarcodesLastIteration = null;
+			List<String>  barcodesToTest=new ArrayList<>(barcodesAtED.get(editDistance));
+
+			// if we're on the first iteration, then all results at this edit distance hop are "valid" without further checks.
+			if (editDistance==minEditDistance) {
+				validBarcodes.put(editDistance, barcodesToTest);
+				continue; // break out of loop, you're done.
+			}
+
+			// we're on some other iteration, we use the results of the last iteration as one of our two barcode lists.
+			validBarcodesLastIteration=validBarcodes.get(editDistance-1);
+			if (validBarcodesLastIteration==null) validBarcodesLastIteration=Collections.EMPTY_LIST;
+
+			// now test the valid barcodes against the barcodes to test.
+			Set<String> newBarcodesThisIter=new HashSet<>();
+
+			for (String bc: validBarcodesLastIteration) {
+				// find barcodes ED=1 away from the last iteration results.
+				Set<String> resultOneIter= processSingleBarcode(bc, barcodesToTest, findIndels, 1);
+				newBarcodesThisIter.addAll(resultOneIter);
+			}
+			// iteration finished
+			validBarcodes.put(editDistance, new ArrayList<>(newBarcodesThisIter));
+		}
+		// flatten out results from each edit distance iteration.
+		Set<String> result = new HashSet<>();
+		for (List<String> l: validBarcodes.values())
+			result.addAll(l);
+
+		return result;
+	}
 
 
 	public BottomUpCollapseResult bottomUpCollapse (final ObjectCounter<String> barcodes, final int editDistance) {
