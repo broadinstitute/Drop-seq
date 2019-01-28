@@ -102,10 +102,10 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output BAM file with the new collapsed tag.", optional=false)
 	public File OUTPUT;
 
-	@Argument(doc="The edit distance to collapse tags.  If adaptive edit distance is used, this is the default edit distance used if no adaptive edit distance is discovered.")
+	@Argument(doc="The edit distance to collapse tags.  If adaptive edit distance is used, this is the default edit distance used if no adaptive edit distance is discovered.  If mutational collapse is used, this is the maximum edit distance two barcodes in a network can be apart (but they must have network neighbors at ED=1 for the entire path).")
 	public Integer EDIT_DISTANCE=1;
 
-	@Argument(doc = "Should indels be considered in edit distance calculations?  Doing this correctly is far slower than a simple edit distance test, but gives a more complete result.")
+	@Argument(doc = "Should indels be considered in edit distance calculations?  Doing this correctly is far slower than a simple edit distance test, but is a more aggressive method that may be useful in some situations.")
 	public boolean FIND_INDELS=false;
 
 	@Argument(doc="Read quality filter.  Filters all reads lower than this mapping quality.  Defaults to 10.  Set to 0 to not filter reads by map quality.")
@@ -123,9 +123,13 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	public int NUM_THREADS=1;
 
 	@Argument (doc="Instead of using the default fixed edit distance, use an adaptive edit distance.  "
-			+ "For each mergable entity, this tries to determine if there are 2 clusters of data by edit distance, and only merge the close-by neighbors.  EXPERIMETNAL!!!")
+			+ "For each mergable entity, this tries to determine if there are 2 clusters of data by edit distance, and only merge the close-by neighbors.")
 	public boolean ADAPTIVE_EDIT_DISTANCE=false;
-
+	
+	@Argument (doc="Instead of using the default fixed edit distance, use a mutational collapse strategy.  "
+			+ "For the single largest barcode in the context, find all neighbors within ED=1.  Then find neighbors to those neighbors at ED=1 that are ALSO ED=2 to the original barcode.  Search out to a maximum edit distance of EDIT_DISTANCE.")
+	public boolean MUTATIONAL_COLLAPSE=false;
+	
 	@Argument (doc="If adaptive edit distance is used, this is the maximum edit distance allowed.", optional=true)
 	public Integer ADAPTIVE_ED_MAX=-1;
 
@@ -161,6 +165,10 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		}
 		if (this.COUNT_TAGS_EDIT_DISTANCE>0 && this.COUNT_TAGS==null) {
 			log.error ("Edit distance for COUNT_TAGS set, but no COUNT TAGS set.  Can't do edit distance collapse on read counts!");
+			return 1;
+		}
+		if (this.MUTATIONAL_COLLAPSE && this.ADAPTIVE_EDIT_DISTANCE) {
+			log.error("Can't specifiy both adaptive edit distance collapse AND mutational collapse.");
 			return 1;
 		}
 		return 0;
@@ -372,13 +380,16 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		// map of primary barcode to list of child barcodes.
 		Map<String, String> result = new HashMap<>();
 		Map<String, List<String>> r = null;
-		if (ADAPTIVE_EDIT_DISTANCE) {
+		if (this.ADAPTIVE_EDIT_DISTANCE && !this.MUTATIONAL_COLLAPSE) {
 			AdaptiveMappingResult amr= med.collapseBarcodesAdaptive(barcodeCounts, findIndels, editDistance, minEditDistance, maxEditDistance);
 			r = amr.getBarcodeCollapseResult();
 
 			writeMetrics(writeEditDistanceDistribution, context, amr, outMetrics);
-		}
+		} else if (this.MUTATIONAL_COLLAPSE && !this.ADAPTIVE_EDIT_DISTANCE) {
+			r=med.collapseBarcodesByMutationalCollapse(barcodeCounts, findIndels, editDistance, 3);	
+		} 
 		else r = med.collapseBarcodes(barcodeCounts, findIndels, editDistance);
+		
 
 		// flip map to each child barcode that belongs to a parent.
 		for (String key: r.keySet())
