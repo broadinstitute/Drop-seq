@@ -24,6 +24,7 @@
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
 import java.io.File;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -33,10 +34,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.testng.annotations.Test;
 
+import htsjdk.samtools.util.IOUtil;
 import junit.framework.Assert;
 import picard.util.TabbedInputParser;
 
@@ -58,27 +62,27 @@ public class MapBarcodesByEditDistanceTest {
 		// ACGTA->TATTC=4 & AATTA->TATTC=2 (reject)
 		List<String> relatedBarcodes=Arrays.asList("ACGTA", "AAGTA", "AATTA", "TATTC");
 		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
-		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodes, false, 1, 5);
+		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodes, false, 5);
 		Set<String> expected = new HashSet<>(Arrays.asList("ACGTA", "AAGTA", "AATTA"));
 		Assert.assertEquals(expected, actual);
 	}
 
 
-	@Test
+	@Test(enabled=true)
 	public void testFindRelatedBarcodesByMutationalCollapse2() {
 		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
 
 		// core one:
 		// ACGTAAT->AAGTAAT=1 (accept)
-		// ACGTAAT->AATTAAT=2 & AAGTAT->AATTAAT=1 (accept)
-		// ACGTAAT->AATTAAT=3 & AAGTAAT->AATTAAT=1 (accept)
-		// ACGTAAT->TATTCAT=4 & AATTAAT->TATTCAT=2 (reject)
-		List<String> relatedBarcodesOne=Arrays.asList("AAGTAAT", "AATTAAT", "AATTAAT", "TATTCAT");
+		// ACGTAAT->AATTAAT=2 & AAGTAAT->AATTAAT=1 (accept)
+		// ACGTAAT->AATTATT=3 & AAGTAAT->AATTAAT=1 (accept)
+		// ACGTAAT->TATTATG=5 & AATTATT->TATTATG=2 (reject)
+		List<String> relatedBarcodesOne=Arrays.asList("AAGTAAT", "AATTAAT", "AATTATT", "TATTATG");
 		String coreBC="ACGTAAT";
 
-		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesOne, false, 1, 5);
-		Set<String> expected = new HashSet<>(Arrays.asList("AAGTAAT", "AATTAAT", "AATTAAT"));
-		Assert.assertEquals(expected, actual);
+		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesOne, false, 5);
+		Set<String> expectedOne = new HashSet<>(Arrays.asList("AAGTAAT", "AATTAAT", "AATTATT"));
+		Assert.assertEquals(expectedOne, actual);
 
 		// core two:
 		// GGCCATG->GACCATG=1 (accept)
@@ -89,15 +93,220 @@ public class MapBarcodesByEditDistanceTest {
 		List<String> relatedBarcodesTwo=Arrays.asList("GACCATG", "GACCATA", "AACCATA", "AATCATA", "ACTCATA");
 		coreBC="GGCCATG";
 
-		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesTwo, false, 1, 5);
-		expected = new HashSet<>(Arrays.asList("GACCATG", "GACCATA", "AACCATA", "AATCATA"));
-		Assert.assertEquals(expected, actual);
+		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesTwo, false, 5);
+		Set<String> expectedTwo = new HashSet<>(Arrays.asList("GACCATG", "GACCATA", "AACCATA", "AATCATA"));
+		Assert.assertEquals(expectedTwo, actual);
 
+		// core three:
+		// TTGAACA->TTGAACT=1 (accept)
+		// TTGAACA->ATGAACT=2 & TTGAACT->ATGAACT=1 (accept)
+		// TTGAACA->ATGTACT=3 & ATGAACT->ATGTACT=1 (accept)
+		// TTGAACA->AGGTACT=4 & ATGTACT->AGGTACT=1 (accept)
+		// TTGAACA->TGCTACT=4 & AGGTACT->TGCTACT=2 (reject)
+		List<String> relatedBarcodesThree=Arrays.asList("TTGAACT", "ATGAACT", "ATGTACT", "AGGTACT", "TGCTACT");
+		coreBC="TTGAACA";
 
+		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesThree, false, 5);
+		Set<String> expectedThree = new HashSet<>(Arrays.asList("TTGAACT", "ATGAACT", "ATGTACT", "AGGTACT"));
+		Assert.assertEquals(expectedThree, actual);
+		
+		// test all of them.
+		// plot (hclust(stringdistmatrix(c("ACGTAAT", "GGCCATG", "TTGAACA", "AAGTAAT", "AATTAAT", "AATTATT", "TATTATG", "GACCATG", "GACCATA", "AACCATA", "AATCATA", "ACTCATA", "TTGAACT", "ATGAACT", "ATGTACT", "AGGTACT", "TGCTACT"), method="hamming", useNames="strings")))
 
+		List<String> relatedBarcodesAll = new ArrayList<String>();
+		relatedBarcodesAll.addAll(relatedBarcodesOne);
+		relatedBarcodesAll.addAll(relatedBarcodesTwo);
+		relatedBarcodesAll.addAll(relatedBarcodesThree);
+		
+		coreBC="ACGTAAT";
+		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesAll, false, 5);
+		Assert.assertEquals(expectedOne, actual);
 
+		coreBC="GGCCATG";
+		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesAll, false, 5);
+		Assert.assertEquals(expectedTwo, actual);
+		
+		coreBC="TTGAACA";
+		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesAll, false, 5);
+		Assert.assertEquals(expectedThree, actual);
+		
 	}
 
+	@Test 
+	public void testCollapseBarcodesByMutationalCollapse () {
+		
+		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
+
+		// core one:
+		// ACGTAAT->AAGTAAT=1 (accept)
+		// ACGTAAT->AATTAAT=2 & AAGTAAT->AATTAAT=1 (accept)
+		// ACGTAAT->AATTATT=3 & AAGTAAT->AATTAAT=1 (accept)
+		// ACGTAAT->TATTATG=5 & AATTATT->TATTATG=2 (reject)
+		
+		// core two:
+		// GGCCATG->GACCATG=1 (accept)
+		// GGCCATG->GACCATA=2 & GACCATG->GACCATA=1 (accept)
+		// GGCCATG->AACCATA=3 & GACCATA->AACCATA=1 (accept)
+		// GGCCATG->AATCATA=4 & AACCATA->AATCATA=1 (accept)
+		// GGCCATG->ACTCATA=4 & AGCCATA->ACTCATA=2 (reject)
+		
+		// core three:
+		// TTGAACA->TTGAACT=1 (accept)
+		// TTGAACA->ATGAACT=2 & TTGAACT->ATGAACT=1 (accept)
+		// TTGAACA->ATGTACT=3 & ATGAACT->ATGTACT=1 (accept)
+		// TTGAACA->AGGTACT=4 & ATGTACT->AGGTACT=1 (accept)
+		// TTGAACA->TGCTACT=4 & AGGTACT->TGCTACT=2 (reject)
+				
+		// {TGCTACT=[], ACTCATA=[], GGCCATG=[AACCATA, AATCATA, GACCATA, GACCATG], TATTATG=[], ACGTAAT=[AAGTAAT, AATTAAT, AATTATT], TTGAACA=[AGGTACT, ATGAACT, ATGTACT, TTGAACT]}
+		
+		// the data.
+		ObjectCounter<String> barcodes = new ObjectCounter<>();
+		barcodes.incrementByCount("ACGTAAT", 90);
+		
+		barcodes.incrementByCount("AAGTAAT", 10);
+		barcodes.incrementByCount("AATTAAT", 9);
+		barcodes.incrementByCount("AATTATT", 7);
+		barcodes.incrementByCount("TATTATG", 5);
+		
+		barcodes.incrementByCount("GGCCATG", 95);
+		
+		barcodes.incrementByCount("GACCATG", 10);
+		barcodes.incrementByCount("GACCATA", 9);
+		barcodes.incrementByCount("AACCATA", 7);
+		barcodes.incrementByCount("AATCATA", 5);
+		barcodes.incrementByCount("ACTCATA", 4);
+				
+		barcodes.incrementByCount("TTGAACA", 78);
+		
+		barcodes.incrementByCount("TTGAACT", 10);
+		barcodes.incrementByCount("ATGAACT", 9);
+		barcodes.incrementByCount("ATGTACT", 7);
+		barcodes.incrementByCount("AGGTACT", 5);
+		barcodes.incrementByCount("TGCTACT", 5);
+		
+		Map<String, List<String>> result = m.collapseBarcodesByMutationalCollapse (barcodes, false, 5, 3);
+		
+		// expected results.
+		String coreBCOne="ACGTAAT";
+		String coreBCTwo="GGCCATG";
+		String coreBCThree="TTGAACA";
+		
+		Set<String> expectedOne = new HashSet<>(Arrays.asList("AAGTAAT", "AATTAAT", "AATTATT"));
+		Set<String> expectedTwo = new HashSet<>(Arrays.asList("GACCATG", "GACCATA", "AACCATA", "AATCATA"));
+		Set<String> expectedThree = new HashSet<>(Arrays.asList("TTGAACT", "ATGAACT", "ATGTACT", "AGGTACT"));
+		
+		Assert.assertTrue(result.containsKey(coreBCOne));
+		Assert.assertTrue(result.containsKey(coreBCTwo));
+		Assert.assertTrue(result.containsKey(coreBCThree));
+		
+		// 3 cores + 3 unmerged.
+		
+		Assert.assertEquals(6, result.keySet().size());
+		Assert.assertEquals(expectedOne, new HashSet<String>(result.get(coreBCOne)));
+		Assert.assertEquals(expectedTwo, new HashSet<String>(result.get(coreBCTwo)));
+		Assert.assertEquals(expectedThree, new HashSet<String>(result.get(coreBCThree)));
+	}
+	
+	@Test
+	public void testCollapseBarcodesByMutationalCollapseLargeInput() {
+		// File dataFile = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/mutational_collapse_testdata.txt.gz");
+		File dataFile = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/170330_pSPBN_GFP_v9_v2_B19EnvA_15P_BCpooled_day5_Final_RVg_barcode.counts.txt.gz");
+		File resultFile = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/mutational_collapse_testdata.result.txt.gz");
+		int minCount=3;
+		
+		TabbedInputParser dataParser = new TabbedInputParser(false, dataFile);				
+		ObjectCounter<String> data = new ObjectCounter<>();		
+		dataParser.next();
+		while (dataParser.hasNext()) {
+			String [] line = dataParser.next();
+			data.incrementByCount(line[0], Integer.parseInt(line[1]));
+		}
+		dataParser.close();
+		
+		TabbedInputParser resultParser = new TabbedInputParser(false, resultFile);
+		ObjectCounter<String> expectedRawCount = new ObjectCounter<>();	
+		ObjectCounter<String> expectedAggregateCount = new ObjectCounter<>();
+		resultParser.next();
+		while (resultParser.hasNext()) {
+			String [] line = resultParser.next();
+			expectedRawCount.incrementByCount(line[0], Integer.parseInt(line[1]));
+			expectedAggregateCount.incrementByCount(line[0], Integer.parseInt(line[5]));
+		}
+		resultParser.close();
+		
+		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true, 4, 100);					
+		Map<String, List<String>> result = m.collapseBarcodesByMutationalCollapse (data, false, 5, minCount);
+		
+		ObjectCounter<String> r2 = aggregateCounts(data, result);
+		writeOutput (data, r2, result, m);
+						
+		// Assert.assertEquals(r2.getKeys().size(), expected.getKeys().size());
+		int numErrors=0;
+		// compare two results.
+		for (String key: expectedRawCount.getKeys()) {
+			int e = expectedAggregateCount.getCountForKey(key);
+			int a = r2.getCountForKey(key);
+			
+			if (e!=a) {				
+//				List<String> children = result.get(key);
+//				System.out.println("Mapping doesn't match for parent: " + key +" children "+ children.toString());
+				numErrors++;
+			}
+			// Assert.assertEquals(e, a);
+		}
+		Assert.assertEquals(0, numErrors);
+		Assert.assertNotNull(result);
+						
+	}
+	
+	private void writeOutput (ObjectCounter<String> data, ObjectCounter<String> aggregateCounts, Map<String, List<String>> mapping, MapBarcodesByEditDistance m) {				
+		PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(new File ("/downloads/arpy/mutational_collapse_testdata.result_jim.txt")));			
+		String [] header = {"sequence",  "counts", "parent",  "edist",  "fam_seqs", "fam_counts"};
+		out.println(StringUtils.join(header, "\t"));
+		
+		for (String parentSeq: mapping.keySet()) {		
+			if (parentSeq.equals("ACCTAGATTCAGTTAGCCAG"))
+					System.out.println();
+			List<String> sequences = mapping.get(parentSeq);														
+			int famSeqs=sequences.size()+1;
+			String [] line = {parentSeq, Integer.toString(data.getCountForKey(parentSeq)), parentSeq, "0", Integer.toString(famSeqs) ,Integer.toString(aggregateCounts.getCountForKey(parentSeq))};
+			out.println(StringUtils.join(line, "\t"));
+															
+			for (String v: sequences) {
+				int ed = HammingDistance.getHammingDistance(parentSeq, v);
+				// for merged results, the family seqs size is always 1 and the fam counts is always 0.
+				String [] line2 = {v, Integer.toString(data.getCountForKey(v)), parentSeq, Integer.toString(ed), "1", "0"};
+				out.println(StringUtils.join(line2, "\t"));																				
+			}			
+		}
+				
+		out.close();
+	}
+	
+	private ObjectCounter<String> aggregateCounts (ObjectCounter<String> data, Map<String, List<String>> mapping) {
+		ObjectCounter<String> result = new ObjectCounter<>();
+		// build out all the new counts for barcodes that have merged results.
+		Set<String> mergedBarcodes=new HashSet<String>();
+		
+		for (String key: mapping.keySet()) {
+			List<String> values = mapping.get(key);
+			int totalCount=data.getCountForKey(key);			
+			mergedBarcodes.addAll(values);
+			totalCount += values.stream().mapToInt(x-> data.getCountForKey(x)).sum();						
+			result.incrementByCount(key, totalCount);
+			mergedBarcodes.add(key);			
+		}
+		
+		// build out the singletons that were not merged by finding the non-merged data keys.
+		for (String k: data.getKeys()) 
+			if (!mergedBarcodes.contains(k)) {
+				result.incrementByCount(k, data.getCountForKey(k));
+			}
+		
+		
+		return result;
+		
+	}
 
 	@Test
 	public void testFindIntendedIndelSequences() {

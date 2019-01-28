@@ -142,6 +142,64 @@ public class MapBarcodesByEditDistance {
 	}
 
 	/**
+	 * Perform edit distance collapse where all barcodes are eligible to be collapse.
+	 * Barcodes are ordered by total number of counts.
+	 * @param barcodes
+	 * @param findIndels
+	 * @param editDistance
+	 * @return
+	 */
+	public Map<String, List<String>> collapseBarcodesByMutationalCollapse (final ObjectCounter<String> barcodes, final boolean findIndels, final int maxEditDistance, final int minSizeToCollapse) {
+		
+		Map<String, List<String>> result = new HashMap<>();
+		int originalBarcodeCount=barcodes.getSize();
+		
+		int count = 0;
+		int numBCCollapsed=0;
+		int totalCollapsed=0;
+		
+		List<String> barcodeList = barcodes.getKeysOrderedByCount(true);
+		
+		long startTime = System.currentTimeMillis();
+		if (this.REPORT_PROGRESS_INTERVAL!=0)
+			log.info("Start of mutational barcode collapse");
+		while (barcodeList.isEmpty()==false) {
+			String b = barcodeList.get(0);
+			int barcodeSize=barcodes.getCountForKey(b);
+			// if you've iterated past the smallest barcode you're willing to consider, break the loop.
+			if (barcodeSize<minSizeToCollapse)
+				break;  
+			count++;
+			barcodeList.remove(b);
+			
+			Set<String> closeBC=findRelatedBarcodesByMutationalCollapse(b, barcodeList, findIndels, maxEditDistance);
+			numBCCollapsed+=closeBC.size();
+			totalCollapsed+=closeBC.size();
+			if (result.containsKey(b))
+				log.error("Result should never have core barcode");
+
+			List<String> closeBCList = new ArrayList<>(closeBC);
+			Collections.sort(closeBCList);
+			result.put(b, closeBCList);
+
+			barcodeList.removeAll(closeBC);			
+			if (this.REPORT_PROGRESS_INTERVAL!=0 && count % this.REPORT_PROGRESS_INTERVAL == 0) {
+				if (barcodes.getSize()>10000) log.info("Processed [" + count + "] records, totals BC Space left [" + barcodeList.size() +"]", " # collapsed this set [" + numBCCollapsed+"]");
+				
+				numBCCollapsed=0;
+				
+			}
+		}
+		if (verbose) {
+			long endTime = System.currentTimeMillis();
+			long duration = (endTime - startTime)/1000;
+			log.info("Collapse with [" + this.NUM_THREADS +"] threads took [" + duration + "] seconds to process");
+			log.info("Started with core barcodes [" +originalBarcodeCount+  "] ended with [" + count + "] num collapsed [" +  (totalCollapsed) +"]");
+		}
+		return (result);
+	}
+	
+	/**
 	 * Find barcodes related to the core barcode.
 	 * For minEditDistance=1:
 	 * First find all barcodes related by ED=1.  Then find any barcodes that are related to the ED=1 barcodes by ED=1 AND related to the core barcode at ED=2.
@@ -150,12 +208,12 @@ public class MapBarcodesByEditDistance {
 	 * @param barcode The barcode to find neighbors for
 	 * @param allBarcodes All barcodes to search
 	 * @param findIndels Should we find indels, or hamming distance only?
-	 * @param minEditDistance The minimum edit distance to search
 	 * @param maxEditDistance The maximum edit distance to search
 	 * @return
 	 */
-	public Set<String> findRelatedBarcodesByMutationalCollapse (final String barcode, final List<String> allBarcodes, final boolean findIndels, final int minEditDistance, final int maxEditDistance) {
-
+	public Set<String> findRelatedBarcodesByMutationalCollapse (final String barcode, final List<String> allBarcodes, final boolean findIndels, final int maxEditDistance) {
+		// parameterizing minEditDistance could lead to complications - how far apart are subseqeunt jumps from the first set of barcodes found?  ED=1 or ED=minEditDistance?
+		int minEditDistance=1;
 		// store results for each edit distance here.
 		Map<Integer, List<String>> validBarcodes = new HashMap<> ();
 
