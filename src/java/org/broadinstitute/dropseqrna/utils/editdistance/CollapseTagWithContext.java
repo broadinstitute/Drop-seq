@@ -292,7 +292,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 
 		// get barcode counts.
 		ObjectCounter<String> barcodeCounts = getBarcodeCounts (informativeRecs, collapseTag, countTags, countTagsEditDistance);
-		if (minNumObservations > 1) barcodeCounts.filterByMinCount(minNumObservations);
+		if (minNumObservations > 1 & !this.MUTATIONAL_COLLAPSE) barcodeCounts.filterByMinCount(minNumObservations);
 		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, findIndels, editDistance, minEditDistance, maxEditDistance, verbose, outMetrics, context, writeEditDistanceDistribution);
 		Set<String> expectedBarcodes = null;
 		// already validated that if dropSmallCounts is true, then the minNumObservations > 1.
@@ -331,6 +331,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	 * @param countTagsEditDistance
 	 * @return
 	 */
+	//TODO: make this take a peekable iterator of informative SAMRecords instead of a collection.
 	private ObjectCounter<String> getBarcodeCounts (final Collection<SAMRecord> informativeRecs, final String collapseTag, final List<String> countTags, final Integer countTagsEditDistance) {
 		// collapse barcodes based on informative reads that have the necessary tags.
 		// this counts 1 per read.
