@@ -126,21 +126,24 @@ public class CollapseTagWithContext extends CommandLineProgram {
 			+ "For each mergable entity, this tries to determine if there are 2 clusters of data by edit distance, and only merge the close-by neighbors.")
 	public boolean ADAPTIVE_EDIT_DISTANCE=false;
 	
-	@Argument (doc="Instead of using the default fixed edit distance, use a mutational collapse strategy.  "
-			+ "For the single largest barcode in the context, find all neighbors within ED=1.  Then find neighbors to those neighbors at ED=1 that are ALSO ED=2 to the original barcode.  Search out to a maximum edit distance of EDIT_DISTANCE.")
-	public boolean MUTATIONAL_COLLAPSE=false;
-	
 	@Argument (doc="If adaptive edit distance is used, this is the maximum edit distance allowed.", optional=true)
 	public Integer ADAPTIVE_ED_MAX=-1;
 
 	@Argument (doc="If adaptive edit distance is used, this is the minimum edit distance allowed.", optional=true)
 	public Integer ADAPTIVE_ED_MIN=-1;
 
-	@Argument (doc="If provided, writes out some metrics about each barcode that is merged.", optional=true)
+	@Argument (doc="If provided, writes out some metrics about each barcode that is merged by adaptive edit distance collapse.", optional=true)
 	public File ADAPTIVE_ED_METRICS_FILE;
 
 	@Argument (doc="If true, add an additional column that contains a comma separated list of edit distances from the current CONTEXT_TAG to all other CONTEXT_TAGS.  This will make files significantly larger!")
 	public boolean ADAPTIVE_ED_METRICS_ED_LIST=false;
+
+	@Argument (doc="Instead of using the default fixed edit distance, use a mutational collapse strategy.  "
+			+ "For the single largest barcode in the context, find all neighbors within ED=1.  Then find neighbors to those neighbors at ED=1 that are ALSO ED=2 to the original barcode.  Search out to a maximum edit distance of EDIT_DISTANCE.")
+	public boolean MUTATIONAL_COLLAPSE=false;
+	
+	@Argument (doc="If provided, writes out some metrics about each barcode that is merged by mutational edit distance collapse.", optional=true)
+	public File MUTATIONAL_COLLAPSE_METRICS_FILE;
 
 	// make this once and reuse it.
 	private MapBarcodesByEditDistance med;
@@ -183,7 +186,12 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		PrintStream outMetrics = null;
 		if (this.ADAPTIVE_ED_METRICS_FILE!=null) {
 			outMetrics = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.ADAPTIVE_ED_METRICS_FILE));
-			writeMetricsHeader(this.ADAPTIVE_ED_METRICS_ED_LIST, outMetrics);
+			writeAdaptiveEditDistanceMetricsHeader(this.ADAPTIVE_ED_METRICS_ED_LIST, outMetrics);
+		}
+		
+		if (this.MUTATIONAL_COLLAPSE_METRICS_FILE!=null) {
+			outMetrics = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.MUTATIONAL_COLLAPSE_METRICS_FILE));
+			writeMutationalCollapseMetricsHeader(this.ADAPTIVE_ED_METRICS_ED_LIST, outMetrics);
 		}
 
 		med = new MapBarcodesByEditDistance(false, this.NUM_THREADS, 0);
@@ -205,13 +213,14 @@ public class CollapseTagWithContext extends CommandLineProgram {
         int maxNumInformativeReadsInMemory=1000;
 
         while (groupingIter.hasNext()) {
-
+        	
         	// prime the first read of the group.
         	SAMRecord r = groupingIter.next();
+        	// TODO: Instead of a list, stuff reads into a SortingIterator?
         	List<SAMRecord> informativeRecs = new ArrayList<>();
         	informativeRecs = getInformativeRead(r, informativeRecs, this.COLLAPSE_TAG, this.OUT_TAG, mapFilter, tagFilter, writer, pl);
 
-        	// get subsequent reads.  Informative reads stay in memory, uninformative reads are written to disk and discarded.
+        	// get subsequent reads.  Informative reads stay in memory, uninformative reads are written to disk as part of the final BAM output and discarded.
         	while (groupingIter.hasNextInGroup()) {
         		r = groupingIter.next();
         		informativeRecs = getInformativeRead(r, informativeRecs, this.COLLAPSE_TAG, this.OUT_TAG, mapFilter, tagFilter, writer, pl);
@@ -231,7 +240,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 					this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT,
                     this.DROP_SMALL_COUNTS, this.COUNT_TAGS_EDIT_DISTANCE, verbose, outMetrics, this.ADAPTIVE_ED_METRICS_ED_LIST);
 
-        	// write out the informative reads, then all the reads that were not altered.
+        	// write out the informative reads,
         	result.stream().forEach(writer::addAlignment);
         }
         log.info("Re-sorting output BAM in genomic order.");
@@ -269,6 +278,8 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		return informativeReads;
 	}
 
+	// Break this up into 2 methods - one to collapse results, one to retag reads.
+	// Make the input a peekable iterator instead of a collection of SAMRecords.
 	private List<SAMRecord> processRecordList (final Collection<SAMRecord> informativeRecs, final String collapseTag,
                                                final List<String> countTags, final String outTag, final boolean findIndels,
                                                final int editDistance, final Integer minEditDistance, final Integer maxEditDistance,
@@ -311,6 +322,15 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	}
 
 
+	/**
+	 * Operate on a collection of records, find the counts of each context.
+	 * This may include fancy work like edit distance collapse of the count tags.
+	 * @param informativeRecs
+	 * @param collapseTag
+	 * @param countTags
+	 * @param countTagsEditDistance
+	 * @return
+	 */
 	private ObjectCounter<String> getBarcodeCounts (final Collection<SAMRecord> informativeRecs, final String collapseTag, final List<String> countTags, final Integer countTagsEditDistance) {
 		// collapse barcodes based on informative reads that have the necessary tags.
 		// this counts 1 per read.
@@ -364,6 +384,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		}
 		return barcodeCounts;
 	}
+	
 	private SAMFileWriter getWriter (final SamReader reader) {
 		SAMFileHeader header = reader.getFileHeader();
 		SamHeaderUtil.addPgRecord(header, this);
@@ -386,7 +407,9 @@ public class CollapseTagWithContext extends CommandLineProgram {
 
 			writeMetrics(writeEditDistanceDistribution, context, amr, outMetrics);
 		} else if (this.MUTATIONAL_COLLAPSE && !this.ADAPTIVE_EDIT_DISTANCE) {
-			r=med.collapseBarcodesByMutationalCollapse(barcodeCounts, findIndels, editDistance, 3);	
+			r=med.collapseBarcodesByMutationalCollapse(barcodeCounts, findIndels, editDistance, 3);
+			ObjectCounter<String> aggregatedCounts=aggregateCounts(barcodeCounts, r);
+			writeMutationalReport(barcodeCounts, aggregatedCounts, r, outMetrics);
 		} 
 		else r = med.collapseBarcodes(barcodeCounts, findIndels, editDistance);
 		
@@ -398,6 +421,36 @@ public class CollapseTagWithContext extends CommandLineProgram {
 
 		return (result);
 	}
+	
+	/**
+	 * Generate a new object counter reflects the counts of barcodes after collapsing those barcodes via a given mapping.
+	 * @param data The counts of barcodes (UMIs/reads/etc).
+	 * @param mapping The map of a barcode (key) to some other set of barcodes (values) that collapse into that barcode.
+	 * @return The counts of barcodes after collapse - some barcodes with have higher counts, some barcodes that were collapsed will be removed from the original data.  
+	 * The sum of total counts will be the same as the input data.
+	 */
+	public static ObjectCounter<String> aggregateCounts (ObjectCounter<String> data, Map<String, List<String>> mapping) {
+		ObjectCounter<String> result = new ObjectCounter<>();
+		// build out all the new counts for barcodes that have merged results.
+		Set<String> mergedBarcodes=new HashSet<String>();
+		
+		for (String key: mapping.keySet()) {
+			List<String> values = mapping.get(key);
+			int totalCount=data.getCountForKey(key);			
+			mergedBarcodes.addAll(values);
+			totalCount += values.stream().mapToInt(x-> data.getCountForKey(x)).sum();						
+			result.incrementByCount(key, totalCount);
+			mergedBarcodes.add(key);			
+		}
+		
+		// build out the singletons that were not merged by finding the non-merged data keys.
+		for (String k: data.getKeys()) 
+			if (!mergedBarcodes.contains(k)) {
+				result.incrementByCount(k, data.getCountForKey(k));
+			}
+		
+		return result;		
+	}
 
 	private String getContextString (final SAMRecord r, final List<String> contextTags) {
 		List<String> result = new ArrayList<>();
@@ -408,11 +461,16 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		return StringUtils.join(result, ",");
 	}
 
-	private void writeMetricsHeader (final boolean writeEditDistanceDistribution, final PrintStream out) {
-		List<String> header = new ArrayList(Arrays.asList("CONTEXT", "COLLAPSE", "NUM_COLLAPSED", "ADAPTIVE_ED_DISCOVERED", "ADAPTIVE_ED_USED", "NUM_OBS_ORIGINAL", "NUM_OBS_MERGED"));
+	private void writeAdaptiveEditDistanceMetricsHeader (final boolean writeEditDistanceDistribution, final PrintStream out) {
+		List<String> header = new ArrayList<String>(Arrays.asList("CONTEXT", "COLLAPSE", "NUM_COLLAPSED", "ADAPTIVE_ED_DISCOVERED", "ADAPTIVE_ED_USED", "NUM_OBS_ORIGINAL", "NUM_OBS_MERGED"));
 		if (writeEditDistanceDistribution)
 			header.add("ED_DISTRIBUTION");
 		out.println(StringUtil.join("\t", header));
+	}
+
+	private void writeMutationalCollapseMetricsHeader (final boolean writeEditDistanceDistribution, final PrintStream out) {
+		String [] header = {"sequence",  "counts", "parent",  "edist",  "fam_seqs", "fam_counts"};
+		out.println(StringUtils.join(header, "\t"));
 	}
 
 	private void writeMetrics (final boolean writeEditDistanceDistribution, final String context, final AdaptiveMappingResult r, final PrintStream out) {
@@ -438,6 +496,22 @@ public class CollapseTagWithContext extends CommandLineProgram {
 			out.println(StringUtil.join("\t", line));
 
 		}
+	}
+	
+	private void writeMutationalReport (ObjectCounter<String> data, ObjectCounter<String> aggregateCounts, Map<String, List<String>> mapping, PrintStream out) {						
+		for (String parentSeq: mapping.keySet()) {		
+			List<String> sequences = mapping.get(parentSeq);														
+			int famSeqs=sequences.size()+1;
+			String [] line = {parentSeq, Integer.toString(data.getCountForKey(parentSeq)), parentSeq, "0", Integer.toString(famSeqs) ,Integer.toString(aggregateCounts.getCountForKey(parentSeq))};
+			out.println(StringUtils.join(line, "\t"));
+															
+			for (String v: sequences) {
+				int ed = HammingDistance.getHammingDistance(parentSeq, v);
+				// for merged results, the family seqs size is always 1 and the fam counts is always 0.
+				String [] line2 = {v, Integer.toString(data.getCountForKey(v)), parentSeq, Integer.toString(ed), "1", "0"};
+				out.println(StringUtils.join(line2, "\t"));																				
+			}			
+		}						
 	}
 
 	private PeekableGroupingIterator<SAMRecord> orderReadsByTagsPeekable (final SamReader reader, final String collapseTag, final List<String> contextTag, final int mapQuality) {
