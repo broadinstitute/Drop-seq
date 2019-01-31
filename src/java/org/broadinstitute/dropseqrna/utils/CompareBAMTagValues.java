@@ -68,13 +68,24 @@ public class CompareBAMTagValues extends CommandLineProgram {
 		while (iterator1.hasNext() && iterator2.hasNext()) {
 			SAMRecord r1 = iterator1.next();
 			SAMRecord r2 = iterator2.next();
+			// log.info(r1.toString() + " tags read 1: " + getTagsAsString(r1, this.TAGS));
 			boolean test = compareTags(r1, r2, this.TAGS) ;
-			if (!test) return 1;
+			if (!test) {
+				log.info("Difference found for read " + r1.toString()+ " read 1: " + getTagsAsString(r1, this.TAGS)+ " read 2: "+ getTagsAsString(r2, this.TAGS));				
+				return 1;
+			}
 		}
-
+		log.info("DONE");
 		return 0;
 	}
-
+	
+	private String getTagsAsString (SAMRecord r, List<String> tags) {
+		StringBuilder b = new StringBuilder();
+		for (String t: tags) {
+			b.append(t + "[" +  r.getStringAttribute(t) +"] ");
+		}
+		return b.toString();
+	}
 
 	boolean compareTags (final SAMRecord r1, final SAMRecord r2, final List<String> tags) {
 		boolean sameRead = r1.getReadName().equals(r2.getReadName());
