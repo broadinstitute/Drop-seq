@@ -192,6 +192,8 @@ public class CollapseTagWithContext extends CommandLineProgram {
 
 		if (this.COUNT_TAGS_EDIT_DISTANCE>0) this.medUMI = new MapBarcodesByEditDistance(false);
 
+		med = new MapBarcodesByEditDistance(false, this.NUM_THREADS, 0);
+		
 		PrintStream outMetrics = null;
 		if (this.ADAPTIVE_ED_METRICS_FILE!=null) {
 			outMetrics = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.ADAPTIVE_ED_METRICS_FILE));
@@ -199,11 +201,12 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		}
 		
 		if (this.MUTATIONAL_COLLAPSE_METRICS_FILE!=null) {
+			med = new MapBarcodesByEditDistance(true, this.NUM_THREADS, 1000);
 			outMetrics = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.MUTATIONAL_COLLAPSE_METRICS_FILE));
 			writeMutationalCollapseMetricsHeader(this.ADAPTIVE_ED_METRICS_ED_LIST, outMetrics);
 		}
 
-		med = new MapBarcodesByEditDistance(false, this.NUM_THREADS, 0);
+		
 		IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
 
@@ -401,7 +404,6 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	 * @param countTagsEditDistance
 	 * @return
 	 */
-	//TODO: make this take a peekable iterator of informative SAMRecords instead of a collection.
 	private ObjectCounter<String> getBarcodeCounts (final PeekableIterator<SAMRecord> informativeRecs, final String collapseTag, final List<String> countTags, final Integer countTagsEditDistance) {
 		// collapse barcodes based on informative reads that have the necessary tags.
 		// this counts 1 per read.
