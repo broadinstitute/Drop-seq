@@ -162,7 +162,7 @@ public class MapBarcodesByEditDistance {
 		
 		long startTime = System.currentTimeMillis();
 		if (this.REPORT_PROGRESS_INTERVAL!=0)
-			log.info("Start of mutational barcode collapse");
+			log.info("Start of mutational barcode collapse for [", barcodes.getKeys().size()+"] barcodes with minimum parent size [", minSizeToCollapse, "] and max edit distance [", maxEditDistance+"]");
 		while (barcodeList.isEmpty()==false) {
 			String b = barcodeList.get(0);
 			int barcodeSize=barcodes.getCountForKey(b);
