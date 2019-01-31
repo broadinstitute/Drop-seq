@@ -56,6 +56,8 @@ import org.broadinstitute.dropseqrna.utils.readiterators.MapQualityFilteredItera
 import org.broadinstitute.dropseqrna.utils.readiterators.MissingTagFilteringIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 
+import com.google.common.collect.Sets;
+
 import htsjdk.samtools.BAMRecordCodec;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
@@ -206,7 +208,6 @@ public class CollapseTagWithContext extends CommandLineProgram {
 			writeMutationalCollapseMetricsHeader(this.ADAPTIVE_ED_METRICS_ED_LIST, outMetrics);
 		}
 
-		
 		IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
 
@@ -571,9 +572,13 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		}
 	}
 	
-	private void writeMutationalReport (ObjectCounter<String> data, ObjectCounter<String> aggregateCounts, Map<String, List<String>> mapping, PrintStream out) {						
-		for (String parentSeq: mapping.keySet()) {		
-			List<String> sequences = mapping.get(parentSeq);														
+	private void writeMutationalReport (ObjectCounter<String> data, ObjectCounter<String> aggregateCounts, Map<String, List<String>> mapping, PrintStream out) {
+		Set<String> allMappedBC=new HashSet<String>();
+		
+		for (String parentSeq: mapping.keySet()) {
+			allMappedBC.add(parentSeq);			
+			List<String> sequences = mapping.get(parentSeq);
+			allMappedBC.addAll(sequences);
 			int famSeqs=sequences.size()+1;
 			String [] line = {parentSeq, Integer.toString(data.getCountForKey(parentSeq)), parentSeq, "0", Integer.toString(famSeqs) ,Integer.toString(aggregateCounts.getCountForKey(parentSeq))};
 			out.println(StringUtils.join(line, "\t"));
@@ -584,7 +589,15 @@ public class CollapseTagWithContext extends CommandLineProgram {
 				String [] line2 = {v, Integer.toString(data.getCountForKey(v)), parentSeq, Integer.toString(ed), "1", "0"};
 				out.println(StringUtils.join(line2, "\t"));																				
 			}			
-		}						
+		}
+		
+		// write out any sequence that was unchanged, and wasn't assigned a parent.
+		for (String key: data.getKeys()) {
+			if (!allMappedBC.contains(key)) {
+				String [] line = {key, Integer.toString(data.getCountForKey(key)), key, "0", "1" ,Integer.toString(data.getCountForKey(key))};
+				out.println(StringUtils.join(line, "\t"));
+			}
+		}		
 	}
 
 	private PeekableGroupingIterator<SAMRecord> orderReadsByTagsPeekable (final SamReader reader, final String collapseTag, final List<String> contextTag, final int mapQuality) {
