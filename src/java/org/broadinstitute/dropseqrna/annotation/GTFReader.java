@@ -57,6 +57,10 @@ public class GTFReader {
 
     public GTFReader(final File gtfFlatFile, final SAMSequenceDictionary sequenceDictionary) {
         this.gtfFlatFile = gtfFlatFile;
+        // turns out this has to be non-null to not null pointer!
+        if (sequenceDictionary==null)  {
+        	throw new IllegalArgumentException("When instantiating a new GTFReader, must supply a non-null sequenceDictionary.");
+        }
         this.sequenceDictionary = sequenceDictionary;
     }
 
