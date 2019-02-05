@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright 2017 Broad Institute
+ * Copyright 2019 Broad Institute
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,17 +25,27 @@ package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMTagUtil;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-import org.broadinstitute.dropseqrna.utils.PredicateFilteredIterator;
 
-import java.util.Iterator;
+import java.util.function.Predicate;
 
-/**
- * Iterator wrapper that emits a SAMRecord only if *all* the required tags are present.
- */
-public class MissingTagFilteringIterator extends PredicateFilteredIterator<SAMRecord> {
+public class RequiredTagPredicate
+        implements Predicate<SAMRecord> {
 
-    public MissingTagFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String... requiredTags) {
-        super(underlyingIterator, new RequiredTagPredicate(requiredTags));
+    final short[] requiredTags;
+
+    public RequiredTagPredicate(final String... requiredTags) {
+        this.requiredTags = new short[requiredTags.length];
+        for (int i = 0; i < requiredTags.length; ++i)
+            this.requiredTags[i] = SAMTagUtil.getSingleton().makeBinaryTag(requiredTags[i]);
+    }
+
+    @Override
+    public boolean test(SAMRecord rec) {
+        for (final short tag : requiredTags)
+            // String strTag=SAMTagUtil.getSingleton().makeStringTag(tag);
+            // List<SAMTagAndValue> vals = rec.getAttributes();
+            if (rec.getAttribute(tag) == null)
+                return false;
+        return true;
     }
 }
