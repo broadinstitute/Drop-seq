@@ -146,10 +146,11 @@ public class MapBarcodesByEditDistance {
 	 * Barcodes are ordered by total number of counts.
 	 * @param barcodes
 	 * @param findIndels
-	 * @param editDistance
+	 * @param editDistance The maximum edit distance from the parent barcode to any child.
+	 * @param pathStepSize The maximum edit distance from any child to another child.
 	 * @return
 	 */
-	public Map<String, List<String>> collapseBarcodesByMutationalCollapse (final ObjectCounter<String> barcodes, final boolean findIndels, final int maxEditDistance, final int minSizeToCollapse) {
+	public Map<String, List<String>> collapseBarcodesByMutationalCollapse (final ObjectCounter<String> barcodes, final boolean findIndels, final int maxEditDistance, final int minSizeToCollapse, final int pathStepSize) {
 		
 		Map<String, List<String>> result = new HashMap<>();
 		int originalBarcodeCount=barcodes.getSize();
@@ -172,7 +173,7 @@ public class MapBarcodesByEditDistance {
 			count++;
 			barcodeList.remove(b);
 			
-			Set<String> closeBC=findRelatedBarcodesByMutationalCollapse(b, barcodeList, findIndels, maxEditDistance);
+			Set<String> closeBC=findRelatedBarcodesByMutationalCollapse(b, barcodeList, findIndels, maxEditDistance, pathStepSize);
 			numBCCollapsed+=closeBC.size();
 			totalCollapsed+=closeBC.size();
 			if (result.containsKey(b))
@@ -208,11 +209,11 @@ public class MapBarcodesByEditDistance {
 	 * @param allBarcodes All barcodes to search
 	 * @param findIndels Should we find indels, or hamming distance only?
 	 * @param maxEditDistance The maximum edit distance to search
+	 * @param pathStepSize The maximum edit distance from any child to another child.
 	 * @return
 	 */
-	public Set<String> findRelatedBarcodesByMutationalCollapse (final String barcode, final List<String> allBarcodes, final boolean findIndels, final int maxEditDistance) {
-		// parameterizing minEditDistance could lead to complications - how far apart are subseqeunt jumps from the first set of barcodes found?  ED=1 or ED=minEditDistance?
-		int minEditDistance=1;
+	public Set<String> findRelatedBarcodesByMutationalCollapse (final String barcode, final List<String> allBarcodes, final boolean findIndels, final int maxEditDistance, final int pathStepSize) {
+		// parameterizing minEditDistance could lead to complications - how far apart are subseqeunt jumps from the first set of barcodes found?  ED=1 or ED=minEditDistance?		
 		// store results for each edit distance here.
 		Map<Integer, List<String>> validBarcodes = new HashMap<> ();
 
@@ -231,7 +232,7 @@ public class MapBarcodesByEditDistance {
 			}
 		}
 
-		for (int editDistance=minEditDistance; editDistance<=maxEditDistance; editDistance++) {
+		for (int editDistance=pathStepSize; editDistance<=maxEditDistance; editDistance+=pathStepSize) {
 			// short circuit this edit distance if there are no barcodes at the edit distance.
 			if (!barcodesAtED.containsKey(editDistance)) continue;
 
@@ -240,21 +241,21 @@ public class MapBarcodesByEditDistance {
 			List<String>  barcodesToTest=new ArrayList<>(barcodesAtED.get(editDistance));
 
 			// if we're on the first iteration, then all results at this edit distance hop are "valid" without further checks.
-			if (editDistance==minEditDistance) {
+			if (editDistance==pathStepSize) {
 				validBarcodes.put(editDistance, barcodesToTest);
 				continue; // break out of loop, you're done.
 			}
 
 			// we're on some other iteration, we use the results of the last iteration as one of our two barcode lists.
-			validBarcodesLastIteration=validBarcodes.get(editDistance-1);
+			validBarcodesLastIteration=validBarcodes.get(editDistance-pathStepSize);
 			if (validBarcodesLastIteration==null) validBarcodesLastIteration=Collections.EMPTY_LIST;
 
 			// now test the valid barcodes against the barcodes to test.
 			Set<String> newBarcodesThisIter=new HashSet<>();
 
 			for (String bc: validBarcodesLastIteration) {
-				// find barcodes ED=1 away from the last iteration results.
-				Set<String> resultOneIter= processSingleBarcode(bc, barcodesToTest, findIndels, 1);
+				// find barcodes ED=pathStepSize away from the last iteration results.
+				Set<String> resultOneIter= processSingleBarcode(bc, barcodesToTest, findIndels, pathStepSize);
 				newBarcodesThisIter.addAll(resultOneIter);
 			}
 			// iteration finished
