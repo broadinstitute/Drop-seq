@@ -62,9 +62,32 @@ public class MapBarcodesByEditDistanceTest {
 		// ACGTA->TATTC=4 & AATTA->TATTC=2 (reject)
 		List<String> relatedBarcodes=Arrays.asList("ACGTA", "AAGTA", "AATTA", "TATTC");
 		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
-		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodes, false, 5);
+		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodes, false, 5, 1);
 		Set<String> expected = new HashSet<>(Arrays.asList("ACGTA", "AAGTA", "AATTA"));
 		Assert.assertEquals(expected, actual);
+	}
+	
+	@Test
+	public void testFindRelatedBarcodesByMutationalCollapseED2() {
+		// AAAAAA-> AAAGGA=1 (accept)
+		// AAAAAA-> ATTGGA=4 & AAAGGA-> ATTGGA=2 (accept)
+		// AAAAAA-> CTTGGG=6 & ATTGGA->CTTGGG=2 (accept)
+		// AAAAAA-> CTTTTT=6 & CTTGGG->CTTTTT=3 (reject)
+		String coreBC = "AAAAAA";
+		List<String> relatedBarcodes=Arrays.asList("AAAGGA", "ATTGGA", "CTTGGG", "CTTTTT");
+		
+		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
+		
+		Set<String> actual1 = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodes, false, 6, 1);
+		Set<String> expected1 = new HashSet<>(Arrays.asList());
+		Assert.assertEquals(expected1, actual1);
+		
+		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodes, false, 6, 2);
+		Set<String> expected = new HashSet<>(Arrays.asList("AAAGGA", "ATTGGA", "CTTGGG"));
+		Assert.assertEquals(expected, actual);
+		
+		
+		
 	}
 
 
@@ -80,7 +103,7 @@ public class MapBarcodesByEditDistanceTest {
 		List<String> relatedBarcodesOne=Arrays.asList("AAGTAAT", "AATTAAT", "AATTATT", "TATTATG");
 		String coreBC="ACGTAAT";
 
-		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesOne, false, 5);
+		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesOne, false, 5, 1);
 		Set<String> expectedOne = new HashSet<>(Arrays.asList("AAGTAAT", "AATTAAT", "AATTATT"));
 		Assert.assertEquals(expectedOne, actual);
 
@@ -93,7 +116,7 @@ public class MapBarcodesByEditDistanceTest {
 		List<String> relatedBarcodesTwo=Arrays.asList("GACCATG", "GACCATA", "AACCATA", "AATCATA", "ACTCATA");
 		coreBC="GGCCATG";
 
-		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesTwo, false, 5);
+		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesTwo, false, 5, 1);
 		Set<String> expectedTwo = new HashSet<>(Arrays.asList("GACCATG", "GACCATA", "AACCATA", "AATCATA"));
 		Assert.assertEquals(expectedTwo, actual);
 
@@ -106,7 +129,7 @@ public class MapBarcodesByEditDistanceTest {
 		List<String> relatedBarcodesThree=Arrays.asList("TTGAACT", "ATGAACT", "ATGTACT", "AGGTACT", "TGCTACT");
 		coreBC="TTGAACA";
 
-		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesThree, false, 5);
+		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesThree, false, 5, 1);
 		Set<String> expectedThree = new HashSet<>(Arrays.asList("TTGAACT", "ATGAACT", "ATGTACT", "AGGTACT"));
 		Assert.assertEquals(expectedThree, actual);
 		
@@ -119,15 +142,15 @@ public class MapBarcodesByEditDistanceTest {
 		relatedBarcodesAll.addAll(relatedBarcodesThree);
 		
 		coreBC="ACGTAAT";
-		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesAll, false, 5);
+		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesAll, false, 5, 1);
 		Assert.assertEquals(expectedOne, actual);
 
 		coreBC="GGCCATG";
-		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesAll, false, 5);
+		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesAll, false, 5, 1);
 		Assert.assertEquals(expectedTwo, actual);
 		
 		coreBC="TTGAACA";
-		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesAll, false, 5);
+		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesAll, false, 5, 1);
 		Assert.assertEquals(expectedThree, actual);
 		
 	}
@@ -184,7 +207,7 @@ public class MapBarcodesByEditDistanceTest {
 		barcodes.incrementByCount("AGGTACT", 5);
 		barcodes.incrementByCount("TGCTACT", 5);
 		
-		Map<String, List<String>> result = m.collapseBarcodesByMutationalCollapse (barcodes, false, 5, 3);
+		Map<String, List<String>> result = m.collapseBarcodesByMutationalCollapse (barcodes, false, 5, 3, 1);
 		
 		// expected results.
 		String coreBCOne="ACGTAAT";
@@ -206,6 +229,8 @@ public class MapBarcodesByEditDistanceTest {
 		Assert.assertEquals(expectedTwo, new HashSet<String>(result.get(coreBCTwo)));
 		Assert.assertEquals(expectedThree, new HashSet<String>(result.get(coreBCThree)));
 	}
+	
+	
 	
 	@Test(enabled=false)
 	//TODO: re-enable this test when we agree on the corrrect answer.
@@ -236,7 +261,7 @@ public class MapBarcodesByEditDistanceTest {
 		resultParser.close();
 		
 		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true, 4, 100);					
-		Map<String, List<String>> result = m.collapseBarcodesByMutationalCollapse (data, false, 5, minCount);
+		Map<String, List<String>> result = m.collapseBarcodesByMutationalCollapse (data, false, 5, minCount, 1);
 		
 		ObjectCounter<String> r2 = aggregateCounts(data, result);
 		writeOutput (data, r2, result, m);

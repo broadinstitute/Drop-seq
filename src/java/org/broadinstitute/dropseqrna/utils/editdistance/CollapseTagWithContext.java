@@ -198,8 +198,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
         	fasterIteration(groupingIter, writer, outMetrics);
         else
         	lowMemoryIteration(groupingIter, writer, outMetrics, header);
-        
-        
+                
         log.info("Re-sorting output BAM in "+ sortOrder.toString()+ " if neccesary");
         CloserUtil.close(groupingIter);
         CloserUtil.close(reader);
@@ -284,7 +283,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		ObjectCounter<String> barcodeCounts = getBarcodeCounts (iter, this.COLLAPSE_TAG, this.COUNT_TAGS, this.COUNT_TAGS_EDIT_DISTANCE);
 		if (this.MIN_COUNT > 1 & !this.MUTATIONAL_COLLAPSE) barcodeCounts.filterByMinCount(this.MIN_COUNT);
 		
-		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT, verbose, outMetrics, context, this.ADAPTIVE_ED_METRICS_ED_LIST);
+		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT, this.MUTATIONAL_COLLAPSE_PATH_ED, verbose, outMetrics, context, this.ADAPTIVE_ED_METRICS_ED_LIST);
 		iter = new PeekableIterator<>(i.iterator());
 		retagBarcodedReads(iter, barcodeCounts, collapseMap, this.DROP_SMALL_COUNTS, writer, this.COLLAPSE_TAG, this.OUT_TAG);        	
 
@@ -391,7 +390,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
         return writer;
 	}
 
-	private Map<String, String> collapseBarcodes(final ObjectCounter<String> barcodeCounts, final boolean findIndels, final Integer editDistance, final Integer minEditDistance, final Integer maxEditDistance, final Integer minSizeToCollapse, final boolean verbose, final PrintStream outMetrics, final String context, final boolean writeEditDistanceDistribution) {
+	private Map<String, String> collapseBarcodes(final ObjectCounter<String> barcodeCounts, final boolean findIndels, final Integer editDistance, final Integer minEditDistance, final Integer maxEditDistance, final Integer minSizeToCollapse, final Integer mutationalPathStepSize, final boolean verbose, final PrintStream outMetrics, final String context, final boolean writeEditDistanceDistribution) {
 		// order the barcodes by the number of reads each barcode has.
 		if (verbose) log.info("Collapsing [" + barcodeCounts.getSize() +"] barcodes.");
 
@@ -403,7 +402,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 			r = amr.getBarcodeCollapseResult();
 			writeMetrics(writeEditDistanceDistribution, context, amr, outMetrics);
 		} else if (this.MUTATIONAL_COLLAPSE && !this.ADAPTIVE_EDIT_DISTANCE) {
-			r=med.collapseBarcodesByMutationalCollapse(barcodeCounts, findIndels, editDistance, minSizeToCollapse);
+			r=med.collapseBarcodesByMutationalCollapse(barcodeCounts, findIndels, editDistance, minSizeToCollapse, mutationalPathStepSize);
 			ObjectCounter<String> aggregatedCounts=aggregateCounts(barcodeCounts, r);
 			writeMutationalReport(barcodeCounts, aggregatedCounts, r, outMetrics);
 		} 
