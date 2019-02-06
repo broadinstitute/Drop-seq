@@ -114,8 +114,12 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	@Argument (doc="If true, add an additional column that contains a comma separated list of edit distances from the current CONTEXT_TAG to all other CONTEXT_TAGS.  This will make files significantly larger!")
 	public boolean ADAPTIVE_ED_METRICS_ED_LIST=false;
 
+	@Argument (doc="The maximium distance mutational path collapse searches for the next nearest neighbors in the network.")
+	public Integer MUTATIONAL_COLLAPSE_PATH_ED=1;
+	
 	@Argument (doc="Instead of using the default fixed edit distance, use a mutational collapse strategy.  "
-			+ "For the single largest barcode in the context, find all neighbors within ED=1.  Then find neighbors to those neighbors at ED=1 that are ALSO ED=2 to the original barcode.  Search out to a maximum edit distance of EDIT_DISTANCE.")
+			+ "For the single largest barcode in the context, find all neighbors within edit distance (ED) <MUTATIONAL_COLLAPSE_PATH_ED>.  For example, set MUTATIONAL_COLLAPSE_PATH_ED=1."
+			+ "find neighbors to those neighbors at ED=1 that are ALSO ED=2 to the original barcode.  Search out to a maximum edit distance of EDIT_DISTANCE.")
 	public boolean MUTATIONAL_COLLAPSE=false;
 	
 	@Argument (doc="If provided, writes out some metrics about each barcode that is merged by mutational edit distance collapse.", optional=true)
@@ -219,6 +223,9 @@ public class CollapseTagWithContext extends CommandLineProgram {
         while (groupingIter.hasNext()) {
         	
         	List<SAMRecord> informativeRecs = new ArrayList<>();
+        	// you have to grab the next element, in case it's the first of the group but not the first group!
+        	informativeRecs.add(groupingIter.next()); 
+        	
         	while (groupingIter.hasNextInGroup())         		
         		informativeRecs.add(groupingIter.next());        	        	        	
         	
@@ -249,7 +256,11 @@ public class CollapseTagWithContext extends CommandLineProgram {
         while (groupingIter.hasNext()) {
         	// for this group, get a SortingCollection.  Note that this is not used for sorting.  It is merely
 			// an unsorted collection if there might be more objects than can fit in RAM.
-        	SortingCollection<SAMRecord> sortingCollection = SortingCollection.newInstance(SAMRecord.class, new BAMRecordCodec(header), NO_OP_COMPARATOR, this.MAX_RECORDS_IN_RAM);        	
+        	SortingCollection<SAMRecord> sortingCollection = SortingCollection.newInstance(SAMRecord.class, new BAMRecordCodec(header), NO_OP_COMPARATOR, this.MAX_RECORDS_IN_RAM);
+
+        	// you have to grab the next element, in case it's the first of the group but not the first group!
+        	sortingCollection.add(groupingIter.next()); 
+        	
         	// spool the reads for a whole group into the sorting collection to operate on - the code uses a multi-pass approach so we can't just iterate over the grouping iterator.
         	while (groupingIter.hasNextInGroup())         		
         		sortingCollection.add(groupingIter.next());
