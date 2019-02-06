@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright 2017 Broad Institute
+ * Copyright 2019 Broad Institute
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,18 +24,27 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTagUtil;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-import org.broadinstitute.dropseqrna.utils.PredicateFilteredIterator;
 
-import java.util.Iterator;
+import java.util.function.Predicate;
 
 /**
- * Iterator wrapper that emits a SAMRecord only if *all* the required tags are present.
+ * true if SAMRecord passes filter
  */
-public class MissingTagFilteringIterator extends PredicateFilteredIterator<SAMRecord> {
+public class MapQualityPredicate
+        implements Predicate<SAMRecord> {
 
-    public MissingTagFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String... requiredTags) {
-        super(underlyingIterator, new RequiredTagPredicate(requiredTags));
+    private final Integer mapQuality;
+    private final boolean rejectNonPrimaryReads;
+
+    public MapQualityPredicate(Integer mapQuality, boolean rejectNonPrimaryReads) {
+        this.mapQuality = mapQuality;
+        this.rejectNonPrimaryReads = rejectNonPrimaryReads;
+    }
+
+    @Override
+    public boolean test(SAMRecord r) {
+        boolean flag=(rejectNonPrimaryReads && r.isSecondaryOrSupplementary()) ||
+                (this.mapQuality!=null && r.getMappingQuality() < this.mapQuality);
+        return !flag;
     }
 }

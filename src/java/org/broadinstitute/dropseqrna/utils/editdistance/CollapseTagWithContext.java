@@ -23,58 +23,26 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import java.io.File;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
+import htsjdk.samtools.*;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.util.*;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.barnyard.DigitalExpression.DESummary;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-import org.broadinstitute.dropseqrna.utils.MultiComparator;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.PeekableGroupingIterator;
-import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
-import org.broadinstitute.dropseqrna.utils.StringInterner;
-import org.broadinstitute.dropseqrna.utils.StringTagComparator;
+import org.broadinstitute.dropseqrna.utils.*;
 import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance.AdaptiveMappingResult;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
-import org.broadinstitute.dropseqrna.utils.readiterators.MapQualityFilteredIterator;
-import org.broadinstitute.dropseqrna.utils.readiterators.MissingTagFilteringIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.MapQualityPredicate;
+import org.broadinstitute.dropseqrna.utils.readiterators.RequiredTagPredicate;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
-
-import com.google.common.collect.Sets;
-
-import htsjdk.samtools.BAMRecordCodec;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.PeekableIterator;
-import htsjdk.samtools.util.ProgressLogger;
-import htsjdk.samtools.util.SortingCollection;
-import htsjdk.samtools.util.StringUtil;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.File;
+import java.io.PrintStream;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(summary = "Collapse set of barcodes that all share the same BAM tags.  For example, collapse all UMIs that have the same cell, gene, and gene strand tags.  This would be equivilent to collapsing the UMIs in DGE.",
 oneLineSummary = "Collapse barcodes in the context of one or more tags.)",
@@ -146,8 +114,12 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	@Argument (doc="If true, add an additional column that contains a comma separated list of edit distances from the current CONTEXT_TAG to all other CONTEXT_TAGS.  This will make files significantly larger!")
 	public boolean ADAPTIVE_ED_METRICS_ED_LIST=false;
 
+	@Argument (doc="The maximium distance mutational path collapse searches for the next nearest neighbors in the network.")
+	public Integer MUTATIONAL_COLLAPSE_PATH_ED=1;
+	
 	@Argument (doc="Instead of using the default fixed edit distance, use a mutational collapse strategy.  "
-			+ "For the single largest barcode in the context, find all neighbors within ED=1.  Then find neighbors to those neighbors at ED=1 that are ALSO ED=2 to the original barcode.  Search out to a maximum edit distance of EDIT_DISTANCE.")
+			+ "For the single largest barcode in the context, find all neighbors within edit distance (ED) <MUTATIONAL_COLLAPSE_PATH_ED>.  For example, set MUTATIONAL_COLLAPSE_PATH_ED=1."
+			+ "find neighbors to those neighbors at ED=1 that are ALSO ED=2 to the original barcode.  Search out to a maximum edit distance of EDIT_DISTANCE.")
 	public boolean MUTATIONAL_COLLAPSE=false;
 	
 	@Argument (doc="If provided, writes out some metrics about each barcode that is merged by mutational edit distance collapse.", optional=true)
@@ -213,23 +185,22 @@ public class CollapseTagWithContext extends CommandLineProgram {
 
         SamReader reader = SamReaderFactory.makeDefault().open(INPUT);
         SAMFileHeader header =  reader.getFileHeader();
+        SortOrder sortOrder= header.getSortOrder();
+        
         SAMFileWriter writer = getWriter (reader);
-
-        PeekableGroupingIterator<SAMRecord> groupingIter = orderReadsByTagsPeekable(reader, this.COLLAPSE_TAG, this.CONTEXT_TAGS, this.READ_MQ);        
+        final ObjectSink<SAMRecord> recSink = new SamWriterSink(writer);
+                
+        PeekableGroupingIterator<SAMRecord> groupingIter = orderReadsByTagsPeekable(reader, this.COLLAPSE_TAG, this.CONTEXT_TAGS, this.READ_MQ, this.OUT_TAG, recSink);
 
         log.info("Collapsing tag and writing results");
 
-        // set up filters.
-        FilteredIterator<SAMRecord> mapFilter = getMapFilteringIterator(this.READ_MQ);
-        FilteredIterator<SAMRecord> tagFilter = getMissingTagIterator(this.COLLAPSE_TAG, this.CONTEXT_TAGS);
-
         if (!LOW_MEMORY_MODE) 
-        	fasterIteration(groupingIter, mapFilter, tagFilter, writer, outMetrics);
+        	fasterIteration(groupingIter, writer, outMetrics);
         else
-        	lowMemoryIteration(groupingIter, mapFilter, tagFilter, writer, outMetrics, header);
+        	lowMemoryIteration(groupingIter, writer, outMetrics, header);
         
         
-        log.info("Re-sorting output BAM in genomic order.");
+        log.info("Re-sorting output BAM in "+ sortOrder.toString()+ " if neccesary");
         CloserUtil.close(groupingIter);
         CloserUtil.close(reader);
         writer.close();
@@ -241,30 +212,23 @@ public class CollapseTagWithContext extends CommandLineProgram {
 	/**
 	 * With this method, we keep all the records in memory 
 	 * @param groupingIter
-	 * @param mapFilter
-	 * @param tagFilter
+	 * @param mapQualityPredicate
+	 * @param requiredTagPredicate
 	 * @param writer
 	 * @param outMetrics
 	 */
-	private void fasterIteration (PeekableGroupingIterator<SAMRecord> groupingIter, FilteredIterator<SAMRecord> mapFilter, FilteredIterator<SAMRecord> tagFilter,
-			SAMFileWriter writer, PrintStream outMetrics) {
+	private void fasterIteration (PeekableGroupingIterator<SAMRecord> groupingIter,	SAMFileWriter writer, PrintStream outMetrics) {
 		log.info("Running fast single iteration mode");
-		int maxNumInformativeReadsInMemory=1000;
-		ProgressLogger pl = new ProgressLogger(log);
+		int maxNumInformativeReadsInMemory=1000; // the starting value is just for reporting purposes.
         while (groupingIter.hasNext()) {
         	
-        	// prime the first read of the group.
-        	SAMRecord r = groupingIter.next();
         	List<SAMRecord> informativeRecs = new ArrayList<>();
-        	r = getInformativeRead(r, this.COLLAPSE_TAG, this.OUT_TAG, mapFilter, tagFilter, writer, pl);
-        	if (r!=null) informativeRecs.add(r);
-        	// get subsequent reads.  Informative reads stay in memory, uninformative reads are written to disk as part of the final BAM output and discarded.
-        	while (groupingIter.hasNextInGroup()) {
-        		r = groupingIter.next();
-        		r = getInformativeRead(r, this.COLLAPSE_TAG, this.OUT_TAG, mapFilter, tagFilter, writer, pl);
-        		if (r!=null) informativeRecs.add(r);
-        	}
-
+        	// you have to grab the next element, in case it's the first of the group but not the first group!
+        	informativeRecs.add(groupingIter.next()); 
+        	
+        	while (groupingIter.hasNextInGroup())         		
+        		informativeRecs.add(groupingIter.next());        	        	        	
+        	
         	// you have all the informative reads.
         	// do some additional logging if the number of reads is bigger than what you've seen before.
         	boolean verbose = false;
@@ -273,101 +237,59 @@ public class CollapseTagWithContext extends CommandLineProgram {
         		log.info("Max informative reads in memory [" + maxNumInformativeReadsInMemory +"]");
         		verbose=true;
         	}
-
-        	// remove the informative reads, as they will get retagged.
-        	processRecordList(informativeRecs, writer, this.COLLAPSE_TAG, this.COUNT_TAGS, this.OUT_TAG,
-					this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT,
-                    this.DROP_SMALL_COUNTS, this.COUNT_TAGS_EDIT_DISTANCE, verbose, outMetrics, this.ADAPTIVE_ED_METRICS_ED_LIST);
         	
+        	// get context.
+        	processContext(informativeRecs, writer, verbose, outMetrics);    	
         }		
 	}
 	
-	private void lowMemoryIteration (PeekableGroupingIterator<SAMRecord> groupingIter, FilteredIterator<SAMRecord> mapFilter, FilteredIterator<SAMRecord> tagFilter,
-			SAMFileWriter writer, PrintStream outMetrics, SAMFileHeader header) {
-		log.info("Running (slower) memory efficient mode");
-		ProgressLogger pl = new ProgressLogger(log);
-		boolean verbose = false;
-        while (groupingIter.hasNext()) {   
-        	// for this group, get a SortingCollection.
+	/**
+	 * If the number of records exceeds the number of records allowed in memory, spill to disk.
+	 * @param groupingIter
+	 * @param writer
+	 * @param outMetrics
+	 * @param header
+	 */
+	private void lowMemoryIteration (PeekableGroupingIterator<SAMRecord> groupingIter,									 
+									 SAMFileWriter writer, PrintStream outMetrics, SAMFileHeader header) {
+		log.info("Running (slower) memory efficient mode");				
+        while (groupingIter.hasNext()) {
+        	// for this group, get a SortingCollection.  Note that this is not used for sorting.  It is merely
+			// an unsorted collection if there might be more objects than can fit in RAM.
         	SortingCollection<SAMRecord> sortingCollection = SortingCollection.newInstance(SAMRecord.class, new BAMRecordCodec(header), NO_OP_COMPARATOR, this.MAX_RECORDS_IN_RAM);
+
+        	// you have to grab the next element, in case it's the first of the group but not the first group!
+        	sortingCollection.add(groupingIter.next()); 
         	
-        	// prime the first read of the group.
-        	SAMRecord r = groupingIter.next();
-        	r = getInformativeRead(r, this.COLLAPSE_TAG, this.OUT_TAG, mapFilter, tagFilter, writer, pl);        	
-        	if (r!=null) sortingCollection.add(r);
+        	// spool the reads for a whole group into the sorting collection to operate on - the code uses a multi-pass approach so we can't just iterate over the grouping iterator.
+        	while (groupingIter.hasNextInGroup())         		
+        		sortingCollection.add(groupingIter.next());
         	
-        	while (groupingIter.hasNextInGroup()) {
-        		r = groupingIter.next();
-        		r = getInformativeRead(r, this.COLLAPSE_TAG, this.OUT_TAG, mapFilter, tagFilter, writer, pl);
-        		if (r!=null) sortingCollection.add(r);
-        	}
         	// wrap up the sorting collection for adding records.
         	sortingCollection.doneAdding();
         	sortingCollection.setDestructiveIteration(false);
         	
-        	PeekableIterator<SAMRecord> iter = new PeekableIterator<>(sortingCollection.iterator());
-        	if (!iter.hasNext()) return;
-
-    		// get context.
-    		String context = getContextString(iter.peek(), this.CONTEXT_TAGS);
-
-    		// get barcode counts.
-    		ObjectCounter<String> barcodeCounts = getBarcodeCounts (iter, this.COLLAPSE_TAG, this.COUNT_TAGS, this.COUNT_TAGS_EDIT_DISTANCE);
-    		if (this.MIN_COUNT > 1 & !this.MUTATIONAL_COLLAPSE) barcodeCounts.filterByMinCount(this.MIN_COUNT);
-    		
-    		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT, verbose, outMetrics, context, this.ADAPTIVE_ED_METRICS_ED_LIST);
-    		iter = new PeekableIterator<>(sortingCollection.iterator());
-    		retagBarcodedReads(iter, barcodeCounts, collapseMap, this.DROP_SMALL_COUNTS, writer, this.COLLAPSE_TAG, this.OUT_TAG);        	
-        	
-        }
-		
-	}
-
-	/**
-	 * Tests to see if a read is informative.
-	 * If it is, add it to the list of informative reads.
-	 * If not, write the record to the writer and don't alter the informative reads list.
-	 * @param r
-	 * @param mapFilter
-	 * @param tagFilter
-	 * @param writer
-	 * @return
-	 */
-	public static SAMRecord getInformativeRead (final SAMRecord r, final String collapseTag, final String outTag,
-			final FilteredIterator<SAMRecord> mapFilter, final FilteredIterator<SAMRecord> tagFilter, final SAMFileWriter writer, final ProgressLogger pl) {
-		pl.record(r);
-		boolean informative = !mapFilter.filterOut(r) && !tagFilter.filterOut(r);
-		if (!informative) {
-			// if the uninformative read has a value for the collapse tag, set the output tag to the same value.
-			String v = r.getStringAttribute(collapseTag);
-			if (v!=null)
-				r.setAttribute(outTag, v);
-			writer.addAlignment(r);
-			return null;
-		}					
-		return r;
-	}
-
-	// Break this up into 2 methods - one to collapse results, one to retag reads.
-	// Make the input a peekable iterator instead of a collection of SAMRecords.
-	private void processRecordList (final Collection<SAMRecord> informativeRecs, final SAMFileWriter writer, final String collapseTag,
-                                               final List<String> countTags, final String outTag, final boolean findIndels,
-                                               final int editDistance, final Integer minEditDistance, final Integer maxEditDistance,
-                                               final int minNumObservations, final boolean dropSmallCounts,
-                                               final Integer countTagsEditDistance, final boolean verbose, final PrintStream outMetrics, final boolean writeEditDistanceDistribution) {
-		if (informativeRecs.size()==0) return;
-
-		// get context.
-		String context = getContextString(informativeRecs.iterator().next(), this.CONTEXT_TAGS);
-
-		// get barcode counts.
-		ObjectCounter<String> barcodeCounts = getBarcodeCounts (new PeekableIterator<SAMRecord>(informativeRecs.iterator()), collapseTag, countTags, countTagsEditDistance);
-		if (minNumObservations > 1 & !this.MUTATIONAL_COLLAPSE) barcodeCounts.filterByMinCount(minNumObservations);
-		
-		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, findIndels, editDistance, minEditDistance, maxEditDistance, minNumObservations, verbose, outMetrics, context, writeEditDistanceDistribution);
-		retagBarcodedReads(informativeRecs.iterator(), barcodeCounts, collapseMap, dropSmallCounts, writer, collapseTag, outTag);
+        	processContext(sortingCollection, writer, false, outMetrics);        	
+        }	
 	}
 	
+	private void processContext (Iterable<SAMRecord> i, SAMFileWriter writer, boolean verbose, PrintStream outMetrics) {
+		PeekableIterator<SAMRecord> iter = new PeekableIterator<>(i.iterator());
+    	if (!iter.hasNext()) return;
+
+		// get context.
+		String context = getContextString(iter.peek(), this.CONTEXT_TAGS);
+
+		// get barcode counts.
+		ObjectCounter<String> barcodeCounts = getBarcodeCounts (iter, this.COLLAPSE_TAG, this.COUNT_TAGS, this.COUNT_TAGS_EDIT_DISTANCE);
+		if (this.MIN_COUNT > 1 & !this.MUTATIONAL_COLLAPSE) barcodeCounts.filterByMinCount(this.MIN_COUNT);
+		
+		Map<String, String> collapseMap = collapseBarcodes(barcodeCounts, this.FIND_INDELS, this.EDIT_DISTANCE, this.ADAPTIVE_ED_MIN, this.ADAPTIVE_ED_MAX, this.MIN_COUNT, verbose, outMetrics, context, this.ADAPTIVE_ED_METRICS_ED_LIST);
+		iter = new PeekableIterator<>(i.iterator());
+		retagBarcodedReads(iter, barcodeCounts, collapseMap, this.DROP_SMALL_COUNTS, writer, this.COLLAPSE_TAG, this.OUT_TAG);        	
+
+	}
+			
 	private void retagBarcodedReads (Iterator<SAMRecord> informativeRecs, ObjectCounter<String> barcodeCounts, Map<String, String> collapseMap, boolean dropSmallCounts, SAMFileWriter writer,
 			String collapseTag, String outTag) {
 		
@@ -599,34 +521,44 @@ public class CollapseTagWithContext extends CommandLineProgram {
 			}
 		}		
 	}
-
-	private PeekableGroupingIterator<SAMRecord> orderReadsByTagsPeekable (final SamReader reader, final String collapseTag, final List<String> contextTag, final int mapQuality) {
+	
+	private PeekableGroupingIterator<SAMRecord> orderReadsByTagsPeekable (final SamReader reader, final String collapseTag, final List<String> contextTag, final int mapQuality, String outTag, ObjectSink<SAMRecord> uninformativeReadsSink) {
 		// SORT on the context tags.
 		StringTagComparator [] comparators = contextTag.stream().map(x -> new StringTagComparator(x)).toArray(StringTagComparator[]::new);
 		final MultiComparator<SAMRecord> multiComparator = new MultiComparator<>(comparators);
-
+		
+		// set up filters.
+        MapQualityPredicate mapQualityPredicate = getMapQualityPredicate(mapQuality);
+        RequiredTagPredicate requiredTagPredicate = getRequiredTagPredicate(collapseTag, contextTag);
+        
+        // log progress on read iteration
+        ProgressLogger progressLogger = new ProgressLogger(log);
+        ProgressLoggingIterator progressLoggingIter = new ProgressLoggingIterator(reader.iterator(), progressLogger);
+        
+        // apply a default result tag to all reads - this is useful for reads that are not in the analysis and automatically sunk to the writer.
+        DefaultTaggingIterator iter = new DefaultTaggingIterator(progressLoggingIter.iterator(), collapseTag, outTag);
+        
+        // reads that don't pass the filter are sunk, reads that pass are sorted and grouped.
+		InformativeReadFilter filter = new InformativeReadFilter(iter, uninformativeReadsSink, mapQualityPredicate, requiredTagPredicate);				
+				
+		// sort and group the relevant data
 		CloseableIterator<SAMRecord> sortedIter = SamRecordSortingIteratorFactory.create(
-                reader.getFileHeader(), reader.iterator(), multiComparator, new ProgressLogger(log));
-
-		PeekableGroupingIterator<SAMRecord> groupedIterator = new PeekableGroupingIterator<>(sortedIter, multiComparator);
+                reader.getFileHeader(), filter.iterator(), multiComparator, null);
+		PeekableGroupingIterator<SAMRecord> groupedIterator = new PeekableGroupingIterator<>(sortedIter, multiComparator);		
 		return groupedIterator;
+		
+	}
+		
+	
+	public static MapQualityPredicate getMapQualityPredicate(final int mapQuality) {
+		return new MapQualityPredicate(mapQuality, false);
 	}
 
-	public static boolean testReadInformative (final SAMRecord r, final FilteredIterator<SAMRecord> mapFilter, final FilteredIterator<SAMRecord> tagFilter) {
-		return (!mapFilter.filterOut(r) && !tagFilter.filterOut(r));
-	}
-
-	public static FilteredIterator<SAMRecord> getMapFilteringIterator (final int mapQuality) {
-		FilteredIterator<SAMRecord> mapFilteringIterator = new MapQualityFilteredIterator(Collections.emptyIterator(), mapQuality, false);
-		return mapFilteringIterator;
-	}
-
-	public static FilteredIterator<SAMRecord> getMissingTagIterator (final String collapseTag, final List<String> contextTag) {
+	public static RequiredTagPredicate getRequiredTagPredicate(final String collapseTag, final List<String> contextTag) {
 		List<String> allTags = new ArrayList<>(contextTag);
 		allTags.add(collapseTag);
 		String[] tagArray = allTags.stream().toArray(String[]::new);
-		FilteredIterator<SAMRecord> missingTagIterator = new MissingTagFilteringIterator(Collections.emptyIterator(), tagArray);
-		return missingTagIterator;
+		return new RequiredTagPredicate(tagArray);
 	}
 	
 	static final Comparator<SAMRecord> NO_OP_COMPARATOR =  new Comparator<SAMRecord>() {
@@ -635,6 +567,50 @@ public class CollapseTagWithContext extends CommandLineProgram {
             return 0;
         }
     };
+    
+    private class InformativeReadFilter extends FilteredIterator<SAMRecord> {
+    	private final MapQualityPredicate mapQualityPredicate;
+    	private final RequiredTagPredicate requiredTagPredicate;
+    	
+		protected InformativeReadFilter(Iterator<SAMRecord> underlyingIterator, ObjectSink<SAMRecord> filteredReadSink, MapQualityPredicate mapQualityPredicate, RequiredTagPredicate requiredTagPredicate ) {
+			super(underlyingIterator, filteredReadSink);
+			this.mapQualityPredicate=mapQualityPredicate;
+			this.requiredTagPredicate=requiredTagPredicate;
+		}
+
+		@Override
+		public boolean filterOut(SAMRecord rec) {			
+			// filter out read if either test fails.
+			return (! mapQualityPredicate.test(rec) || !requiredTagPredicate.test(rec));
+		} 									    	
+    }
+    
+    /**
+     * All reads receive the default value for the outTag, which is the collapse tag's current value
+     * @author nemesh
+     *
+     */
+    private class DefaultTaggingIterator extends TransformingIterator<SAMRecord,SAMRecord> {
+
+    	private final String collapseTag;
+    	private final String outTag;
+    	
+		public DefaultTaggingIterator(Iterator<SAMRecord> underlyingIterator, final String collapseTag, final String outTag) {
+			super(underlyingIterator);
+			this.collapseTag=collapseTag;
+			this.outTag=outTag;
+		}
+
+		@Override
+		public SAMRecord next() {
+			SAMRecord r= this.underlyingIterator.next();
+			String v = r.getStringAttribute(collapseTag);
+			if (v!=null)
+				r.setAttribute(outTag, v);
+			return (r);
+		}
+    	
+    }
 
 
 	/** Stock main method. */

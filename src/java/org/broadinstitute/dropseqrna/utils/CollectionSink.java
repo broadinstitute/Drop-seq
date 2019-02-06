@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright 2017 Broad Institute
+ * Copyright 2019 Broad Institute
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,21 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.broadinstitute.dropseqrna.utils.readiterators;
+package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTagUtil;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-import org.broadinstitute.dropseqrna.utils.PredicateFilteredIterator;
+import java.util.Collection;
 
-import java.util.Iterator;
+public class CollectionSink<T>
+implements ObjectSink<T>{
+    public final Collection<T> collection;
 
-/**
- * Iterator wrapper that emits a SAMRecord only if *all* the required tags are present.
- */
-public class MissingTagFilteringIterator extends PredicateFilteredIterator<SAMRecord> {
+    public CollectionSink(Collection<T> collection) {
+        this.collection = collection;
+    }
 
-    public MissingTagFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String... requiredTags) {
-        super(underlyingIterator, new RequiredTagPredicate(requiredTags));
+    @Override
+    public void add(T t) {
+        collection.add(t);
     }
 }

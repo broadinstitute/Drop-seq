@@ -25,28 +25,16 @@ package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+import org.broadinstitute.dropseqrna.utils.PredicateFilteredIterator;
 
 import java.util.Iterator;
+import java.util.function.Predicate;
 
-public class MapQualityFilteredIterator extends FilteredIterator<SAMRecord> {
+public class MapQualityFilteredIterator
+		extends PredicateFilteredIterator<SAMRecord> {
 
-	private final Integer mapQuality;
-	private final boolean rejectNonPrimaryReads;
 
 	public MapQualityFilteredIterator(final Iterator<SAMRecord> underlyingIterator, final Integer mapQuality, final boolean rejectNonPrimaryReads) {
-        super(underlyingIterator);
-		this.mapQuality=mapQuality;
-		this.rejectNonPrimaryReads=rejectNonPrimaryReads;
+        super(underlyingIterator, new MapQualityPredicate(mapQuality, rejectNonPrimaryReads));
 	}
-
-    @Override
-    public boolean filterOut(final SAMRecord r) {
-    	/*
-    	if (r.getReadName().equals("HN7TNBGXX:4:11609:2753:3252"))
-			System.out.println("STOP");
-		*/
-    	boolean flag=(rejectNonPrimaryReads && r.isSecondaryOrSupplementary()) ||
-        (this.mapQuality!=null && r.getMappingQuality() < this.mapQuality);
-        return flag;
-    }
 }

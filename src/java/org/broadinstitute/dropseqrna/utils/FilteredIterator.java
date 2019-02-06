@@ -32,9 +32,20 @@ public abstract class FilteredIterator<T> extends IterableOnceIterator<T> {
 
     final PeekableIterator<T> it;
     boolean firstTime = true;
-
-    protected FilteredIterator(final Iterator<T> underlyingIterator) {
+    private final ObjectSink<T> sink;
+        
+    /**
+     * If instantiating your FilteredIterator with an ObjectSink, reads that fail the filter will be put in the sink.
+     * @param underlyingIterator The iterator.
+     * @param filteredReadSink An ObjectSink to place filtered reads in.
+     */
+    protected FilteredIterator(final Iterator<T> underlyingIterator, final ObjectSink<T> filteredReadSink) {
         it = new PeekableIterator<>(underlyingIterator);
+        this.sink=filteredReadSink;
+    }
+    
+    protected FilteredIterator(final Iterator<T> underlyingIterator) {
+    	this(underlyingIterator, null);        
     }
 
     /**
@@ -42,9 +53,19 @@ public abstract class FilteredIterator<T> extends IterableOnceIterator<T> {
      */
     public abstract boolean filterOut(final T rec);
 
-    private void skipUndesired() {
-        while (it.hasNext() && filterOut(it.peek()))
-			it.next();
+    // if there's a sink, then filtered reads are added to the sink.
+    // 
+	private void skipUndesired() {		
+        while (it.hasNext()) {
+        	T rec = it.peek();
+        	boolean filter = filterOut(rec);
+        	if (!filter) return; // break out of skipping records.
+        	// you're filtered, sink if needed.
+        	if (this.sink!=null) 
+        		sink.add(rec);        	
+        	// you're filtered, get the next record.
+        	it.next();        	        	
+        }			
     }
 
     private void maybeSkipFirstTime() {
@@ -76,5 +97,13 @@ public abstract class FilteredIterator<T> extends IterableOnceIterator<T> {
     @Override
     public void remove() {
         it.remove();
+    }
+    
+    /**
+     * If you passed in an ObjectSink to filter reads, then you can get it back here.
+     * @return
+     */
+    public ObjectSink<T> getFilteredReadSink () {
+    	return this.sink;
     }
 }

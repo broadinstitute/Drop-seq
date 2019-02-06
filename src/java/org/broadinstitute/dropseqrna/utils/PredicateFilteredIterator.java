@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright 2017 Broad Institute
+ * Copyright 2019 Broad Institute
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,21 +21,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.broadinstitute.dropseqrna.utils.readiterators;
-
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTagUtil;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-import org.broadinstitute.dropseqrna.utils.PredicateFilteredIterator;
+package org.broadinstitute.dropseqrna.utils;
 
 import java.util.Iterator;
+import java.util.function.Predicate;
 
 /**
- * Iterator wrapper that emits a SAMRecord only if *all* the required tags are present.
+ * FilteredIterator using java.util.function.Predicate
+ * Record is included if predicate.test() == true
  */
-public class MissingTagFilteringIterator extends PredicateFilteredIterator<SAMRecord> {
+public class PredicateFilteredIterator<T>
+        extends FilteredIterator<T> {
+    private final Predicate<T> predicate;
 
-    public MissingTagFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String... requiredTags) {
-        super(underlyingIterator, new RequiredTagPredicate(requiredTags));
+    /**
+     *
+     * @param underlyingIterator records to be iterated over
+     * @param predicate test() method means include this record
+     */
+    public PredicateFilteredIterator(Iterator<T> underlyingIterator, Predicate<T> predicate) {
+        super(underlyingIterator);
+        this.predicate = predicate;
+    }
+
+    @Override
+    public boolean filterOut(T rec) {
+        return !predicate.test(rec);
     }
 }
