@@ -236,6 +236,13 @@ public class CollapseTagWithContext extends CommandLineProgram {
         }		
 	}
 	
+	/**
+	 * If the number of records exceeds the number of records allowed in memory, spill to disk.
+	 * @param groupingIter
+	 * @param writer
+	 * @param outMetrics
+	 * @param header
+	 */
 	private void lowMemoryIteration (PeekableGroupingIterator<SAMRecord> groupingIter,									 
 									 SAMFileWriter writer, PrintStream outMetrics, SAMFileHeader header) {
 		log.info("Running (slower) memory efficient mode");				
@@ -252,8 +259,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
         	sortingCollection.setDestructiveIteration(false);
         	
         	processContext(sortingCollection, writer, false, outMetrics);        	
-        }
-		
+        }	
 	}
 	
 	private void processContext (Iterable<SAMRecord> i, SAMFileWriter writer, boolean verbose, PrintStream outMetrics) {
@@ -272,38 +278,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		retagBarcodedReads(iter, barcodeCounts, collapseMap, this.DROP_SMALL_COUNTS, writer, this.COLLAPSE_TAG, this.OUT_TAG);        	
 
 	}
-		
-	/**
-	 * Tests to see if a read is informative.
-	 * If it is, add it to the list of informative reads.
-	 * If not, write the record to the writer and don't alter the informative reads list.
-	 * @param r
-	 * @param mapQualityPredicate
-	 * @param tagPredicate
-	 * @param informativeReadSink
-	 * @param uninformativeReadSink
-	 */
-	//TODO: get rid of this and refactor BipartiteRabiesVirusCollapse
-	public static void getInformativeRead (final SAMRecord r, final String collapseTag, final String outTag,
-										   final MapQualityPredicate mapQualityPredicate,
-										   final RequiredTagPredicate tagPredicate,
-										   final ObjectSink<SAMRecord> informativeReadSink,
-										   final ObjectSink<SAMRecord> uninformativeReadSink,
-										   final ProgressLogger pl) {
-		pl.record(r);
-		boolean informative = mapQualityPredicate.test(r) && tagPredicate.test(r);
-		if (!informative) {
-			// if the uninformative read has a value for the collapse tag, set the output tag to the same value.
-			String v = r.getStringAttribute(collapseTag);
-			if (v!=null)
-				r.setAttribute(outTag, v);
-			uninformativeReadSink.add(r);
-		} else {
-			informativeReadSink.add(r);
-		}
-	}
-	
-	
+			
 	private void retagBarcodedReads (Iterator<SAMRecord> informativeRecs, ObjectCounter<String> barcodeCounts, Map<String, String> collapseMap, boolean dropSmallCounts, SAMFileWriter writer,
 			String collapseTag, String outTag) {
 		
