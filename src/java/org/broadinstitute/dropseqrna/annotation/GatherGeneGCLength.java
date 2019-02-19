@@ -73,8 +73,8 @@ public class GatherGeneGCLength extends CommandLineProgram {
 
     private static final Log log = Log.getInstance(GatherGeneGCLength.class);
 
-    @Argument(doc="The GTF file containing gene models to generate length and GC metrics from")
-	public File GTF;
+    @Argument(doc="The annotations file containing gene models to generate length and GC metrics from. Supports GTF or refFlat format.")
+	public File ANNOTATIONS_FILE;
 
 	@Argument(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME,doc="The output report containg the genes and GC/Length metrics.  Output at the gene level, using the median values across transcripts.")
 	public File OUTPUT;
@@ -99,7 +99,7 @@ public class GatherGeneGCLength extends CommandLineProgram {
 	@Override
     protected int doWork() {
 
-        IOUtil.assertFileIsReadable(GTF);
+        IOUtil.assertFileIsReadable(ANNOTATIONS_FILE);
         IOUtil.assertFileIsWritable(this.OUTPUT);
         PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
         writeHeader(out);
@@ -124,7 +124,7 @@ public class GatherGeneGCLength extends CommandLineProgram {
         	throw new IllegalArgumentException("Reference file" + this.REFERENCE_SEQUENCE.getAbsolutePath()+" is missing a dictionary file [.dict].  Please make one!");
         }
 
-        OverlapDetector<Gene> geneOverlapDetector= GeneAnnotationReader.loadAnnotationsFile(GTF, dict);
+        OverlapDetector<Gene> geneOverlapDetector= GeneAnnotationReader.loadAnnotationsFile(ANNOTATIONS_FILE, dict);
 
         List<SAMSequenceRecord> records = dict.getSequences();
 
@@ -304,7 +304,7 @@ public class GatherGeneGCLength extends CommandLineProgram {
 		}
 
 		public Gene getGene () {
-			return this.gene;
+			return this.gene;			
 		}
 
 		@Override
@@ -316,7 +316,6 @@ public class GatherGeneGCLength extends CommandLineProgram {
 			b.append(" %C [" + percentageFormat.format(this.getMedianC())+"]");
 			b.append(" median GQuadruplex [" + this.getMedianGQuadruplexes() +"]");
 			b.append(" Length [" + this.getMedianTranscriptLength()+"]");
-
 			return b.toString();
 		}
 

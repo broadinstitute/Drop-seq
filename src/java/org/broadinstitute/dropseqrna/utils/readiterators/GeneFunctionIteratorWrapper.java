@@ -14,7 +14,6 @@ public class GeneFunctionIteratorWrapper extends
 
 	// the delimiter for BAM TAGs
 	private String DELIMITER = ",";
-	private Set<String> cellBarcodeList;
 	private String geneTag;
 	private String strandTag;
 	private String functionTag;
@@ -59,9 +58,6 @@ public class GeneFunctionIteratorWrapper extends
 			final Collection<LocusFunction> acceptedLociFunctions) {
 		super(underlyingIterator);
 
-		this.cellBarcodeList = null;
-		if (cellBarcodeList != null)
-			this.cellBarcodeList = new HashSet<String>(cellBarcodeList);
 		this.geneTag = geneTag;
 		this.strandTag = strandTag;
 		this.functionTag = functionTag;
