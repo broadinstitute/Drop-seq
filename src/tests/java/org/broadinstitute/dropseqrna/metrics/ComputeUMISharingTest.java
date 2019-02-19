@@ -41,7 +41,7 @@ public class ComputeUMISharingTest {
     private static File TESTDATA_DIR = new File("testdata/org/broadinstitute/dropseq/metrics");
     private static String INPUT_BAM = "compute_umi_sharing.%s.sam";
     private static String EXPECTED_SINGLE_COUNT_TAG_METRICS = "compute_umi_sharing.single_count_tag.%s.%d.umi_sharing_metrics";
-    private static String EXPECTED_MULTI_COUNT_TAG_METRICS = "compute_umi_sharing.multi_count_tag.%d.umi_sharing_metrics";
+    private static String EXPECTED_MULTI_COUNT_TAG_METRICS = "compute_umi_sharing.multi_count_tag.%d.%s.umi_sharing_metrics";
 
     @Test(dataProvider = "singleCountTagDataProvider")
     public void testSingleCountTag(final int editDistance, final boolean mapped) throws IOException {
@@ -85,12 +85,13 @@ public class ComputeUMISharingTest {
     }
 
     @Test(dataProvider = "multipleCountTagDataProvider")
-    public void testMultipleCountTag(final int editDistance) throws IOException {
+    public void testMultipleCountTag(final int editDistance, final boolean geneMatch) throws IOException {
         final File outFile = File.createTempFile("ComputeUMISharingMultiTag.ED" + editDistance + "." , ".edit_distance_metrics");
         outFile.deleteOnExit();
         final ComputeUMISharing clp = new ComputeUMISharing();
         clp.EDIT_DISTANCE = Collections.singletonList(editDistance);
-        clp.COUNT_TAG = Arrays.asList("XM", GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG);
+        clp.COUNT_TAG = (geneMatch? Arrays.asList("XM", GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG):
+                Arrays.asList("XM", GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG));
         clp.OUTPUT = outFile;
         clp.COLLAPSE_TAG = "ZC";
         clp.UNCOLLAPSED_TAG = "XC";
@@ -99,7 +100,7 @@ public class ComputeUMISharingTest {
         clp.NUM_THREADS = 2;
         clp.LOCUS_FUNCTION_LIST = GeneFunctionCommandLineBase.DEFAULT_LOCUS_FUNCTION_LIST;
         Assert.assertEquals(clp.doWork(), 0);
-        final File expectedMetricsFile = new File(TESTDATA_DIR, String.format(EXPECTED_MULTI_COUNT_TAG_METRICS, editDistance));
+        final File expectedMetricsFile = new File(TESTDATA_DIR, String.format(EXPECTED_MULTI_COUNT_TAG_METRICS, editDistance, geneMatch));
         Assert.assertTrue(TestUtils.testMetricsFilesEqual(expectedMetricsFile, outFile),
                 String.format("%s and %s differ", expectedMetricsFile.getAbsolutePath(), outFile.getAbsolutePath()));
 
@@ -107,9 +108,14 @@ public class ComputeUMISharingTest {
 
     @DataProvider(name="multipleCountTagDataProvider")
     public Object[][] multipleCountTagDataProvider() {
-        return new Object[][] {
-                {0},
-                {1}
-        };
+        ArrayList<Object[]> ret = new ArrayList<>();
+        int[] editDistances = {0,1};
+        boolean[] geneMatches = {false, true};
+        for (int editDistance : editDistances) {
+            for (boolean geneMatch : geneMatches) {
+                ret.add(new Object[]{editDistance, geneMatch});
+            }
+        }
+        return ret.toArray(new Object[ret.size()][]);
     }
 }
