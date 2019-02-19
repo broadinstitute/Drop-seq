@@ -107,7 +107,7 @@ public class CollapseBarcodesInPlace extends CommandLineProgram {
 
 	@Override
 	protected int doWork() {
-		log.info("Number of cores selected [" + Integer.toString(this.NUM_THREADS) + "]");
+		log.info("Number of CPU threads used for edit distance collapse [" + Integer.toString(this.NUM_THREADS) + "]");
 
 		IOUtil.assertFileIsWritable(OUTPUT);
 		for (final File inputFile: INPUT)
