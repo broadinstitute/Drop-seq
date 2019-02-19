@@ -150,7 +150,7 @@ public class GatherGeneGCLengthTest {
         outputTranscriptSequencesFile.deleteOnExit();
         outputTranscriptLevelFile.deleteOnExit();
         final String[] args = new String[] {
-                "GTF=" + GTF.getAbsolutePath(),
+                "ANNOTATIONS_FILE=" + GTF.getAbsolutePath(),
                 "REFERENCE_SEQUENCE=" + FASTA.getAbsolutePath(),
                 "OUTPUT=" + outputFile.getAbsolutePath(),
                 "OUTPUT_TRANSCRIPT_SEQUENCES=" + outputTranscriptSequencesFile.getAbsolutePath(),
