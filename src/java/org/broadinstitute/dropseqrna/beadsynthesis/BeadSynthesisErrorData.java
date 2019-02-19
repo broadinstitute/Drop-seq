@@ -310,11 +310,12 @@ public class BeadSynthesisErrorData implements Serializable {
 
 	/**
 	 * Is the cell polyT biased at a particular base location?
-	 * @param position The position in the UMI (1 based)
+	 * @param position The position in the UMI (1 based).  If set to null, this method returns false.
 	 * @param threshold If the UMI at least this fraction T, the cell barcode is biased.
 	 * @return
 	 */
-	public boolean isPolyTBiasedAtPosition(final int position, final double threshold) {
+	public boolean isPolyTBiasedAtPosition(final Integer position, final double threshold) {
+		if (position==null) return false;
 		double [] freq = getPolyTFrequency();
 		if (position<1 | position > freq.length+1)
 			throw new IllegalArgumentException("Requested position ["+ position+"] is outside the expected range of the UMI available bases 1-"+ freq.length+1);

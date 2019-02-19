@@ -98,12 +98,6 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 	@Argument(doc="The molecular barcode tag.")
 	public String MOLECULAR_BARCODE_TAG="XM";
 
-	@Argument(doc="The Gene/Exon tag")
-	public String GENE_EXON_TAG="GE";
-
-	@Argument(doc="The strand of the gene(s) the read overlaps.  When there are multiple genes, they will be comma-separated.")
-	public String STRAND_TAG="GS";
-
 	@Argument (doc="The minimum number of UMIs required to consider a cell barcode for collapse.  Setting this number higher speeds up cleanup.  Very small barcodes will not contribute many UMIs, so are not a useful return on investment.  Suggested values range from 20 to 200.")
 	public Integer MIN_UMIS_PER_CELL=20;
 
@@ -391,7 +385,11 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 
         if (outCellList!=null) CloserUtil.close(outCellList);
         log.info("Finished gathering a list of cell barcodes to collapse");
-        log.info("Discovered ["+polyTBiasedBarcodes+"] barcodes that were excluded due to incomplete synthesis and had T bias at last base of UMI [" + polyTPosition+"]");
+        if (polyTPosition==null) 
+        	log.warn("Was not able to determine the polyTPosition from the input data.  This may be due to not having any properly prepared reads to evaluate.");     
+        else 
+        	log.info("Discovered ["+polyTBiasedBarcodes+"] barcodes that were excluded due to incomplete synthesis and had T bias at last base of UMI [" + polyTPosition+"]");	
+                
         UMIsPerCellResult result2 = new UMIsPerCellResult(umisPerCellCounter, numCellBarocodesTest, polyTBiasedBarcodes, polyTBiasedUMIs, polyTPosition);
 
 		return result2;
@@ -401,10 +399,10 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 		private final ObjectCounter<String> umisPerCell;
 		private final int polyTBiasedBarcodes;
 		private final int polyTBiasedUMIs;
-		private final int polyTPosition;
+		private final Integer polyTPosition;
 		private final int numCellBarocodesTested;
 
-		public UMIsPerCellResult (final ObjectCounter<String> umisPerCell, final int numCellBarocodesTested, final int polyTBiasedBarcodes, final int polyTBiasedUMIs, final int polyTPosition) {
+		public UMIsPerCellResult (final ObjectCounter<String> umisPerCell, final int numCellBarocodesTested, final int polyTBiasedBarcodes, final int polyTBiasedUMIs, final Integer polyTPosition) {
 			this.umisPerCell=umisPerCell;
 			this.numCellBarocodesTested=numCellBarocodesTested;
 			this.polyTBiasedBarcodes=polyTBiasedBarcodes;
