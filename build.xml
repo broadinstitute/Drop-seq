@@ -154,6 +154,8 @@
         <package-command visibility="public" title="MaskReferenceSequence"/>
         <package-command visibility="public" title="MergeDgeSparse"/>
         <package-command visibility="public" title="FilterGtf"/>
+        <package-command visibility="public" title="CreateSnpIntervalFromVcf"/>
+        <package-command visibility="public" title="SpermSeqMarkDuplicates"/>
     </target>
 
 
