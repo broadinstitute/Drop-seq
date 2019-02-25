@@ -23,6 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.utils.modularfileparser;
 
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 
 import java.io.*;
@@ -38,11 +39,7 @@ public class ModularFileParser  {
 	
 	public ModularFileParser(Parser parser, File inFile, int linesToSkip)  {
 		this.parser=parser;
-		try {
-			in = new BufferedReader(new FileReader(inFile));
-		} catch (FileNotFoundException e) {
-			throw new ModularFileParserException("File not found: " + inFile.getAbsolutePath());
-		}
+			in = IOUtil.openFileForBufferedReading(inFile);
 		this.linesToSkip=linesToSkip;
 	}
 	

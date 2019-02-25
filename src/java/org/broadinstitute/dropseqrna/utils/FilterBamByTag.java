@@ -24,9 +24,11 @@
 package org.broadinstitute.dropseqrna.utils;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
+import htsjdk.samtools.util.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
@@ -38,11 +40,6 @@ import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.PeekableIterator;
-import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
@@ -207,7 +204,12 @@ public class FilterBamByTag extends CommandLineProgram {
 		return false;
 	}
 
-	private Set<String> readValues(final File f) {
+	private Set<String> readValues(File f) {
+		try {
+			f = f.getCanonicalFile();
+		} catch (IOException e) {
+			throw new RuntimeIOException("Exception reading " + f, e);
+		}
 		Set<String> result = new HashSet<>();
 		ModularFileParser p = new ModularFileParser(new DelimiterParser(","),
 				f, 0);
