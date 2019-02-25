@@ -56,7 +56,7 @@ public class MergeDgeSparseTest {
                           final Integer min_transcripts,
                           final DgeHeaderMerger.Stringency headerStringency,
                           final List<File> selectedCellsFiles) throws IOException {
-        final File tempDir = TestUtil.getTempDirectory("MergeDgeSparseTest.", ".tmp");
+        final File tempDir = Files.createTempDirectory("MergeDgeSparseTest.").toFile();
         tempDir.deleteOnExit();
 
         final Yaml yamlConverter = new Yaml();

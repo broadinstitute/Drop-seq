@@ -248,6 +248,7 @@ public class DetectBeadSynthesisErrorsTest {
 
 		try {
 			tempFile = File.createTempFile(prefix, suffix);
+			tempFile.deleteOnExit();
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
