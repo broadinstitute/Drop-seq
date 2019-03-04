@@ -44,7 +44,7 @@ import picard.cmdline.StandardOptionDefinitions;
 )
 public class DetectSpermAlleles extends CommandLineProgram {
 	
-		private static final Log log = Log.getInstance(GatherDigitalAlleleCounts.class);
+		private static final Log log = Log.getInstance(DetectSpermAlleles.class);
 
 		@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.", optional=false)
 		public File INPUT;
@@ -89,9 +89,9 @@ public class DetectSpermAlleles extends CommandLineProgram {
 			IOUtil.assertFileIsReadable(this.CELL_BC_FILE);
 			
 			List<String> cellBarcodes = ParseBarcodeFile.readCellBarcodeFile(this.CELL_BC_FILE);
-			
+			log.info("Using " + cellBarcodes.size() + " cells in analysis");
 			IntervalList snpIntervals = IntervalList.fromFile(INTERVALS);
-
+			log.info("Using " + snpIntervals.getIntervals().size() + " SNP intervals in analysis");
 			PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
 			writeHeader(out);
 
@@ -188,7 +188,7 @@ public class DetectSpermAlleles extends CommandLineProgram {
 			// some hard coded params.	
 			
 			SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
-					headerAndIter, snpIntervals, GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG, GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG,
+					headerAndIter, snpIntervals, GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_FUNCTION_TAG,
 					GeneFunctionCommandLineBase.DEFAULT_LOCUS_FUNCTION_LIST, StrandStrategy.BOTH, this.CELL_BARCODE_TAG,
 					this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, null, this.READ_MQ, true, cellBarcodes, SortOrder.SNP_GENE);
 			
@@ -211,8 +211,9 @@ public class DetectSpermAlleles extends CommandLineProgram {
 			protected void processRecord(SAMRecord rec) {
 				rec.setAttribute(GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, rec.getContig());
 				rec.setAttribute(GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG, "-");
-				rec.setAttribute(GeneFunctionCommandLineBase.DEFAULT_GENE_FUNCTION_TAG, LocusFunction.CODING);
-				queueRecordForOutput(rec);				
+				String coding = LocusFunction.CODING.toString();
+				rec.setAttribute(GeneFunctionCommandLineBase.DEFAULT_GENE_FUNCTION_TAG, LocusFunction.CODING.toString());
+				queueRecordForOutput(rec);					
 			}
 						
 		}
