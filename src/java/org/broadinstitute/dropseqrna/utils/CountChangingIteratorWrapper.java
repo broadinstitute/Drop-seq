@@ -23,13 +23,16 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IterableOnceIterator;
-
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
+
+import org.broadinstitute.dropseqrna.TranscriptomeException;
+
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IterableOnceIterator;
 
 /**
  * Iterator wrapper that allows concrete implementations to produce 0, 1 or more output records for each input
@@ -38,7 +41,7 @@ import java.util.Queue;
  *
  * Note that the decision about what to emit can only be based on the current record passed to processRecord.
  */
-public abstract class CountChangingIteratorWrapper<T> extends IterableOnceIterator<T> {
+public abstract class CountChangingIteratorWrapper<T> extends IterableOnceIterator<T> implements CloseableIterator<T>{
 
     private final Iterator<T> underlyingIterator;
     private final Queue<T> outputQueue = new LinkedList<>();
@@ -77,8 +80,12 @@ public abstract class CountChangingIteratorWrapper<T> extends IterableOnceIterat
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         CloserUtil.close(underlyingIterator);
-        super.close();
+        try {
+			super.close();
+		} catch (IOException e) {
+			throw new TranscriptomeException(e.getMessage(), e.getCause());
+		}
     }
 }
