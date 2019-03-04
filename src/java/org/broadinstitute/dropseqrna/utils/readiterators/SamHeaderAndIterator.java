@@ -23,8 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
+import java.io.File;
+
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloseableIterator;
 
 public class SamHeaderAndIterator {
@@ -34,5 +38,13 @@ public class SamHeaderAndIterator {
     public SamHeaderAndIterator(SAMFileHeader header, CloseableIterator<SAMRecord> iterator) {
         this.header = header;
         this.iterator = iterator;
+    }
+    
+    public SamHeaderAndIterator (SamReader reader) {
+    	this(reader.getFileHeader(), reader.iterator());
+    }
+    
+    public SamHeaderAndIterator (File bamFile) {
+    	this(SamReaderFactory.makeDefault().open(bamFile));  	    	
     }
 }
