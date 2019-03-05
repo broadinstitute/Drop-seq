@@ -35,12 +35,12 @@ import picard.annotation.LocusFunction;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
-
 @CommandLineProgramProperties(
-        summary = "Detect which SNPs are present in each sperm cell (SNPs typed are from the donor’s genome, provided via interval file). For each SNP present, report the number of reads and UMIs containing each base (A, C, T, G, or N).",
-        oneLineSummary = "Detect which alleles of which SNPs are present in each sperm cell”",
-        programGroup = SpermSeq.class
+summary = "Detect which SNPs are present in each sperm cell (SNPs typed are from the donor's genome, provided via interval file). For each SNP present, report the number of reads and UMIs containing each base (A, C, T, G, or N).",
+oneLineSummary = "Detect which alleles of which SNPs are present in each sperm cell",
+programGroup = SpermSeq.class
 )
+
 public class DetectSpermAlleles extends CommandLineProgram {
 	
 		private static final Log log = Log.getInstance(DetectSpermAlleles.class);
