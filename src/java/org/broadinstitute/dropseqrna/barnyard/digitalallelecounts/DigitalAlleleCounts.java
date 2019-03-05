@@ -25,9 +25,9 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
 import htsjdk.samtools.util.Interval;
 import org.apache.commons.math3.stat.StatUtils;
-import org.broadinstitute.dropseqrna.priv.utils.statistics.BinomialStatistics;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
+import org.broadinstitute.dropseqrna.utils.statistics.BinomialStatistics;
 
 import java.util.*;
 

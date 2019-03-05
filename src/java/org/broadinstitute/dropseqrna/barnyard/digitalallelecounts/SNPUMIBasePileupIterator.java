@@ -27,7 +27,6 @@ import java.io.File;
 import java.util.Collection;
 import java.util.List;
 
-import org.broadinstitute.dropseqrna.priv.barnyard.digitalallelecounts.sampleassignment.SortOrder;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
 import org.broadinstitute.dropseqrna.utils.MultiComparator;
