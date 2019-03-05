@@ -156,6 +156,7 @@
         <package-command visibility="public" title="FilterGtf"/>
         <package-command visibility="public" title="CreateSnpIntervalFromVcf"/>
         <package-command visibility="public" title="SpermSeqMarkDuplicates"/>
+    	<package-command visibility="public" title="DetectSpermAlleles"/>    	
     </target>
 
 
