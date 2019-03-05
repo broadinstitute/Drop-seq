@@ -17,9 +17,8 @@ import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.DigitalAlleleC
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.MultiCellDigitalAlleleCounts;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.MultiCellDigitalAlleleCountsIterator;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileupIterator;
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SortOrder;
 import org.broadinstitute.dropseqrna.cmdline.SpermSeq;
-import org.broadinstitute.dropseqrna.priv.barnyard.digitalallelecounts.GatherDigitalAlleleCounts;
-import org.broadinstitute.dropseqrna.priv.barnyard.digitalallelecounts.sampleassignment.SortOrder;
 import org.broadinstitute.dropseqrna.utils.CountChangingIteratorWrapper;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;

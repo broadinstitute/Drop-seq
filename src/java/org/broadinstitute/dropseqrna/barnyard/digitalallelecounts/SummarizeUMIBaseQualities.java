@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
-import org.broadinstitute.dropseqrna.priv.barnyard.digitalallelecounts.LikelihoodUtils;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 /**
