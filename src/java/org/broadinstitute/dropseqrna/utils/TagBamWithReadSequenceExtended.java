@@ -81,6 +81,9 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 	@Argument (doc="Barcode tag.  This is typically X plus one more capitalized alpha.  For example, 'XS', which is the default.")
 	public String TAG_NAME="XS";
 
+	@Argument (doc="The tag for the barcode read quality scores for every base in the barcode.", optional=true)
+	public String TAG_FULL_QUALITY;
+
 	@Argument (doc="The tag for the barcode quality.  The number of bases that are below the quality threshold.")
 	public String TAG_QUALITY="XQ";
 
@@ -175,6 +178,10 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 			barcodedRead.setAttribute(this.TAG_QUALITY, numBadBases);
 		}
 		barcodedRead.setAttribute(TAG_NAME, seq);
+        if (TAG_FULL_QUALITY != null) {
+            byte[] baseQualities = BaseRange.getBytesForBaseRange(filter.getBaseRanges(), barcodedRead.getBaseQualities());
+            barcodedRead.setAttribute(TAG_FULL_QUALITY, baseQualities);
+        }
 		SAMRecord result = barcodedRead;
 		if (hardClipBases) result = hardClipBasesFromRead(barcodedRead, filter.getBaseRanges());
 		writer.addAlignment(result);
@@ -193,7 +200,7 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		return r;
 	}
 
-	private SAMRecord setTagsOnRead (final SAMRecord r, int numBadBases, final String seq) {
+	private SAMRecord setTagsOnRead (final SAMRecord r, int numBadBases, final String seq, final byte[] baseQualities) {
 		if (numBadBases>=this.NUM_BASES_BELOW_QUALITY) {
 			// if there's an old quality setting you need to add to it instead of overwriting it.
 			Object o = r.getAttribute(this.TAG_QUALITY);
@@ -204,6 +211,9 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 			r.setAttribute(this.TAG_QUALITY, numBadBases);
 		}
 		r.setAttribute(TAG_NAME, seq);
+        if (TAG_FULL_QUALITY != null) {
+            r.setAttribute(TAG_FULL_QUALITY, baseQualities);
+        }
 		return (r);
 	}
 
@@ -211,11 +221,12 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 						  final SAMFileWriter writer, final boolean discardRead, final boolean hardClipBases) {
 		int numBadBases= filter.scoreBaseQuality(barcodedRead);
 		String seq = barcodedRead.getReadString();
+		byte [] baseQualities = BaseRange.getBytesForBaseRange(filter.getBaseRanges(),  barcodedRead.getBaseQualities());
 		seq=BaseRange.getSequenceForBaseRange(filter.getBaseRanges(), seq);
 		if (this.TAG_BARCODED_READ)
-			setTagsOnRead(barcodedRead, numBadBases, seq);
+			setTagsOnRead(barcodedRead, numBadBases, seq, baseQualities);
 		else
-			setTagsOnRead(otherRead, numBadBases, seq);
+			setTagsOnRead(otherRead, numBadBases, seq, baseQualities);
 
 		if (discardRead) {
 			int flag =otherRead.getFlags();
