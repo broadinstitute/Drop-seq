@@ -52,7 +52,6 @@ public class SpermSeqMarkDuplicatesTest {
 
 		SpermSeqMarkDuplicates d = new SpermSeqMarkDuplicates();
 		d.INPUT=Arrays.asList(INPUT);
-		d.STRATEGY=DuplicateStrategy.READ_POSITION;
 		d.OUTPUT=File.createTempFile("testDetectDuplicatesByReadPositionStrategy.", ".bam");
 		d.OUTPUT.deleteOnExit();
 		d.OUTPUT_STATS=File.createTempFile("testDetectDuplicatesByReadPositionStrategy.", ".pcr_duplicate_metrics");
@@ -72,39 +71,6 @@ public class SpermSeqMarkDuplicatesTest {
 		Assert.assertEquals(1, beans.size());
 		Assert.assertEquals(dupes.size(), beans.get(0).NUM_DUPLICATES);
 	}
-
-	@Test(enabled = false)
-	// tests which reads are marked as duplicates by the read position strategy.
-	public void testDetectDuplicatesByClusterStrategy() throws IOException {
-		String [] duplicateReadNames={"READ1:2", "READ2:3"};
-		Set<String> dupes = new HashSet<String>(Arrays.asList(duplicateReadNames));
-
-		SpermSeqMarkDuplicates d = new SpermSeqMarkDuplicates();
-		d.INPUT=Arrays.asList(INPUT);
-		d.STRATEGY=DuplicateStrategy.CLUSTER;
-		d.OUTPUT=File.createTempFile("testDetectDuplicatesByClusterStrategy.", ".bam");
-		d.OUTPUT.deleteOnExit();
-		d.OUTPUT_STATS=File.createTempFile("testDetectDuplicatesByClusterStrategy.", ".stats");
-		d.OUTPUT_STATS.deleteOnExit();
-		d.CLUSTER_INTERVALS_FILE=File.createTempFile("testDetectDuplicatesByClusterStrategy.", ".cluster_intervals");
-		d.CLUSTER_INTERVALS_FILE.deleteOnExit();
-		d.CLUSTER_INTERVALS_BED_FILE=File.createTempFile("testDetectDuplicatesByClusterStrategy.", ".cluster_intervals.bed");
-		d.CLUSTER_INTERVALS_BED_FILE.deleteOnExit();
-		d.CLUSTER_DISTANCE_FILE=File.createTempFile("testDetectDuplicatesByClusterStrategy.", ".cluster_distance");
-		d.CLUSTER_DISTANCE_FILE.deleteOnExit();
-		Assert.assertEquals(0, d.doWork());
-
-		SamReader inputSam = SamReaderFactory.makeDefault().open(d.OUTPUT);
-		for (SAMRecord r: inputSam) {
-			boolean duplicateReadFlag = r.getDuplicateReadFlag();
-			String readName = r.getReadName();
-			if (dupes.contains(readName))
-				Assert.assertTrue(duplicateReadFlag);
-			else
-				Assert.assertFalse(duplicateReadFlag);
-		}
-	}
-
 
 	@Test
 	public void testMetrics () {
