@@ -33,7 +33,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
-import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.SpermSeq;
 import org.broadinstitute.dropseqrna.utils.*;
 import org.broadinstitute.dropseqrna.utils.readiterators.MissingTagFilteringIterator;
@@ -88,25 +87,6 @@ public class SpermSeqMarkDuplicates extends CommandLineProgram  {
 	@Argument(doc="Override NUM_BARCODES and NUM_READS, and process reads that have the cell barcodes in this file instead.  The file has 1 column with no header.", optional=true)
 	public File CELL_BC_FILE=null;
 
-	@Argument (doc="Dictates the strategy used to mark duplicate reads.  The more simple READ_POSITION strategy looks at all reads that start at a position for a cell/umi, and picks the best read to not be a duplicate. "
-			+ "The CLUSTER strategy looks for all reads on a cell/molecular barcode within a window of <WINDOW_SIZE> and picks the best read to not be a duplicate.")
-	public DuplicateStrategy STRATEGY=DuplicateStrategy.READ_POSITION;
-
-	@Argument(doc="If using the CLUSTER strategy, set the window size to find duplicates.")
-	public Integer WINDOW_SIZE=5000;
-
-	@Argument(doc="If using the CLUSTER strategy, sets tags on reads to denote the cluster they are in.")
-	public String CLUSTER_TAG="YC";
-
-	@Argument(doc="If using the CLUSTER strategy, emit the intervals discovered to this file", optional=true)
-	public File CLUSTER_INTERVALS_FILE;
-
-	@Argument(doc="If using the CLUSTER strategy, emit the intervals discovered to this file in bed format", optional=true)
-	public File CLUSTER_INTERVALS_BED_FILE;
-
-	@Argument(doc="If using the CLUSTER strategy, emit the minimun distance between clusters discovered to this file", optional=true)
-	public File CLUSTER_DISTANCE_FILE;
-
 	@Argument (doc="Run with verbose output to help understand maximum memory usage and large pileups.")
 	public boolean VERBOSE=false;
 
@@ -133,10 +113,6 @@ public class SpermSeqMarkDuplicates extends CommandLineProgram  {
 		IOUtil.assertFileIsWritable(OUTPUT);
 		IOUtil.assertFileIsWritable(OUTPUT_STATS);
 
-		if (this.CLUSTER_DISTANCE_FILE!=null) IOUtil.assertFileIsWritable(this.CLUSTER_DISTANCE_FILE);
-		if (this.CLUSTER_INTERVALS_FILE!=null) IOUtil.assertFileIsWritable(this.CLUSTER_INTERVALS_FILE);
-		if (this.CLUSTER_INTERVALS_BED_FILE!=null) IOUtil.assertFileIsWritable(this.CLUSTER_INTERVALS_BED_FILE);
-
 		// for reporting, what is the aggregate output name
 		globalMetrics.CELL_BARCODE=AGGREGATE_NAME;
 
@@ -150,11 +126,7 @@ public class SpermSeqMarkDuplicates extends CommandLineProgram  {
 
 		Map<String, PCRDuplicateMetrics> metricsMap=null;
 
-		if (STRATEGY==DuplicateStrategy.READ_POSITION)
-			metricsMap=processReadsByPosition(cellBarcodes, headerAndIterator, writer);
-
-		if (STRATEGY==DuplicateStrategy.CLUSTER)
-			metricsMap=processReadsByCluster(cellBarcodes, headerAndIterator, writer);
+		metricsMap=processReadsByPosition(cellBarcodes, headerAndIterator, writer);
 
 		log.info("Processing done, writing final BAM - this requires resorting the output BAM into genomic order");
 		writer.close();
@@ -237,79 +209,6 @@ public class SpermSeqMarkDuplicates extends CommandLineProgram  {
 			return ("Cell Barcode [" + this.cellBarcode+ "] molBC ["+ this.molBC +"] position ["+ this.pos+"] batchSize ["+ this.batchSize+"]");
 		}
 	}
-
-	Map<String, PCRDuplicateMetrics> processReadsByCluster (final List<String> cellBarcodes, final SamHeaderAndIterator headerAndIterator, final SAMFileWriter writer) {
-		final Iterator<SAMRecord> filteringIterator = new MissingTagFilteringIterator(headerAndIterator.iterator, this.MOLECULAR_BARCODE_TAG, this.CELL_BARCODE_TAG);
-
-	    // reuse this comparator...
-	    IntervalTagComparator positionTagComparator = new IntervalTagComparator(this.POS_TAG, headerAndIterator.header.getSequenceDictionary());
-
-	    // sort by Cell and molecular barcode and position.
-	    @SuppressWarnings("unchecked")
-		final MultiComparator<SAMRecord> comparator = new MultiComparator<>(
-	            new StringTagComparator(this.CELL_BARCODE_TAG), new StringTagComparator(this.MOLECULAR_BARCODE_TAG), positionTagComparator);
-	    // add the position tag.
-	    final ReadDuplicateWrapper sortingIteratorWrapper = new ReadDuplicateWrapper(filteringIterator, POS_TAG);
-	    final CloseableIterator<SAMRecord> sortingIterator =
-	            SamRecordSortingIteratorFactory.create(headerAndIterator.header, sortingIteratorWrapper, comparator, new ProgressLogger(this.log));
-	    @SuppressWarnings("unchecked")
-	    final MultiComparator<SAMRecord> groupingComparator = new MultiComparator<>(
-	            new StringTagComparator(this.CELL_BARCODE_TAG), new StringTagComparator(this.MOLECULAR_BARCODE_TAG));
-
-	    final GroupingIterator<SAMRecord> groupingIterator = new GroupingIterator<>(sortingIterator, groupingComparator);
-
-		Map<String, PCRDuplicateMetrics> metricsMap = getPerCellMetricsMap(cellBarcodes);
-		// each iteration is all reads for a cell/umi.  find windows and mark duplicates.
-		// update the metrics Map.
-
-		ReadClusterIterator rcIter=new ReadClusterIterator(groupingIterator, this.WINDOW_SIZE, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG);
-		ReadClusterProgressLoggingIterator loggedIter =new ReadClusterProgressLoggingIterator(rcIter, new ProgressLogger(this.log));
-
-		// set up report writer.
-		ReadClusterReportWriter w = new ReadClusterReportWriter(this.CLUSTER_INTERVALS_FILE, this.CLUSTER_INTERVALS_BED_FILE, this.CLUSTER_DISTANCE_FILE, cellBarcodes);
-
-		while (loggedIter.hasNext()) {
-			ReadCluster cluster = loggedIter.next();
-			// System.out.println(cluster);
-			w.addReadCluster(cluster);
-
-			Collection<SAMRecord> result = markDuplicates(cluster.getReads(), metricsMap);
-			// if the cluster is mapped, set up the tag for the interval.
-			String tag=null;
-			if (!cluster.isUnmapped())
-				tag= IntervalTagComparator.toString(cluster.getClusterInterval());
-
-			for (SAMRecord r: result) {
-				r.setAttribute(this.CLUSTER_TAG, tag);
-				r.setAttribute(this.POS_TAG, null);
-				writer.addAlignment(r);
-			}
-		}
-
-		w.writeMinDistanceReport();
-		CloserUtil.close(loggedIter);
-		return metricsMap;
-	}
-
-	private class ReadClusterProgressLoggingIterator extends FilteredIterator<ReadCluster> {
-
-		private final ProgressLogger progressLogger;
-
-		public ReadClusterProgressLoggingIterator (final Iterator<ReadCluster> underlyingIterator, final ProgressLogger progressLogger) {
-			super(underlyingIterator);
-			this.progressLogger=progressLogger;
-		}
-
-		@Override
-		public boolean filterOut(final ReadCluster rec) {
-			Interval i = rec.getClusterInterval();
-			if (i!=null)
-				this.progressLogger.record(i.getContig(), i.getStart());
-			return false;
-		}
-	}
-
-
 
 	/**
 	 * Returns a map where the key is the cell barcode, and the value is the PCRDuplicateMetrics result for that barcode
@@ -445,39 +344,6 @@ public class SpermSeqMarkDuplicates extends CommandLineProgram  {
 
 	    final GroupingIterator<SAMRecord> groupingIterator = new GroupingIterator<>(sortingIterator, comparator);
 	    return groupingIterator;
-	}
-
-	@Override
-	protected String[] customCommandLineValidation() {
-		String[] messages = super.customCommandLineValidation();
-		if (STRATEGY == DuplicateStrategy.READ_POSITION) {
-			if (CLUSTER_INTERVALS_FILE != null) {
-				messages = CustomCommandLineValidationHelper.makeValue(messages,
-						Collections.singletonList("CLUSTER_INTERVALS_FILE argument not allowed if STRATEGY=READ_POSITION"));
-			}
-			if (CLUSTER_INTERVALS_BED_FILE != null) {
-				messages = CustomCommandLineValidationHelper.makeValue(messages,
-						Collections.singletonList("CLUSTER_INTERVALS_BED_FILE argument not allowed if STRATEGY=READ_POSITION"));
-			}
-			if (CLUSTER_DISTANCE_FILE != null) {
-				messages = CustomCommandLineValidationHelper.makeValue(messages,
-						Collections.singletonList("CLUSTER_DISTANCE_FILE argument not allowed if STRATEGY=READ_POSITION"));
-			}
-		} else {
-			if (CLUSTER_INTERVALS_FILE == null) {
-				messages = CustomCommandLineValidationHelper.makeValue(messages,
-						Collections.singletonList("CLUSTER_INTERVALS_FILE argument required if STRATEGY=READ_POSITION"));
-			}
-			if (CLUSTER_INTERVALS_BED_FILE == null) {
-				messages = CustomCommandLineValidationHelper.makeValue(messages,
-						Collections.singletonList("CLUSTER_INTERVALS_BED_FILE argument required if STRATEGY=READ_POSITION"));
-			}
-			if (CLUSTER_DISTANCE_FILE == null) {
-				messages = CustomCommandLineValidationHelper.makeValue(messages,
-						Collections.singletonList("CLUSTER_DISTANCE_FILE argument required if STRATEGY=READ_POSITION"));
-			}
-		}
-		return messages;
 	}
 
 	/** Stock main method. */
