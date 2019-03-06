@@ -56,7 +56,7 @@ public class ReadClusterIteratorTest {
 		String cellBarcode="TGATTAGGG";
 
 		Map<String, PCRDuplicateMetrics> metricsMap = new HashMap<String, PCRDuplicateMetrics>();
-		PCRDuplicateMetrics m = d.new PCRDuplicateMetrics();
+		PCRDuplicateMetrics m = new PCRDuplicateMetrics();
 		metricsMap.put(cellBarcode, m);
 
 		int windowSize=5000;

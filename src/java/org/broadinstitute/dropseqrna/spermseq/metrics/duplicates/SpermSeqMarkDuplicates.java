@@ -33,6 +33,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
+import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.SpermSeq;
 import org.broadinstitute.dropseqrna.utils.*;
 import org.broadinstitute.dropseqrna.utils.readiterators.MissingTagFilteringIterator;
@@ -411,7 +412,7 @@ public class SpermSeqMarkDuplicates extends CommandLineProgram  {
 
 
 
-	public class PCRDuplicateMetrics extends MetricBase {
+	public static class PCRDuplicateMetrics extends MetricBase {
 		public String CELL_BARCODE;
 		public int NUM_READS;
 		public int NUM_MAPPED_READS;
@@ -444,6 +445,39 @@ public class SpermSeqMarkDuplicates extends CommandLineProgram  {
 
 	    final GroupingIterator<SAMRecord> groupingIterator = new GroupingIterator<>(sortingIterator, comparator);
 	    return groupingIterator;
+	}
+
+	@Override
+	protected String[] customCommandLineValidation() {
+		String[] messages = super.customCommandLineValidation();
+		if (STRATEGY == DuplicateStrategy.READ_POSITION) {
+			if (CLUSTER_INTERVALS_FILE != null) {
+				messages = CustomCommandLineValidationHelper.makeValue(messages,
+						Collections.singletonList("CLUSTER_INTERVALS_FILE argument not allowed if STRATEGY=READ_POSITION"));
+			}
+			if (CLUSTER_INTERVALS_BED_FILE != null) {
+				messages = CustomCommandLineValidationHelper.makeValue(messages,
+						Collections.singletonList("CLUSTER_INTERVALS_BED_FILE argument not allowed if STRATEGY=READ_POSITION"));
+			}
+			if (CLUSTER_DISTANCE_FILE != null) {
+				messages = CustomCommandLineValidationHelper.makeValue(messages,
+						Collections.singletonList("CLUSTER_DISTANCE_FILE argument not allowed if STRATEGY=READ_POSITION"));
+			}
+		} else {
+			if (CLUSTER_INTERVALS_FILE == null) {
+				messages = CustomCommandLineValidationHelper.makeValue(messages,
+						Collections.singletonList("CLUSTER_INTERVALS_FILE argument required if STRATEGY=READ_POSITION"));
+			}
+			if (CLUSTER_INTERVALS_BED_FILE == null) {
+				messages = CustomCommandLineValidationHelper.makeValue(messages,
+						Collections.singletonList("CLUSTER_INTERVALS_BED_FILE argument required if STRATEGY=READ_POSITION"));
+			}
+			if (CLUSTER_DISTANCE_FILE == null) {
+				messages = CustomCommandLineValidationHelper.makeValue(messages,
+						Collections.singletonList("CLUSTER_DISTANCE_FILE argument required if STRATEGY=READ_POSITION"));
+			}
+		}
+		return messages;
 	}
 
 	/** Stock main method. */

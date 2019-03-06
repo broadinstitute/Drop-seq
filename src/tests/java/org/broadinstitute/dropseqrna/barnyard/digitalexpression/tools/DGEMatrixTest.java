@@ -368,18 +368,11 @@ public class DGEMatrixTest {
 
     }
 
-    /*
     @Test
-    public void testWriteDenseDGEFile () {
-    	// round trip.
+    public void testDenseDGERoundTrip () throws IOException {
 
-    	File temp=null;
-    	try {
-			temp = File.createTempFile("DenseDGE", ".txt.gz");
-			temp.deleteOnExit();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+    	File temp = File.createTempFile("DenseDGE", ".txt.gz");
+		temp.deleteOnExit();
 
     	DGEMatrix result= DGEMatrix.parseFile(exampleOne);
     	result.writeDenseDgeFile(temp, false);
@@ -387,12 +380,8 @@ public class DGEMatrixTest {
     	Assert.assertTrue(result.getCellBarcodes().equals(resultNew.getCellBarcodes()));
     	Assert.assertTrue(result.getGenes().equals(resultNew.getGenes()));
 
-    	Assert.assertTrue(result.getExpressionMatrix().equals(resultNew.getExpressionMatrix()));
-
-
-
+    	Assert.assertArrayEquals(result.getExpressionMatrix(), resultNew.getExpressionMatrix());
     }
-	*/
 
 
     private File writeMatrixMarket(final DGEMatrix mat) throws IOException {
