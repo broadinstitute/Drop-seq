@@ -139,6 +139,7 @@ public class TagBamWithReadSequenceExtendedTest {
         final SamRecords samRecords = new SamRecords(whichRead != WhichRead.Unpaired, sorted);
         final TagBamWithReadSequenceExtended clp = new TagBamWithReadSequenceExtended();
         clp.INPUT = samRecords.samFile;
+        clp.BARCODE_QUALITY_TAG = "XY";
         clp.OUTPUT = File.createTempFile("tagged.", ".sam");
         clp.OUTPUT.deleteOnExit();
         clp.SUMMARY = File.createTempFile("TagBamWithReadSequenceExtended.", ".tag_summary.txt");
@@ -240,6 +241,20 @@ public class TagBamWithReadSequenceExtendedTest {
         } else {
             int barcodeBasesBelowQualityThreshold = barcode.length();
             Assert.assertEquals(taggedRead.getIntegerAttribute(clp.TAG_QUALITY).intValue(), barcodeBasesBelowQualityThreshold);
+        }
+
+        // check that the reconstructed TAG_QUALITY from BARCODE_QUALITY_TAG equals expected TAG_QUALITY
+        byte[] qual = (byte[]) taggedRead.getAttribute(clp.BARCODE_QUALITY_TAG);
+        int numBadBases = 0;
+        for (int i = 0; i < qual.length; i++) {
+            byte q = qual[i];
+            if (q < clp.BASE_QUALITY)
+                numBadBases++;
+        }
+        if (numBadBases>=clp.NUM_BASES_BELOW_QUALITY) {
+            Assert.assertEquals(taggedRead.getIntegerAttribute(clp.TAG_QUALITY).intValue(), numBadBases);
+        }else {
+            Assert.assertNull(taggedRead.getAttribute(clp.TAG_QUALITY));
         }
 	}
 
