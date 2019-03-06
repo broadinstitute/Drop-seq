@@ -82,7 +82,7 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 	public String TAG_NAME="XS";
 
 	@Argument (doc="The tag for the barcode read quality scores for every base in the barcode.", optional=true)
-	public String TAG_FULL_QUALITY;
+	public String BARCODE_QUALITY_TAG;
 
 	@Argument (doc="The tag for the barcode quality.  The number of bases that are below the quality threshold.")
 	public String TAG_QUALITY="XQ";
@@ -178,9 +178,9 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 			barcodedRead.setAttribute(this.TAG_QUALITY, numBadBases);
 		}
 		barcodedRead.setAttribute(TAG_NAME, seq);
-        if (TAG_FULL_QUALITY != null) {
+        if (BARCODE_QUALITY_TAG != null) {
             byte[] baseQualities = BaseRange.getBytesForBaseRange(filter.getBaseRanges(), barcodedRead.getBaseQualities());
-            barcodedRead.setAttribute(TAG_FULL_QUALITY, baseQualities);
+            barcodedRead.setAttribute(BARCODE_QUALITY_TAG, baseQualities);
         }
 		SAMRecord result = barcodedRead;
 		if (hardClipBases) result = hardClipBasesFromRead(barcodedRead, filter.getBaseRanges());
@@ -211,8 +211,8 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 			r.setAttribute(this.TAG_QUALITY, numBadBases);
 		}
 		r.setAttribute(TAG_NAME, seq);
-        if (TAG_FULL_QUALITY != null) {
-            r.setAttribute(TAG_FULL_QUALITY, baseQualities);
+        if (BARCODE_QUALITY_TAG != null) {
+            r.setAttribute(BARCODE_QUALITY_TAG, baseQualities);
         }
 		return (r);
 	}
