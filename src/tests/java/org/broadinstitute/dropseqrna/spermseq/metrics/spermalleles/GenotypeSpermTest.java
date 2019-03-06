@@ -7,23 +7,23 @@ import org.apache.commons.io.FileUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class DetectSpermAllelesTest {
+public class GenotypeSpermTest {
 	
-	private static final File BAM_FILE = new File("testdata/org/broadinstitute/spermseq/spermalleles/DetectSpermAlleles.bam");	
-	private static final File CELL_BARCODE_FILE = new File("testdata/org/broadinstitute/spermseq/spermalleles/DetectSpermAlleles.cellBarcodes.txt");
-	private static final File INTERVALS_FILE = new File("testdata/org/broadinstitute/spermseq/spermalleles/DetectSpermAlleles.intervals");
-	private static final File EXPECTED_RESULTS_FILE = new File("testdata/org/broadinstitute/spermseq/spermalleles/DetectSpermAlleles.result.txt");
+	private static final File BAM_FILE = new File("testdata/org/broadinstitute/spermseq/spermalleles/GenotypeSperm.bam");
+	private static final File CELL_BARCODE_FILE = new File("testdata/org/broadinstitute/spermseq/spermalleles/GenotypeSperm.cellBarcodes.txt");
+	private static final File INTERVALS_FILE = new File("testdata/org/broadinstitute/spermseq/spermalleles/GenotypeSperm.intervals");
+	private static final File EXPECTED_RESULTS_FILE = new File("testdata/org/broadinstitute/spermseq/spermalleles/GenotypeSperm.result.txt");
 	
   @Test
   public void testFullProgram() {
 	  	File outFile=null;
 		try {
-			outFile = File.createTempFile("DetectSpermAllelesTest.", ".result.txt");
+			outFile = File.createTempFile("GenotypeSpermTest.", ".result.txt");
 	        outFile.deleteOnExit();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		DetectSpermAlleles dsa = new DetectSpermAlleles();
+		GenotypeSperm dsa = new GenotypeSperm();
 		dsa.INPUT=BAM_FILE;
 		dsa.CELL_BC_FILE=CELL_BARCODE_FILE;
 		dsa.INTERVALS=INTERVALS_FILE;

@@ -41,9 +41,9 @@ oneLineSummary = "Detect which alleles of which SNPs are present in each sperm c
 programGroup = SpermSeq.class
 )
 
-public class DetectSpermAlleles extends CommandLineProgram {
+public class GenotypeSperm extends CommandLineProgram {
 	
-		private static final Log log = Log.getInstance(DetectSpermAlleles.class);
+		private static final Log log = Log.getInstance(GenotypeSperm.class);
 
 		@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.", optional=false)
 		public File INPUT;
@@ -219,7 +219,7 @@ public class DetectSpermAlleles extends CommandLineProgram {
 		
 		/** Stock main method. */
 		public static void main(final String[] args) {
-			System.exit(new DetectSpermAlleles().instanceMain(args));
+			System.exit(new GenotypeSperm().instanceMain(args));
 		}
 }
 
