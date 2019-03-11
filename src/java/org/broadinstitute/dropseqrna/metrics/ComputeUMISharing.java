@@ -64,18 +64,18 @@ public class ComputeUMISharing
     @Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The metrics file to be written.")
     public File OUTPUT;
 
-    @Argument(doc="The tag used to groups reads.")
+    @Argument(doc="This is the tag that has been collapsed by some other process, for example a cell barcode tag after a cell barcode collapse process has been performed on the data.  The tag used to groups reads.")
     public String COLLAPSE_TAG;
 
-    @Argument(doc="The tag used to create subgroups of reads within a group.")
+    @Argument(doc="The tag before collapse took place.  For example, the cell barcode tag before a cell barcode collapse process was performed on the data.  The tag used to create subgroups of reads within a group, and compares the UMI Sharing of each uncollapsed tag to it's parent collapsed tag.")
     public String UNCOLLAPSED_TAG;
 
-    @Argument(minElements = 1, doc="The tag(s) whose values are used to create the set of unique tuples in each subgroup.")
+    @Argument(minElements = 1, doc="One or more tags used to define how a UMI should be counted.  For a cell barcode, this would be the gene, gene strand, and UMI tags. The tag(s) whose values are used to create the set of unique tuples in each subgroup.")
     public List<String> COUNT_TAG;
 
-    @Argument(doc="The edit distance for comparing COUNT_TAG values when comparing parent and child tuple sets.  " +
-            "the nth EDIT_DISTANCE corresponds to the nth COUNT_TAG.  If there are fewer EDIT_DISTANCEs than " +
-            "COUNT_TAGs, the remainder are assumed to have EDIT_DISTANCE=0.")
+    @Argument(doc="The edit distance of the COUNT_TAGS that definies sharing across COLLAPSE and UNCOLLAPSED TAGs. Since there can be multiple COUNT_TAG elements, this allows you to define the edit distance threshold for each COUNT_TAG individually in the same order as the COUNT_TAGs.  "
+    		+ "For example, if you defined a UMI by the gene, gene strand, and UMI TAGS, you might want edit distances of 0,0,1, so that on the molecular barcode could have an inexact match. "+ 
+            "If there are fewer EDIT_DISTANCEs than COUNT_TAGs, the remainder are assumed to have EDIT_DISTANCE=0.")
     public List<Integer> EDIT_DISTANCE;
 
     @Argument(doc = "Should indels be considered in edit distance calculations?  Doing this correctly is far slower " +
@@ -84,7 +84,6 @@ public class ComputeUMISharing
 
     @Argument(doc="Number of threads to use.  Only relevant if there is non-zero EDIT_DISTANCE.")
     public int NUM_THREADS=1;
-
 
     private ParentEditDistanceMatcher parentEditDistanceMatcher;
 
