@@ -65,7 +65,7 @@ import picard.cmdline.StandardOptionDefinitions;
 		+ "calculate the UMIs that are shared between the parent entity and each of the children that has been collapsed. "
 		+ "For example, if cell barcodes have been collapsed into a new tag, compare the parent cell barcode (the new "
 		+ "cell barcode all results were collapsed into) to each of the child cell barcodes (all of the cells that were collapsed into the main one). "
-		+ "UMI Sharing is calcuated by in a flexible way by gathering the unique COUNT_TAG values for each entity, then determining what fraction of "
+		+ "UMI Sharing is calcuated in a flexible way by gathering the unique COUNT_TAG values for each entity, then determining what fraction of "
 		+ "those counts in the child can be explain as coming from the parent counts at an edit distance.  For example, for a child cell barcode, gather counts of "
 		+ "the gene, gene strand and molecular barcode, and allow an edit distance of 0 for the gene and gene strand, and 1 for the molecular barcode, "
 		+ "then determine the fraction of UMIs in the child barcode that could have arisen from the parent barcode. "
@@ -172,13 +172,10 @@ public class ComputeUMISharing
             if (parentSubgroup == null ||
             !parentSubgroup.get(0).getAttribute(COLLAPSE_TAG).equals(subgroupIterator.peek().get(0).getAttribute(COLLAPSE_TAG))) {
                 parentSubgroup = subgroupIterator.next();
-                parentTuples.clear();
-                parentSubgroup.stream().map(parentEditDistanceMatcher::getValues).forEach(parentTuples::add);
-
-            } else {
-                final Set<TagValues> childTuples = new HashSet<>();
+                parentTuples = parentEditDistanceMatcher.getValues(parentSubgroup);                
+            } else {                
                 final List<SAMRecord> childSubgroup = subgroupIterator.next();
-                childSubgroup.stream().map(parentEditDistanceMatcher::getValues).forEach(childTuples::add);
+                final Set<TagValues> childTuples = parentEditDistanceMatcher.getValues(childSubgroup);                
                 final UmiSharingMetrics metrics = new UmiSharingMetrics();
                 metrics.PARENT = parentSubgroup.get(0).getAttribute(COLLAPSE_TAG).toString();
                 metrics.CHILD = childSubgroup.get(0).getAttribute(UNCOLLAPSED_TAG).toString();
