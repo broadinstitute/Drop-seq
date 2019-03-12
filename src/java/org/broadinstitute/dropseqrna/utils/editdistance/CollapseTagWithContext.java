@@ -23,26 +23,58 @@
  */
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.SAMFileHeader.SortOrder;
-import htsjdk.samtools.util.*;
+import java.io.File;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.*;
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+import org.broadinstitute.dropseqrna.utils.MultiComparator;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.ObjectSink;
+import org.broadinstitute.dropseqrna.utils.PeekableGroupingIterator;
+import org.broadinstitute.dropseqrna.utils.ProgressLoggingIterator;
+import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
+import org.broadinstitute.dropseqrna.utils.SamWriterSink;
+import org.broadinstitute.dropseqrna.utils.StringInterner;
+import org.broadinstitute.dropseqrna.utils.StringTagComparator;
 import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance.AdaptiveMappingResult;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+import org.broadinstitute.dropseqrna.utils.readiterators.DefaultTaggingIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.MapQualityPredicate;
 import org.broadinstitute.dropseqrna.utils.readiterators.RequiredTagPredicate;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
+
+import htsjdk.samtools.BAMRecordCodec;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.samtools.util.ProgressLogger;
+import htsjdk.samtools.util.SortingCollection;
+import htsjdk.samtools.util.StringUtil;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.File;
-import java.io.PrintStream;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(summary = "Collapse set of barcodes that all share the same BAM tags.  For example, collapse all UMIs that have the same cell, gene, and gene strand tags.  This would be equivilent to collapsing the UMIs in DGE.",
 oneLineSummary = "Collapse barcodes in the context of one or more tags.)",
@@ -527,8 +559,8 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		final MultiComparator<SAMRecord> multiComparator = new MultiComparator<>(comparators);
 		
 		// set up filters.
-        MapQualityPredicate mapQualityPredicate = getMapQualityPredicate(mapQuality);
-        RequiredTagPredicate requiredTagPredicate = getRequiredTagPredicate(collapseTag, contextTag);
+        MapQualityPredicate mapQualityPredicate = CollapseTagWithContext.getMapQualityPredicate(mapQuality);
+        RequiredTagPredicate requiredTagPredicate = CollapseTagWithContext.getRequiredTagPredicate(collapseTag, contextTag);
         
         // log progress on read iteration
         ProgressLogger progressLogger = new ProgressLogger(log);
@@ -584,33 +616,6 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		} 									    	
     }
     
-    /**
-     * All reads receive the default value for the outTag, which is the collapse tag's current value
-     * @author nemesh
-     *
-     */
-    private class DefaultTaggingIterator extends TransformingIterator<SAMRecord,SAMRecord> {
-
-    	private final String collapseTag;
-    	private final String outTag;
-    	
-		public DefaultTaggingIterator(Iterator<SAMRecord> underlyingIterator, final String collapseTag, final String outTag) {
-			super(underlyingIterator);
-			this.collapseTag=collapseTag;
-			this.outTag=outTag;
-		}
-
-		@Override
-		public SAMRecord next() {
-			SAMRecord r= this.underlyingIterator.next();
-			String v = r.getStringAttribute(collapseTag);
-			if (v!=null)
-				r.setAttribute(outTag, v);
-			return (r);
-		}
-    	
-    }
-
 
 	/** Stock main method. */
 	public static void main(final String[] args) {

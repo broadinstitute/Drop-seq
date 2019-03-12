@@ -28,6 +28,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -62,8 +63,11 @@ public class MapBarcodesByEditDistanceTest {
 		// ACGTA->TATTC=4 & AATTA->TATTC=2 (reject)
 		List<String> relatedBarcodes=Arrays.asList("ACGTA", "AAGTA", "AATTA", "TATTC");
 		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
-		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodes, false, 5, 1);
-		Set<String> expected = new HashSet<>(Arrays.asList("ACGTA", "AAGTA", "AATTA"));
+		FindCloseEntitiesByMutationalCollapse func = new FindCloseEntitiesByMutationalCollapse(m, false, 5, 1);
+		List<String> actual = func.find(coreBC, relatedBarcodes, null).getEntityMap().get(coreBC);
+		Collections.sort(actual);
+		List<String> expected = Arrays.asList("ACGTA", "AAGTA", "AATTA");
+		Collections.sort(expected);
 		Assert.assertEquals(expected, actual);
 	}
 	
@@ -77,16 +81,15 @@ public class MapBarcodesByEditDistanceTest {
 		List<String> relatedBarcodes=Arrays.asList("AAAGGA", "ATTGGA", "CTTGGG", "CTTTTT");
 		
 		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
-		
-		Set<String> actual1 = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodes, false, 6, 1);
-		Set<String> expected1 = new HashSet<>(Arrays.asList());
+		FindCloseEntitiesByMutationalCollapse func = new FindCloseEntitiesByMutationalCollapse(m, false, 6, 1);
+		Set<String> actual1 = new HashSet<String>(func.find(coreBC, relatedBarcodes, null).getEntityMap().get(coreBC));		
+		Set<String> expected1 = new HashSet<String>(Arrays.asList());
 		Assert.assertEquals(expected1, actual1);
 		
-		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodes, false, 6, 2);
-		Set<String> expected = new HashSet<>(Arrays.asList("AAAGGA", "ATTGGA", "CTTGGG"));
-		Assert.assertEquals(expected, actual);
-		
-		
+		func = new FindCloseEntitiesByMutationalCollapse(m, false, 6, 2);
+		Set<String> actual = new HashSet<String>(func.find(coreBC, relatedBarcodes, null).getEntityMap().get(coreBC));			
+		Set<String> expected = new HashSet<String>(Arrays.asList("AAAGGA", "ATTGGA", "CTTGGG"));
+		Assert.assertEquals(expected, actual);				
 		
 	}
 
@@ -102,9 +105,9 @@ public class MapBarcodesByEditDistanceTest {
 		// ACGTAAT->TATTATG=5 & AATTATT->TATTATG=2 (reject)
 		List<String> relatedBarcodesOne=Arrays.asList("AAGTAAT", "AATTAAT", "AATTATT", "TATTATG");
 		String coreBC="ACGTAAT";
-
-		Set<String> actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesOne, false, 5, 1);
-		Set<String> expectedOne = new HashSet<>(Arrays.asList("AAGTAAT", "AATTAAT", "AATTATT"));
+		FindCloseEntitiesByMutationalCollapse func = new FindCloseEntitiesByMutationalCollapse(m, false, 5, 1);
+		Set<String> actual = new HashSet<String> (func.find(coreBC, relatedBarcodesOne, null).getEntityMap().get(coreBC));						
+		Set<String> expectedOne = new HashSet<String> (Arrays.asList("AAGTAAT", "AATTAAT", "AATTATT"));
 		Assert.assertEquals(expectedOne, actual);
 
 		// core two:
@@ -114,10 +117,9 @@ public class MapBarcodesByEditDistanceTest {
 		// GGCCATG->AATCATA=4 & AACCATA->AATCATA=1 (accept)
 		// GGCCATG->ACTCATA=4 & AGCCATA->ACTCATA=2 (reject)
 		List<String> relatedBarcodesTwo=Arrays.asList("GACCATG", "GACCATA", "AACCATA", "AATCATA", "ACTCATA");
-		coreBC="GGCCATG";
-
-		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesTwo, false, 5, 1);
-		Set<String> expectedTwo = new HashSet<>(Arrays.asList("GACCATG", "GACCATA", "AACCATA", "AATCATA"));
+		coreBC="GGCCATG";		
+		actual = new HashSet<String>(func.find(coreBC, relatedBarcodesTwo, null).getEntityMap().get(coreBC));		
+		Set<String> expectedTwo = new HashSet<String> (Arrays.asList("GACCATG", "GACCATA", "AACCATA", "AATCATA"));
 		Assert.assertEquals(expectedTwo, actual);
 
 		// core three:
@@ -128,9 +130,8 @@ public class MapBarcodesByEditDistanceTest {
 		// TTGAACA->TGCTACT=4 & AGGTACT->TGCTACT=2 (reject)
 		List<String> relatedBarcodesThree=Arrays.asList("TTGAACT", "ATGAACT", "ATGTACT", "AGGTACT", "TGCTACT");
 		coreBC="TTGAACA";
-
-		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesThree, false, 5, 1);
-		Set<String> expectedThree = new HashSet<>(Arrays.asList("TTGAACT", "ATGAACT", "ATGTACT", "AGGTACT"));
+		actual = new HashSet<String> (func.find(coreBC, relatedBarcodesThree, null).getEntityMap().get(coreBC));		
+		Set<String> expectedThree = new HashSet<String> (Arrays.asList("TTGAACT", "ATGAACT", "ATGTACT", "AGGTACT"));
 		Assert.assertEquals(expectedThree, actual);
 		
 		// test all of them.
@@ -142,15 +143,15 @@ public class MapBarcodesByEditDistanceTest {
 		relatedBarcodesAll.addAll(relatedBarcodesThree);
 		
 		coreBC="ACGTAAT";
-		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesAll, false, 5, 1);
+		actual = new HashSet<String> (func.find(coreBC, relatedBarcodesOne, null).getEntityMap().get(coreBC));		
 		Assert.assertEquals(expectedOne, actual);
 
 		coreBC="GGCCATG";
-		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesAll, false, 5, 1);
+		actual = new HashSet<String> (func.find(coreBC, relatedBarcodesTwo, null).getEntityMap().get(coreBC));		
 		Assert.assertEquals(expectedTwo, actual);
 		
 		coreBC="TTGAACA";
-		actual = m.findRelatedBarcodesByMutationalCollapse(coreBC, relatedBarcodesAll, false, 5, 1);
+		actual = new HashSet<String> (func.find(coreBC, relatedBarcodesThree, null).getEntityMap().get(coreBC));
 		Assert.assertEquals(expectedThree, actual);
 		
 	}
@@ -737,6 +738,8 @@ public class MapBarcodesByEditDistanceTest {
 		// z2=c("AAACGGGAGGTA","GTAGACTAGGTG","TGCAGGTGGCCG","CCGTGCGTCACA","GGGCCCTATCAT","CACTGCCGTTGG")
 
 		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
+		FindCloseEntitiesByAdaptiveEditDistance func = new FindCloseEntitiesByAdaptiveEditDistance(m, true, 1, 1, 3);
+		
 		Set<String> barcodes= new HashSet<>();
 
 		barcodes.add("AAACCCGGAGTT");  // indel 1.
@@ -751,10 +754,11 @@ public class MapBarcodesByEditDistanceTest {
 		barcodes.add("CACTGCCGTTGG");
 
 
-		int threshold = m.findEditDistanceThreshold("AAACCCGGGTTT", barcodes, true, 1, 3);
+		int threshold = func.findEditDistanceThreshold("AAACCCGGGTTT", barcodes);
 		Assert.assertEquals(1, threshold);
 
-		threshold = m.findEditDistanceThreshold("AAACCCGGGTTT", barcodes, false, 1, 3);
+		func = new FindCloseEntitiesByAdaptiveEditDistance(m, false, 1, 1, 3);		
+		threshold = func.findEditDistanceThreshold("AAACCCGGGTTT", barcodes);
 		Assert.assertEquals(2, threshold);
 
 	}
