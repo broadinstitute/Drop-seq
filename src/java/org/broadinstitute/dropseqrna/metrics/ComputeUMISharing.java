@@ -23,35 +23,59 @@
  */
 package org.broadinstitute.dropseqrna.metrics;
 
-import htsjdk.samtools.BAMRecordCodec;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.*;
-import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
+import org.broadinstitute.dropseqrna.metrics.umisharing.ParentEditDistanceMatcher;
+import org.broadinstitute.dropseqrna.metrics.umisharing.ParentEditDistanceMatcher.TagValues;
+import org.broadinstitute.dropseqrna.utils.GroupingIterator;
+import org.broadinstitute.dropseqrna.utils.ProgressLoggingIterator;
+import org.broadinstitute.dropseqrna.utils.SortingIteratorFactory;
 import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionIteratorWrapper;
+
+import htsjdk.samtools.BAMRecordCodec;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.samtools.util.ProgressLogger;
+import htsjdk.samtools.util.RuntimeIOException;
 import picard.cmdline.StandardOptionDefinitions;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
-
-@CommandLineProgramProperties(summary = "Reads a BAM and analyzes groups of reads that share the same value for " +
+@CommandLineProgramProperties(summary = "Calculate UMI Sharing in a flexible way between parent / child entities.  "
+		+ "After running a collapse algorithm that merges entities (for example cell barcodes), "
+		+ "calculate the UMIs that are shared between the parent entity and each of the children that has been collapsed. "
+		+ "For example, if cell barcodes have been collapsed into a new tag, compare the parent cell barcode (the new "
+		+ "cell barcode all results were collapsed into) to each of the child cell barcodes (all of the cells that were collapsed into the main one). "
+		+ "UMI Sharing is calcuated by in a flexible way by gathering the unique COUNT_TAG values for each entity, then determining what fraction of "
+		+ "those counts in the child can be explain as coming from the parent counts at an edit distance.  For example, for a child cell barcode, gather counts of "
+		+ "the gene, gene strand and molecular barcode, and allow an edit distance of 0 for the gene and gene strand, and 1 for the molecular barcode, "
+		+ "then determine the fraction of UMIs in the child barcode that could have arisen from the parent barcode. "
+		+ "\n\nIMPLEMENTATION DETAILS: Reads a BAM and analyzes groups of reads that share the same value for " +
         "COLLAPSE_TAG.  Within such a group, reads for which UNCOLLAPSED_TAG value is the same as COLLAPSE_TAG value " +
         "are put into the parent subgroup.  The remaining reads are grouped by UNCOLLAPSED_TAG value into child " +
         "subgroups.  For each read, the values for the COUNT_TAG form a tuple.  For each subgroup, the set of unique " +
         "tuples are accumulated.  For each child subgroup, the size of the intersection of the tuple set with the " +
         "parent tuple set is computed.  A metrics file is produced for each child subgroup.",
-        oneLineSummary = "Computes overlap of COUNT_TAG values between parent and child groups of reads.",
+        oneLineSummary = "Computes UMI sharing between uncollapsed and collapsed sets of reads.",
         programGroup = DropSeq.class)
 public class ComputeUMISharing
         extends GeneFunctionCommandLineBase {
@@ -120,7 +144,7 @@ public class ComputeUMISharing
         while (EDIT_DISTANCE.size() < COUNT_TAG.size()) {
             EDIT_DISTANCE.add(0);
         }
-        parentEditDistanceMatcher = new ParentEditDistanceMatcher();
+        parentEditDistanceMatcher = new ParentEditDistanceMatcher(this.COUNT_TAG, this.EDIT_DISTANCE, this.FIND_INDELS, this.NUM_THREADS);
 
         SamReader reader = SamReaderFactory.makeDefault().open(INPUT);
         final ProgressLogger progressLogger = new ProgressLogger(log, 1000000, "Sorting");
@@ -160,7 +184,7 @@ public class ComputeUMISharing
                 metrics.CHILD = childSubgroup.get(0).getAttribute(UNCOLLAPSED_TAG).toString();
                 metrics.NUM_PARENT = parentTuples.size();
                 metrics.NUM_CHILD = childTuples.size();
-                metrics.NUM_SHARED = computeNumShared(parentTuples, childTuples);
+                metrics.NUM_SHARED = parentEditDistanceMatcher.computeNumShared(parentTuples, childTuples);
                 metrics.FRAC_SHARED = metrics.NUM_SHARED/(double)metrics.NUM_CHILD;
                 outFile.addMetric(metrics);
             }
@@ -174,120 +198,6 @@ public class ComputeUMISharing
         }
         CloserUtil.close(reader);
         return 0;
-    }
-
-    private int computeNumShared(final Set<TagValues> parentTuples, final Set<TagValues> childTuples) {
-        return (int)childTuples.stream().filter((childTuple) -> parentEditDistanceMatcher.isShared(childTuple, parentTuples)).count();
-    }
-
-    private static class TagValues {
-        final Object[] zeroEditDistanceValues;
-        final String[] nonZeroEditDistanceValues;
-
-        TagValues(final int numZeroEditDistanceTags, final int numNonZeroEditDistanceTags) {
-            zeroEditDistanceValues = new Object[numZeroEditDistanceTags];
-            nonZeroEditDistanceValues = new String[numNonZeroEditDistanceTags];
-        }
-
-        boolean zeroEditDistanceEquals(final TagValues other) {
-            return Arrays.equals(this.zeroEditDistanceValues, other.zeroEditDistanceValues);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            TagValues tagValues = (TagValues) o;
-            return Arrays.equals(zeroEditDistanceValues, tagValues.zeroEditDistanceValues) &&
-                    Arrays.equals(nonZeroEditDistanceValues, tagValues.nonZeroEditDistanceValues);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = Arrays.hashCode(zeroEditDistanceValues);
-            result = 31 * result + Arrays.hashCode(nonZeroEditDistanceValues);
-            return result;
-        }
-    }
-
-    private class ParentEditDistanceMatcher {
-        private final int[] zeroEditDistanceIndices;
-        private final int[] nonZeroEditDistanceIndices;
-        private final MapBarcodesByEditDistance med = new MapBarcodesByEditDistance(false, NUM_THREADS, 0);
-
-        ParentEditDistanceMatcher() {
-            final ArrayList<Integer> zeroEDs = new ArrayList<>();
-            final ArrayList<Integer> nonZeroEDs = new ArrayList<>();
-            for (int i = 0; i < EDIT_DISTANCE.size(); ++i) {
-                if (EDIT_DISTANCE.get(i) == 0) {
-                    zeroEDs.add(i);
-                } else {
-                    nonZeroEDs.add(i);
-                }
-            }
-            zeroEditDistanceIndices = zeroEDs.stream().mapToInt(i->i).toArray();
-            nonZeroEditDistanceIndices = nonZeroEDs.stream().mapToInt(i->i).toArray();
-
-        }
-
-        TagValues getValues(final SAMRecord rec) {
-            final TagValues ret = new TagValues(zeroEditDistanceIndices.length, nonZeroEditDistanceIndices.length);
-            for (int i = 0; i < zeroEditDistanceIndices.length; ++i) {
-                ret.zeroEditDistanceValues[i] = rec.getAttribute(COUNT_TAG.get(zeroEditDistanceIndices[i]));
-            }
-            for (int i = 0; i < nonZeroEditDistanceIndices.length; ++i) {
-                ret.nonZeroEditDistanceValues[i] = rec.getStringAttribute(COUNT_TAG.get(nonZeroEditDistanceIndices[i]));
-            }
-            return ret;
-        }
-
-        boolean isShared(final TagValues childTuple, final Set<TagValues> parentTuples) {
-            if (nonZeroEditDistanceIndices.length == 0) {
-                return parentTuples.contains(childTuple);
-            }
-
-            // Accumulate parents for which ED-zero values match the child.
-            final List<TagValues> exactMatchParentTuples = parentTuples.stream().
-                    filter(childTuple::zeroEditDistanceEquals).collect(Collectors.toList());
-
-            if (exactMatchParentTuples.isEmpty()) {
-                return false;
-            }
-
-            if (nonZeroEditDistanceIndices.length == 1) {
-                // Fast way for single tag
-                final List<String> parentValues = exactMatchParentTuples.stream().map((tuple) -> tuple.nonZeroEditDistanceValues[0]).collect(Collectors.toList());
-                return matchesWithinEditDistance(childTuple.nonZeroEditDistanceValues[0], parentValues, EDIT_DISTANCE.get(nonZeroEditDistanceIndices[0]));
-            }
-
-            // Unfortunately, if more than one ED-nonzero tag, needs to test each individually.
-            for (final TagValues parentTuple : exactMatchParentTuples) {
-                boolean matched = true;
-                for (int i = 0; i < nonZeroEditDistanceIndices.length; ++i) {
-                    if (!matchesWithinEditDistance(
-                            childTuple.nonZeroEditDistanceValues[i],
-                            parentTuple.nonZeroEditDistanceValues[i],
-                            EDIT_DISTANCE.get(nonZeroEditDistanceIndices[i]))) {
-                        matched = false;
-                        break;
-                    }
-                }
-                // Matched on every ED-nonzero tag
-                if (matched) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private boolean matchesWithinEditDistance(final String barcode, final List<String> comparisonBarcodes, final int editDistance) {
-            return !med.processSingleBarcodeMultithreaded(barcode, comparisonBarcodes, FIND_INDELS, editDistance).isEmpty();
-        }
-
-        private boolean matchesWithinEditDistance(final String barcode, final String comparisonBarcode, final int editDistance) {
-            return matchesWithinEditDistance(barcode, Collections.singletonList(comparisonBarcode), editDistance);
-        }
-
     }
 
     private final Comparator<SAMRecord> GROUPING_COMPARATOR = new Comparator<SAMRecord>() {
