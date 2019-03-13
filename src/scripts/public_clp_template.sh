@@ -44,7 +44,7 @@ EOF
 
 function usage () {
     echo "$USAGE" >&2
-    java -Xmx${xmx}-jar $jar_deploy_dir/dropseq.jar $progname -h
+    java -Xmx${xmx} -jar $jar_deploy_dir/dropseq.jar $progname -h
 }
 
 set -e
