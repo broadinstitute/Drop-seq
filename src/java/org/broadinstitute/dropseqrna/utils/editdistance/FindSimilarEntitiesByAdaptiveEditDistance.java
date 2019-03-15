@@ -27,6 +27,15 @@ public class FindSimilarEntitiesByAdaptiveEditDistance implements FindSimilarEnt
 
 
 	@Override
+	/**
+	 * Adaptive collapse. The definition of similar in this strategy uses the edit distance distribution of all barcodes to the core barcode being examined, and assumes that this
+	 * distribution is bimodal.  The edit distance of lowest density is selected as the maximal edit distance, to separate some group of closely related barcodes from another set that 
+	 * is much further away.
+	 * 
+	 * @param entity A barcode that may have one or more children in the search space.
+	 * @param searchSpace A list of other barcodes, a subset of which may be related to entity.
+	 * @param counts The number of observations of each barcode (usually a UMI count).  This orders barcodes from largest to smallest for collapse.
+	 */
 	public FindSimilarEntitiesResult<String, EditDistanceMappingMetric> find(String entity, List<String> searchSpace, ObjectCounter<String> counts) {
 		int [] edList = mbed.getEditDistanceDistributioneMultithreaded(entity, searchSpace, findIndels);
 		// filter out ed=0.
@@ -55,6 +64,12 @@ public class FindSimilarEntitiesByAdaptiveEditDistance implements FindSimilarEnt
 		return total;
 	}
 	
+	/**
+	 * 
+	 * @param targetBarcode
+	 * @param allBarcodes
+	 * @return
+	 */
 	public Integer findEditDistanceThreshold (final String targetBarcode, final Set<String> allBarcodes) {		
 		int [] edList = mbed.getEditDistanceDistributioneMultithreaded(targetBarcode, allBarcodes, findIndels);
 		// build and populate an object counter.
