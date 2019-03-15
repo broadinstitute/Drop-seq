@@ -592,7 +592,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 		return new RequiredTagPredicate(tagArray);
 	}
 	
-	static final Comparator<SAMRecord> NO_OP_COMPARATOR =  new Comparator<SAMRecord>() {
+	public static final Comparator<SAMRecord> NO_OP_COMPARATOR =  new Comparator<SAMRecord>() {
         @Override
 		public int compare(final SAMRecord e1, final SAMRecord e2) {
             return 0;

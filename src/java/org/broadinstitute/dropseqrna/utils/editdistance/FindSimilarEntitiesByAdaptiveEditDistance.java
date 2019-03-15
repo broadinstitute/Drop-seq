@@ -8,7 +8,7 @@ import java.util.Set;
 
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
-public class FindCloseEntitiesByAdaptiveEditDistance implements FindCloseEntities<String, EditDistanceMappingMetric> {
+public class FindSimilarEntitiesByAdaptiveEditDistance implements FindSimilarEntities<String, EditDistanceMappingMetric> {
 
 	private final MapBarcodesByEditDistance mbed;
 	private final boolean findIndels;
@@ -17,7 +17,7 @@ public class FindCloseEntitiesByAdaptiveEditDistance implements FindCloseEntitie
 	private final int maxEditDistance;
 	
 	
-	public FindCloseEntitiesByAdaptiveEditDistance(final MapBarcodesByEditDistance mbed, final boolean findIndels, final int defaultEditDistance, final int minEditDistance, final int maxEditDistance) {
+	public FindSimilarEntitiesByAdaptiveEditDistance(final MapBarcodesByEditDistance mbed, final boolean findIndels, final int defaultEditDistance, final int minEditDistance, final int maxEditDistance) {
 		this.mbed=mbed;
 		this.findIndels=findIndels;
 		this.defaultEditDistance=defaultEditDistance;	
@@ -27,7 +27,7 @@ public class FindCloseEntitiesByAdaptiveEditDistance implements FindCloseEntitie
 
 
 	@Override
-	public FindCloseEntitiesResult<String, EditDistanceMappingMetric> find(String entity, List<String> searchSpace, ObjectCounter<String> counts) {
+	public FindSimilarEntitiesResult<String, EditDistanceMappingMetric> find(String entity, List<String> searchSpace, ObjectCounter<String> counts) {
 		int [] edList = mbed.getEditDistanceDistributioneMultithreaded(entity, searchSpace, findIndels);
 		// filter out ed=0.
 		edList = Arrays.stream( edList ).filter(x-> x>0).toArray();
@@ -42,7 +42,7 @@ public class FindCloseEntitiesByAdaptiveEditDistance implements FindCloseEntitie
 		int mergedObservations=getMergedNumObservations(entity, closeBC, counts);
 		// add the edit distance distribution for this entity to all other entities here.
 		EditDistanceMappingMetric metric = new EditDistanceMappingMetric(entity, closeBC.size(), editDistance, editDistanceDiscovered, counts.getCountForKey(entity), mergedObservations, edList);
-		FindCloseEntitiesResult<String, EditDistanceMappingMetric> result = new FindCloseEntitiesResult<>();
+		FindSimilarEntitiesResult<String, EditDistanceMappingMetric> result = new FindSimilarEntitiesResult<>();
 		result.addMapping(entity, closeBC);
 		result.addMetrics(metric);
 		return (result);		

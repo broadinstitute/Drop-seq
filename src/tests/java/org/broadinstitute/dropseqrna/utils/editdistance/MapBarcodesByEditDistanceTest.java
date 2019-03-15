@@ -34,13 +34,21 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.broadinstitute.dropseqrna.metrics.UmiSharingMetrics;
+import org.broadinstitute.dropseqrna.metrics.umisharing.ParentEditDistanceMatcher;
+import org.broadinstitute.dropseqrna.metrics.umisharing.ParentEditDistanceMatcher.TagValues;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.testng.annotations.Test;
 
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.IOUtil;
 import junit.framework.Assert;
 import picard.util.TabbedInputParser;
@@ -53,6 +61,107 @@ public class MapBarcodesByEditDistanceTest {
 	private static File repairedBC = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/repairedBC.txt");
 	private static File intendedBC = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/potential_intendedBC.txt");
 
+	
+	private static File UmiSharingData = new File("testdata/org/broadinstitute/dropseq/metrics/compute_umi_sharing.unmapped.sam");
+	private static File UmiSharingResultsED0 = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/umi_test_data.merged_barcodes_ed0.txt");
+	private static File UmiSharingResultsED1 = new File ("testdata/org/broadinstitute/transcriptome/utils/editdistance/umi_test_data.merged_barcodes_ed1.txt");
+	
+	// there's also testing of UMISharing in ComputeUMISharingTest...
+	
+	//broad/mccarroll/software/dropseq/jn_branch/BamTagOfTagCounts I=compute_umi_sharing.unmapped.sam PRIMARY_TAG=rb SECONDARY_TAG=XM FILTER_PCR_DUPLICATES=false O=compute_umi_sharing.unmapped.rb:XM.histogram.txt MINIMUM_MAPPING_QUALITY=0
+
+	@Test
+	public void testUMISharingCollapseED0() {
+		testUMISharingCollapse(this.UmiSharingData, 0, this.UmiSharingResultsED0);
+	}
+	
+	@Test
+	public void testUMISharingCollapseED1() {
+		testUMISharingCollapse(this.UmiSharingData, 1, this.UmiSharingResultsED1);
+	}
+	
+	public void testUMISharingCollapse (File input, int editDistance, File resultFile) {		
+		ParentEditDistanceMatcher matcher = new ParentEditDistanceMatcher(Collections.singletonList("XM"), Collections.singletonList(editDistance), false, 1);
+		double sharingThreshold = 0.8d;
+		UMISharingData data = readUMISharingData(UmiSharingData, "rb", matcher);
+		MapBarcodesByEditDistance mbed = new MapBarcodesByEditDistance(false);		
+		FindSimilarEntitiesResult<String, UmiSharingMetrics> result =mbed.collapseBarcodesByUmiSharing(data.barcodes, matcher, sharingThreshold, data.umisPerBarcode);
+		Set<UmiSharingMetrics> metricsList = result.getCollapseMetric();
+		// filter the metrics to those with at least some sharing, which is what the R code does.
+		metricsList = metricsList.stream().filter(x -> x.FRAC_SHARED>=sharingThreshold).collect(Collectors.toSet());		
+		FindSimilarEntitiesResult<String, UmiSharingMetrics> expectedResult = readExpectedResult(resultFile);
+		
+		// all the expected sharing is there.
+		for (UmiSharingMetrics m : expectedResult.getCollapseMetric()) {						
+			Assert.assertTrue(metricsList.contains(m));
+		}
+		
+		Map<String, List<String>> mapping = result.getEntityMap();
+		Map<String, List<String>> expectedMapping = expectedResult.getEntityMap();
+		Assert.assertTrue(mapping.keySet().containsAll(expectedMapping.keySet()));
+		
+		for (String key: expectedMapping.keySet()) {
+			Set<String> values = new HashSet<String> (mapping.get(key));
+			Set<String> expectedValues = new HashSet<String> (expectedResult.getEntityMap().get(key));
+			Assert.assertEquals(expectedValues, values);
+		}		
+		Assert.assertNotNull(result);		
+	}
+	
+	private FindSimilarEntitiesResult<String, UmiSharingMetrics> readExpectedResult (File expected) {
+		TabbedInputParser p = new TabbedInputParser(true, expected);
+		String [] header = p.next();
+		Set<UmiSharingMetrics> collapseMetric = new HashSet<UmiSharingMetrics>();
+		
+		Map<String, List<String>> mapping = new HashMap<String,List<String>>();
+		FindSimilarEntitiesResult<String, UmiSharingMetrics> result = new FindSimilarEntitiesResult<>();
+		
+		while (p.hasNext()) {
+			String [] line = p.next();
+			String s= line[0];
+			UmiSharingMetrics m = new UmiSharingMetrics();
+			m.PARENT=line[0];
+			m.CHILD=line[1];
+			m.NUM_PARENT= Integer.parseInt(line[2]);
+			m.NUM_CHILD=Integer.parseInt(line[3]);
+			m.NUM_SHARED=Integer.parseInt(line[4]);
+			m.FRAC_SHARED=Double.parseDouble(line[6]);
+			result.addMetrics(m);
+			result.addMapping(m.PARENT, m.CHILD);			
+		}		
+		result.addMapping(mapping);
+		return result;
+	}
+	
+	private UMISharingData readUMISharingData (File f, String cellBarcode, ParentEditDistanceMatcher matcher) {
+		Map<String, Set<TagValues>> umisPerBarcode = new HashMap<String, Set<TagValues>>();
+		ObjectCounter<String> barcodes = new ObjectCounter<>();
+		
+		SamReader reader = SamReaderFactory.makeDefault().open(UmiSharingData);
+		SAMRecordIterator iter = reader.iterator();
+		while (iter.hasNext()) {
+			SAMRecord r = iter.next();
+			String barcode = r.getStringAttribute(cellBarcode);
+			TagValues v = matcher.getValues(r);
+			Set<TagValues> s = umisPerBarcode.get(barcode);
+			if (s==null) {
+				s = new HashSet<TagValues>();
+				umisPerBarcode.put(barcode, s);
+			}			
+			if (!s.contains(v))
+				barcodes.increment(barcode);
+			s.add(v);
+		}
+		UMISharingData result = new UMISharingData();
+		result.barcodes=barcodes;
+		result.umisPerBarcode=umisPerBarcode;
+		return result;
+	}
+	
+	private class UMISharingData {
+		Map<String, Set<TagValues>> umisPerBarcode;
+		ObjectCounter<String> barcodes;
+	}
 
 	@Test
 	public void testFindRelatedBarcodesByMutationalCollapse1() {
@@ -63,7 +172,7 @@ public class MapBarcodesByEditDistanceTest {
 		// ACGTA->TATTC=4 & AATTA->TATTC=2 (reject)
 		List<String> relatedBarcodes=Arrays.asList("ACGTA", "AAGTA", "AATTA", "TATTC");
 		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
-		FindCloseEntitiesByMutationalCollapse func = new FindCloseEntitiesByMutationalCollapse(m, false, 5, 1);
+		FindSimilarEntitiesByMutationalCollapse func = new FindSimilarEntitiesByMutationalCollapse(m, false, 5, 1);
 		List<String> actual = func.find(coreBC, relatedBarcodes, null).getEntityMap().get(coreBC);
 		Collections.sort(actual);
 		List<String> expected = Arrays.asList("ACGTA", "AAGTA", "AATTA");
@@ -81,12 +190,12 @@ public class MapBarcodesByEditDistanceTest {
 		List<String> relatedBarcodes=Arrays.asList("AAAGGA", "ATTGGA", "CTTGGG", "CTTTTT");
 		
 		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
-		FindCloseEntitiesByMutationalCollapse func = new FindCloseEntitiesByMutationalCollapse(m, false, 6, 1);
+		FindSimilarEntitiesByMutationalCollapse func = new FindSimilarEntitiesByMutationalCollapse(m, false, 6, 1);
 		Set<String> actual1 = new HashSet<String>(func.find(coreBC, relatedBarcodes, null).getEntityMap().get(coreBC));		
 		Set<String> expected1 = new HashSet<String>(Arrays.asList());
 		Assert.assertEquals(expected1, actual1);
 		
-		func = new FindCloseEntitiesByMutationalCollapse(m, false, 6, 2);
+		func = new FindSimilarEntitiesByMutationalCollapse(m, false, 6, 2);
 		Set<String> actual = new HashSet<String>(func.find(coreBC, relatedBarcodes, null).getEntityMap().get(coreBC));			
 		Set<String> expected = new HashSet<String>(Arrays.asList("AAAGGA", "ATTGGA", "CTTGGG"));
 		Assert.assertEquals(expected, actual);				
@@ -105,7 +214,7 @@ public class MapBarcodesByEditDistanceTest {
 		// ACGTAAT->TATTATG=5 & AATTATT->TATTATG=2 (reject)
 		List<String> relatedBarcodesOne=Arrays.asList("AAGTAAT", "AATTAAT", "AATTATT", "TATTATG");
 		String coreBC="ACGTAAT";
-		FindCloseEntitiesByMutationalCollapse func = new FindCloseEntitiesByMutationalCollapse(m, false, 5, 1);
+		FindSimilarEntitiesByMutationalCollapse func = new FindSimilarEntitiesByMutationalCollapse(m, false, 5, 1);
 		Set<String> actual = new HashSet<String> (func.find(coreBC, relatedBarcodesOne, null).getEntityMap().get(coreBC));						
 		Set<String> expectedOne = new HashSet<String> (Arrays.asList("AAGTAAT", "AATTAAT", "AATTATT"));
 		Assert.assertEquals(expectedOne, actual);
@@ -738,7 +847,7 @@ public class MapBarcodesByEditDistanceTest {
 		// z2=c("AAACGGGAGGTA","GTAGACTAGGTG","TGCAGGTGGCCG","CCGTGCGTCACA","GGGCCCTATCAT","CACTGCCGTTGG")
 
 		MapBarcodesByEditDistance m = new MapBarcodesByEditDistance(true);
-		FindCloseEntitiesByAdaptiveEditDistance func = new FindCloseEntitiesByAdaptiveEditDistance(m, true, 1, 1, 3);
+		FindSimilarEntitiesByAdaptiveEditDistance func = new FindSimilarEntitiesByAdaptiveEditDistance(m, true, 1, 1, 3);
 		
 		Set<String> barcodes= new HashSet<>();
 
@@ -757,7 +866,7 @@ public class MapBarcodesByEditDistanceTest {
 		int threshold = func.findEditDistanceThreshold("AAACCCGGGTTT", barcodes);
 		Assert.assertEquals(1, threshold);
 
-		func = new FindCloseEntitiesByAdaptiveEditDistance(m, false, 1, 1, 3);		
+		func = new FindSimilarEntitiesByAdaptiveEditDistance(m, false, 1, 1, 3);		
 		threshold = func.findEditDistanceThreshold("AAACCCGGGTTT", barcodes);
 		Assert.assertEquals(2, threshold);
 

@@ -36,6 +36,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
+import org.broadinstitute.dropseqrna.metrics.UmiSharingMetrics;
 import org.broadinstitute.dropseqrna.metrics.umisharing.ParentEditDistanceMatcher;
 import org.broadinstitute.dropseqrna.metrics.umisharing.ParentEditDistanceMatcher.TagValues;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
@@ -288,8 +289,8 @@ public class MapBarcodesByEditDistance {
 	 * @return
 	 */
 	public Map<String, List<String>> collapseBarcodes (List<String> coreBarcodes, ObjectCounter<String> barcodes, final boolean findIndels, final int editDistance) {
-		FindCloseEntitiesByEditDistance function = new FindCloseEntitiesByEditDistance(this, findIndels, editDistance);
-		FindCloseEntitiesResult<String, String> result = collapseBarcodesGeneric(coreBarcodes, barcodes, function, 0);
+		FindSimilarEntitiesByEditDistance function = new FindSimilarEntitiesByEditDistance(this, findIndels, editDistance);
+		FindSimilarEntitiesResult<String, String> result = collapseBarcodesGeneric(coreBarcodes, barcodes, function, 0);
 		return result.getEntityMap();
 	}
 
@@ -314,8 +315,8 @@ public class MapBarcodesByEditDistance {
 	 * @return
 	 */
 	public AdaptiveMappingResult collapseBarcodesAdaptive(List<String> coreBarcodes, ObjectCounter<String> barcodes, final boolean findIndels, final int defaultEditDistance, final int minEditDistance, final int maxEditDistance) {
-		FindCloseEntitiesByAdaptiveEditDistance function = new FindCloseEntitiesByAdaptiveEditDistance(this, findIndels, defaultEditDistance, minEditDistance, maxEditDistance);
-		FindCloseEntitiesResult<String, EditDistanceMappingMetric> result = collapseBarcodesGeneric(coreBarcodes, barcodes, function, 0);
+		FindSimilarEntitiesByAdaptiveEditDistance function = new FindSimilarEntitiesByAdaptiveEditDistance(this, findIndels, defaultEditDistance, minEditDistance, maxEditDistance);
+		FindSimilarEntitiesResult<String, EditDistanceMappingMetric> result = collapseBarcodesGeneric(coreBarcodes, barcodes, function, 0);
 		AdaptiveMappingResult r = new AdaptiveMappingResult(result.getEntityMap(), new ArrayList <EditDistanceMappingMetric>(result.getCollapseMetric()));
 		return (r);		
 	}
@@ -335,13 +336,19 @@ public class MapBarcodesByEditDistance {
 	 * @return
 	 */
 	public Map<String, List<String>> collapseBarcodesByMutationalCollapse (final ObjectCounter<String> barcodes, final boolean findIndels, final int maxEditDistance, final int minSizeToCollapse, final int pathStepSize) {
-		FindCloseEntitiesByMutationalCollapse function = new FindCloseEntitiesByMutationalCollapse(this, findIndels, maxEditDistance, pathStepSize);
+		FindSimilarEntitiesByMutationalCollapse function = new FindSimilarEntitiesByMutationalCollapse(this, findIndels, maxEditDistance, pathStepSize);
 		List<String> orderedBarcodes = barcodes.getKeysOrderedByCount(true);
-		FindCloseEntitiesResult<String, String> result = collapseBarcodesGeneric(orderedBarcodes, barcodes, function, minSizeToCollapse);		
+		FindSimilarEntitiesResult<String, String> result = collapseBarcodesGeneric(orderedBarcodes, barcodes, function, minSizeToCollapse);		
 		return (result.getEntityMap());		
 	}
 	
-		
+	public FindSimilarEntitiesResult<String, UmiSharingMetrics> collapseBarcodesByUmiSharing (final ObjectCounter<String> barcodes, ParentEditDistanceMatcher parentEditDistanceMatcher, final double sharingThreshold, Map<String, Set<TagValues>> umisPerBarcode) {
+		FindSimilarEntitiesByUMISharing function = new FindSimilarEntitiesByUMISharing(this, parentEditDistanceMatcher, sharingThreshold, umisPerBarcode);
+		List<String> orderedBarcodes = barcodes.getKeysOrderedByCount(true);
+		FindSimilarEntitiesResult<String, UmiSharingMetrics> result = collapseBarcodesGeneric(orderedBarcodes, barcodes, function, 0);		
+		return result;	
+	}
+	
 	public Set<String> processSingleBarcode(final String barcode, final List<String> comparisonBarcodes, final boolean findIndels, final int editDistance) {
 		Set<String> closeBarcodes =null;
 
@@ -423,20 +430,21 @@ public class MapBarcodesByEditDistance {
 		}
 
 	}
-	
+		
 	/**
 	 * Generic method to do barcode collapse.  Orders barcodes by count from largest to smallest, and collapses "close" barcodes as described by the FindCloseEntities class.
-	 * @param coreBarcodes
-	 * @param entityCounts
-	 * @param function
+	 * @param coreBarcodes A list of core barcodes that other barcodes can be collapsed into.
+	 * @param entityCounts Counts of each core barcode [umis,reads,etc] which orders how barcodes are collapsed.
+	 * @param function Defines how a parent barcode and its children are close enough to each other for collapse
+	 * @param minSizeToCollapse Do not collapse core barcodes with counts less than this number.
 	 * @return
 	 */
-	private <T extends Comparable<T>,M> FindCloseEntitiesResult<T,M> collapseBarcodesGeneric(List<T> coreBarcodes, ObjectCounter<T> entityCounts, FindCloseEntities<T,M> function, final int minSizeToCollapse) {
+	private <T extends Comparable<T>,M> FindSimilarEntitiesResult<T,M> collapseBarcodesGeneric(List<T> coreBarcodes, ObjectCounter<T> entityCounts, FindSimilarEntities<T,M> function, final int minSizeToCollapse) {
 		// don't allow side effects to modify input lists.
 		coreBarcodes = new ArrayList<T>(coreBarcodes);
 		entityCounts = new ObjectCounter<T>(entityCounts);
 
-		FindCloseEntitiesResult<T,M> result = new FindCloseEntitiesResult<>();
+		FindSimilarEntitiesResult<T,M> result = new FindSimilarEntitiesResult<>();
 		int count = 0;
 		int numBCCollapsed=0;
 
@@ -451,7 +459,7 @@ public class MapBarcodesByEditDistance {
 			count++;
 			coreBarcodes.remove(b);
 			barcodeList.remove(b);
-			FindCloseEntitiesResult<T,M> singleResult = function.find(b, barcodeList, entityCounts);
+			FindSimilarEntitiesResult<T,M> singleResult = function.find(b, barcodeList, entityCounts);
 			
 			List<T> closeBC=singleResult.getEntityMap().get(b);		
 			numBCCollapsed+=closeBC.size();

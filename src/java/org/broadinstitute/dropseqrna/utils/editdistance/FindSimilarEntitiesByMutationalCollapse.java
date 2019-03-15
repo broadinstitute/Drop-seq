@@ -10,13 +10,13 @@ import java.util.Set;
 
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
-public class FindCloseEntitiesByMutationalCollapse implements FindCloseEntities<String, String>  {
+public class FindSimilarEntitiesByMutationalCollapse implements FindSimilarEntities<String, String>  {
 	private final MapBarcodesByEditDistance mbed;
 	private boolean findIndels;
 	private int maxEditDistance;
 	private int pathStepSize;
 	
-	public FindCloseEntitiesByMutationalCollapse (final MapBarcodesByEditDistance mbed, final boolean findIndels, final int maxEditDistance, final int pathStepSize) {
+	public FindSimilarEntitiesByMutationalCollapse (final MapBarcodesByEditDistance mbed, final boolean findIndels, final int maxEditDistance, final int pathStepSize) {
 		this.mbed=mbed;
 		this.findIndels=findIndels;
 		this.maxEditDistance=maxEditDistance;
@@ -25,7 +25,7 @@ public class FindCloseEntitiesByMutationalCollapse implements FindCloseEntities<
 	
 	//TODO: counts isn't used...should it maybe be in the constructor?
 	@Override
-	public FindCloseEntitiesResult<String, String> find(String entity, List<String> searchSpace, ObjectCounter<String> counts) {
+	public FindSimilarEntitiesResult<String, String> find(String entity, List<String> searchSpace, ObjectCounter<String> counts) {
 		// parameterizing minEditDistance could lead to complications - how far apart are subseqeunt jumps from the first set of barcodes found?  ED=1 or ED=minEditDistance?		
 		// store results for each edit distance here.
 		Map<Integer, List<String>> validBarcodes = new HashMap<> ();
@@ -79,7 +79,7 @@ public class FindCloseEntitiesByMutationalCollapse implements FindCloseEntities<
 		for (List<String> l: validBarcodes.values())
 			result.addAll(l);
 
-		FindCloseEntitiesResult<String,String> rr = new FindCloseEntitiesResult<>();
+		FindSimilarEntitiesResult<String,String> rr = new FindSimilarEntitiesResult<>();
 		rr.addMapping(entity, result);				
 		return rr;
 	}
