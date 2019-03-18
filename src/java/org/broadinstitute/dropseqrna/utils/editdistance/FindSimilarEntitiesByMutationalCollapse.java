@@ -16,6 +16,15 @@ public class FindSimilarEntitiesByMutationalCollapse implements FindSimilarEntit
 	private int maxEditDistance;
 	private int pathStepSize;
 	
+	/**
+	 * First find all barcodes related by edit distance<=pathStepSize.  Then find any barcodes that are related to that set of barcodes by ED=pathStepSize AND related to the core barcode at ED=2*path step size..
+	 * Iterate to the max edit distance.
+	 * 
+	 * @param mbed A mapping object to perform string functions
+	 * @param findIndels Uses levenstein distance when set to true, or hamming distance when set to false
+	 * @param maxEditDistance The maximum edit distance from the original core barcode to the most distant barcode.
+	 * @param pathStepSize The edit distance between barcodes.
+	 */
 	public FindSimilarEntitiesByMutationalCollapse (final MapBarcodesByEditDistance mbed, final boolean findIndels, final int maxEditDistance, final int pathStepSize) {
 		this.mbed=mbed;
 		this.findIndels=findIndels;
@@ -23,8 +32,11 @@ public class FindSimilarEntitiesByMutationalCollapse implements FindSimilarEntit
 		this.pathStepSize=pathStepSize;
 	}
 	
-	//TODO: counts isn't used...should it maybe be in the constructor?
+
 	@Override
+	/**
+	 * 
+	 */
 	public FindSimilarEntitiesResult<String, String> find(String entity, List<String> searchSpace, ObjectCounter<String> counts) {
 		// parameterizing minEditDistance could lead to complications - how far apart are subseqeunt jumps from the first set of barcodes found?  ED=1 or ED=minEditDistance?		
 		// store results for each edit distance here.

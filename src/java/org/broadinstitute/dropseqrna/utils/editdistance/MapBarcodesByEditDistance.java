@@ -439,7 +439,7 @@ public class MapBarcodesByEditDistance {
 	 * @param minSizeToCollapse Do not collapse core barcodes with counts less than this number.
 	 * @return
 	 */
-	private <T extends Comparable<T>,M> FindSimilarEntitiesResult<T,M> collapseBarcodesGeneric(List<T> coreBarcodes, ObjectCounter<T> entityCounts, FindSimilarEntities<T,M> function, final int minSizeToCollapse) {
+	public <T extends Comparable<T>,M> FindSimilarEntitiesResult<T,M> collapseBarcodesGeneric(List<T> coreBarcodes, ObjectCounter<T> entityCounts, FindSimilarEntities<T,M> function, final int minSizeToCollapse) {
 		// don't allow side effects to modify input lists.
 		coreBarcodes = new ArrayList<T>(coreBarcodes);
 		entityCounts = new ObjectCounter<T>(entityCounts);
