@@ -44,4 +44,52 @@ public class UmiSharingMetrics
 
     /** NUM_SHARED/NUM_CHILD */
     public double FRAC_SHARED;
+
+    public String toString () {
+    	return "Parent [" + this.PARENT +"] Child ["+this.CHILD+"] NUM_PARENT ["+this.NUM_PARENT+"] NUM_CHILD [" + this.NUM_CHILD +"] NUM_SHARED ["+this.NUM_SHARED+"] FRAC_SHARED [" + this.FRAC_SHARED+"]";
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + ((CHILD == null) ? 0 : CHILD.hashCode());
+		result = prime * result + NUM_CHILD;
+		result = prime * result + NUM_PARENT;
+		result = prime * result + NUM_SHARED;
+		result = prime * result + ((PARENT == null) ? 0 : PARENT.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		UmiSharingMetrics other = (UmiSharingMetrics) obj;
+		if (CHILD == null) {
+			if (other.CHILD != null)
+				return false;
+		} else if (!CHILD.equals(other.CHILD))
+			return false;
+		if (NUM_CHILD != other.NUM_CHILD)
+			return false;
+		if (NUM_PARENT != other.NUM_PARENT)
+			return false;
+		if (NUM_SHARED != other.NUM_SHARED)
+			return false;
+		if (PARENT == null) {
+			if (other.PARENT != null)
+				return false;
+		} else if (!PARENT.equals(other.PARENT))
+			return false;
+		return true;
+	}
+
+	
+    
+    
 }
