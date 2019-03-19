@@ -342,10 +342,10 @@ public class MapBarcodesByEditDistance {
 		return (result.getEntityMap());		
 	}
 	
-	public FindSimilarEntitiesResult<String, UmiSharingMetrics> collapseBarcodesByUmiSharing (final ObjectCounter<String> barcodes, ParentEditDistanceMatcher parentEditDistanceMatcher, final double sharingThreshold, Map<String, Set<TagValues>> umisPerBarcode) {
+	public FindSimilarEntitiesResult<String, UmiSharingMetrics> collapseBarcodesByUmiSharing (final ObjectCounter<String> barcodes, ParentEditDistanceMatcher parentEditDistanceMatcher, final double sharingThreshold, Map<String, Set<TagValues>> umisPerBarcode, final int minSizeToCollapse) {
 		FindSimilarEntitiesByUMISharing function = new FindSimilarEntitiesByUMISharing(this, parentEditDistanceMatcher, sharingThreshold, umisPerBarcode);
 		List<String> orderedBarcodes = barcodes.getKeysOrderedByCount(true);
-		FindSimilarEntitiesResult<String, UmiSharingMetrics> result = collapseBarcodesGeneric(orderedBarcodes, barcodes, function, 0);		
+		FindSimilarEntitiesResult<String, UmiSharingMetrics> result = collapseBarcodesGeneric(orderedBarcodes, barcodes, function, minSizeToCollapse);		
 		return result;	
 	}
 	

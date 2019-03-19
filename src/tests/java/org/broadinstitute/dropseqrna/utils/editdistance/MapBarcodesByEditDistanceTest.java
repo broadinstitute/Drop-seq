@@ -85,7 +85,7 @@ public class MapBarcodesByEditDistanceTest {
 		double sharingThreshold = 0.8d;
 		UMISharingData data = readUMISharingData(UmiSharingData, "rb", matcher);
 		MapBarcodesByEditDistance mbed = new MapBarcodesByEditDistance(false);		
-		FindSimilarEntitiesResult<String, UmiSharingMetrics> result =mbed.collapseBarcodesByUmiSharing(data.barcodes, matcher, sharingThreshold, data.umisPerBarcode);
+		FindSimilarEntitiesResult<String, UmiSharingMetrics> result =mbed.collapseBarcodesByUmiSharing(data.barcodes, matcher, sharingThreshold, data.umisPerBarcode, 0);
 		Set<UmiSharingMetrics> metricsList = result.getCollapseMetric();
 		// filter the metrics to those with at least some sharing, which is what the R code does.
 		metricsList = metricsList.stream().filter(x -> x.FRAC_SHARED>=sharingThreshold).collect(Collectors.toSet());		
