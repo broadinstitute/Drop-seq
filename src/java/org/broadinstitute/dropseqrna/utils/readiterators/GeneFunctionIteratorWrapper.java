@@ -52,17 +52,20 @@ public class GeneFunctionIteratorWrapper extends
 		String strandList = r.getStringAttribute(this.strandTag);
 		String functionList = r.getStringAttribute(this.functionTag);
 
-		// If you're missing the gene, strand, or function, you can't use this
-		// read.
-		if (geneList == null || strandList == null || functionList == null)
+		// If you're missing the gene, you can't use this read.
+		// If care about strand, and you're missing the strand, you can't use this read.
+		// If care about function, and you're missing the  function, you can't use this read.
+		if ((geneList == null) ||
+				(fdp.getStrandStrategy() != null && strandList == null) ||
+				(!fdp.getFunctions().isEmpty() && functionList == null)){
 			return result;
+		}
 
 		// there's at least one good copy of the read. Does the read match on
 		// strand/gene, or is it assigned to multiple genes?
-		String[] genes = geneList.split(DELIMITER);
-		String[] strands = r.getStringAttribute(this.strandTag)
-				.split(DELIMITER);
-		LocusFunction[] locusFunctions = getLocusFunctionFromRead(functionList);
+		final String[] genes = geneList.split(DELIMITER);
+		final String[] strands = (strandList == null? null: strandList.split(DELIMITER));
+		final LocusFunction[] locusFunctions = (functionList == null? null: getLocusFunctionFromRead(functionList));
 
 		List<FunctionalData> fdList = fdp.getFilteredFunctionalData(genes,
 				strands, locusFunctions, r.getReadNegativeStrandFlag());
@@ -97,7 +100,9 @@ public class GeneFunctionIteratorWrapper extends
 			final FunctionalData fd) {
 		r.setAttribute(geneTag, fd.getGene());
 		r.setAttribute(strandTag, fd.getStrand());
-		r.setAttribute(functionTag, fd.getLocusFunction().name());
+		if (fd.getLocusFunction() != null) {
+			r.setAttribute(functionTag, fd.getLocusFunction().name());
+		}
 		return (r);
 	}
 
