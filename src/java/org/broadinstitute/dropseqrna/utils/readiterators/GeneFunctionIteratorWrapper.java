@@ -13,43 +13,14 @@ public class GeneFunctionIteratorWrapper extends
 		CountChangingIteratorWrapper<SAMRecord> {
 
 	// the delimiter for BAM TAGs
-	private String DELIMITER = ",";
-	private String geneTag;
-	private String strandTag;
-	private String functionTag;
-	private boolean assignReadsToAllGenes;
-	FunctionalDataProcessor fdp;
+	private static final String DELIMITER = ",";
+	private final String geneTag;
+	private final String strandTag;
+	private final String functionTag;
+	private final boolean assignReadsToAllGenes;
+	private final FunctionalDataProcessor fdp;
 
 
-	/**
-	 * Filters and copies reads for processes that need to interpret gene
-	 * functional annotations. Only accepts reads that where the read cell
-	 * barcode matches a barcode in the list (if not null) Reads that are marked
-	 * as secondary or supplementary are rejected Filters reads based on read
-	 * map quality, removing reads below that quality
-	 *
-	 *
-	 *
-	 * Optionally filters reads where the annotated gene and the strand of the
-	 * read don't match, or can clone a read and return it multiple times if the
-	 * read maps to more than one gene and <assignReadsToAllGenes> is true.
-	 *
-	 * @param cellBarcodeTag The cell barcode BAM tag
-	 * @param cellBarcodeList
-	 *            A list of cell barcodes, or null to ignore. If populated,
-	 *            reads where the cellBarcodeTag matches one of these Strings
-	 *            will be retained
-	 * @param geneExonTag
-	 *            The gene/exon tag.
-	 * @param strandTag
-	 *            The strand tag
-	 * @param readMQ
-	 *            The minimum map quality of a read to be retained.
-	 * @param assignReadsToAllGenes
-	 *            Clone SAMRecord for each gene
-	 * @param useStrandInfo
-	 *            Only queue SAMRecord if gene strand agrees with read strand.
-	 */
 	public GeneFunctionIteratorWrapper(
 			final Iterator<SAMRecord> underlyingIterator, final String geneTag,
 			final String strandTag, final String functionTag,
@@ -115,10 +86,8 @@ public class GeneFunctionIteratorWrapper extends
 		// more than 1 read.
 		if (this.assignReadsToAllGenes)
 			// if fdList is empty, no records are added
-			for (int i = 0; i < fdList.size(); i++) {
-				FunctionalData fd = fdList.get(i);
-				SAMRecord rr = Utils.getClone(r);
-				rr = assignTagsToRead(rr, fd);
+			for (FunctionalData fd : fdList) {
+				SAMRecord rr = assignTagsToRead(Utils.getClone(r), fd);
 				result.add(rr);
 			}
 		return result;
