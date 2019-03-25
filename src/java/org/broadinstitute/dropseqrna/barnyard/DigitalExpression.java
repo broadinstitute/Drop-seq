@@ -302,7 +302,7 @@ public class DigitalExpression extends DGECommandLineBase {
         // TODO: modify this properly to strand strategy?
         // setDgeHeaderLibraryField(lib, "USE_STRAND_INFO", USE_STRAND_INFO);
         setDgeHeaderLibraryField(lib, "RARE_UMI_FILTER_THRESHOLD", RARE_UMI_FILTER_THRESHOLD);
-        setDgeHeaderLibraryField(lib, "STRAND_STRATEGY", this.STRAND_STRATEGY.name());
+        setDgeHeaderLibraryField(lib, "STRAND_STRATEGY", (this.STRAND_STRATEGY == null? null: this.STRAND_STRATEGY.name()));
         setDgeHeaderLibraryField(lib, "LOCUS_FUNCTION_LIST", this.LOCUS_FUNCTION_LIST.toString());
         header.addLibrary(lib);
         header.addCommand(getCommandLine());

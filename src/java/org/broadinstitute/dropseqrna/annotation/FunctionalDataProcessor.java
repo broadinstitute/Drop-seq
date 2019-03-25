@@ -41,10 +41,15 @@ public class FunctionalDataProcessor {
     	 */
 		private List<FunctionalData> convert(final String[] genes, final String[] strands, final LocusFunction[] locusFunctions) {
     		List<FunctionalData> data = new ArrayList<FunctionalData> ();
-    		if (genes.length!=strands.length || genes.length!=locusFunctions.length)
-				throw new IllegalArgumentException("Genes, strands and locus functions must all be of the same length.");
+    		if (strandStrategy != null && genes.length!=strands.length) {
+				throw new IllegalArgumentException("Genes and strands must be of the same length.");
+			}
+    		if (!acceptedFunctions.isEmpty() && genes.length!=locusFunctions.length)
+				throw new IllegalArgumentException("Genesand locus functions must be of the same length.");
     		for (int i=0; i<genes.length; i++) {
-    			FunctionalData sf = new FunctionalData(genes[i], strands[i], locusFunctions[i]);
+    			FunctionalData sf = new FunctionalData(genes[i],
+						(strandStrategy == null? null: strands[i]),
+						(acceptedFunctions.isEmpty()? null: locusFunctions[i]));
     			data.add(sf);
     		}
     		return (data);
@@ -56,18 +61,17 @@ public class FunctionalDataProcessor {
     	 * the "best" annotation is selected (see: AnnotationUtils.getLocusFunction()).
     	 *
     	 *
-    	 * @param strand The strategy for filtering on read and gene strand:
-    	 * GENE_FUNCTION_STRAND.SENSE retains all annotations where the read and annotation are on the same strand
-    	 * GENE_FUNCTION_STRAND.ANTISENSE retains all annotations where the read and annotation are on the opposite strand
-    	 * GENE_FUNCTION_STRAND.BOTH retains all annotations
     	 * @param readNegativeStrand Is the read on the negative strand?
-    	 * @param acceptedFunctions The set of accepted functions this gene can have to be retained
     	 * @return A list of FunctionalData that passes criteria.
     	 */
     	public List<FunctionalData> getFilteredFunctionalData (final String [] genes, final String[] strands, final LocusFunction [] locusFunctions, final boolean readNegativeStrand) {
-    		List<FunctionalData> data = convert (genes, strands, locusFunctions);
-    		List<FunctionalData> result = filterOnStrand(this.strandStrategy, readNegativeStrand, data);
-    		result=filterOnLocus(this.acceptedFunctions, result);
+    		List<FunctionalData> result = convert (genes, strands, locusFunctions);
+    		if (strandStrategy != null) {
+				result = filterOnStrand(this.strandStrategy, readNegativeStrand, result);
+			}
+    		if (!acceptedFunctions.isEmpty()) {
+				result = filterOnLocus(this.acceptedFunctions, result);
+			}
     		// need to reduce result down to a unique set of genes/strands.
     		// so if a gene is matched at UTR and CODING separately, that counts as 1 read.
     		result=simplifyFD(result);
@@ -85,15 +89,18 @@ public class FunctionalDataProcessor {
     	 */
     	public List<FunctionalData> filterToPreferredAnnotations(final List<FunctionalData> fdList) {
     		boolean hasCoding=false;
-    		for (FunctionalData fd: fdList)
-				if (isCodingUTR(fd.getLocusFunction()))
-					hasCoding=true;
+    		for (FunctionalData fd: fdList) {
+				if (isCodingUTR(fd.getLocusFunction())) {
+					hasCoding = true;
+				}
+			}
 
     		List<FunctionalData> result = new ArrayList<FunctionalData>();
     		for (FunctionalData fd: fdList) {
     			boolean readIsCoding=isCodingUTR(fd.getLocusFunction());
-    			if (!hasCoding || (readIsCoding))
-    				result.add(fd);
+    			if (!hasCoding || (readIsCoding)) {
+					result.add(fd);
+				}
     		}
 
     		return result;
@@ -131,10 +138,15 @@ public class FunctionalDataProcessor {
     		// process each list.
     		for (String gene: map.keySet()) {
     			List<FunctionalData> l = map.get(gene);
-    			List<LocusFunction> lf = new ArrayList<LocusFunction>();
-    			for (FunctionalData fd : l)
-					lf.add(fd.getLocusFunction());
-    			LocusFunction finalLF= AnnotationUtils.getInstance().getLocusFunction(lf, false);
+    			final LocusFunction finalLF;
+    			if (acceptedFunctions.isEmpty()) {
+    				finalLF = null;
+				} else {
+					List<LocusFunction> lf = new ArrayList<LocusFunction>();
+					for (FunctionalData fd : l)
+						lf.add(fd.getLocusFunction());
+					finalLF = AnnotationUtils.getInstance().getLocusFunction(lf, false);
+				}
     			// any instance of list l is fine.
     			FunctionalData result = new FunctionalData(l.get(0).getGene(), l.get(0).getStrand(), finalLF);
     			resultList.add(result);
