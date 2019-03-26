@@ -25,8 +25,13 @@
 package org.broadinstitute.dropseqrna.utils;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.util.Arrays;
 
+import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
+import picard.analysis.CompareMetrics;
 import picard.util.TabbedInputParser;
 
 /**
@@ -59,5 +64,14 @@ public class TestUtils {
 		CloserUtil.close(e);
 		CloserUtil.close(a);
 		return true;
+	}
+
+	// Copied roughly from Picard CompareMetrics
+	public static boolean testMetricsFilesEqual(final File expected, final File actual) throws FileNotFoundException {
+		final MetricsFile<?, ?> metricsA = new MetricsFile();
+		final MetricsFile<?, ?> metricsB = new MetricsFile();
+		metricsA.read(new FileReader(expected));
+		metricsB.read(new FileReader(actual));
+		return metricsA.areMetricsEqual(metricsB) && metricsA.areHistogramsEqual(metricsB);
 	}
 }

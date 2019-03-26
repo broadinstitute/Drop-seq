@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.spermseq.metrics.duplicates;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.metrics.MetricsFile;
 import junit.framework.Assert;
 import org.broadinstitute.dropseqrna.spermseq.metrics.duplicates.SpermSeqMarkDuplicates.DuplicateStrategy;
 import org.broadinstitute.dropseqrna.spermseq.metrics.duplicates.SpermSeqMarkDuplicates.PCRDuplicateMetrics;
@@ -35,33 +36,29 @@ import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 public class SpermSeqMarkDuplicatesTest {
 
 
-	File input = new File ("testdata/org/broadinstitute/spermseq/metrics/duplicates/test_sorted.bam");
-	File output = new File ("testdata/org/broadinstitute/spermseq/metrics/duplicates/test_output.bam");
-	File outputStats = new File ("testdata/org/broadinstitute/spermseq/metrics/duplicates/test_output.stats");
+	File INPUT = new File ("testdata/org/broadinstitute/spermseq/metrics/duplicates/test_sorted.bam");
 
-	private SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);
-
-	@Test(enabled=true)
+	@Test
 	// tests which reads are marked as duplicates by the read position strategy.
-	public void testDetectDuplicatesByReadPositionStrategy() {
+	public void testDetectDuplicatesByReadPositionStrategy() throws IOException {
 		String [] duplicateReadNames={"READ1:2", "READ2:3"};
 		Set<String> dupes = new HashSet<String>(Arrays.asList(duplicateReadNames));
 
 		SpermSeqMarkDuplicates d = new SpermSeqMarkDuplicates();
-		List<File> INPUT = new ArrayList<File> ();
-		INPUT.add(this.input);
-		d.INPUT=INPUT;
-		d.STRATEGY=DuplicateStrategy.READ_POSITION;
-		d.OUTPUT=this.output;
-		d.OUTPUT_STATS=this.outputStats;
-		d.doWork();
+		d.INPUT=Arrays.asList(INPUT);
+		d.OUTPUT=File.createTempFile("testDetectDuplicatesByReadPositionStrategy.", ".bam");
+		d.OUTPUT.deleteOnExit();
+		d.OUTPUT_STATS=File.createTempFile("testDetectDuplicatesByReadPositionStrategy.", ".pcr_duplicate_metrics");
+		d.OUTPUT_STATS.deleteOnExit();
+		Assert.assertEquals(0, d.doWork());
 
-		SamReader inputSam = SamReaderFactory.makeDefault().open(output);
+		SamReader inputSam = SamReaderFactory.makeDefault().open(d.OUTPUT);
 		for (SAMRecord r: inputSam) {
 			boolean duplicateReadFlag = r.getDuplicateReadFlag();
 			String readName = r.getReadName();
@@ -70,57 +67,22 @@ public class SpermSeqMarkDuplicatesTest {
 			else
 				Assert.assertFalse(duplicateReadFlag);
 		}
-
-		// cleanup.
-		output.delete();
-		outputStats.delete();
+		final List<SpermSeqMarkDuplicates.PCRDuplicateMetrics> beans = MetricsFile.readBeans(d.OUTPUT_STATS);
+		Assert.assertEquals(1, beans.size());
+		Assert.assertEquals(dupes.size(), beans.get(0).NUM_DUPLICATES);
 	}
-
-	@Test(enabled=false)
-	// tests which reads are marked as duplicates by the read position strategy.
-	public void testDetectDuplicatesByClusterStrategy() {
-		String [] duplicateReadNames={"READ1:2", "READ2:3"};
-		Set<String> dupes = new HashSet<String>(Arrays.asList(duplicateReadNames));
-
-		SpermSeqMarkDuplicates d = new SpermSeqMarkDuplicates();
-		List<File> INPUT = new ArrayList<File> ();
-		INPUT.add(this.input);
-		d.INPUT=INPUT;
-		d.STRATEGY=DuplicateStrategy.CLUSTER;
-		d.OUTPUT=this.output;
-		d.OUTPUT_STATS=this.outputStats;
-		d.doWork();
-
-		SamReader inputSam = SamReaderFactory.makeDefault().open(output);
-		for (SAMRecord r: inputSam) {
-			boolean duplicateReadFlag = r.getDuplicateReadFlag();
-			String readName = r.getReadName();
-			if (dupes.contains(readName))
-				Assert.assertTrue(duplicateReadFlag);
-			else
-				Assert.assertFalse(duplicateReadFlag);
-		}
-
-		// cleanup.
-		output.delete();
-		outputStats.delete();
-	}
-
 
 	@Test
 	public void testMetrics () {
-		List<File> INPUT = new ArrayList<File> ();
-		INPUT.add(this.input);
-
 		SpermSeqMarkDuplicates d = new SpermSeqMarkDuplicates();
-		d.INPUT=INPUT;
+		d.INPUT=Arrays.asList(INPUT);
 		d.CELL_BARCODE_TAG="XC";
 		d.MOLECULAR_BARCODE_TAG="XM";
 		d.NUM_BARCODES=10;
 		Map<String, PCRDuplicateMetrics> metricsMap = d.getPerCellMetricsMap(d.getCellBarcodes ());
 
 		// generate the data to update the metricsMap.
-		SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(INPUT, false, samReaderFactory);
+		SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(d.INPUT, false, SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE));
 		GroupingIterator<SAMRecord> iter  = d.getCellGeneIterator(headerAndIterator);
 
 		Assert.assertTrue(iter.hasNext());

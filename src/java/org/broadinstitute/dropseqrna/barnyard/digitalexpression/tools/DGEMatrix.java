@@ -620,20 +620,6 @@ public class DGEMatrix {
 
     }
 
-    private static List<String> parseDropSeqMatrixMarketHeaderList(final String headerLine, final String intro, final File input) {
-        if (headerLine == null || !headerLine.startsWith(intro))
-			throw new RuntimeException(String.format("Did not find '%s' in %s", intro, input.getAbsolutePath()));
-        final ArrayList<String> ret = new ArrayList<>();
-        String valueStr = headerLine.substring(intro.length());
-        for (int tabPosition = valueStr.indexOf('\t'); tabPosition != -1; tabPosition = valueStr.indexOf('\t')) {
-           ret.add(valueStr.substring(0, tabPosition));
-            valueStr = valueStr.substring(tabPosition + 1);
-        }
-        if (!valueStr.isEmpty())
-			ret.add(valueStr);
-        return ret;
-    }
-
     /**
 	 * Parses a DGE file.  If there are no lines in the file, return an empty {@link DGEMatrix} with no rows and no cells.
 	 * The format of the DGE file is tab delimited and the rows/columns are as follows:

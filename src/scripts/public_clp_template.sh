@@ -38,13 +38,13 @@ USAGE: $0 [-m <jvm_heap_size>] [-v] program args...
        -m <jvm_heap_size> (default $xmx)
        -v echo final command line before executing
 
-To get help for the program rather than the script:
-   $0 -- -h
+Program options:
 EOF
 )
 
 function usage () {
     echo "$USAGE" >&2
+    java -Xmx${xmx} -jar $jar_deploy_dir/dropseq.jar $progname -h
 }
 
 set -e
