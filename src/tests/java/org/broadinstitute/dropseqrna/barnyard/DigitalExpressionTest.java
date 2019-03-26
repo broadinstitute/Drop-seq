@@ -33,11 +33,13 @@ import java.util.Random;
 
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
+import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintWriter;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import picard.annotation.LocusFunction;
@@ -422,4 +424,56 @@ public class DigitalExpressionTest {
         return new File[]{cellBarcodesFile, outFile, summaryFile};
     }
 
+    private static File STRAND_AND_FUNCTION_TESTDATA = new File("testdata/org/broadinstitute/dropseq/barnyard/DgeStrandFuncTest");
+
+    @Test(dataProvider = "testSuppressingStrandAndFunctionDataProvider")
+	public void testSuppressingStrandAndFunction(final boolean suppressStrandStrategy,
+												 final boolean suppressFunction,
+												 final boolean fakeTagNames) throws IOException {
+    	final String expectedResultLabel;
+    	if (suppressFunction) {
+    		if (suppressStrandStrategy) {
+    			expectedResultLabel = "neither";
+			} else {
+    			expectedResultLabel = "strand";
+			}
+		} else if (suppressStrandStrategy) {
+    		expectedResultLabel = "func";
+		} else {
+    		expectedResultLabel = "both";
+		}
+		final String summaryExtension = ".digital_expression_summary.txt";
+		final File expectedResultFile = new File(STRAND_AND_FUNCTION_TESTDATA, expectedResultLabel + summaryExtension);
+    	final DigitalExpression digitalExpression = new DigitalExpression();
+    	digitalExpression.INPUT = new File(STRAND_AND_FUNCTION_TESTDATA, "DgeStrandFuncTest.bam");
+    	digitalExpression.CELL_BC_FILE = new File(STRAND_AND_FUNCTION_TESTDATA, "DgeStrandFuncTest.cell_barcodes");
+    	digitalExpression.SUMMARY = File.createTempFile("DgeStrandFuncTest.", summaryExtension);
+    	digitalExpression.SUMMARY.deleteOnExit();
+    	digitalExpression.OUTPUT = new File("/dev/null");
+    	if (suppressStrandStrategy) {
+    		digitalExpression.STRAND_STRATEGY = null;
+    		if (fakeTagNames) {
+    			digitalExpression.GENE_STRAND_TAG = "00";
+			}
+		}
+    	if (suppressFunction) {
+    		digitalExpression.LOCUS_FUNCTION_LIST.clear();
+			if (fakeTagNames) {
+				digitalExpression.GENE_FUNCTION_TAG = "00";
+			}
+		}
+    	Assert.assertEquals(digitalExpression.doWork(), 0);
+    	Assert.assertTrue(TestUtils.testMetricsFilesEqual(expectedResultFile, digitalExpression.SUMMARY));
+	}
+
+	@DataProvider(name = "testSuppressingStrandAndFunctionDataProvider")
+	public Object[][] testSuppressingStrandAndFunctionDataProvider() {
+    	final Object[][] ret = new Object[8][];
+    	final boolean[] tf = {true, false};
+    	int i = 0;
+    	for (boolean a : tf) for (boolean b : tf) for (boolean c: tf) {
+    		ret[i++] = new Object[]{a,b,c};
+		}
+    	return ret;
+	}
 }
