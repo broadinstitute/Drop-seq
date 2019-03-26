@@ -373,6 +373,9 @@ public class DigitalExpression extends DGECommandLineBase {
             this.NUM_GENIC_READS=0;
         }
 
+        // no-arg ctor for unit tests
+        public DESummary() {}
+
     }
 
     static final Comparator<DESummary> TRANSCRIPT_ORDER_DESCENDING =  new Comparator<DESummary>() {
