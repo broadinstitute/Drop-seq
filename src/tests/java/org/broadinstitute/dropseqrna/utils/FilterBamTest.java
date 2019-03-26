@@ -40,10 +40,47 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.metrics.MetricsFile;
 import picard.sam.ValidateSamFile;
 
 public class FilterBamTest {
 
+	// TO GENERATE COUNTS OF CONTIGS FOR HUMAN/MOUSE...
+	// samtools view human_mouse_smaller.bam |cut -f 3 |sort |uniq -c > human_mouse_smaller.contig_counts.txt
+	private static File ORGANISM_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/human_mouse_smaller.bam");
+	
+	
+	@Test
+	public void testOrganismFiltering () {
+		// 136859 HUMAN reads
+		// 76036 MOUSE reads
+		// 248661 TOTAL reads
+		
+		FilterBam f = new FilterBam();
+		f.INPUT=ORGANISM_INPUT_FILE;
+		f.SUMMARY=getTempReportFile("paired_input", ".summary.txt");
+		f.OUTPUT=getTempReportFile("paired_input", ".bam");
+		f.OUTPUT.deleteOnExit();
+		f.SUMMARY.deleteOnExit();
+		f.REF_SOFT_MATCHED_RETAINED=Arrays.asList("HUMAN");
+		// need to set this to an empty list, as that's what the constructor for FilterBam would do.
+		f.STRIP_REF_PREFIX=new ArrayList<>();
+		f.doWork();
+		
+		List<FilteredReadsMetric> metrics = MetricsFile.readBeans(f.SUMMARY);
+		Assert.assertEquals(136859, metrics.get(0).READS_ACCEPTED);
+		Assert.assertEquals(111802, metrics.get(0).READS_REJECTED);
+		
+		f.REF_SOFT_MATCHED_RETAINED=Arrays.asList("MOUSE");
+		f.doWork();
+		metrics = MetricsFile.readBeans(f.SUMMARY);
+		Assert.assertEquals(76036, metrics.get(0).READS_ACCEPTED);
+		Assert.assertEquals(172625, metrics.get(0).READS_REJECTED);
+		
+		
+	}
+	
+	
 	@Test(enabled=true, groups = { "dropseq","transcriptome" })
 	public void testCigarFilter() {
 		FilterBam b = new FilterBam();
@@ -332,4 +369,15 @@ public class FilterBamTest {
 						ret.add(new Object[]{"HUMAN_", "MOUSE_", stripPrefix, dropSequences, soft, retain});
         return ret.toArray(new Object[ret.size()][]);
     }
+	
+	private File getTempReportFile (final String prefix, final String suffix) {
+		File tempFile=null;
+
+		try {
+			tempFile = File.createTempFile(prefix, suffix);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		return tempFile;
+	}
 }

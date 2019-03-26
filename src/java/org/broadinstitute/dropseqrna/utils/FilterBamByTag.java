@@ -40,6 +40,7 @@ import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.metrics.MetricsFile;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
@@ -53,6 +54,9 @@ public class FilterBamByTag extends CommandLineProgram {
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
 	public File OUTPUT;
+	
+	@Argument(doc="A file containing a summary of the number of reads accepted and rejected.", optional=true)
+	public File SUMMARY;
 
 	@Argument(doc = "The BAM tag to filter on.")
 	public String TAG;
@@ -79,6 +83,7 @@ public class FilterBamByTag extends CommandLineProgram {
 
 		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
+		if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(this.SUMMARY);
 		Set<String> values;
 
 		if (this.TAG_VALUES_FILE != null) {
@@ -95,9 +100,9 @@ public class FilterBamByTag extends CommandLineProgram {
 				in.getFileHeader(), true, OUTPUT);
 
 		if (!this.PAIRED_MODE)
-			processUnpairedMode(in, out, values);
+			processUnpairedMode(in, out, values, this.SUMMARY);
 		else
-			processPairedMode(in, out, values);
+			processPairedMode(in, out, values, this.SUMMARY);
 
 		return 0;
 	}
@@ -107,16 +112,37 @@ public class FilterBamByTag extends CommandLineProgram {
 	 * @param in
 	 * @param out
 	 */
-	void processUnpairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values) {
+	void processUnpairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values, final File summaryFile) {
+		FilteredReadsMetric m = new FilteredReadsMetric();
 		ProgressLogger progLog = new ProgressLogger(log);
 		for (final SAMRecord r : in) {
 			progLog.record(r);
 			boolean filterFlag = filterRead(r, this.TAG, values, this.ACCEPT_TAG);
-			if (!filterFlag)
+			if (!filterFlag) { 
 				out.addAlignment(r);
+				m.READS_ACCEPTED++;
+			}
+			else {
+				m.READS_REJECTED++;
+			}
 		}
+		writeSummary(summaryFile, m);
 		CloserUtil.close(in);
 		out.close();
+	}
+	
+	/**
+	 * Write the summary output file of reads accepted/rejected.
+	 * @param summaryOutputFile
+	 * @param metrics
+	 */
+	private void writeSummary (File summaryOutputFile, FilteredReadsMetric metrics) {
+		if (summaryOutputFile!=null) {
+			MetricsFile<FilteredReadsMetric, Integer> outSummary = getMetricsFile();
+			outSummary.addMetric(metrics);
+			outSummary.write(summaryOutputFile);		
+			CloserUtil.close(outSummary);				
+		}
 	}
 
 	/**
@@ -125,14 +151,16 @@ public class FilterBamByTag extends CommandLineProgram {
 	 * @param out
 	 * @param values
 	 */
-	void processPairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values) {
+	void processPairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values, final File summaryFile) {
 		ProgressLogger progLog = new ProgressLogger(log);
+		FilteredReadsMetric m = new FilteredReadsMetric();
+		
 		PeekableIterator<SAMRecord> iter = new PeekableIterator<>(CustomBAMIterators.getQuerynameSortedRecords(in));
 		while (iter.hasNext()) {
 			SAMRecord r1 = iter.next();
 			progLog.record(r1);
 			boolean filterFlag1 = filterRead(r1, this.TAG, values, this.ACCEPT_TAG);
-
+			
 			SAMRecord r2 = null;
 			if (iter.hasNext()) r2 = iter.peek();
 			// check for r2 being null in case the last read is unpaired.
@@ -146,11 +174,18 @@ public class FilterBamByTag extends CommandLineProgram {
 				if ((!filterFlag1 || !filterFlag2 & this.ACCEPT_TAG) || (!filterFlag1 && !filterFlag2 & !this.ACCEPT_TAG)) {
 					out.addAlignment(r1);
 					out.addAlignment(r2);
-				}
-			} else if (!filterFlag1)
+					m.READS_ACCEPTED+=2;
+				} else 
+					m.READS_REJECTED+=2;
+			} else if (!filterFlag1) {
 				out.addAlignment(r1);
+				m.READS_ACCEPTED++;
+			} else {
+				m.READS_REJECTED++;
+			}
 		}
 		CloserUtil.close(in);
+		writeSummary(summaryFile, m);
 		out.close();
 	}
 

@@ -31,10 +31,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.io.FileUtils;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordSetBuilder;
+import htsjdk.samtools.metrics.MetricsFile;
 import junit.framework.Assert;
 
 public class FilterBamByTagTest {
@@ -45,20 +47,30 @@ public class FilterBamByTagTest {
 	private static File UNPAIRED_INPUT_FILE_FILTERED=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged_filtered.bam");
 	private static File PAIRED_INPUT_CELL_BARCODES=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged.cell_barcodes.txt");
 
-	private static File UNPAIRED_INPUT_FILE_FILTERED_AAAGTAGAGTGG=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged_filtered_AAAGTAGAGTGG.bam");
-
+	private static File UNPAIRED_INPUT_FILE_FILTERED_AAAGTAGAGTGG=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged_filtered_AAAGTAGAGTGG.bam");	
+	
 	@Test (enabled=true)
-	public void testDoWorkPaired () {
+	public void testDoWorkPaired () throws IOException {
 		FilterBamByTag f = new FilterBamByTag();
 		f.INPUT=PAIRED_INPUT_FILE;
 		f.OUTPUT=getTempReportFile("paired_input", ".bam");
+		f.SUMMARY=getTempReportFile("paired_input", ".summary.txt");
+		f.SUMMARY.deleteOnExit();
 		f.TAG="XC";
 		f.PAIRED_MODE=true;
 		f.TAG_VALUES_FILE=PAIRED_INPUT_CELL_BARCODES;
 		f.OUTPUT.deleteOnExit();
 		int result = f.doWork();
 		Assert.assertEquals(0, result);
+		//samtools view -c paired_reads_tagged_filtered.bam
+		// 12
+		// samtools view -c paired_reads_tagged.bam
+		// 20
 
+		List<FilteredReadsMetric> metrics = MetricsFile.readBeans(f.SUMMARY);
+		Assert.assertEquals(12, metrics.get(0).READS_ACCEPTED);
+		Assert.assertEquals(8, metrics.get(0).READS_REJECTED);
+								
 		CompareBAMTagValues cbtv = new CompareBAMTagValues();
 		cbtv.INPUT_1=PAIRED_INPUT_FILE_FILTERED;
 		cbtv.INPUT_2=f.OUTPUT;
@@ -67,20 +79,31 @@ public class FilterBamByTagTest {
 		cbtv.TAGS=tags;
 		int r = cbtv.doWork();
 		Assert.assertTrue(r==0);
-
+		
 	}
 
 	@Test
-	public void testDoWorkUnPaired () {
+	public void testDoWorkUnPaired () throws IOException {
 		FilterBamByTag f = new FilterBamByTag();
 		f.INPUT=UNPAIRED_INPUT_FILE;
 		f.OUTPUT=getTempReportFile("unpaired_input", ".bam");
+		f.SUMMARY=getTempReportFile("unpaired_input", ".summary.txt");
+		f.SUMMARY.deleteOnExit();
 		f.TAG="XC";
 		f.PAIRED_MODE=false;
 		f.TAG_VALUES_FILE=PAIRED_INPUT_CELL_BARCODES;
 		f.OUTPUT.deleteOnExit();
 		int result = f.doWork();
 		Assert.assertEquals(0, result);
+		
+		// samtools view -c unpaired_reads_tagged_filtered.bam
+		// 6
+		// samtools view -c unpaired_reads_tagged.bam 
+		// 10
+				
+		List<FilteredReadsMetric> metrics = MetricsFile.readBeans(f.SUMMARY);
+		Assert.assertEquals(6, metrics.get(0).READS_ACCEPTED);
+		Assert.assertEquals(4, metrics.get(0).READS_REJECTED);
 
 		CompareBAMTagValues cbtv = new CompareBAMTagValues();
 		cbtv.INPUT_1=UNPAIRED_INPUT_FILE_FILTERED;
@@ -108,7 +131,7 @@ public class FilterBamByTagTest {
 		cbtv.TAGS=tags;
 		r = cbtv.doWork();
 		Assert.assertTrue(r==0);
-
+		
 
 	}
 
