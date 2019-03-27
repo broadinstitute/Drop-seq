@@ -204,7 +204,6 @@ public class FilterBam extends CommandLineProgram{
 			MetricsFile<FilteredReadsMetric, Integer> outSummary = getMetricsFile();
 			outSummary.addMetric(metrics);
 			outSummary.write(summaryOutputFile);		
-			CloserUtil.close(outSummary);				
 		}
 	}
     private SAMFileHeader editSequenceDictionary(final SAMFileHeader fileHeader) {
