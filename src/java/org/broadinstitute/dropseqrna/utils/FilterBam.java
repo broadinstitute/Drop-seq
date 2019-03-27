@@ -188,7 +188,9 @@ public class FilterBam extends CommandLineProgram{
 			}
 		}
 		// write the summary if the summary file is not null.
-		writeSummary(this.SUMMARY, m);		
+		writeSummary(this.SUMMARY, m);
+        CloserUtil.close(in);
+        out.close();
 		return (0);
 	}
 
