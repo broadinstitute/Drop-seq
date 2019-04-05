@@ -244,7 +244,8 @@ public class TagBamWithReadSequenceExtendedTest {
         }
 
         // check that the reconstructed TAG_QUALITY from BARCODE_QUALITY_TAG equals expected TAG_QUALITY
-        byte[] qual = (byte[]) taggedRead.getAttribute(clp.BARCODE_QUALITY_TAG);
+        String qualString = taggedRead.getStringAttribute(clp.BARCODE_QUALITY_TAG);
+        byte[] qual = SAMUtils.fastqToPhred(qualString);
         int numBadBases = 0;
         for (int i = 0; i < qual.length; i++) {
             byte q = qual[i];
