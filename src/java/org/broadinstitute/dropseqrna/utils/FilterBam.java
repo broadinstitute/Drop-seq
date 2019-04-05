@@ -25,6 +25,7 @@ package org.broadinstitute.dropseqrna.utils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -34,6 +35,8 @@ import java.util.regex.Pattern;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.barnyard.DigitalExpression;
+import org.broadinstitute.dropseqrna.barnyard.DigitalExpression.DESummary;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 
 import htsjdk.samtools.Cigar;
@@ -46,6 +49,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
@@ -70,6 +74,9 @@ public class FilterBam extends CommandLineProgram{
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
 	public File OUTPUT;
+	
+	@Argument(doc="A file containing a summary of the number of reads accepted and rejected.", optional=true)
+	public File SUMMARY;
 
 	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis.  Reads are not filtered on map quality by default.", optional=true)
 	public Integer MINIMUM_MAPPING_QUALITY = null;
@@ -144,7 +151,9 @@ public class FilterBam extends CommandLineProgram{
 		ProgressLogger progLog=new ProgressLogger(log);
 
 		final boolean sequencesRemoved = fileHeader.getSequenceDictionary().getSequences().size() != in.getFileHeader().getSequenceDictionary().getSequences().size();
-
+		
+		FilteredReadsMetric m = new FilteredReadsMetric();
+		
 		for (final SAMRecord r : in) {
 			progLog.record(r);
 			if (!filterRead(r)) {
@@ -173,13 +182,30 @@ public class FilterBam extends CommandLineProgram{
                     }
                 }
 				out.addAlignment(r);
+				m.READS_ACCEPTED++;
+			} else {
+				m.READS_REJECTED++;
 			}
 		}
-		CloserUtil.close(in);
-		out.close();
+		// write the summary if the summary file is not null.
+		writeSummary(this.SUMMARY, m);
+        CloserUtil.close(in);
+        out.close();
 		return (0);
 	}
 
+	/**
+	 * Write the summary output file of reads accepted/rejected.
+	 * @param summaryOutputFile
+	 * @param metrics
+	 */
+	private void writeSummary (File summaryOutputFile, FilteredReadsMetric metrics) {
+		if (summaryOutputFile!=null) {
+			MetricsFile<FilteredReadsMetric, Integer> outSummary = getMetricsFile();
+			outSummary.addMetric(metrics);
+			outSummary.write(summaryOutputFile);		
+		}
+	}
     private SAMFileHeader editSequenceDictionary(final SAMFileHeader fileHeader) {
 	    if (DROP_REJECTED_REF || !STRIP_REF_PREFIX.isEmpty()) {
 	        // Make mutable copy of sequence list

@@ -15,7 +15,7 @@ import java.util.List;
 
 public class GeneFunctionIteratorWrapperTest {
 
-	File testBAMFile= new File ("testdata/org/broadinstitute/dropseq/metrics/NucBYReg4Reg.MOUSE.GCTAAGTAAGAT.Elp2.fixed.bam");
+	private final File testBAMFile= new File ("testdata/org/broadinstitute/dropseq/metrics/NucBYReg4Reg.MOUSE.GCTAAGTAAGAT.Elp2.fixed.bam");
 
 
 	@Test
@@ -31,7 +31,7 @@ public class GeneFunctionIteratorWrapperTest {
 
 		// set up test data.  for assignReadsToAllGenes=T, this returns two SAMRecords.
 		String recName="H575CBGXY:4:23606:1714:16102";
-		SAMRecord r1 = getRecord(testBAMFile, recName);
+		SAMRecord r1 = getRecord(recName);
 		r1.setAttribute(geneTag, "A,B");
 		r1.setAttribute(strandTag, "+,+");
 		r1.setAttribute(functionTag, "CODING,CODING");
@@ -72,7 +72,7 @@ public class GeneFunctionIteratorWrapperTest {
 
 		// set up test data.
 		String recName="H575CBGXY:4:23606:1714:16102";
-		SAMRecord r1 = getRecord(testBAMFile, recName);
+		SAMRecord r1 = getRecord(recName);
 		r1.setAttribute(geneTag, "A,B,C");
 		r1.setAttribute(strandTag, "+,+,+");
 		r1.setAttribute(functionTag, "CODING,INTRONIC,CODING");
@@ -100,7 +100,7 @@ public class GeneFunctionIteratorWrapperTest {
 		Assert.assertEquals(0, counter);
 	}
 
-	@Test (enabled=true)
+	@Test
 	// don't need to test FunctionalDataProcessorTest functions, but do need to test assignReadsToAllGenes and decoding LocusFunction from string attributes.
 	public void testAmbiguousGenes() {
 		String geneTag="gn";
@@ -113,7 +113,7 @@ public class GeneFunctionIteratorWrapperTest {
 
 		// set up test data.  for assignReadsToAllGenes=T, this returns two SAMRecords.
 		String recName="H575CBGXY:4:23606:1714:16102";
-		SAMRecord r1 = getRecord(testBAMFile, recName);
+		SAMRecord r1 = getRecord(recName);
 		r1.setAttribute(geneTag, "A,B");
 		r1.setAttribute(strandTag, "+,+");
 		r1.setAttribute(functionTag, "CODING,CODING");
@@ -158,11 +158,12 @@ public class GeneFunctionIteratorWrapperTest {
 		Assert.assertEquals(1, countB);
 	}
 
-	private SAMRecord getRecord (final File bamFile, final String recName) {
+	private SAMRecord getRecord (final String recName) {
 		SamReader inputSam = SamReaderFactory.makeDefault().open(testBAMFile);
 		for (SAMRecord r: inputSam)
 			if (r.getReadName().equals(recName))
 				return (r);
-		return null;
+		Assert.fail("Should never happen");
+		throw new IllegalArgumentException("Never found " + recName);
 	}
 }

@@ -15,20 +15,17 @@ import java.util.*;
 public class FunctionalDataProcessor {
 
 
-    	private StrandStrategy strandStrategy;
-    	private Collection <LocusFunction> acceptedFunctions;
+    	private final StrandStrategy strandStrategy;
+    	private final Collection <LocusFunction> acceptedFunctions;
 
     	/**
     	 * Initialize a processor with a set of locus functions that are acceptable, and a strand strategy.
     	 *
-    	 * @param strand The strategy for filtering on read and gene strand:
-    	 * GENE_FUNCTION_STRAND.SENSE retains all annotations where the read and annotation are on the same strand
-    	 * GENE_FUNCTION_STRAND.ANTISENSE retains all annotations where the read and annotation are on the opposite strand
-    	 * GENE_FUNCTION_STRAND.BOTH retains all annotations
+    	 * @param strandStrategy The strategy for filtering on read and gene strand:
+    	 * StrandStrategy.SENSE retains all annotations where the read and annotation are on the same strand
+    	 * StrandStrategy.ANTISENSE retains all annotations where the read and annotation are on the opposite strand
+    	 * StrandStrategy.BOTH retains all annotations
     	 * @param acceptedFunctions The set of accepted functions this gene can have to be retained
-    	 *
-    	 * @param strandStrategy The strategy to use
-    	 * @param locusFunctions
     	 */
     	public FunctionalDataProcessor (final StrandStrategy strandStrategy, final Collection <LocusFunction> acceptedFunctions) {
     		this.strandStrategy=strandStrategy;
@@ -42,12 +39,17 @@ public class FunctionalDataProcessor {
     	/*
     	 * All lists have the same number of elements
     	 */
-    	List<FunctionalData> convert (final String [] genes, final String[] strands, final LocusFunction [] locusFunctions) {
+		private List<FunctionalData> convert(final String[] genes, final String[] strands, final LocusFunction[] locusFunctions) {
     		List<FunctionalData> data = new ArrayList<FunctionalData> ();
-    		if (genes.length!=strands.length || genes.length!=locusFunctions.length)
-				throw new IllegalArgumentException("Genes, strands and locus functions must all be of the same length.");
+    		if (strandStrategy != null && genes.length!=strands.length) {
+				throw new IllegalArgumentException("Genes and strands must be of the same length.");
+			}
+    		if (!acceptedFunctions.isEmpty() && genes.length!=locusFunctions.length)
+				throw new IllegalArgumentException("Genesand locus functions must be of the same length.");
     		for (int i=0; i<genes.length; i++) {
-    			FunctionalData sf = new FunctionalData(genes[i], strands[i], locusFunctions[i]);
+    			FunctionalData sf = new FunctionalData(genes[i],
+						(strandStrategy == null? null: strands[i]),
+						(acceptedFunctions.isEmpty()? null: locusFunctions[i]));
     			data.add(sf);
     		}
     		return (data);
@@ -59,18 +61,17 @@ public class FunctionalDataProcessor {
     	 * the "best" annotation is selected (see: AnnotationUtils.getLocusFunction()).
     	 *
     	 *
-    	 * @param strand The strategy for filtering on read and gene strand:
-    	 * GENE_FUNCTION_STRAND.SENSE retains all annotations where the read and annotation are on the same strand
-    	 * GENE_FUNCTION_STRAND.ANTISENSE retains all annotations where the read and annotation are on the opposite strand
-    	 * GENE_FUNCTION_STRAND.BOTH retains all annotations
     	 * @param readNegativeStrand Is the read on the negative strand?
-    	 * @param acceptedFunctions The set of accepted functions this gene can have to be retained
     	 * @return A list of FunctionalData that passes criteria.
     	 */
     	public List<FunctionalData> getFilteredFunctionalData (final String [] genes, final String[] strands, final LocusFunction [] locusFunctions, final boolean readNegativeStrand) {
-    		List<FunctionalData> data = convert (genes, strands, locusFunctions);
-    		List<FunctionalData> result = filterOnStrand(this.strandStrategy, readNegativeStrand, data);
-    		result=filterOnLocus(this.acceptedFunctions, result);
+    		List<FunctionalData> result = convert (genes, strands, locusFunctions);
+    		if (strandStrategy != null) {
+				result = filterOnStrand(this.strandStrategy, readNegativeStrand, result);
+			}
+    		if (!acceptedFunctions.isEmpty()) {
+				result = filterOnLocus(this.acceptedFunctions, result);
+			}
     		// need to reduce result down to a unique set of genes/strands.
     		// so if a gene is matched at UTR and CODING separately, that counts as 1 read.
     		result=simplifyFD(result);
@@ -83,21 +84,23 @@ public class FunctionalDataProcessor {
     	 * Restrict functional annotation data to that subset.
     	 * The desire here is to take reads that are assigned to both the coding region of gene A and the intronic region of gene B
     	 * and filter out gene B, resulting in a read that is unambiguously assigned.
-    	 * @param fd A list of functional data to be filtered
+    	 * @param fdList A list of functional data to be filtered
     	 * @return A subset of the input list of functional data.
     	 */
     	public List<FunctionalData> filterToPreferredAnnotations(final List<FunctionalData> fdList) {
-    		List<LocusFunction> lf = new ArrayList<LocusFunction>();
     		boolean hasCoding=false;
-    		for (FunctionalData fd: fdList)
-				if (isCodingUTR(fd.getLocusFunction()))
-					hasCoding=true;
+    		for (FunctionalData fd: fdList) {
+				if (isCodingUTR(fd.getLocusFunction())) {
+					hasCoding = true;
+				}
+			}
 
     		List<FunctionalData> result = new ArrayList<FunctionalData>();
     		for (FunctionalData fd: fdList) {
     			boolean readIsCoding=isCodingUTR(fd.getLocusFunction());
-    			if (!hasCoding || (hasCoding && readIsCoding))
-    				result.add(fd);
+    			if (!hasCoding || (readIsCoding)) {
+					result.add(fd);
+				}
     		}
 
     		return result;
@@ -117,10 +120,8 @@ public class FunctionalDataProcessor {
 
 		/**
     	 * Find the unique set of genes and set the best functional annotation for each gene.
-    	 * @param data
-    	 * @return
     	 */
-    	List<FunctionalData> simplifyFD (final List<FunctionalData> data) {
+		private List<FunctionalData> simplifyFD(final List<FunctionalData> data) {
     		// map each gene to the list of functional data, then reduce each gene.
     		Map<String, List<FunctionalData>> map = new HashMap<String, List<FunctionalData>>();
     		for (FunctionalData fd: data) {
@@ -137,10 +138,15 @@ public class FunctionalDataProcessor {
     		// process each list.
     		for (String gene: map.keySet()) {
     			List<FunctionalData> l = map.get(gene);
-    			List<LocusFunction> lf = new ArrayList<LocusFunction>();
-    			for (FunctionalData fd : l)
-					lf.add(fd.getLocusFunction());
-    			LocusFunction finalLF= AnnotationUtils.getInstance().getLocusFunction(lf, false);
+    			final LocusFunction finalLF;
+    			if (acceptedFunctions.isEmpty()) {
+    				finalLF = null;
+				} else {
+					List<LocusFunction> lf = new ArrayList<LocusFunction>();
+					for (FunctionalData fd : l)
+						lf.add(fd.getLocusFunction());
+					finalLF = AnnotationUtils.getInstance().getLocusFunction(lf, false);
+				}
     			// any instance of list l is fine.
     			FunctionalData result = new FunctionalData(l.get(0).getGene(), l.get(0).getStrand(), finalLF);
     			resultList.add(result);
@@ -158,7 +164,7 @@ public class FunctionalDataProcessor {
     	 * @param originalData the set of data to filter.
     	 * @return the subset of FunctionalData passing this filter.
     	 */
-    	List<FunctionalData> filterOnStrand (final StrandStrategy strand, final boolean readNegativeStrand, final List<FunctionalData> originalData) {
+		private List<FunctionalData> filterOnStrand(final StrandStrategy strand, final boolean readNegativeStrand, final List<FunctionalData> originalData) {
     		String readStrandString = Utils.strandToString(!readNegativeStrand);
     		List<FunctionalData> result = new ArrayList<FunctionalData>();
 
@@ -190,7 +196,7 @@ public class FunctionalDataProcessor {
     	 * @param originalData the set of data to filter.
     	 * @return the subset of FunctionalData passing this filter.
     	 */
-    	List<FunctionalData> filterOnLocus (final Collection <LocusFunction> functions, final List<FunctionalData> originalData) {
+		private List<FunctionalData> filterOnLocus(final Collection<LocusFunction> functions, final List<FunctionalData> originalData) {
     		List<FunctionalData> result = new ArrayList<FunctionalData>();
     		// collection data by gene.
     		Map<String, List<FunctionalData>> originalDataByGene = new HashMap<String, List<FunctionalData>>();
@@ -217,9 +223,9 @@ public class FunctionalDataProcessor {
     	 * If the gene has CODING+UTR+INTRON, reject the entire gene.  In this case, return an empty list.
     	 * @param functions The list of accepted locus functions.
     	 * @param originalDataByGene The functional data for a single gene.
-    	 * @return
+    	 * @return filtered list of FunctionalData
     	 */
-    	List<FunctionalData> filterOnLocusFunctionByGene (final Collection <LocusFunction> functions, final List<FunctionalData> originalDataByGene) {
+		private List<FunctionalData> filterOnLocusFunctionByGene(final Collection<LocusFunction> functions, final List<FunctionalData> originalDataByGene) {
     		Set<LocusFunction> lfByGene = new HashSet<LocusFunction>();
     		for (FunctionalData fd: originalDataByGene)
     			lfByGene.add(fd.getLocusFunction());
