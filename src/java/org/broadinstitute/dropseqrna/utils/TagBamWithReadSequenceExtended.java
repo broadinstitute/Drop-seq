@@ -179,7 +179,7 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		}
 		barcodedRead.setAttribute(TAG_NAME, seq);
         if (BARCODE_QUALITY_TAG != null) {
-            byte[] baseQualities = BaseRange.getBytesForBaseRange(filter.getBaseRanges(), barcodedRead.getBaseQualities());
+            String baseQualities = BaseRange.getSequenceForBaseRange(filter.getBaseRanges(), barcodedRead.getBaseQualityString());
             barcodedRead.setAttribute(BARCODE_QUALITY_TAG, baseQualities);
         }
 		SAMRecord result = barcodedRead;
@@ -200,7 +200,7 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		return r;
 	}
 
-	private SAMRecord setTagsOnRead (final SAMRecord r, int numBadBases, final String seq, final byte[] baseQualities) {
+	private SAMRecord setTagsOnRead (final SAMRecord r, int numBadBases, final String seq, final String baseQualities) {
 		if (numBadBases>=this.NUM_BASES_BELOW_QUALITY) {
 			// if there's an old quality setting you need to add to it instead of overwriting it.
 			Object o = r.getAttribute(this.TAG_QUALITY);
@@ -221,7 +221,7 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 						  final SAMFileWriter writer, final boolean discardRead, final boolean hardClipBases) {
 		int numBadBases= filter.scoreBaseQuality(barcodedRead);
 		String seq = barcodedRead.getReadString();
-		byte [] baseQualities = BaseRange.getBytesForBaseRange(filter.getBaseRanges(),  barcodedRead.getBaseQualities());
+		String baseQualities = BaseRange.getSequenceForBaseRange(filter.getBaseRanges(),  barcodedRead.getBaseQualityString());
 		seq=BaseRange.getSequenceForBaseRange(filter.getBaseRanges(), seq);
 		if (this.TAG_BARCODED_READ)
 			setTagsOnRead(barcodedRead, numBadBases, seq, baseQualities);
