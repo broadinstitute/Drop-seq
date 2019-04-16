@@ -246,10 +246,24 @@ public class LikelihoodUtilsTest {
 		double expected =0.26055;
 		Assert.assertEquals(result, expected, 0.00001);
 
-
-
 	}
 
+	@Test
+	public void testGetPvalueFromLog10Likelihood () {
+		LikelihoodUtils u = LikelihoodUtils.getInstance();
+		byte [] phreds = new byte []  {60,50,40,35,30,20,10,5};
+		double [] likes = new double [phreds.length];
+		for (int i=0; i<phreds.length; i++ ) {
+			likes[i]=  u.phredScoreToErrorProbability(phreds[i]);
+			likes[i] = Math.log10(likes[i]);
+		}
+
+		double resultOneMinus = LikelihoodUtils.getInstance().getOneMinusPvalueFromLog10Likelihood(likes);
+		double expected =1-resultOneMinus;		
+		double result=LikelihoodUtils.getInstance().getPvalueFromLog10Likelihood(likes);
+		Assert.assertEquals(result, expected, 0.00001);
+
+	}
 
 
 	@DataProvider(name = "PhreadToProb")
