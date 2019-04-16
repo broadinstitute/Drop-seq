@@ -81,6 +81,31 @@ public class LikelihoodUtils {
 		if (result < Double.MIN_VALUE) result = Double.MIN_VALUE;
 		return result;
 	}
+	
+	/**
+	 * Given a set of likelihoods in log10, output the probability of the most largest likelihood [p].
+	 * @param allLikelihoods
+	 * @return
+	 */
+	public double getPvalueFromLog10Likelihood (final double [] allLikelihoods) {
+		Arrays.sort(allLikelihoods);
+
+		double maxValue = StatUtils.max(allLikelihoods);
+		double totalLikelihood=0;
+		
+		for (int i=0; i<allLikelihoods.length; i++) {
+			double d = allLikelihoods[i];
+			d=d-maxValue;
+			d=Math.pow(10, d);
+			totalLikelihood+=d;
+		}
+
+		double result = 1/totalLikelihood;
+		if (result < Double.MIN_VALUE) result = Double.MIN_VALUE;
+		return result;
+	}
+	
+	
 
 	/**
 	 * Calculate the likelihood for a pileup of bases and qualities using a mixture of different models.
