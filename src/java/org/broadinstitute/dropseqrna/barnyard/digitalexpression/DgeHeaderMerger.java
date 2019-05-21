@@ -125,6 +125,9 @@ public class DgeHeaderMerger {
                     lib.setPrefix(prefix.get(i));
                 }
             }
+            if (dgeHeader.getNumLibraries() == 1 && dgeHeader.getLibrary(0).getInputDge() == null) {
+                dgeHeader.getLibrary(0).setInputDge(file);
+            }
             headerMerger.mergeDgeHeader(dgeHeader);
         }
         return headerMerger.getMergedHeader();
