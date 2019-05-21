@@ -129,6 +129,8 @@ public class FilterBamByTag extends CommandLineProgram {
 		writeSummary(summaryFile, m);
 		CloserUtil.close(in);
 		out.close();
+		log.info(String.format("Total %d reads processed.  %d reads accepted; %d reads rejected.",
+				progLog.getCount(), m.READS_ACCEPTED, m.READS_REJECTED));
 	}
 	
 	/**
@@ -186,6 +188,8 @@ public class FilterBamByTag extends CommandLineProgram {
 		CloserUtil.close(in);
 		writeSummary(summaryFile, m);
 		out.close();
+		log.info(String.format("Total %d reads processed.  %d reads accepted; %d reads rejected.",
+				progLog.getCount(), m.READS_ACCEPTED, m.READS_REJECTED));
 	}
 
 	boolean retainByReadNumber (final SAMRecord r, final int desiredReadNumber) {
