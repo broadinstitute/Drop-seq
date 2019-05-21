@@ -191,6 +191,8 @@ public class FilterBam extends CommandLineProgram{
 		writeSummary(this.SUMMARY, m);
         CloserUtil.close(in);
         out.close();
+        log.info(String.format("Total %d reads processed.  %d reads accepted; %d reads rejected.",
+				progLog.getCount(), m.READS_ACCEPTED, m.READS_REJECTED));
 		return (0);
 	}
 

@@ -152,6 +152,7 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 			progress.record(r2);
 
 		}
+		log.info("Total of " + progress.getCount() + " reads processed.");
 		writer.close();
 		if (this.SUMMARY!=null) writeOutput (filter.getMetric(), this.SUMMARY);
 		CloserUtil.close(inputSam);

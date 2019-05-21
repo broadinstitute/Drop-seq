@@ -146,6 +146,7 @@ public class PolyATrimmer extends CommandLineProgram {
 		}
 		CloserUtil.close(bamReader);
 		writer.close();
+		log.info("Total " + progress.getCount() + " reads processed.");
 		log.info("Number of reads trimmed: ", this.readsTrimmed);
 		log.info("Number of reads completely trimmed: ", this.readsCompletelyTrimmed);
 		log.debug(String.format("differences: %d; old didn't clip: %d; new didn't clip: %d", numDiffs, numOldDidntClip,
