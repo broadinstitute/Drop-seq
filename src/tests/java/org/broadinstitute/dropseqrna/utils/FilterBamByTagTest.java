@@ -149,36 +149,45 @@ public class FilterBamByTagTest {
 
 		FilterBamByTag t = new FilterBamByTag();
 		// read has attribute, accept any value, want to retain read.
-		boolean flag1 = t.filterRead(readHasAttribute, tag, null, true);
+		boolean flag1 = t.filterRead(readHasAttribute, tag, null, true, null);
 		Assert.assertFalse(flag1);
 
 		// read has attribute, accept any value, want to filter read.
-		boolean flag2 = t.filterRead(readHasAttribute, tag, null, false);
+		boolean flag2 = t.filterRead(readHasAttribute, tag, null, false, null);
 		Assert.assertTrue(flag2);
 
 		// read has attribute, accept certain value, want to retain read.
-		boolean flag3 = t.filterRead(readHasAttribute, tag, values, true);
+		boolean flag3 = t.filterRead(readHasAttribute, tag, values, true, null);
 		Assert.assertFalse(flag3);
 
 		// read has attribute, accept certain value, want to filter read.
-		boolean flag4 = t.filterRead(readHasAttribute, tag, values, false);
+		boolean flag4 = t.filterRead(readHasAttribute, tag, values, false, null);
 		Assert.assertTrue(flag4);
 
 		// read does not have attribute, accept any value, want to retain read.
-		boolean flag5 = t.filterRead(readNoAttribute, tag, null, true);
+		boolean flag5 = t.filterRead(readNoAttribute, tag, null, true, null);
 		Assert.assertTrue(flag5);
 
 		// read does not have attribute, accept any value, want to filter read.
-		boolean flag6 = t.filterRead(readNoAttribute, tag, null, false);
+		boolean flag6 = t.filterRead(readNoAttribute, tag, null, false, null);
 		Assert.assertFalse(flag6);
 
 		// read does not have attribute, accept certain value, want to retain read.
-		boolean flag7 = t.filterRead(readNoAttribute, tag, values, true);
+		boolean flag7 = t.filterRead(readNoAttribute, tag, values, true, null);
 		Assert.assertTrue(flag7);
 
 		// read does not have attribute, accept certain value, want to filter read.
-		boolean flag8 = t.filterRead(readNoAttribute, tag, values, false);
+		boolean flag8 = t.filterRead(readNoAttribute, tag, values, false, null);
 		Assert.assertFalse(flag8);
+		
+		// test map quality filtering
+		
+		readHasAttribute.setMappingQuality(10);
+		boolean flag9 = t.filterRead(readHasAttribute, tag, null, true, 10);
+		Assert.assertFalse(flag9);
+		boolean flag10 = t.filterRead(readHasAttribute, tag, null, true, 20);
+		Assert.assertTrue(flag10);
+		
 
 	}
 

@@ -74,6 +74,9 @@ public class FilterBamByTag extends CommandLineProgram {
 			+ "of the need to queryname sort the data, so only turn it on if you need it!")
 	public Boolean PAIRED_MODE=false;
 
+	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis.  Reads are not filtered on map quality by default.", optional=true)
+	public Integer MINIMUM_MAPPING_QUALITY = null;
+
 	@Override
 	protected int doWork() {
 		if (TAG_VALUES_FILE == null && TAG == null) {
@@ -100,9 +103,9 @@ public class FilterBamByTag extends CommandLineProgram {
 				in.getFileHeader(), true, OUTPUT);
 
 		if (!this.PAIRED_MODE)
-			processUnpairedMode(in, out, values, this.SUMMARY);
+			processUnpairedMode(in, out, values, this.SUMMARY, MINIMUM_MAPPING_QUALITY);
 		else
-			processPairedMode(in, out, values, this.SUMMARY);
+			processPairedMode(in, out, values, this.SUMMARY, MINIMUM_MAPPING_QUALITY);
 
 		return 0;
 	}
@@ -112,12 +115,12 @@ public class FilterBamByTag extends CommandLineProgram {
 	 * @param in
 	 * @param out
 	 */
-	void processUnpairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values, final File summaryFile) {
+	void processUnpairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values, final File summaryFile, Integer mapQuality) {
 		FilteredReadsMetric m = new FilteredReadsMetric();
 		ProgressLogger progLog = new ProgressLogger(log);
 		for (final SAMRecord r : in) {
 			progLog.record(r);
-			boolean filterFlag = filterRead(r, this.TAG, values, this.ACCEPT_TAG);
+			boolean filterFlag = filterRead(r, this.TAG, values, this.ACCEPT_TAG, mapQuality);
 			if (!filterFlag) { 
 				out.addAlignment(r);
 				m.READS_ACCEPTED++;
@@ -152,7 +155,7 @@ public class FilterBamByTag extends CommandLineProgram {
 	 * @param out
 	 * @param values
 	 */
-	void processPairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values, final File summaryFile) {
+	void processPairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values, final File summaryFile, Integer mapQuality) {
 		ProgressLogger progLog = new ProgressLogger(log);
 		FilteredReadsMetric m = new FilteredReadsMetric();
 		
@@ -160,7 +163,7 @@ public class FilterBamByTag extends CommandLineProgram {
 		while (iter.hasNext()) {
 			SAMRecord r1 = iter.next();
 			progLog.record(r1);
-			boolean filterFlag1 = filterRead(r1, this.TAG, values, this.ACCEPT_TAG);
+			boolean filterFlag1 = filterRead(r1, this.TAG, values, this.ACCEPT_TAG, mapQuality);
 			
 			SAMRecord r2 = null;
 			if (iter.hasNext()) r2 = iter.peek();
@@ -169,7 +172,7 @@ public class FilterBamByTag extends CommandLineProgram {
 				// paired read found.
 				progLog.record(r2);
 				r2=iter.next();
-				boolean filterFlag2 = filterRead(r2, this.TAG, values, this.ACCEPT_TAG);
+				boolean filterFlag2 = filterRead(r2, this.TAG, values, this.ACCEPT_TAG, mapQuality);
 				// if in accept tag mode, if either read shouldn't be filterd accept the pair
 				// if in reject mode, if both reads shouldn't be filtered to accept the pair.
 				if ((!filterFlag1 || !filterFlag2 & this.ACCEPT_TAG) || (!filterFlag1 && !filterFlag2 & !this.ACCEPT_TAG)) {
@@ -205,7 +208,11 @@ public class FilterBamByTag extends CommandLineProgram {
 	}
 
 	boolean filterRead(final SAMRecord r, final String tag, final Set<String> values,
-			final boolean acceptFlag) {
+			final boolean acceptFlag, final Integer mapQuality) {
+
+		// quickly filter on map quality if provided.
+		if (mapQuality!=null && r.getMappingQuality() < mapQuality) return true;
+		
 		Object v = r.getAttribute(tag);
 		// if the tag is not set, and you need a TAG set, then filter the read.
 		if (v == null && acceptFlag)
