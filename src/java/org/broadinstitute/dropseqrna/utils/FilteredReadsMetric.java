@@ -8,8 +8,8 @@ import htsjdk.samtools.metrics.MetricBase;
  *
  */
 public class FilteredReadsMetric extends MetricBase {
-	public int READS_REJECTED;
-	public int READS_ACCEPTED;
+	public long READS_REJECTED;
+	public long READS_ACCEPTED;
 	
 	public FilteredReadsMetric () {
 		this.READS_ACCEPTED=0;
