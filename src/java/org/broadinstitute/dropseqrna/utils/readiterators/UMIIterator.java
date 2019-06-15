@@ -125,11 +125,6 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		// Filter/assign reads based on functional annotations
 		GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator3, geneTag, geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
 
-
-		// assign the tags in the order you want data sorted.
-		// UmiIteratorWrapper umiIteratorWrapper = new UmiIteratorWrapper(filteringIterator2.iterator(), cellBarcodeTag,
-        //         cellBarcodes, geneTag, strandTag, readMQ, assignReadsToAllGenes, useStrandInfo);
-
         CloseableIterator<SAMRecord> sortedAlignmentIterator = SamRecordSortingIteratorFactory.create(
                 headerAndIterator.header, gfteratorWrapper, multiComparator, prog);
 

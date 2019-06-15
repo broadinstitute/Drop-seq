@@ -81,8 +81,7 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
     @Override
     protected void processRecord(final SAMRecord r) {
         String cellBC=r.getStringAttribute(cellBarcodeTag);
-        String geneList = r.getStringAttribute(this.geneTag);
-        List<SAMTagAndValue> allAttributes= r.getAttributes();
+        String geneList = r.getStringAttribute(this.geneTag);        
 
         // if there are cell barcodes to filter on, and this read's cell barcode isn't one of them, then move on to the next read;
         if (this.cellBarcodeList!=null && !cellBarcodeList.contains(cellBC))
