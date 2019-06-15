@@ -61,19 +61,21 @@ public class LikelihoodUtils {
 	 * @return
 	 */
 	public double getOneMinusPvalueFromLog10Likelihood (final double [] allLikelihoods) {
-		Arrays.sort(allLikelihoods);
+		// we clone the array so we don't change it.
+		double [] likes=allLikelihoods.clone();
+		Arrays.sort(likes);
 
-		double maxValue = StatUtils.max(allLikelihoods);
+		double maxValue = StatUtils.max(likes);
 
 		double totalLikelihood=0;
 		double allButBestLikelihood=0;
 
-		for (int i=0; i<allLikelihoods.length; i++) {
-			double d = allLikelihoods[i];
+		for (int i=0; i<likes.length; i++) {
+			double d = likes[i];
 			d=d-maxValue;
 			d=Math.pow(10, d);
 			totalLikelihood+=d;
-			if (i!=(allLikelihoods.length-1))
+			if (i!=(likes.length-1))
 				allButBestLikelihood+=d;
 		}
 
@@ -88,13 +90,15 @@ public class LikelihoodUtils {
 	 * @return
 	 */
 	public double getPvalueFromLog10Likelihood (final double [] allLikelihoods) {
-		Arrays.sort(allLikelihoods);
-
-		double maxValue = StatUtils.max(allLikelihoods);
+		//TODO: is it better to clone the array here, or should the class handing off the array do the cloning?
+		double [] likes=allLikelihoods.clone();
+		Arrays.sort(likes);
+	
+		double maxValue = StatUtils.max(likes);
 		double totalLikelihood=0;
 		
-		for (int i=0; i<allLikelihoods.length; i++) {
-			double d = allLikelihoods[i];
+		for (int i=0; i<likes.length; i++) {
+			double d = likes[i];
 			d=d-maxValue;
 			d=Math.pow(10, d);
 			totalLikelihood+=d;
