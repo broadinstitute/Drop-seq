@@ -27,15 +27,10 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+import htsjdk.samtools.metrics.MetricBase;
+import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
@@ -66,6 +61,10 @@ public class SelectCellsByNumTranscripts
 
     @Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="List of cell barcodes, one per line")
     public File OUTPUT;
+
+    @Argument(shortName = StandardOptionDefinitions.METRICS_FILE_SHORT_NAME, optional = true,
+            doc="If specified, produce summary metrics")
+    public File METRICS;
 
     @Argument(doc="Select cells with at least this many transcripts")
     public Integer MIN_TRANSCRIPTS_PER_CELL;
@@ -162,6 +161,13 @@ public class SelectCellsByNumTranscripts
         writeBarcodes(OUTPUT, finalBarcodes);
         log.info("Wrote cell barcodes to " + OUTPUT.getAbsolutePath());
         CloserUtil.close(umiIterator);
+
+        if (METRICS != null) {
+            final Metrics m = mapContainer.accumulateMetrics(transcriptsPerCell.keySet());
+            MetricsFile<Metrics, Integer> out = getMetricsFile();
+            out.addMetric(m);
+            out.write(METRICS);
+        }
         return 0;
     }
 
@@ -210,6 +216,7 @@ public class SelectCellsByNumTranscripts
         void addToSummary(final String gene);
         void countExpression(final String gene, final String cellBarcode, final int molBCCount);
         Map<String, Integer> getTranscriptCountForCellBarcodesOverTranscriptThreshold(final int minNumTranscripts);
+        Metrics accumulateMetrics(final Set<String> selectedCellBarcodes);
     }
 
     private class SingleOrganismMapContainer
@@ -252,6 +259,15 @@ public class SelectCellsByNumTranscripts
 				if (summary.NUM_TRANSCRIPTS >= minNumTranscripts)
 					ret.put(summary.CELL_BARCODE, summary.NUM_TRANSCRIPTS);
             return ret;
+        }
+
+        @Override
+        public Metrics accumulateMetrics(Set<String> selectedCellBarcodes) {
+            final Metrics m = new Metrics();
+            for (final String cellBarcode: summaryMap.keySet()) {
+                m.accumulate(summaryMap.get(cellBarcode), selectedCellBarcodes.contains(cellBarcode));
+            }
+            return m;
         }
     }
 
@@ -315,6 +331,15 @@ public class SelectCellsByNumTranscripts
             }
             return ret;
         }
+
+        @Override
+        public Metrics accumulateMetrics(Set<String> selectedCellBarcodes) {
+            final Metrics m = innerMapContainer[0].accumulateMetrics(selectedCellBarcodes);
+            for (int i = 1; i < innerMapContainer.length; i++) {
+                m.accumulate(innerMapContainer[i].accumulateMetrics(selectedCellBarcodes));
+            }
+            return m;
+        }
     }
 
     /**
@@ -370,5 +395,29 @@ public class SelectCellsByNumTranscripts
 
     public static void main(final String[] args) {
         new SelectCellsByNumTranscripts().instanceMainWithExit(args);
+    }
+
+    public static class Metrics
+    extends MetricBase {
+        public int NUM_TRANSCRIPTS;
+        public int NUM_GENES;
+        public int NUM_TRANSCRIPTS_SELECTED_CELLS;
+        public int NUM_GENES_SELECTED_CELLS;
+
+        void accumulate(final DigitalExpression.DESummary summary, boolean isSelected) {
+            NUM_TRANSCRIPTS += summary.NUM_TRANSCRIPTS;
+            NUM_GENES += summary.NUM_GENES;
+            if (isSelected) {
+                NUM_TRANSCRIPTS_SELECTED_CELLS += summary.NUM_TRANSCRIPTS;
+                NUM_GENES_SELECTED_CELLS += summary.NUM_GENES;
+            }
+        }
+
+        void accumulate(final Metrics other) {
+            NUM_TRANSCRIPTS += other.NUM_TRANSCRIPTS;
+            NUM_GENES += other.NUM_GENES;
+            NUM_TRANSCRIPTS_SELECTED_CELLS += other.NUM_TRANSCRIPTS_SELECTED_CELLS;
+            NUM_GENES_SELECTED_CELLS += other.NUM_GENES_SELECTED_CELLS;
+        }
     }
 }
