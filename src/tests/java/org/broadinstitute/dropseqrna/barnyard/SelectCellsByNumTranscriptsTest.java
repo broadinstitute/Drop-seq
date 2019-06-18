@@ -1,5 +1,10 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
+import org.apache.commons.io.FileUtils;
+import org.broadinstitute.dropseqrna.beadsynthesis.GenerateRandomUMIs;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -7,27 +12,21 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.commons.io.FileUtils;
-import org.broadinstitute.dropseqrna.beadsynthesis.GenerateRandomUMIs;
-import org.testng.annotations.Test;
-
-import junit.framework.Assert;
-
 public class SelectCellsByNumTranscriptsTest {
 
-	File SINGLE_ORGANISM_BAM= new File ("testdata/org/broadinstitute/dropseq/utils/N701_small.bam");
-	File SINGLE_ORGANISM_BAM_EXPECTED_CB_100_READS=new File ("testdata/org/broadinstitute/dropseq/utils/N701_small.cell_barcodes_100_reads.txt");
-	File SINGLE_ORGANISM_BAM_EXPECTED_CB_100_TRANSCRIPTS=new File ("testdata/org/broadinstitute/dropseq/utils/N701_small.cell_barcodes_100_transcripts.txt");
+	private final File SINGLE_ORGANISM_BAM= new File ("testdata/org/broadinstitute/dropseq/utils/N701_small.bam");
+	private final File SINGLE_ORGANISM_BAM_EXPECTED_CB_100_READS=new File ("testdata/org/broadinstitute/dropseq/utils/N701_small.cell_barcodes_100_reads.txt");
+	private final File SINGLE_ORGANISM_BAM_EXPECTED_CB_100_TRANSCRIPTS=new File ("testdata/org/broadinstitute/dropseq/utils/N701_small.cell_barcodes_100_transcripts.txt");
 
-	File DUAL_ORGANISM_BAM= new File ("testdata/org/broadinstitute/dropseq/utils/human_mouse_smaller.bam");
-	File DUAL_ORGANISM_BAM_EXPECTED_CB_100_READS=new File ("testdata/org/broadinstitute/dropseq/utils/human_mouse_smaller.cell_barcodes_100_reads.txt");
-	File DUAL_ORGANISM_BAM_EXPECTED_CB_100_TRANSCRIPTS=new File ("testdata/org/broadinstitute/dropseq/utils/human_mouse_smaller.cell_barcodes_100_transcripts.txt");
+	private final File DUAL_ORGANISM_BAM= new File ("testdata/org/broadinstitute/dropseq/utils/human_mouse_smaller.bam");
+	private final File DUAL_ORGANISM_BAM_EXPECTED_CB_100_READS=new File ("testdata/org/broadinstitute/dropseq/utils/human_mouse_smaller.cell_barcodes_100_reads.txt");
+	private final File DUAL_ORGANISM_BAM_EXPECTED_CB_100_TRANSCRIPTS=new File ("testdata/org/broadinstitute/dropseq/utils/human_mouse_smaller.cell_barcodes_100_transcripts.txt");
 
-	@Test(enabled=true)
-	public void testDoWorkSingleOrganism() {
+	@Test
+	public void testDoWorkSingleOrganism() throws IOException {
 		SelectCellsByNumTranscripts s = new SelectCellsByNumTranscripts();
-		File outFile = getTempReportFile("SelectCellsByNumTranscripts.", ".cellBarcodes");
-		File outFileMinReads = getTempReportFile("SelectCellsByNumTranscripts.", ".minReads");
+		File outFile = File.createTempFile("SelectCellsByNumTranscripts.", ".cellBarcodes");
+		File outFileMinReads = File.createTempFile("SelectCellsByNumTranscripts.", ".minReads");
 		outFile.deleteOnExit();
 		outFileMinReads.deleteOnExit();
 
@@ -38,6 +37,9 @@ public class SelectCellsByNumTranscriptsTest {
 		s.OUTPUT_INTERIM_CELLS=outFileMinReads;
 		s.READ_MQ=0;
 		s.ORGANISM=Collections.emptyList();
+		s.METRICS = File.createTempFile("SelectCellsByNumTranscripts.", ".metrics");
+		s.METRICS.deleteOnExit();
+
 		int success = s.doWork();
 
 		try {
@@ -49,14 +51,14 @@ public class SelectCellsByNumTranscriptsTest {
 			e.printStackTrace();
 		}
 
-		Assert.assertTrue(success==0);
+		Assert.assertEquals(0, success);
 	}
 
 	@Test
-	public void testDoWorkDualOrganism () {
+	public void testDoWorkDualOrganism () throws IOException {
 
-		File outFile = getTempReportFile("SelectCellsByNumTranscripts.", ".cellBarcodes");
-		File outFileMinReads = getTempReportFile("SelectCellsByNumTranscripts.", ".minReads");
+		File outFile = File.createTempFile("SelectCellsByNumTranscripts.", ".cellBarcodes");
+		File outFileMinReads = File.createTempFile("SelectCellsByNumTranscripts.", ".minReads");
 		outFile.deleteOnExit();
 		outFileMinReads.deleteOnExit();
 
@@ -69,6 +71,8 @@ public class SelectCellsByNumTranscriptsTest {
 		s.MIN_READS_PER_CELL=null;
 		s.OUTPUT_INTERIM_CELLS=outFileMinReads;
 		s.READ_MQ=0;
+		s.METRICS = File.createTempFile("SelectCellsByNumTranscripts.", ".metrics");
+		s.METRICS.deleteOnExit();
 		int success = s.doWork();
 
 		try {
@@ -80,17 +84,17 @@ public class SelectCellsByNumTranscriptsTest {
 			e.printStackTrace();
 		}
 
-		Assert.assertTrue(success==0);
+		Assert.assertEquals(0, success);
 
 	}
 
 	@Test
-	public void testReadWriteBarcodes () {
+	public void testReadWriteBarcodes () throws IOException {
 		GenerateRandomUMIs g = new GenerateRandomUMIs(0);
 		List<String> barcodes = new ArrayList<>();
 		for (int i=0; i<20; i++)
 			barcodes.add(g.getRandomString(12));
-		File outFile = getTempReportFile("SelectCellsByNumTranscripts.", ".cellBarcodes");
+		File outFile = File.createTempFile("SelectCellsByNumTranscripts.", ".cellBarcodes");
 		outFile.deleteOnExit();
 		SelectCellsByNumTranscripts.writeBarcodes(outFile, barcodes);
 		List<String> barcodes2 = SelectCellsByNumTranscripts.readBarcodes(outFile);
@@ -109,34 +113,23 @@ public class SelectCellsByNumTranscriptsTest {
 		SelectCellsByNumTranscripts.readBarcodes(new File("/foo/bar/zoo"));
 	}
 
-	private File getTempReportFile (final String prefix, final String suffix) {
-		File tempFile=null;
-
-		try {
-			tempFile = File.createTempFile(prefix, suffix);
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		return tempFile;
-	}
-
 	@Test
 	public void testCustomCommandLineParsing () {
 		SelectCellsByNumTranscripts s = new SelectCellsByNumTranscripts();
 		List<String> organisms = Arrays.asList("HUMAN", "MOUSE");
 		s.ORGANISM=organisms;
 		String [] errors = s.customCommandLineValidation();
-		Assert.assertTrue(errors==null);
+		Assert.assertNull(errors);
 
 		organisms = Arrays.asList("HUMAN", "HUMAN");
 		s.ORGANISM=organisms;
 		errors = s.customCommandLineValidation();
-		Assert.assertTrue(errors.length==1);
+		Assert.assertEquals(errors.length, 1);
 
 		organisms = Arrays.asList("HUM"+s.ORGANISM_SEPARATOR+"AN", "MOUSE");
 		s.ORGANISM=organisms;
 		errors = s.customCommandLineValidation();
-		Assert.assertTrue(errors.length==1);
+		Assert.assertEquals(errors.length, 1);
 
 	}
 }
