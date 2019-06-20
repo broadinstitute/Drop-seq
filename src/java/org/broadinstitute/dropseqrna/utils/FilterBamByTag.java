@@ -77,6 +77,10 @@ public class FilterBamByTag extends CommandLineProgram {
 	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis.  Reads are not filtered on map quality by default.", optional=true)
 	public Integer MINIMUM_MAPPING_QUALITY = null;
 
+	@Argument(doc="If set to a a value < 1, the program will fail if fewer than this fraction of reads pass filters." +
+			"  If set to a value >= 1, the program will fail if fewer than this many reads pass filters.", optional = true)
+	public Double PASSING_READ_THRESHOLD;
+
 	@Override
 	protected int doWork() {
 		if (TAG_VALUES_FILE == null && TAG == null) {
@@ -132,8 +136,7 @@ public class FilterBamByTag extends CommandLineProgram {
 		writeSummary(summaryFile, m);
 		CloserUtil.close(in);
 		out.close();
-		log.info(String.format("Total %d reads processed.  %d reads accepted; %d reads rejected.",
-				progLog.getCount(), m.READS_ACCEPTED, m.READS_REJECTED));
+		reportAndCheckFilterResults(m);
 	}
 	
 	/**
@@ -191,8 +194,12 @@ public class FilterBamByTag extends CommandLineProgram {
 		CloserUtil.close(in);
 		writeSummary(summaryFile, m);
 		out.close();
-		log.info(String.format("Total %d reads processed.  %d reads accepted; %d reads rejected.",
-				progLog.getCount(), m.READS_ACCEPTED, m.READS_REJECTED));
+		reportAndCheckFilterResults(m);
+	}
+
+	private void reportAndCheckFilterResults(final FilteredReadsMetric m) {
+		FilterProgramUtils.reportAndCheckFilterResults("reads", m.READS_ACCEPTED, m.READS_REJECTED,
+				PASSING_READ_THRESHOLD, log);
 	}
 
 	boolean retainByReadNumber (final SAMRecord r, final int desiredReadNumber) {

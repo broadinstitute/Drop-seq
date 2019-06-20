@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -48,18 +48,17 @@ public class FilterBamTest {
 	// TO GENERATE COUNTS OF CONTIGS FOR HUMAN/MOUSE...
 	// samtools view human_mouse_smaller.bam |cut -f 3 |sort |uniq -c > human_mouse_smaller.contig_counts.txt
 	private static File ORGANISM_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/human_mouse_smaller.bam");
-	
-	
+
+	private static final long NUM_HUMAN_READS = 136859;
+	public static final long NUM_MOUSE_READS = 76036;
+	public static final long TOTAL_READS = 248661;
+
 	@Test
-	public void testOrganismFiltering () {
-		// 136859 HUMAN reads
-		// 76036 MOUSE reads
-		// 248661 TOTAL reads
-		
+	public void testOrganismFiltering () throws IOException {
 		FilterBam f = new FilterBam();
 		f.INPUT=ORGANISM_INPUT_FILE;
-		f.SUMMARY=getTempReportFile("paired_input", ".summary.txt");
-		f.OUTPUT=getTempReportFile("paired_input", ".bam");
+		f.SUMMARY=File.createTempFile("paired_input", ".summary.txt");
+		f.OUTPUT=File.createTempFile("paired_input", ".bam");
 		f.OUTPUT.deleteOnExit();
 		f.SUMMARY.deleteOnExit();
 		f.REF_SOFT_MATCHED_RETAINED=Arrays.asList("HUMAN");
@@ -68,18 +67,46 @@ public class FilterBamTest {
 		f.doWork();
 		
 		List<FilteredReadsMetric> metrics = MetricsFile.readBeans(f.SUMMARY);
-		Assert.assertEquals(136859, metrics.get(0).READS_ACCEPTED);
-		Assert.assertEquals(111802, metrics.get(0).READS_REJECTED);
+		Assert.assertEquals(NUM_HUMAN_READS, metrics.get(0).READS_ACCEPTED);
+		Assert.assertEquals(TOTAL_READS - NUM_HUMAN_READS, metrics.get(0).READS_REJECTED);
 		
 		f.REF_SOFT_MATCHED_RETAINED=Arrays.asList("MOUSE");
-		f.doWork();
+		Assert.assertEquals(f.doWork(), 0);
 		metrics = MetricsFile.readBeans(f.SUMMARY);
-		Assert.assertEquals(76036, metrics.get(0).READS_ACCEPTED);
-		Assert.assertEquals(172625, metrics.get(0).READS_REJECTED);
+		Assert.assertEquals(NUM_MOUSE_READS, metrics.get(0).READS_ACCEPTED);
+		Assert.assertEquals(TOTAL_READS - NUM_MOUSE_READS, metrics.get(0).READS_REJECTED);
 		
 		
 	}
-	
+
+	@Test(dataProvider = "thresholdTestDataProvider")
+	public void testPassingThreshold(final boolean fractionalThreshold) throws IOException  {
+		filterWithThreshold(fractionalThreshold? (NUM_HUMAN_READS - 1)/(double)TOTAL_READS: NUM_HUMAN_READS);
+	}
+
+	@Test(dataProvider = "thresholdTestDataProvider", expectedExceptions = {RuntimeException.class})
+	public void testFailingThreshold(final boolean fractionalThreshold) throws IOException  {
+		filterWithThreshold(fractionalThreshold? (NUM_HUMAN_READS + 1)/(double)TOTAL_READS: NUM_HUMAN_READS + 1);
+	}
+	private void filterWithThreshold(final double threshold) throws IOException {
+		FilterBam f = new FilterBam();
+		f.INPUT=ORGANISM_INPUT_FILE;
+		f.OUTPUT=File.createTempFile("paired_input", ".bam");
+		f.OUTPUT.deleteOnExit();
+		f.REF_SOFT_MATCHED_RETAINED=Arrays.asList("HUMAN");
+		// need to set this to an empty list, as that's what the constructor for FilterBam would do.
+		f.STRIP_REF_PREFIX=new ArrayList<>();
+		f.PASSING_READ_THRESHOLD = threshold;
+		Assert.assertEquals(f.doWork(), 0);
+	}
+
+	@DataProvider(name="thresholdTestDataProvider")
+	public Object[][] thresholdTestDataProvider() {
+		return new Object[][] {
+				{true},
+				{false}
+		};
+	}
 	
 	@Test(enabled=true, groups = { "dropseq","transcriptome" })
 	public void testCigarFilter() {
@@ -369,15 +396,4 @@ public class FilterBamTest {
 						ret.add(new Object[]{"HUMAN_", "MOUSE_", stripPrefix, dropSequences, soft, retain});
         return ret.toArray(new Object[ret.size()][]);
     }
-	
-	private File getTempReportFile (final String prefix, final String suffix) {
-		File tempFile=null;
-
-		try {
-			tempFile = File.createTempFile(prefix, suffix);
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		return tempFile;
-	}
 }
