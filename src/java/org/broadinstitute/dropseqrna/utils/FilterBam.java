@@ -126,6 +126,10 @@ public class FilterBam extends CommandLineProgram{
             "to have an unmapped mate.")
     public boolean DROP_REJECTED_REF = false;
 
+	@Argument(doc="If set to a a value < 1, the program will fail if fewer than this fraction of reads pass filters." +
+			"  If set to a value >= 1, the program will fail if fewer than this many reads pass filters.", optional = true)
+	public Double PASSING_READ_THRESHOLD;
+
 	//@Argument (doc="File with one or more TAG:Value combinations, for example ZC:Z:AAACCCTTGGG.  Any read with any of the tags in the file will be retained.")
 
 	private static final String UNION="UNION";
@@ -191,8 +195,8 @@ public class FilterBam extends CommandLineProgram{
 		writeSummary(this.SUMMARY, m);
         CloserUtil.close(in);
         out.close();
-        log.info(String.format("Total %d reads processed.  %d reads accepted; %d reads rejected.",
-				progLog.getCount(), m.READS_ACCEPTED, m.READS_REJECTED));
+        FilterProgramUtils.reportAndCheckFilterResults("reads", m.READS_ACCEPTED, m.READS_REJECTED,
+				PASSING_READ_THRESHOLD, log);
 		return (0);
 	}
 

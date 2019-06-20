@@ -27,6 +27,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordSetBuilder;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -141,6 +142,42 @@ public class FilterBamByTagTest {
 
 	}
 
+	private double makePassingReadThreshold(final boolean pairedMode, final boolean fractionalThreshold, final boolean passing) {
+		final int addend = passing? -1: 1;
+		final double successThreshold;
+		if (pairedMode) {
+			if (fractionalThreshold) {
+				successThreshold = (PAIRED_READS_ACCEPTED + addend)/(double)(PAIRED_READS_ACCEPTED + PAIRED_READS_REJECTED);
+			} else {
+				successThreshold = PAIRED_READS_ACCEPTED + addend;
+			}
+		} else if (fractionalThreshold) {
+			successThreshold = (UNPAIRED_READS_ACCEPTED + addend)/(double)(UNPAIRED_READS_ACCEPTED + UNPAIRED_READS_REJECTED);
+		} else {
+			successThreshold = UNPAIRED_READS_ACCEPTED + addend;
+		}
+		return successThreshold;
+	}
+
+	@Test(dataProvider = "thresholdTestDataProvider")
+	public void testPassingThreshold(final boolean pairedMode, final boolean fractionalThreshold) throws IOException {
+		runClp(pairedMode, makePassingReadThreshold(pairedMode, fractionalThreshold, true));
+	}
+
+	@Test(dataProvider = "thresholdTestDataProvider", expectedExceptions = {RuntimeException.class})
+	public void testFailingThreshold(final boolean pairedMode, final boolean fractionalThreshold) throws IOException {
+		runClp(pairedMode, makePassingReadThreshold(pairedMode, fractionalThreshold, false));
+	}
+
+	@DataProvider(name="thresholdTestDataProvider")
+	public Object[][] thresholdTestDataProvider() {
+		return new Object[][] {
+				{true, true},
+				{true, false},
+				{false, false},
+				{false, true},
+		};
+	}
 
 	@Test
 	public void filterReadTest() {
