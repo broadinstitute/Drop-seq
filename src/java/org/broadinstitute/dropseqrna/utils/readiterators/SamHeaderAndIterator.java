@@ -29,6 +29,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.SamReaderFactory.Option;
 import htsjdk.samtools.util.CloseableIterator;
 
 public class SamHeaderAndIterator {
@@ -47,4 +48,9 @@ public class SamHeaderAndIterator {
     public SamHeaderAndIterator (File bamFile) {
     	this(SamReaderFactory.makeDefault().open(bamFile));  	    	
     }
+    
+    public SamHeaderAndIterator (File bamFile, Option... options) {    	
+    	this(SamReaderFactory.makeDefault().enable(options).open(bamFile));    	    	
+    }
+        
 }

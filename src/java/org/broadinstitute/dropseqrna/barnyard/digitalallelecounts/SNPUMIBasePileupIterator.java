@@ -25,13 +25,17 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
 import org.broadinstitute.dropseqrna.utils.MultiComparator;
 import org.broadinstitute.dropseqrna.utils.ProgressLoggingIterator;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
+import org.broadinstitute.dropseqrna.utils.readiterators.ChromosomeFilteringIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionIteratorWrapper;
 import org.broadinstitute.dropseqrna.utils.readiterators.MapQualityFilteredIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.MissingTagFilteringIterator;
@@ -41,7 +45,6 @@ import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Interval;
@@ -103,7 +106,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 		
 		
 		// this is a big ugly.
-        this(new SamHeaderAndIterator(bamFile), snpIntervals, geneTag, geneStrandTag, geneFunctionTag, acceptedLociFunctions, strandStrategy, cellBarcodeTag, molecularBarcodeTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, order);        
+		this(new SamHeaderAndIterator(bamFile), snpIntervals, geneTag, geneStrandTag, geneFunctionTag, acceptedLociFunctions, strandStrategy, cellBarcodeTag, molecularBarcodeTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, order);
 	}
 	
 	/**
@@ -137,13 +140,17 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
         // add a progress logger.
         ProgressLoggingIterator loggingIterator = new ProgressLoggingIterator (headerAndIter.iterator, logger);
 
-        // Filter records before sorting, to reduce I/O
-        final MissingTagFilteringIterator filteringIterator =
-                new MissingTagFilteringIterator(loggingIterator, geneTag, cellBarcodeTag, molecularBarcodeTag);
-
+        // filter out to contigs in the interval list.
+        Set<String> contigsToFilter = snpIntervals.getIntervals().stream().map(x -> x.getContig()).collect(Collectors.toSet());
+        ChromosomeFilteringIterator cfi = new ChromosomeFilteringIterator(loggingIterator, contigsToFilter, false);
+        
         // Filter reads on map quality
-     	MapQualityFilteredIterator filteringIterator2 = new MapQualityFilteredIterator(filteringIterator, readMQ, true);
+     	MapQualityFilteredIterator filteringIterator = new MapQualityFilteredIterator(cfi, readMQ, true);
 
+        // Filter records before sorting, to reduce I/O
+        final MissingTagFilteringIterator filteringIterator2 =
+                new MissingTagFilteringIterator(filteringIterator, geneTag, cellBarcodeTag, molecularBarcodeTag);
+        
      	// Filter/assign reads based on functional annotations
      	GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator2, geneTag, geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
 
@@ -186,7 +193,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	public SortOrder getSortOrder() {
 		return this.sortOrder;
 	}
-
+	
 	@Override
 	public SNPUMIBasePileup next() {
 		if (!this.atoi.hasNext())
@@ -232,7 +239,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 		}
 		return result;
 	}
-
+		
 	@Override
 	public void remove() {
 		this.atoi.remove();
