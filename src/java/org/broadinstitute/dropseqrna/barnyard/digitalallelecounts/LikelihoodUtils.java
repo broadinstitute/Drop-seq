@@ -58,8 +58,8 @@ public class LikelihoodUtils {
 
 	/**
 	 * Given a set of likelihoods in log10, output 1- the probability of the most largest likelihood [ 1-p].
-	 * @param allLikelihoods
-	 * @return
+	 * @param allLikelihoods a collection of likelihoods
+	 * @return 1 - (best like / sum (likes))
 	 */
 	public double getOneMinusPvalueFromLog10Likelihood (final double [] allLikelihoods) {
 		// we clone the array so we don't change it.
@@ -321,6 +321,8 @@ public class LikelihoodUtils {
 		for (int i=0; i<bases.size(); i++)
 			logScore+=Math.log10(getLikelihoodHomozygote(refAllele, altAllele, bases.get(i), qualities.get(i), genotypeQuality, maximumObservationProbability));
 		return logScore;
+		
+		
 	}
 
 	/**
