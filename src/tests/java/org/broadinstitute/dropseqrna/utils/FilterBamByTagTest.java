@@ -23,53 +23,70 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import org.apache.commons.io.FileUtils;
-import org.testng.annotations.Test;
-
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordSetBuilder;
 import htsjdk.samtools.metrics.MetricsFile;
-import junit.framework.Assert;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 
 public class FilterBamByTagTest {
 
-	private static File PAIRED_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged.bam");
-	private static File UNPAIRED_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged.bam");
-	private static File PAIRED_INPUT_FILE_FILTERED=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged_filtered.bam");
-	private static File UNPAIRED_INPUT_FILE_FILTERED=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged_filtered.bam");
-	private static File PAIRED_INPUT_CELL_BARCODES=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged.cell_barcodes.txt");
+	private static final int PAIRED_READS_ACCEPTED = 12;
+	private static final int PAIRED_READS_REJECTED = 8;
+	private static final int UNPAIRED_READS_ACCEPTED = 6;
+	private static final int UNPAIRED_READS_REJECTED = 4;
+	private static final File PAIRED_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged.bam");
+	private static final File UNPAIRED_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged.bam");
+	private static final File PAIRED_INPUT_FILE_FILTERED=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged_filtered.bam");
+	private static final File UNPAIRED_INPUT_FILE_FILTERED=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged_filtered.bam");
+	private static final File PAIRED_INPUT_CELL_BARCODES=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged.cell_barcodes.txt");
 
-	private static File UNPAIRED_INPUT_FILE_FILTERED_AAAGTAGAGTGG=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged_filtered_AAAGTAGAGTGG.bam");	
-	
-	@Test (enabled=true)
-	public void testDoWorkPaired () throws IOException {
+	private static final File UNPAIRED_INPUT_FILE_FILTERED_AAAGTAGAGTGG=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged_filtered_AAAGTAGAGTGG.bam");
+
+	/**
+	 * Runs the CLP, in the given mode, and asserts success
+	 * @param successThreshold If non-null, passed to PASSING_READ_THRESHOLD CLP argument
+	 * @return the CLP object after doWork() called.
+	 */
+	private FilterBamByTag runClp(final boolean pairedMode, final Double successThreshold) throws IOException {
 		FilterBamByTag f = new FilterBamByTag();
-		f.INPUT=PAIRED_INPUT_FILE;
-		f.OUTPUT=getTempReportFile("paired_input", ".bam");
-		f.SUMMARY=getTempReportFile("paired_input", ".summary.txt");
-		f.SUMMARY.deleteOnExit();
+		final String prefix;
+		if (pairedMode) {
+			f.INPUT=PAIRED_INPUT_FILE;
+			f.TAG_VALUES_FILE=PAIRED_INPUT_CELL_BARCODES;
+			prefix = "paired_input";
+		} else {
+			f.INPUT=UNPAIRED_INPUT_FILE;
+			// For some reason, use the same file as for paired
+			f.TAG_VALUES_FILE = PAIRED_INPUT_CELL_BARCODES;
+			prefix = "unpaired_input";
+		}
 		f.TAG="XC";
-		f.PAIRED_MODE=true;
-		f.TAG_VALUES_FILE=PAIRED_INPUT_CELL_BARCODES;
+		f.PAIRED_MODE = pairedMode;
+		f.PASSING_READ_THRESHOLD = successThreshold;
+		f.OUTPUT=File.createTempFile(prefix, ".bam");
 		f.OUTPUT.deleteOnExit();
-		int result = f.doWork();
-		Assert.assertEquals(0, result);
+		f.SUMMARY=File.createTempFile(prefix, ".summary.txt");
+		f.SUMMARY.deleteOnExit();
+		Assert.assertEquals(f.doWork(), 0);
+		return f;
+	}
+
+	@Test
+	public void testDoWorkPaired () throws IOException {
+		final FilterBamByTag f = runClp(true, null);
 		//samtools view -c paired_reads_tagged_filtered.bam
 		// 12
 		// samtools view -c paired_reads_tagged.bam
 		// 20
 
 		List<FilteredReadsMetric> metrics = MetricsFile.readBeans(f.SUMMARY);
-		Assert.assertEquals(12, metrics.get(0).READS_ACCEPTED);
-		Assert.assertEquals(8, metrics.get(0).READS_REJECTED);
+		Assert.assertEquals(PAIRED_READS_ACCEPTED, metrics.get(0).READS_ACCEPTED);
+		Assert.assertEquals(PAIRED_READS_REJECTED, metrics.get(0).READS_REJECTED);
 								
 		CompareBAMTagValues cbtv = new CompareBAMTagValues();
 		cbtv.INPUT_1=PAIRED_INPUT_FILE_FILTERED;
@@ -78,32 +95,22 @@ public class FilterBamByTagTest {
 		tags.add("XC");
 		cbtv.TAGS=tags;
 		int r = cbtv.doWork();
-		Assert.assertTrue(r==0);
+		Assert.assertEquals(r, 0);
 		
 	}
 
 	@Test
 	public void testDoWorkUnPaired () throws IOException {
-		FilterBamByTag f = new FilterBamByTag();
-		f.INPUT=UNPAIRED_INPUT_FILE;
-		f.OUTPUT=getTempReportFile("unpaired_input", ".bam");
-		f.SUMMARY=getTempReportFile("unpaired_input", ".summary.txt");
-		f.SUMMARY.deleteOnExit();
-		f.TAG="XC";
-		f.PAIRED_MODE=false;
-		f.TAG_VALUES_FILE=PAIRED_INPUT_CELL_BARCODES;
-		f.OUTPUT.deleteOnExit();
-		int result = f.doWork();
-		Assert.assertEquals(0, result);
-		
+		FilterBamByTag f = runClp(false, null);
+
 		// samtools view -c unpaired_reads_tagged_filtered.bam
 		// 6
 		// samtools view -c unpaired_reads_tagged.bam 
 		// 10
 				
 		List<FilteredReadsMetric> metrics = MetricsFile.readBeans(f.SUMMARY);
-		Assert.assertEquals(6, metrics.get(0).READS_ACCEPTED);
-		Assert.assertEquals(4, metrics.get(0).READS_REJECTED);
+		Assert.assertEquals(UNPAIRED_READS_ACCEPTED, metrics.get(0).READS_ACCEPTED);
+		Assert.assertEquals(UNPAIRED_READS_REJECTED, metrics.get(0).READS_REJECTED);
 
 		CompareBAMTagValues cbtv = new CompareBAMTagValues();
 		cbtv.INPUT_1=UNPAIRED_INPUT_FILE_FILTERED;
@@ -112,31 +119,30 @@ public class FilterBamByTagTest {
 		tags.add("XC");
 		cbtv.TAGS=tags;
 		int r = cbtv.doWork();
-		Assert.assertTrue(r==0);
+		Assert.assertEquals(r, 0);
 
 		// test alternate path without tag values file.
 		f.INPUT=UNPAIRED_INPUT_FILE;
-		f.OUTPUT=getTempReportFile("unpaired_input_single_cell", ".bam");
+		f.OUTPUT=File.createTempFile("unpaired_input_single_cell", ".bam");
 		f.TAG="XC";
 		f.TAG_VALUE="AAAGTAGAGTGG";
 		f.TAG_VALUES_FILE=null;
 		f.PAIRED_MODE=false;
 		f.OUTPUT.deleteOnExit();
-		result = f.doWork();
-		Assert.assertEquals(0, result);
+		Assert.assertEquals(f.doWork(), 0);
 
 
 		cbtv.INPUT_1=UNPAIRED_INPUT_FILE_FILTERED_AAAGTAGAGTGG;
 		cbtv.INPUT_2=f.OUTPUT;
 		cbtv.TAGS=tags;
 		r = cbtv.doWork();
-		Assert.assertTrue(r==0);
+		Assert.assertEquals(r, 0);
 		
 
 	}
 
 
-	@Test(enabled = true)
+	@Test
 	public void filterReadTest() {
 		SAMRecord readHasAttribute = new SAMRecord(null);
 		String tag = "XT";
@@ -192,8 +198,7 @@ public class FilterBamByTagTest {
 	}
 
 	/**
-	 * Returns a paired read, first of pair in the first position of the list, 2nd of pair in the 2nd position.
-	 * @return
+	 * @return a paired read, first of pair in the first position of the list, 2nd of pair in the 2nd position.
 	 */
 	private List<SAMRecord> getPairedRead () {
 		List<SAMRecord> result = new ArrayList<> ();
@@ -210,7 +215,7 @@ public class FilterBamByTagTest {
 
 	}
 
-	@Test(enabled = true)
+	@Test
 	public void filterByReadNumberTest() {
 		FilterBamByTag t = new FilterBamByTag();
 
@@ -243,22 +248,11 @@ public class FilterBamByTagTest {
 		Assert.assertFalse(flag2);
 	}
 
-	private File getTempReportFile (final String prefix, final String suffix) {
-		File tempFile=null;
-
-		try {
-			tempFile = File.createTempFile(prefix, suffix);
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		return tempFile;
-	}
-
 	@Test
-	public void testArgErrors () {
+	public void testArgErrors () throws IOException {
 		FilterBamByTag f = new FilterBamByTag();
 		f.INPUT=PAIRED_INPUT_FILE;
-		f.OUTPUT=getTempReportFile("paired_input", ".bam");
+		f.OUTPUT=File.createTempFile("paired_input", ".bam");
 		f.PAIRED_MODE=true;
 		f.OUTPUT.deleteOnExit();
 		Assert.assertSame(1, f.doWork());
