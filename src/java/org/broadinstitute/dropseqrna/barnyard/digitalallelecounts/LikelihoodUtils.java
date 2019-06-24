@@ -23,12 +23,13 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
-import htsjdk.samtools.util.StringUtil;
-import htsjdk.variant.variantcontext.GenotypeType;
-import org.apache.commons.math3.stat.StatUtils;
-
 import java.util.Arrays;
 import java.util.List;
+
+import org.apache.commons.math3.stat.StatUtils;
+
+import htsjdk.samtools.util.StringUtil;
+import htsjdk.variant.variantcontext.GenotypeType;
 
 /**
  * Helper methods for calculating likelihoods and converting to/from Phred scores.
@@ -57,8 +58,8 @@ public class LikelihoodUtils {
 
 	/**
 	 * Given a set of likelihoods in log10, output 1- the probability of the most largest likelihood [ 1-p].
-	 * @param allLikelihoods
-	 * @return
+	 * @param allLikelihoods a collection of likelihoods
+	 * @return 1 - (best like / sum (likes))
 	 */
 	public double getOneMinusPvalueFromLog10Likelihood (final double [] allLikelihoods) {
 		// we clone the array so we don't change it.
@@ -144,24 +145,39 @@ public class LikelihoodUtils {
 		double result=0;
 
 		for (int i=0; i<bases.size(); i++) {
-			double likelihood = getLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases.get(i), qualities.get(i), missingDataPenality, genotypeProbability, maximumObservationProbability);
-			result+=Math.log10(likelihood);
+			double likelihood = getLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases.get(i), qualities.get(i), missingDataPenality, genotypeProbability, maximumObservationProbability);			
+			result+=Math.log10(likelihood);						
 		}
+		return result;
+	}
+	
+	public double getLogLikelihoodMixedModel (double [] [] likelihoods, final List<Double> mixture) {
 
+		if (likelihoods[0].length!=mixture.size())
+			throw new IllegalArgumentException("likelihood list and mixture list must be the same size.");
+
+		double result=0;
+
+		for (int i=0; i<likelihoods.length; i++) {
+			double likelihood = getLikelihoodMixedModel(likelihoods[i], mixture);			
+			result+=Math.log10(likelihood);						
+		}
 		return result;
 	}
 
 
 	/**
 	 * Calculates the likelihood for a list of genotype states for a single observation.
-	 * @param ref
-	 * @param alt
-	 * @param genotype
-	 * @param mixture
-	 * @param base
-	 * @param quality
+	 * @param ref the reference allele for the variant
+	 * @param alt the alternate allele for the variant
+	 * @param genotypes The list of genotypes to calculate likelihoods for
+	 * @param mixture A list of mixture coefficientss for the list of genotypes.
+	 * @param base The observed base in the sequence pileup
+	 * @param quality The quality of the observed base
 	 * @param missingDataPenality a pre-computed likelihood to use instead of computing a likelihood for a genotype.
-	 * @return
+	 * @param genotypeProbability The likelihood of the genotype.  Can be null to ignore.
+	 * @param maximumObservationProbability If set, this iss the maximum penalty that can be generated for a single observation.
+	 * @return the likelihood of the base/quality, given a mixture of genotypes.
 	 */
 	private double getLikelihoodMixedModel(final byte ref, final byte alt, final List<GenotypeType> genotypes, final List<Double> mixture,
 			final Byte base, final Byte quality, final Double missingDataPenality, final Double genotypeProbability, final Double maximumObservationProbability) {
@@ -197,9 +213,72 @@ public class LikelihoodUtils {
 				likelihood*=genotypeProbability;
 			result+=likelihood;
 		}
+		result=result/sumMixture;		
+		return result;
+	}
+	
+	/**
+	 * Calculates the likelihood for a list of genotype states for a single UMI observation.
+	 * Here, the likelihoods for the genotype states have been precomputed.  The number of likelihoods should be equal to the number of mixture coefficients.
+	 * This is the equivilent of the weighted average of the likelihoods.
+	 * @param likelihoods An array of doubles representing the likelihoods of the genotypes in this mixture
+	 * @param mixture A list of mixture coefficients to weight the genotype likelihoods.
+	 * @return The likelihood of the mixed model
+	 * @see getLikelihoodManyObservations
+	 */
+	public double getLikelihoodMixedModel(double [] likelihoods, final List<Double> mixture) {
+		double result=0;
+		double sumMixture=0;
+		for (int i=0; i<likelihoods.length; i++) {
+			double mix = mixture.get(i);
+			sumMixture+=mix;
+			double likelihood = likelihoods[i]*mixture.get(i);
+			result+=likelihood;
+		}
 		result=result/sumMixture;
 		return result;
-
+	}
+	
+	/**
+	 * Get a list of likelihoods for a given base/quality for a list of genotypes.
+	 * @param ref the reference allele for the variant
+	 * @param alt the alternate allele for the variant
+	 * @param genotypes The list of genotypes to calculate likelihoods for
+	 * @param base The observed base in the sequence pileup
+	 * @param quality The quality of the observed base
+	 * @param missingDataPenality a pre-computed likelihood to use instead of computing a likelihood for a genotype.
+	 * @param genotypeProbability The likelihood of the genotype.  Can be null to ignore.
+	 * @param maximumObservationProbability If set, this iss the maximum penalty that can be generated for a single observation.
+	 * @return An array of likelihoods in the same order as the submitted genotypes.
+     */
+	public double [] getLikelihoodManyObservations (final byte ref, final byte alt, final List<GenotypeType> genotypes, final Byte base, final Byte quality, 
+			final Double missingDataPenality, final Double genotypeProbability, final Double maximumObservationProbability) {
+		
+		double [] result = new double [genotypes.size()];
+		
+		for (int i=0; i<genotypes.size(); i++) {
+			GenotypeType genotype = genotypes.get(i);
+			if ((genotype==GenotypeType.NO_CALL || genotype==GenotypeType.UNAVAILABLE) && missingDataPenality==null)
+				throw new IllegalArgumentException("If using NO_CALL or UNAVAILABLE genotypes, must set a missingDataPenality!");
+			double likelihood = 0;
+			// calculate the single likelihood.
+			switch (genotype) {
+			case HOM_REF:
+				likelihood=getLikelihoodHomozygote(ref, ref, base, quality, null, maximumObservationProbability); break;
+			case HOM_VAR:
+				likelihood=getLikelihoodHomozygote(alt, alt, base, quality, null, maximumObservationProbability); break;
+			case HET:
+				likelihood=getLikelihoodHeterozygote(ref, alt, base, quality, null, maximumObservationProbability); break;
+			case NO_CALL:
+				likelihood=missingDataPenality; break;
+			case UNAVAILABLE:
+				likelihood=missingDataPenality; break;
+			default:
+			}
+			result[i]=likelihood;
+		}				
+		return result;
+		
 	}
 
 	public double getLogLikelihood (final char refAllele, final char altAllele, final List<Byte> bases, final List<Byte> qualities, final Double genotypeQuality, final Double maximumObservationProbability) {
@@ -242,6 +321,8 @@ public class LikelihoodUtils {
 		for (int i=0; i<bases.size(); i++)
 			logScore+=Math.log10(getLikelihoodHomozygote(refAllele, altAllele, bases.get(i), qualities.get(i), genotypeQuality, maximumObservationProbability));
 		return logScore;
+		
+		
 	}
 
 	/**

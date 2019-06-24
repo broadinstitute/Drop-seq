@@ -80,7 +80,15 @@ public class LikelihoodUtilsTest {
 
 		double result = LikelihoodUtils.getInstance().getLogLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases, qualities, null, null, null);
 		Assert.assertEquals(result, Math.log10(0.6), 0.001);
+		
+		double [] likes =  LikelihoodUtils.getInstance().getLikelihoodManyObservations ((byte) refAllele, (byte) altAllele, genotypes, bases.get(0), qualities.get(0), null, null, null);
+
+		double result2=LikelihoodUtils.getInstance().getLikelihoodMixedModel(likes, mixture);
+		Assert.assertEquals(Math.log10(result2), Math.log10(0.6), 0.001);
+		
 	}
+	
+	
 
 
 
