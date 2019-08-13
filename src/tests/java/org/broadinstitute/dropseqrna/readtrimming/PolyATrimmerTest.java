@@ -23,21 +23,22 @@
  */
 package org.broadinstitute.dropseqrna.readtrimming;
 
+import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import org.broadinstitute.dropseqrna.utils.TestUtils;
+import org.testng.Assert;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
 
-import org.testng.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
-
-import htsjdk.samtools.ValidationStringency;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.TestUtil;
-
 public class PolyATrimmerTest {
-    private static final File INPUT = new File("testdata/org/broadinstitute/dropseq/readtrimming/N701.subset.tagged_filtered_start_seq_trimmed.sam");
+    private static final File TESTDATA_DIR = new File("testdata/org/broadinstitute/dropseq/readtrimming");
+    private static final File INPUT = new File(TESTDATA_DIR, "N701.subset.tagged_filtered_start_seq_trimmed.sam");
 
     // There are already tests of the real work, so just confirm that CLP runs to completion.
     @Test(dataProvider = "testClpDataProvider")
@@ -59,9 +60,11 @@ public class PolyATrimmerTest {
             clp.VALIDATION_STRINGENCY = ValidationStringency.STRICT;
             clp.USE_NEW_TRIMMER = newTrimmer;
             Assert.assertEquals(clp.doWork(), 0);
+            final File expectedResult = new File(TESTDATA_DIR, String.format("N701.%s_trimmer.sam", newTrimmer? "new": "old"));
+            TestUtils.assertSamFilesSame(clp.OUTPUT, expectedResult);
         } finally {
             Log.setGlobalLogLevel(saveLogLevel);
-            TestUtil.recursiveDelete(tempDir);
+            IOUtil.recursiveDelete(tempDir.toPath());
         }
     }
 
@@ -72,4 +75,5 @@ public class PolyATrimmerTest {
                 new Object[]{false},
         };
     }
+
 }
