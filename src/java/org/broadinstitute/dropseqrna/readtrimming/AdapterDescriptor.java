@@ -65,7 +65,12 @@ public class AdapterDescriptor {
 
         @Override
         public String getSequence(SAMRecord rec) {
-            return SequenceUtil.reverseComplement((String) rec.getAttribute(binaryTag));
+            final String attribute = (String) rec.getAttribute(binaryTag);
+            if (reverseComplement) {
+                return SequenceUtil.reverseComplement(attribute);
+            } else {
+                return attribute;
+            }
         }
 
         @Override
@@ -93,7 +98,7 @@ public class AdapterDescriptor {
 
             if (i == descriptor.length()) { break; }
 
-            final boolean reverseComplement = (descriptor.charAt(++i) == RC_TAG_CHAR);
+            final boolean reverseComplement = (descriptor.charAt(i++) == RC_TAG_CHAR);
             elements.add(new TagAdapterElement(descriptor.substring(i, i+TAG_LENGTH), reverseComplement));
             i += TAG_LENGTH;
         }
