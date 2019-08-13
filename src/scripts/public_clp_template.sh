@@ -55,8 +55,7 @@ while getopts ":m:v" options; do
     v ) verbose=1;;
     h ) usage
           exit 1;;
-    \? ) usage
-         exit 1;;
+    \? ) break;; # exit option parsing at unrecognized option, so new-style Picard CLP args will survive.
     * ) usage
           exit 1;;
 
