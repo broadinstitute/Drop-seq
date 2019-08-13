@@ -23,83 +23,62 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.reference.FastaReferenceWriter;
+import htsjdk.samtools.reference.FastaReferenceWriterBuilder;
 import htsjdk.samtools.util.IOUtil;
-import picard.PicardException;
+import htsjdk.samtools.util.RuntimeIOException;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 
 /**
- * Utility to write Fasta files.
- * Copied from Picard-private in order to eliminate dependence on picard-private.jar
- *
- * @author ktibbett@broadinstitute.org
+ * Thin wrapper around htsjdk.samtools.reference.FastaReferenceWriter
  */
 public class FastaSequenceFileWriter {
 
-    private int lineLength = 50;    // Length of lines of sequence in the fasta file
-    private BufferedWriter writer = null;
+    private static final int DEFAULT_LINE_LENGTH = 50;
+    private final FastaReferenceWriter writer;
 
-    /**
-     * Constructor that uses the default line length.  Checks that the file is
-     * writeable and creates a BufferedWriter to do the writing
-     */
     public FastaSequenceFileWriter(File fastaFile) {
+        this(fastaFile, DEFAULT_LINE_LENGTH);
+    }
+
+    public FastaSequenceFileWriter(File fastaFile, int lineLength) {
         IOUtil.assertFileIsWritable(fastaFile);
         try {
-            writer = new BufferedWriter(new FileWriter(fastaFile));
+            writer = new FastaReferenceWriterBuilder().setBasesPerLine(lineLength).setFastaFile(fastaFile.toPath()).build();
         }
         catch (IOException ioe) {
-            throw new PicardException("Error creating BufferedWriter " + fastaFile.getAbsolutePath() +
-                    ": " + ioe.getMessage(), ioe);
+            throw new RuntimeIOException("Error creating FastaReferenceWriter " + fastaFile.getAbsolutePath(), ioe);
         }
     }
 
-    /**
-     * Constructor that uses a user-provided line length
-     */
-    public FastaSequenceFileWriter(File fastaFile, int lineLength) {
-        this(fastaFile);
-        this.lineLength = lineLength;
-    }
 
-
-    /**
-     * Writes a sequence to the file.  Prefaces the name with ">" and writes
-     * the sequence itself in lines whose length is specified by <code>lineLength</code>
-     */
     public void writeSequence(String name, String sequence) {
         try {
-            writer.write(">" + name);
-            writer.newLine();
-            int startPos = 0;
-            do {
-                int endPos = Math.min(startPos + lineLength, sequence.length());
-                writer.write(sequence.substring(startPos, endPos));
-                writer.newLine();
-                startPos += lineLength;
-            }
-            while (startPos < sequence.length());
+            writer.startSequence(name).appendBases(sequence);
         }
         catch (IOException ioe) {
-            throw new PicardException("Error writing to fasta file: " + ioe.getMessage(), ioe);
+            throw new RuntimeIOException(ioe);
+        }
+    }
+
+    public void writeSequence(String name, String sequence, String description) {
+        try {
+            writer.startSequence(name, description).appendBases(sequence);
+        }
+        catch (IOException ioe) {
+            throw new RuntimeIOException(ioe);
         }
     }
 
 
-    /**
-     * Closes the BufferedWriter
-     */
     public void close() {
-        if (writer != null) {
-            try {
-                writer.close();
-            }
-            catch (IOException ioe) {
-                throw new RuntimeException(ioe);
-            }
+        try {
+            writer.close();
+        }
+        catch (IOException ioe) {
+            throw new RuntimeIOException(ioe);
         }
     }
 }
