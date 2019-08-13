@@ -24,15 +24,17 @@
 
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.CloserUtil;
+import org.testng.Assert;
+import picard.util.TabbedInputParser;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.util.Arrays;
-
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.CloserUtil;
-import picard.analysis.CompareMetrics;
-import picard.util.TabbedInputParser;
 
 /**
  * Helper methods for
@@ -73,5 +75,23 @@ public class TestUtils {
 		metricsA.read(new FileReader(expected));
 		metricsB.read(new FileReader(actual));
 		return metricsA.areMetricsEqual(metricsB) && metricsA.areHistogramsEqual(metricsB);
+	}
+
+	public static void assertSamFilesSame(final File actual, final File expected) {
+		final SamReader expectedReader = SamReaderFactory.makeDefault().open(expected);
+		final SamReader actualReader = SamReaderFactory.makeDefault().open(actual);
+		Assert.assertEquals(expectedReader.getFileHeader(), actualReader.getFileHeader());
+		final SAMRecordIterator expectedIterator = expectedReader.iterator();
+		final SAMRecordIterator actualIterator = actualReader.iterator();
+		while (expectedIterator.hasNext()) {
+			if (!actualIterator.hasNext()) {
+				Assert.fail(String.format("%s has more records than %s", expected, actual));
+			} else {
+				Assert.assertEquals(actualIterator.next(), expectedIterator.next());
+			}
+		}
+		if (actualIterator.hasNext()) {
+			Assert.fail(String.format("%s has fewer records than %s", expected, actual));
+		}
 	}
 }
