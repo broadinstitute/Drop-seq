@@ -181,7 +181,9 @@ public class DgeHeaderMergerTest {
         final DgeHeader mergedHeader = mergeHeaders(h1, h2, stringency);
         switch (stringency) {
             case NONE:
+                Assert.assertNotNull(mergedHeader); break;
             case LENIENT:
+                Assert.assertNotNull(mergedHeader); break;
             case STRICT:
                 Assert.assertNull(mergedHeader);  break;
         }
