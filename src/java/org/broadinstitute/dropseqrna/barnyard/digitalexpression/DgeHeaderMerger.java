@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.IterableAdapter;
+import htsjdk.samtools.util.Log;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -34,6 +35,8 @@ import java.util.List;
 import java.util.Set;
 
 public class DgeHeaderMerger {
+    private static Log LOG = Log.getInstance(DgeHeaderMerger.class);
+
     public enum Stringency {
         STRICT, // Every library must have a reference, and they must all match; and expression format must match.
         LENIENT,// Reference must match or be undefined; likewise for expression format.
@@ -76,7 +79,13 @@ public class DgeHeaderMerger {
 
     private void addLibrary(final DgeHeaderLibrary lib) {
         if (ueiSet.contains(lib.getUei())) {
-            throw new DgeMergerException("UEI " + lib.getUei() + " appears more than once in DGE headers to be merged");
+            if (stringency == Stringency.STRICT) {
+                throw new DgeMergerException("UEI " + lib.getUei() + " appears more than once in DGE headers to be merged");
+            } else if (stringency == Stringency.LENIENT) {
+                LOG.warn("UEI " + lib.getUei() + " appears more than once in DGE headers to be merged.  Non-strict stringency so proceeding.");
+            }
+        } else {
+            ueiSet.add(lib.getUei());
         }
         final String prefix = lib.getPrefix();
         if (prefix == null) {
@@ -95,7 +104,6 @@ public class DgeHeaderMerger {
         } else if (!reference.equals(lib.getReference()) && stringency != Stringency.NONE) {
             throw new DgeMergerException("References must be null or must agree when doing STRICT or LENIENT DGE header merging");
         }
-        ueiSet.add(lib.getUei());
         if (prefix != null) {
             prefixSet.add(prefix);
         }
