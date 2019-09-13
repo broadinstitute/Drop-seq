@@ -235,6 +235,7 @@ public class DGEMatrixTest {
 
 	@Test
 	public void testRemoveCells() {
+		//TODO: this test kinda sucks.  Repeated values can lead to mistakes in this test that are not detected.
 		final DGEMatrix result= DGEMatrix.parseFile(exampleOne);
 		final String [] cellsToRemove = {"CACTAAAGCCAG", "ATGGTCTCAAAC"};
 		result.removeCellBarcodes(Arrays.asList(cellsToRemove));

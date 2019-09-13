@@ -189,11 +189,14 @@ public class DGEMatrix {
 		List<Integer> toRemove = new ArrayList<>();
 		for (String cell: cellBarcodes) {
 			Integer idx = this.cellBarcodeMap.get(cell);
-			if (idx!=null) {
-				toRemove.add(idx);
-				removeFromMap(cell, this.cellBarcodeMap);
-			}
+			if (idx!=null) 
+				toRemove.add(idx);							
 		}
+		// remove the indexes from the map
+		for (String cell: cellBarcodes) {
+			removeFromMap(cell, this.cellBarcodeMap);
+		}
+		
 		Collections.sort(toRemove);
 		Collections.reverse(toRemove);
 		// if I remove elements from the end and work forward, I will not mess up if columns are filling in the gaps behind me.
