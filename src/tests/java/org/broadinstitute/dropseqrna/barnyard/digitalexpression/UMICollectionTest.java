@@ -23,12 +23,13 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
-import java.io.File;
-import java.util.Collection;
-
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.util.Collection;
+import java.util.Random;
 
 
 
@@ -96,5 +97,37 @@ public class UMICollectionTest {
 
 	}
 
+    private void testDownsampleRate(double downsampleRate, double numReads, double confidenceRate) {
+        /* Suppose each read of a UMI has a 0.5 chance of getting dropped
+         * This means that we expect 50 in 100 counts to be dropped
+         * with some standard deviation (say 5%?)
+         */
+        UMICollection c = new UMICollection("C", "G");
+        Random random = new Random(1L);
+        int nr=(int)(numReads/4);
+        int nr2 = (int)(numReads - ((double)nr*3));
+        c.incrementMolecularBarcodeCount("FOO", nr);
+        c.incrementMolecularBarcodeCount("BAR", nr);
+        c.incrementMolecularBarcodeCount("FOOBAR", nr);
+        c.incrementMolecularBarcodeCount("BARFOO", nr2);
+        ObjectCounter<String> counts = c.getDownsampledMolecularBarcodeCounts(downsampleRate, random);
+        Assert.assertEquals(counts.getTotalCount(), numReads*downsampleRate, numReads*confidenceRate);
+    }
+
+    @Test()
+    public void testDownsample() {
+        /* Make new UMICollection object
+         * Initialize counts
+         * Test downsampling at different rates
+         */
+        //testDownsampleRate(downsampleRate, 100.0, 0.05);
+        double numReads=100.0;
+        double confidenceRate=0.05;
+        testDownsampleRate( 0.0, numReads, confidenceRate);
+        testDownsampleRate( 1.0, numReads, confidenceRate);
+        testDownsampleRate( 0.5, numReads, confidenceRate);
+        testDownsampleRate(0.75, numReads, confidenceRate);
+        testDownsampleRate(0.001, 1000000.0, 0.0005);
+    }
 
 }

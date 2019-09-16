@@ -23,17 +23,17 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
-
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.PeekableIterator;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
 import picard.util.TabbedTextFileWithHeaderParser;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Random;
 
 /**
  * Models a collection of UMIs for a gene and cell barcode.
@@ -177,5 +177,27 @@ public class UMICollection {
 		return "[" + this.cellBarcode + "] + [" + this.geneName + "] " + this.molecularBarcodeCounts.toString();
 	}
 
+
+	/**
+	 * Estimate number of reads for each UMI at a particular downsampling rate.
+	 * @author dmeyer
+	 * @param downsampleRate
+	 * @param random
+	 * @return
+	 */
+	public ObjectCounter<String> getDownsampledMolecularBarcodeCounts(double downsampleRate, Random random) {
+		assert downsampleRate >= 0 && downsampleRate <= 1;
+
+		// Iterate over umis create a downsampled objectCounter that has umi counts at a given downsampleRate
+		ObjectCounter<String> res = new ObjectCounter<>();
+		int count; int downsampledCount;
+		for (String umi : this.molecularBarcodeCounts.getKeys()) {
+			count = this.getMolecularBarcodeCounts().getCountForKey(umi);
+			downsampledCount =  (int)random.doubles(count).filter(r -> r < downsampleRate).count();
+			res.setCount(umi, downsampledCount);
+		}
+		res.filterByMinCount(1);
+		return res;
+	}
 
 }
