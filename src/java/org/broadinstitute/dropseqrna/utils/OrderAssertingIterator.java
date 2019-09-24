@@ -35,8 +35,8 @@ import java.util.Iterator;
  * @param <T> type of objects iterated over by underlying iterator
  * @author dmeyer
  */
-public abstract class OrderAssertingIterator<T> extends IterableOnceIterator<T> {
-    protected final Iterator<T> underlyingIterator;
+public class OrderAssertingIterator<T> extends IterableOnceIterator<T> {
+    private final Iterator<T> underlyingIterator;
     private final Comparator<T> orderAssertingComparator;
     private T prev = null;
 
@@ -54,13 +54,13 @@ public abstract class OrderAssertingIterator<T> extends IterableOnceIterator<T> 
     @Override
     public T next() {
         if (this.prev == null) {
-            this.prev = this.next();
+            this.prev = this.underlyingIterator.next();
             return this.prev;
         }
         T nextObj = this.underlyingIterator.next();
-
         if (orderAssertingComparator.compare(this.prev, nextObj) > 0)
             throw new IllegalStateException("Underlying iterator is not in asserted order!");
+        this.prev = nextObj;
         return nextObj;
     }
 
