@@ -23,26 +23,26 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.*;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.BlockCompressedOutputStream;
+import htsjdk.samtools.util.zip.DeflaterFactory;
+import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+import picard.sam.ValidateSamFile;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.testng.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
-
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.metrics.MetricsFile;
-import picard.sam.ValidateSamFile;
-
+// Note that there is some weirdness with IntelDeflater on Mac OS that sometimes causes SEGV.  This test therefore
+// tried to disable IntelDeflater as much as possible when running on Mac.  The problem does not always happen if just
+// a single test is run.  Perhaps it has to do with IntelDeflater being used multiple times in same process.
 public class FilterBamTest {
 
 	// TO GENERATE COUNTS OF CONTIGS FOR HUMAN/MOUSE...
@@ -350,7 +350,8 @@ public class FilterBamTest {
 				"INPUT=" + bamFile.getAbsolutePath(),
 				"OUTPUT=/dev/stdout",
                 // reads with mate info are created, but we don't bother to create the mates, so ignore this error.
-                "IGNORE=MATE_NOT_FOUND"});
+                "IGNORE=MATE_NOT_FOUND",
+				"USE_JDK_DEFLATER=" + TestUtils.isMacOs()});
 		return ret == 0;
 	}
 
@@ -365,7 +366,11 @@ public class FilterBamTest {
 		final ArrayList<String> args = new ArrayList<>(Arrays.asList(
 		        "INPUT=" + inputSam.getAbsolutePath(),
                 "OUTPUT=" + outputSam.getAbsolutePath(),
-                "DROP_REJECTED_REF=" + dropSequences));
+                "DROP_REJECTED_REF=" + dropSequences
+				));
+		if (TestUtils.isMacOs()) {
+			args.add("USE_JDK_DEFLATER=true");
+		}
 		if (stripPrefix) {
 		    args.add("STRIP_REF_PREFIX=" + organism1);
 		    args.add("STRIP_REF_PREFIX=" + organism2);
@@ -396,4 +401,21 @@ public class FilterBamTest {
 						ret.add(new Object[]{"HUMAN_", "MOUSE_", stripPrefix, dropSequences, soft, retain});
         return ret.toArray(new Object[ret.size()][]);
     }
+
+    private DeflaterFactory deflaterFactory;
+    @BeforeMethod
+	public void setDeflaterFactory() {
+    	if (TestUtils.isMacOs()) {
+			deflaterFactory = BlockCompressedOutputStream.getDefaultDeflaterFactory();
+			BlockCompressedOutputStream.setDefaultDeflaterFactory(new DeflaterFactory());
+		}
+	}
+	@AfterMethod
+	public void restoreDeflaterFactory() {
+		if (TestUtils.isMacOs()) {
+			if (deflaterFactory != null) {
+				BlockCompressedOutputStream.setDefaultDeflaterFactory(deflaterFactory);
+			}
+		}
+	}
 }
