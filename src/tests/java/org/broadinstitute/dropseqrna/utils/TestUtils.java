@@ -94,4 +94,8 @@ public class TestUtils {
 			Assert.fail(String.format("%s has fewer records than %s", expected, actual));
 		}
 	}
+
+	public static boolean isMacOs() {
+		return System.getProperty("os.name").toLowerCase().contains("mac");
+	}
 }
