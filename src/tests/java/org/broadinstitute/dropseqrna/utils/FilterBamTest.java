@@ -40,6 +40,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+// Note that there is some weirdness with IntelDeflater on Mac OS that sometimes causes SEGV.  This test therefore
+// tried to disable IntelDeflater as much as possible when running on Mac.  The problem does not always happen if just
+// a single test is run.  Perhaps it has to do with IntelDeflater being used multiple times in same process.
 public class FilterBamTest {
 
 	// TO GENERATE COUNTS OF CONTIGS FOR HUMAN/MOUSE...
@@ -402,13 +405,17 @@ public class FilterBamTest {
     private DeflaterFactory deflaterFactory;
     @BeforeMethod
 	public void setDeflaterFactory() {
-		deflaterFactory = BlockCompressedOutputStream.getDefaultDeflaterFactory();
-		BlockCompressedOutputStream.setDefaultDeflaterFactory(new DeflaterFactory());
+    	if (TestUtils.isMacOs()) {
+			deflaterFactory = BlockCompressedOutputStream.getDefaultDeflaterFactory();
+			BlockCompressedOutputStream.setDefaultDeflaterFactory(new DeflaterFactory());
+		}
 	}
 	@AfterMethod
 	public void restoreDeflaterFactory() {
-    	if (deflaterFactory != null) {
-    		BlockCompressedOutputStream.setDefaultDeflaterFactory(deflaterFactory);
+		if (TestUtils.isMacOs()) {
+			if (deflaterFactory != null) {
+				BlockCompressedOutputStream.setDefaultDeflaterFactory(deflaterFactory);
+			}
 		}
 	}
 }
