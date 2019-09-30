@@ -25,7 +25,11 @@ package org.broadinstitute.dropseqrna.utils;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.BlockCompressedOutputStream;
+import htsjdk.samtools.util.zip.DeflaterFactory;
 import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import picard.sam.ValidateSamFile;
@@ -394,4 +398,17 @@ public class FilterBamTest {
 						ret.add(new Object[]{"HUMAN_", "MOUSE_", stripPrefix, dropSequences, soft, retain});
         return ret.toArray(new Object[ret.size()][]);
     }
+
+    private DeflaterFactory deflaterFactory;
+    @BeforeMethod
+	public void setDeflaterFactory() {
+		deflaterFactory = BlockCompressedOutputStream.getDefaultDeflaterFactory();
+		BlockCompressedOutputStream.setDefaultDeflaterFactory(new DeflaterFactory());
+	}
+	@AfterMethod
+	public void restoreDeflaterFactory() {
+    	if (deflaterFactory != null) {
+    		BlockCompressedOutputStream.setDefaultDeflaterFactory(deflaterFactory);
+		}
+	}
 }
