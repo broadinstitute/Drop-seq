@@ -159,7 +159,7 @@
     	<package-command visibility="public" title="DetectSpermAlleles"/>    	
         <package-command visibility="public" title="ComputeUMISharing"/>
         <package-command visibility="public" title="ConvertTagToReadGroup"/>
-
+        <package-command visibility="public" title="CountUnmatchedSampleIndices"/>
     </target>
 
 
