@@ -170,7 +170,7 @@ public class CountUnmatchedSampleIndices
         }
     }
 
-    // I can't quite believe there isn't something that already exists in java.concurrent
+    // I can't quite believe there isn't something that already exists in java.concurrent, but I guess not.
     private static class ThreadSafeIterator<T> implements Iterator<T> {
         private final Iterator<T> underlyingIterator;
 
