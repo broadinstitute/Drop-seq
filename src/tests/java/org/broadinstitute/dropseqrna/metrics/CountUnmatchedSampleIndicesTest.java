@@ -31,6 +31,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class CountUnmatchedSampleIndicesTest {
     private static final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/metrics/CountUnmatchedSampleIndices");
@@ -52,6 +53,16 @@ public class CountUnmatchedSampleIndicesTest {
         Assert.assertTrue(TestUtils.testMetricsFilesEqual(EXPECTED_METRICS, clp.OUTPUT));
     }
 
+    @Test(dataProvider = "testBasicDataProvider")
+    public void testDirectoryInput(int numThreads) throws IOException {
+        final CountUnmatchedSampleIndices clp = new CountUnmatchedSampleIndices();
+        clp.NUM_THREADS=numThreads;
+        clp.OUTPUT = File.createTempFile("CountUnmatchedSampleIndicesTest.", "unmatched_index_metrics");
+        clp.OUTPUT.deleteOnExit();
+        clp.BARCODE_FILES = Arrays.asList(TEST_DATA_DIR);
+        Assert.assertEquals(clp.doWork(), 0);
+        Assert.assertTrue(TestUtils.testMetricsFilesEqual(EXPECTED_METRICS, clp.OUTPUT));
+    }
     @DataProvider(name="testBasicDataProvider")
     public Object[][]testBasicDataProvider() {
         return new Object[][] {

@@ -36,6 +36,7 @@ import picard.cmdline.StandardOptionDefinitions;
 import picard.util.TabbedInputParser;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.LongAdder;
@@ -60,18 +61,29 @@ public class CountUnmatchedSampleIndices
     public int NUM_THREADS = 1;
 
     @PositionalArguments(minElements = 1,
-            doc="barcode files (as produced by ExtractIlluminaBarcodes) to be read.")
+            doc="barcode files (as produced by ExtractIlluminaBarcodes) to be read, or barcode directories.")
     public List<File> BARCODE_FILES;
 
     @Override
     protected int doWork() {
         final ConcurrentHashMap<String, LongAdder> tally = new ConcurrentHashMap<String, LongAdder>();
+
+        final List<File> allBarcodeFiles = new ArrayList<>(BARCODE_FILES.size());
+        final BarcodeFileFilter bff = new BarcodeFileFilter();
+        for (final File f : BARCODE_FILES) {
+            if (f.isDirectory()) {
+                allBarcodeFiles.addAll(Arrays.asList(f.listFiles(bff)));
+            } else {
+                allBarcodeFiles.add(f);
+            }
+        }
+
         final Iterator<File> barcodeFiles;
 
         if (NUM_THREADS > 1) {
-            barcodeFiles = new ThreadSafeIterator<>(BARCODE_FILES.iterator());
+            barcodeFiles = new ThreadSafeIterator<>(allBarcodeFiles.iterator());
         } else {
-            barcodeFiles = BARCODE_FILES.iterator();
+            barcodeFiles = allBarcodeFiles.iterator();
         }
         final Worker[] workers = new Worker[NUM_THREADS];
         for (int i = 0; i < NUM_THREADS; ++i) {
@@ -186,6 +198,19 @@ public class CountUnmatchedSampleIndices
         @Override
         public synchronized T next() {
             return underlyingIterator.next();
+        }
+    }
+
+    private static class BarcodeFileFilter
+            implements FileFilter {
+        @Override
+        public boolean accept(File pathname) {
+            if (pathname.isFile()) {
+                final String name = pathname.getName();
+                return (name.endsWith("_barcode.txt.gz") || name.endsWith("_barcode.txt"));
+            } else {
+                return false;
+            }
         }
     }
 }
