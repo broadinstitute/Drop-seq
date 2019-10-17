@@ -78,6 +78,11 @@ public class CountUnmatchedSampleIndices
             }
         }
 
+        if (allBarcodeFiles.isEmpty()) {
+            throw new RuntimeException("No barcode files found");
+        }
+        NUM_THREADS = Math.min(NUM_THREADS, allBarcodeFiles.size());
+
         final Iterator<File> barcodeFiles;
 
         if (NUM_THREADS > 1) {
@@ -151,7 +156,7 @@ public class CountUnmatchedSampleIndices
         @Override
         public Boolean call() throws Exception {
             for (final File barcodeFile: new IterableAdapter<>(barcodeFiles)) {
-                LOG.debug("Processing", barcodeFile);
+                LOG.info("Processing", barcodeFile);
                 final TabbedInputParser parser = new TabbedInputParser(false, barcodeFile);
                 for (final String[] row : parser) {
                     ++totalReads;

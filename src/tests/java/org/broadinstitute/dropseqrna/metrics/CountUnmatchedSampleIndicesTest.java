@@ -66,7 +66,7 @@ public class CountUnmatchedSampleIndicesTest {
     @DataProvider(name="testBasicDataProvider")
     public Object[][]testBasicDataProvider() {
         return new Object[][] {
-            {1}, {2}, {4}, {8}
+            {1}, {2}, {4}, {8}, {100}
         };
     }
 }
