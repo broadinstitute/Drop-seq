@@ -156,7 +156,7 @@
         <package-command visibility="public" title="FilterGtf"/>
         <package-command visibility="public" title="CreateSnpIntervalFromVcf"/>
         <package-command visibility="public" title="SpermSeqMarkDuplicates"/>
-    	<package-command visibility="public" title="DetectSpermAlleles"/>    	
+    	<package-command visibility="public" title="GenotypeSperm"/>
         <package-command visibility="public" title="ComputeUMISharing"/>
         <package-command visibility="public" title="ConvertTagToReadGroup"/>
         <package-command visibility="public" title="CountUnmatchedSampleIndices"/>
