@@ -110,8 +110,8 @@ public class CountUnmatchedSampleIndices
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        final int totalReads = Arrays.stream(workers).mapToInt(w -> w.totalReads).sum();
-        final int totalUnmatchedReads = Arrays.stream(workers).mapToInt(w -> w.totalUnmatchedReads).sum();
+        final long totalReads = Arrays.stream(workers).mapToLong(w -> w.totalReads).sum();
+        final long totalUnmatchedReads = Arrays.stream(workers).mapToLong(w -> w.totalUnmatchedReads).sum();
 
         // Find the MAX_OUTPUT most frequent sample indices
         final TreeSet<IndexAndCount> indexAndCounts = new TreeSet<>();
@@ -145,8 +145,8 @@ public class CountUnmatchedSampleIndices
             implements Callable<Boolean> {
         private final Iterator<File> barcodeFiles;
         private final ConcurrentHashMap<String, LongAdder> map;
-        int totalReads = 0;
-        int totalUnmatchedReads = 0;
+        long totalReads = 0;
+        long totalUnmatchedReads = 0;
 
         public Worker(Iterator<File> barcodeFiles, ConcurrentHashMap<String, LongAdder> map) {
             this.barcodeFiles = barcodeFiles;
@@ -174,16 +174,16 @@ public class CountUnmatchedSampleIndices
     private static class IndexAndCount
             implements Comparable<IndexAndCount> {
         final String index;
-        final int count;
+        final long count;
 
-        public IndexAndCount(String index, int count) {
+        public IndexAndCount(String index, long count) {
             this.index = index;
             this.count = count;
         }
 
         @Override
         public int compareTo(IndexAndCount o) {
-            return Integer.compare(this.count, o.count);
+            return Long.compare(this.count, o.count);
         }
     }
 

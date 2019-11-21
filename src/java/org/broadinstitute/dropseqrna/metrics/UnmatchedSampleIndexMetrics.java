@@ -28,11 +28,11 @@ import htsjdk.samtools.metrics.MetricBase;
 public class UnmatchedSampleIndexMetrics
         extends MetricBase {
     public String BARCODE;
-    public int COUNT;
+    public long COUNT;
     public double PCT_OF_UNMATCHED_READS;
     public double PCT_OF_ALL_READS;
 
-    public UnmatchedSampleIndexMetrics(String BARCODE, int COUNT, double PCT_OF_UNMATCHED_READS, double PCT_OF_ALL_READS) {
+    public UnmatchedSampleIndexMetrics(String BARCODE, long COUNT, double PCT_OF_UNMATCHED_READS, double PCT_OF_ALL_READS) {
         this.BARCODE = BARCODE;
         this.COUNT = COUNT;
         this.PCT_OF_UNMATCHED_READS = PCT_OF_UNMATCHED_READS;
