@@ -99,21 +99,20 @@ public class SplitBamByCellTest {
             tagsComparator.TAGS = new ArrayList<>(Arrays.asList("XC", "XM"));
             Assert.assertEquals(tagsComparator.doWork(), 0);
 
-			boolean t1 = FileUtils.contentEquals(report, EXPECTED_REPORT);
-			Assert.assertTrue(t1);
-		} catch (IOException e) {
-			e.printStackTrace();
+			Assert.assertTrue(FileUtils.contentEquals(report, EXPECTED_REPORT));
+		} catch (IOException ex) {
+			throw new RuntimeException("Error running the test", ex);
 		}
     }
 
     private File getTempReportFile (final String prefix, final String suffix) {
-        File tempFile=null;
+        File tempFile;
 
         try {
             tempFile = File.createTempFile(prefix, suffix);
             tempFile.deleteOnExit();
-        } catch (IOException e1) {
-            e1.printStackTrace();
+        } catch (IOException ex) {
+            throw new RuntimeException("Error creating a temp file", ex);
         }
         return tempFile;
     }

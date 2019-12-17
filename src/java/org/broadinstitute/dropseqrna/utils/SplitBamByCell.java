@@ -43,12 +43,12 @@ import org.apache.commons.math3.stat.StatUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
-import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 
+import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
 /**
@@ -64,7 +64,7 @@ import picard.cmdline.StandardOptionDefinitions;
         programGroup = DropSeq.class
 )
 
-public class SplitBamByCell extends GeneFunctionCommandLineBase {
+public class SplitBamByCell extends CommandLineProgram {
 
     private static final Log log = Log.getInstance(SplitBamByCell.class);
 
@@ -89,13 +89,15 @@ public class SplitBamByCell extends GeneFunctionCommandLineBase {
     @Argument(optional=true, doc="If specified, this file will be created, containing split BAM files' read count distribution stats.")
     public File REPORT;
 
-    private SAMFileWriterFactory samWriterFactory = new SAMFileWriterFactory().setCreateIndex(CREATE_INDEX);
+    private SAMFileWriterFactory samWriterFactory = null;
 
     @Override
     protected int doWork() {
-        if (!OUTPUT.getName().contains(OUTPUT_SLUG)) {
+        if (!OUTPUT.getPath().contains(OUTPUT_SLUG)) {
             throw new IllegalArgumentException(OUTPUT + " does not contain the replacement token " + OUTPUT_SLUG);
         }
+
+        samWriterFactory = new SAMFileWriterFactory().setCreateIndex(CREATE_INDEX);
 
         Map<String, Integer> cellBarcodeWriterIdxMap = new HashMap<>();
         List<SAMFileInfo> writerInfoList = new ArrayList<>();
@@ -167,7 +169,7 @@ public class SplitBamByCell extends GeneFunctionCommandLineBase {
             out.println(writerInfo.getSamFile().getAbsolutePath());
         }
 
-        CloserUtil.close(out);
+        out.close();
     }
 
     private void writeReport(final List<SAMFileInfo> writerInfoList) {
@@ -182,7 +184,7 @@ public class SplitBamByCell extends GeneFunctionCommandLineBase {
         out.println("mean = " + StrictMath.round(StatUtils.mean(readCounts)));
         out.println("variance = " + StrictMath.round(StatUtils.variance(readCounts)));
 
-        CloserUtil.close(out);
+        out.close();
     }
 
     private static class SAMFileInfo {
