@@ -68,39 +68,17 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 	protected int doWork() {
 		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
-		BaseDistributionMetricCollection result=null;
+		BaseDistributionMetricCollection result;
 
-		if (this.TAG!=null)
+		if (this.TAG != null)
 			result = gatherBaseQualities(INPUT, this.TAG);
 		else
 			result = gatherBaseQualities(INPUT, this.READ_NUMBER);
 
-		writeOutput(result, OUTPUT);
+        result.writeOutput(OUTPUT);
+
 		return (0);
 	}
-
-
-	void writeOutput (final BaseDistributionMetricCollection result, final File output) {
-		BufferedWriter writer = OutputWriterUtil.getWriter(output);
-		String [] header = {"position", "A", "C","G", "T", "N"};
-		String h = StringUtils.join(header, "\t");
-		OutputWriterUtil.writeResult(h, writer);
-
-		List<Integer> sortedKeys = result.getPositions();
-
-		for (Integer i: sortedKeys) {
-			BaseDistributionMetric brd=result.getDistributionAtPosition(i);
-
-			String [] l={i+"",
-					brd.getCount(Bases.A.getBase())+"", brd.getCount(Bases.C.getBase())+"",
-					brd.getCount(Bases.G.getBase())+"",brd.getCount(Bases.T.getBase())+"",
-					brd.getCount(Bases.N.getBase())+""};
-			String line = StringUtils.join(l, "\t");
-			OutputWriterUtil.writeResult(line, writer);
-		}
-		OutputWriterUtil.closeWriter(writer);
-	}
-
 
 	BaseDistributionMetricCollection gatherBaseQualities (final File input, final int readNumber) {
 		ProgressLogger p = new ProgressLogger(this.log);

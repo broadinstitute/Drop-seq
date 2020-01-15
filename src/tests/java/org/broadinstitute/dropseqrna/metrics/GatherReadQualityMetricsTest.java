@@ -20,7 +20,7 @@ public class GatherReadQualityMetricsTest {
 		g.INPUT=IN_FILE;
 		g.MINIMUM_MAPPING_QUALITY=10;
 		g.OUTPUT=outFile;
-		g.OUTPUT.deleteOnExit();
+		//g.OUTPUT.deleteOnExit();
 		g.TAG="XC";
 
 		int r = g.doWork();

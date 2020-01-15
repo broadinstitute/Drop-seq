@@ -29,12 +29,17 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
+import org.apache.commons.io.FileUtils;
 import org.testng.Assert;
 import picard.util.TabbedInputParser;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Helper methods for
@@ -98,4 +103,42 @@ public class TestUtils {
 	public static boolean isMacOs() {
 		return System.getProperty("os.name").toLowerCase().contains("mac");
 	}
+
+    public static List<File> splitBamFile(File inputBAM, int numOutputs) {
+        final SplitBamByCell bamSplitter = new SplitBamByCell();
+
+        File outputBAM = getTempReportFile("SplitBamByCell", bamSplitter.OUTPUT_SLUG + ".bam");
+        File outputBAMList = getTempReportFile("SplitBamByCell", ".list");
+        bamSplitter.INPUT = Arrays.asList(inputBAM);
+        bamSplitter.OUTPUT = outputBAM;
+        bamSplitter.OUTPUT_LIST = outputBAMList;
+        bamSplitter.NUM_OUTPUTS = numOutputs;
+        Assert.assertEquals(bamSplitter.doWork(), 0);
+
+        List<File> splitBAMFileList = new ArrayList<>();
+        try {
+            List<String> filePathList = FileUtils.readLines(outputBAMList);
+            for (String filePath : filePathList) {
+                File bamFile = new File(filePath);
+                splitBAMFileList.add(bamFile);
+                bamFile.deleteOnExit();
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException("Error reading the file " + outputBAMList.getAbsolutePath(), ex);
+        }
+
+        return splitBAMFileList;
+    }
+
+    public static File getTempReportFile (final String prefix, final String suffix) {
+        File tempFile;
+
+        try {
+            tempFile = File.createTempFile(prefix, suffix);
+            tempFile.deleteOnExit();
+        } catch (IOException ex) {
+            throw new RuntimeException("Error creating a temp file", ex);
+        }
+        return tempFile;
+    }
 }

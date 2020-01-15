@@ -115,7 +115,7 @@ public class SelectCellsByNumTranscripts
         SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false);
 
         final MapContainer mapContainer;
-        if (!ORGANISM.isEmpty()) {
+        if (ORGANISM != null && !ORGANISM.isEmpty()) {
             headerAndIterator = new SamHeaderAndIterator(headerAndIterator.header, new PrefixGeneWithOrganismIterator(headerAndIterator.iterator));
             mapContainer = new MultiOrganismMapContainer(cellBarcodes);
         } else

@@ -26,8 +26,8 @@ package org.broadinstitute.dropseqrna.metrics;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -68,7 +68,7 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
     @Argument(doc="Include non-PF reads when gathering metrics")
     public boolean INCLUDE_NON_PF_READS=false;
 
-	private String GLOBAL="all";
+    final static String GLOBAL = "all";
 
 	/** Stock main method. */
 	public static void main(final String[] args) {
@@ -88,6 +88,8 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 		Map<String, ReadQualityMetrics> metricsMap = gatherMetrics(INPUT);
 		MetricsFile<ReadQualityMetrics, Integer> outFile = new MetricsFile<>();
 		outFile.addHistogram(metricsMap.get(this.GLOBAL).getHistogram());
+        // Make sure the GLOBAL metrics is added first
+        outFile.addMetric(metricsMap.remove(this.GLOBAL));
 		for (ReadQualityMetrics metrics: metricsMap.values())
 			outFile.addMetric(metrics);
 		BufferedWriter w = IOUtil.openFileForBufferedWriting(OUTPUT);
@@ -103,7 +105,7 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 
 	public Map<String, ReadQualityMetrics> gatherMetrics(final File inputSamOrBamFile) {
 		ProgressLogger p = new ProgressLogger(this.log);
-		Map<String, ReadQualityMetrics> result = new HashMap<>();
+        Map<String, ReadQualityMetrics> result = new TreeMap<>();
 
 		ReadQualityMetrics globalMetrics = new ReadQualityMetrics(this.MINIMUM_MAPPING_QUALITY, this.GLOBAL, true);
 

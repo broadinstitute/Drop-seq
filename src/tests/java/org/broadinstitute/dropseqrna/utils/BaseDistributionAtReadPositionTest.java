@@ -46,7 +46,7 @@ public class BaseDistributionAtReadPositionTest {
 		BaseDistributionMetricCollection result = test.gatherBaseQualities (TAGGED_FILE, "XC");
 		File tempReportFile=getTempReportFile();
 
-		test.writeOutput(result, tempReportFile);
+        result.writeOutput(tempReportFile);
 
 		boolean testSuccess=false;
 		try {

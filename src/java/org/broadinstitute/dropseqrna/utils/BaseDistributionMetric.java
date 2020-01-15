@@ -56,17 +56,21 @@ public class BaseDistributionMetric extends MetricBase implements Serializable {
 		map.put(Bases.N.getBase(), countN);
 	}
 
-	void addBase(final Character base) {
-		int count = map.get(base);
-		count++;
-		map.put(base, count);
+    void addBase(final Character base, final int numTimes) {
+        int count = map.get(base);
+        count += numTimes;
+        map.put(base, count);
+    }
+
+    void addBase(final Character base) {
+        addBase(base, 1);
 	}
 
-	public int getCount(final Character base) {
+    public int getCount(final Character base) {
 		return (map.get(base));
 	}
 
-	public int getTotalCount () {
+    public int getTotalCount () {
 		int count=0;
 		for (Bases b: Bases.values()) {
 			char bb = b.getBase();
@@ -75,7 +79,13 @@ public class BaseDistributionMetric extends MetricBase implements Serializable {
 		return count;
 	}
 
-	@Override
+    public void mergeMetrics(BaseDistributionMetric otherMetric) {
+        for (Bases base : Bases.values()) {
+            addBase(base.getBase(), otherMetric.getCount(base.getBase()));
+        }
+    }
+
+    @Override
 	public String toString() {
 		return this.map.toString();
 	}
@@ -105,6 +115,12 @@ public class BaseDistributionMetric extends MetricBase implements Serializable {
 		return true;
 	}
 
+    public boolean distributionsEqual(final BaseDistributionMetric otherMetric) {
+        for (Bases base : Bases.values()) {
+            if (otherMetric.getCount(base.getBase()) != getCount(base.getBase()))
+                return false;
+        }
 
-
+        return true;
+    }
 }

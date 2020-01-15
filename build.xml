@@ -153,6 +153,13 @@
         <package-command visibility="public" title="CompareDropSeqAlignments"/>
         <package-command visibility="public" title="MaskReferenceSequence"/>
         <package-command visibility="public" title="MergeDgeSparse"/>
+        <package-command visibility="public" title="MergeBamTagHistograms"/>
+        <package-command visibility="public" title="MergeBaseDistributionAtReadPosition"/>
+        <package-command visibility="public" title="MergeCellsByNumTranscripts"/>
+        <package-command visibility="public" title="MergeMeanQualityByCycle"/>
+        <package-command visibility="public" title="MergeReadQualityMetrics"/>
+        <package-command visibility="public" title="MergeRnaSeqMetrics"/>
+        <package-command visibility="public" title="MergeSingleCellRnaSeqMetrics"/>
         <package-command visibility="public" title="FilterGtf"/>
         <package-command visibility="public" title="CreateSnpIntervalFromVcf"/>
         <package-command visibility="public" title="SpermSeqMarkDuplicates"/>
@@ -160,7 +167,6 @@
         <package-command visibility="public" title="ComputeUMISharing"/>
         <package-command visibility="public" title="ConvertTagToReadGroup"/>
         <package-command visibility="public" title="CountUnmatchedSampleIndices"/>
-        <package-command visibility="public" title="SplitBamByCell"/>
     </target>
 
 

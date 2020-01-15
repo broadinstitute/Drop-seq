@@ -242,8 +242,10 @@ public class DigitalExpression extends DGECommandLineBase {
             addToSummary(readCountMap, transcriptCountMap, summaryMap);
         }
         out.close();
-        if (this.SUMMARY!=null)
-			writeSummary(summaryMap.values(), this.SUMMARY);
+        if (this.SUMMARY!=null) {
+            MetricsFile<DESummary, Integer> summaryMetricsFile = getMetricsFile();
+            writeSummary(summaryMap.values(), summaryMetricsFile, this.SUMMARY);
+        }
 
         if (this.OUTPUT_LONG_FORMAT!=null)
 			writeLongOutputFormat(longFormatRecordCollection, this.OUTPUT_LONG_FORMAT);
@@ -407,13 +409,12 @@ public class DigitalExpression extends DGECommandLineBase {
         return (summaryMap);
     }
 
-    void writeSummary(final Collection<DESummary> summaryCollection, final File outFile) {
-        MetricsFile<DESummary, Integer> out = getMetricsFile();
+    public static void writeSummary(final Collection<DESummary> summaryCollection, final MetricsFile<DESummary, Integer> summaryMetricsFile, final File outFile) {
         List<DESummary> sc = new ArrayList<>(summaryCollection);
         Collections.sort(sc, DigitalExpression.TRANSCRIPT_ORDER_DESCENDING);
         for (DESummary z: sc)
-			out.addMetric(z);
-        out.write(outFile);
+            summaryMetricsFile.addMetric(z);
+        summaryMetricsFile.write(outFile);
     }
 
     private SortingCollection<DGELongFormatRecord> makeSortingCollection(final Collection<String> cellBarcodeOrder) {
