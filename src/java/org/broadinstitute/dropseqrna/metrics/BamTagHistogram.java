@@ -79,24 +79,29 @@ public class BamTagHistogram extends CommandLineProgram {
 		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
 
-		ObjectCounter<String> counter=getBamTagCounts(INPUT, this.TAG, this.MINIMUM_MAPPING_QUALITY, this.FILTER_PCR_DUPLICATES);
-		List<String> tagsByCount=counter.getKeysOrderedByCount(true);
+		ObjectCounter<String> counter = getBamTagCounts(INPUT, this.TAG, this.MINIMUM_MAPPING_QUALITY, this.FILTER_PCR_DUPLICATES);
 
-		PrintStream writer = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
-		writeHeader(writer);
+        PrintStream writer = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUTPUT));
+        writeHeader(writer);
+        writeHistogram(counter, writer);
 
-		for (String s: tagsByCount) {
-			int count = counter.getCountForKey(s);
-			String [] h={count+"", s};
-			String result = StringUtils.join(h, "\t");
-			writer.println(result);
-			writer.flush();
-		}
-		writer.close();
 		return 0;
 	}
 
-	public void writeHeader (final PrintStream writer) {
+    public static void writeHistogram(ObjectCounter<String> counter, final PrintStream writer) {
+        List<String> tagsByCount = counter.getKeysOrderedByCount(true);
+
+        for (String s: tagsByCount) {
+            int count = counter.getCountForKey(s);
+            String [] h={count+"", s};
+            String result = StringUtils.join(h, "\t");
+            writer.println(result);
+            writer.flush();
+        }
+        writer.close();
+    }
+
+	private void writeHeader (final PrintStream writer) {
 		List<String> header = new ArrayList<>();
 		header.add("INPUT="+this.INPUT.getAbsolutePath());
 		header.add("TAG="+this.TAG);

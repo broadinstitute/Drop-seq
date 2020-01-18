@@ -46,7 +46,8 @@ import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
-        summary = "Calculate the number of reads that are in the BAM, that are mapped, mapped + HQ, mapped + HQ + not PCR duplicated",
+        summary = "Calculate the number of reads that are in the BAM, that are mapped, mapped + HQ, mapped + HQ + not PCR duplicated. " +
+                "The output lines are ordered by cell barcodes, with the first line containing the summary counts for all the cell barcodes",
         oneLineSummary = "Calculate reads that are in the BAM at different mapping qualities.",
         programGroup = DropSeq.class
 )
@@ -68,7 +69,8 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
     @Argument(doc="Include non-PF reads when gathering metrics")
     public boolean INCLUDE_NON_PF_READS=false;
 
-    final static String GLOBAL = "all";
+    // The key used to output the global metrics collected for all the cell barcodes
+    public final static String GLOBAL = "all";
 
 	/** Stock main method. */
 	public static void main(final String[] args) {

@@ -23,12 +23,6 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import org.broadinstitute.dropseqrna.TranscriptomeException;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -259,56 +253,4 @@ public class ObjectCounter<T extends Comparable<T>> {
 			return false;
 		return true;
 	}
-
-    @SuppressWarnings("unchecked")
-    public boolean countMapsEqual(final ObjectCounter<T> otherCounter) {
-        if (this.equals(otherCounter))
-            return true;
-        if (otherCounter == null)
-            return false;
-
-        List<T> keys = getKeysOrderedByCount(true);
-        List<T> otherKeys = otherCounter.getKeysOrderedByCount(true);
-        if (otherKeys.size() != keys.size())
-            return false;
-
-        for (int idx=0; idx<keys.size(); idx++) {
-            T key = keys.get(idx);
-            T otherKey = otherKeys.get(idx);
-            if (!otherKey.equals(key) || otherCounter.getCountForKey(otherKey) != this.getCountForKey(key))
-                return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * @param reportFile The report file to read.
-     */
-    public static ObjectCounter<String> readReportFile(final File reportFile) {
-        ObjectCounter <String> counter = new ObjectCounter<>();
-
-        try {
-            BufferedReader input = new BufferedReader(new FileReader(reportFile));
-            try {
-                String line;
-                while ((line = input.readLine()) != null) {
-                    line = line.trim();
-                    if (line.startsWith("#")) {
-                        continue;
-                    }
-                    String[] strLine = line.split("\t");
-                    int count = Integer.parseInt(strLine[0]);
-                    String key = strLine[1];
-                    counter.incrementByCount(key, count);
-                }
-            } finally {
-                input.close();
-            }
-        } catch (IOException ex) {
-            throw new TranscriptomeException("Error reading the file: " + reportFile.getAbsolutePath());
-        }
-
-        return counter;
-    }
 }

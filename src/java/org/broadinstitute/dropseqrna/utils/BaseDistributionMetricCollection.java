@@ -23,13 +23,13 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -132,8 +132,8 @@ public class BaseDistributionMetricCollection implements Serializable {
         String[] columns = null;
         char[] bases = null;
         try {
-            BufferedReader input = new BufferedReader(new FileReader(reportFile));
-            try {
+            BufferedReader input = IOUtil.openFileForBufferedReading(reportFile);
+            try  {
                 String line;
                 while ((line = input.readLine()) != null) {
                     line=line.trim();

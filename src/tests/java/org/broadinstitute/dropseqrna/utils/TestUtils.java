@@ -29,6 +29,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.io.FileUtils;
 import org.testng.Assert;
 import picard.util.TabbedInputParser;
@@ -116,15 +117,10 @@ public class TestUtils {
         Assert.assertEquals(bamSplitter.doWork(), 0);
 
         List<File> splitBAMFileList = new ArrayList<>();
-        try {
-            List<String> filePathList = FileUtils.readLines(outputBAMList);
-            for (String filePath : filePathList) {
-                File bamFile = new File(filePath);
-                splitBAMFileList.add(bamFile);
-                bamFile.deleteOnExit();
-            }
-        } catch (IOException ex) {
-            throw new RuntimeException("Error reading the file " + outputBAMList.getAbsolutePath(), ex);
+        for (String filePath : IOUtil.readLines(outputBAMList)) {
+            File bamFile = new File(filePath);
+            splitBAMFileList.add(bamFile);
+            bamFile.deleteOnExit();
         }
 
         return splitBAMFileList;
