@@ -121,7 +121,7 @@ public class EnhanceGTFRecords {
                 TRANSCRIPT_FEATURE_TYPE, g.getGeneVersion());
 		result.add(transcriptRecord);
 		
-		List<Interval> introns = getIntronIntervals(getIntervals(t.exons));
+		List<Interval> introns = getIntronIntervals(getIntervals(t.exons), g.getName());
 		List<GTFRecord> intronR = getGTFRecordsFromIntronIntervals(introns, t);
 		result.addAll(intronR);
 		List<GTFRecord> exons = getGTFRecordsFromExons(t);
@@ -156,7 +156,11 @@ public class EnhanceGTFRecords {
 	}
 	
 	
-	List<Interval> getIntronIntervals(List<Interval> exons) {
+	List<Interval> getIntronIntervals(List<Interval> exons, String geneName) {
+		// should always see at least one exon.
+		if (exons.size()==0) {
+			throw new IllegalStateException("Gene [" + geneName+"] has 0 exons so can not be enhanced.  The GTF format expects at least 1 exon for every gene.");
+		}
 		if (exons.size()==1) return new ArrayList<>(0);
 		
 		List<Interval> result = new ArrayList<>(exons.size()-1);
