@@ -37,8 +37,10 @@ public class EnhanceGTFRecordsTest {
 
 	File GTF_FILE1 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_ISG15.gtf.gz");
 	File GTF_FILE2 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_ISG15_FAM41C.gtf.gz");
-	File SD = new File("testdata/org/broadinstitute/transcriptome/annotation/human_g1k_v37_decoy_50.dict");
+	File GTF_FILE3 = new File("testdata/org/broadinstitute/transcriptome/annotation/gtf_no_exon.gtf");
 	
+	File SD = new File("testdata/org/broadinstitute/transcriptome/annotation/human_g1k_v37_decoy_50.dict");
+	 
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
 	public void testIntron() {
 		List<Interval> exons = new ArrayList<Interval>();
@@ -47,8 +49,9 @@ public class EnhanceGTFRecordsTest {
 		exons.add(e1);
 		exons.add(e2);
 		
+		
 		EnhanceGTFRecords e = new EnhanceGTFRecords();
-		List<Interval> introns = e.getIntronIntervals(exons);
+		List<Interval> introns = e.getIntronIntervals(exons, "test_gene");
 		
 		Assert.assertEquals(exons.size()-1, introns.size());
 		Interval intron = introns.get(0);
@@ -69,6 +72,19 @@ public class EnhanceGTFRecordsTest {
         }
         Assert.assertNotNull(records);
 		
+	}
+	
+	@Test(enabled=true, expectedExceptions=java.lang.IllegalStateException.class)
+	public void testGeneNoExon () {
+		EnhanceGTFRecords e = new EnhanceGTFRecords();
+		GTFParser parser = new GTFParser(GTF_FILE3, ValidationStringency.STRICT);
+        List<GTFRecord> records;
+        try {
+            records = e.enhanceGTFRecords(parser);
+        } finally {
+            CloserUtil.close(parser);
+        }
+        Assert.assertNotNull(records);		
 	}
 	
 }
