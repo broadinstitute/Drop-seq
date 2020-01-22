@@ -253,8 +253,4 @@ public class ObjectCounter<T extends Comparable<T>> {
 			return false;
 		return true;
 	}
-
-
-
-
 }

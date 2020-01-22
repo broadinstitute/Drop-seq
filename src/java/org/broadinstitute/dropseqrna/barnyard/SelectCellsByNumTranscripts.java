@@ -115,7 +115,7 @@ public class SelectCellsByNumTranscripts
         SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false);
 
         final MapContainer mapContainer;
-        if (!ORGANISM.isEmpty()) {
+        if (ORGANISM != null && !ORGANISM.isEmpty()) {
             headerAndIterator = new SamHeaderAndIterator(headerAndIterator.header, new PrefixGeneWithOrganismIterator(headerAndIterator.iterator));
             mapContainer = new MultiOrganismMapContainer(cellBarcodes);
         } else
@@ -352,7 +352,7 @@ public class SelectCellsByNumTranscripts
         }
     }
 
-    static void writeBarcodes(final File file, final List<String> barcodes) {
+    public static void writeBarcodes(final File file, final List<String> barcodes) {
         final BufferedWriter writer = IOUtil.openFileForBufferedWriting(file);
         try {
             for (final String barcode : barcodes) {
@@ -365,7 +365,7 @@ public class SelectCellsByNumTranscripts
         }
     }
 
-    static List<String> readBarcodes(final File file) {
+    public static List<String> readBarcodes(final File file) {
         try {
             IOUtil.assertFileIsReadable(file);
             final BufferedReader reader = IOUtil.openFileForBufferedReading(file);
@@ -404,7 +404,7 @@ public class SelectCellsByNumTranscripts
         public int NUM_TRANSCRIPTS_SELECTED_CELLS;
         public int NUM_GENES_SELECTED_CELLS;
 
-        void accumulate(final DigitalExpression.DESummary summary, boolean isSelected) {
+        public void accumulate(final DigitalExpression.DESummary summary, boolean isSelected) {
             NUM_TRANSCRIPTS += summary.NUM_TRANSCRIPTS;
             NUM_GENES += summary.NUM_GENES;
             if (isSelected) {
@@ -413,7 +413,7 @@ public class SelectCellsByNumTranscripts
             }
         }
 
-        void accumulate(final Metrics other) {
+        public void accumulate(final Metrics other) {
             NUM_TRANSCRIPTS += other.NUM_TRANSCRIPTS;
             NUM_GENES += other.NUM_GENES;
             NUM_TRANSCRIPTS_SELECTED_CELLS += other.NUM_TRANSCRIPTS_SELECTED_CELLS;

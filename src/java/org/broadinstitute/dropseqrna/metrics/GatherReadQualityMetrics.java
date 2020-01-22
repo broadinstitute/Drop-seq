@@ -26,8 +26,8 @@ package org.broadinstitute.dropseqrna.metrics;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -46,7 +46,8 @@ import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
-        summary = "Calculate the number of reads that are in the BAM, that are mapped, mapped + HQ, mapped + HQ + not PCR duplicated",
+        summary = "Calculate the number of reads that are in the BAM, that are mapped, mapped + HQ, mapped + HQ + not PCR duplicated. " +
+                "The output lines are ordered by cell barcodes, with the first line containing the summary counts for all the cell barcodes",
         oneLineSummary = "Calculate reads that are in the BAM at different mapping qualities.",
         programGroup = DropSeq.class
 )
@@ -68,7 +69,8 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
     @Argument(doc="Include non-PF reads when gathering metrics")
     public boolean INCLUDE_NON_PF_READS=false;
 
-	private String GLOBAL="all";
+    // The key used to output the global metrics collected for all the cell barcodes
+    public final static String GLOBAL = "all";
 
 	/** Stock main method. */
 	public static void main(final String[] args) {
@@ -88,6 +90,8 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 		Map<String, ReadQualityMetrics> metricsMap = gatherMetrics(INPUT);
 		MetricsFile<ReadQualityMetrics, Integer> outFile = new MetricsFile<>();
 		outFile.addHistogram(metricsMap.get(this.GLOBAL).getHistogram());
+        // Make sure the GLOBAL metrics is added first
+        outFile.addMetric(metricsMap.remove(this.GLOBAL));
 		for (ReadQualityMetrics metrics: metricsMap.values())
 			outFile.addMetric(metrics);
 		BufferedWriter w = IOUtil.openFileForBufferedWriting(OUTPUT);
@@ -103,7 +107,7 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 
 	public Map<String, ReadQualityMetrics> gatherMetrics(final File inputSamOrBamFile) {
 		ProgressLogger p = new ProgressLogger(this.log);
-		Map<String, ReadQualityMetrics> result = new HashMap<>();
+        Map<String, ReadQualityMetrics> result = new TreeMap<>();
 
 		ReadQualityMetrics globalMetrics = new ReadQualityMetrics(this.MINIMUM_MAPPING_QUALITY, this.GLOBAL, true);
 

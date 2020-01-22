@@ -160,7 +160,6 @@
         <package-command visibility="public" title="ComputeUMISharing"/>
         <package-command visibility="public" title="ConvertTagToReadGroup"/>
         <package-command visibility="public" title="CountUnmatchedSampleIndices"/>
-        <package-command visibility="public" title="SplitBamByCell"/>
     </target>
 
 

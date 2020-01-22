@@ -68,7 +68,7 @@ public class SplitBamByCell extends CommandLineProgram {
 
     private static final Log log = Log.getInstance(SplitBamByCell.class);
 
-    @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM files to analyze.  They must all have the same sort order")
+    @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM files to analyze.  They must all have the same sort order", minElements = 1)
     public List<File> INPUT;
 
     @Argument(doc="The tag to examine in order to partition reads.")

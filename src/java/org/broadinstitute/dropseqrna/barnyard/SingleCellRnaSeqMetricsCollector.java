@@ -282,13 +282,6 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     	}
     }
 
-    public static class RnaSeqMtMetrics
-            extends RnaSeqMetrics {
-        public long MT_BASES;
-        public double PCT_MT_BASES;
-
-    }
-
 	private class RnaSeqMtMetricsCollector extends RnaSeqMetricsCollector {
         private Set<Gene> genesWithLongEnoughTranscripts;
 
