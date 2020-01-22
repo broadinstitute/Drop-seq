@@ -28,9 +28,12 @@ import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.BlockCompressedOutputStream;
+import htsjdk.samtools.util.BlockGunzipper;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import org.apache.commons.io.FileUtils;
+import htsjdk.samtools.util.zip.DeflaterFactory;
+import htsjdk.samtools.util.zip.InflaterFactory;
 import org.testng.Assert;
 import picard.util.TabbedInputParser;
 
@@ -105,6 +108,18 @@ public class TestUtils {
 		return System.getProperty("os.name").toLowerCase().contains("mac");
 	}
 
+	/**
+	 * CommandLineProgram only replaces default inflater/deflater with Intel versions, which don't work on Mac.
+	 * Once they've been set to Intel versions in a JVM, they need to be reverted explicitly by any unit test.
+	 * that is failing on Mac.
+	 */
+	public static void setInflaterDeflaterIfMacOs() {
+		if (isMacOs()) {
+			BlockCompressedOutputStream.setDefaultDeflaterFactory(new DeflaterFactory());
+			BlockGunzipper.setDefaultInflaterFactory(new InflaterFactory());
+		}
+	}
+
     public static List<File> splitBamFile(File inputBAM, int numOutputs) {
         final SplitBamByCell bamSplitter = new SplitBamByCell();
 
@@ -114,6 +129,8 @@ public class TestUtils {
         bamSplitter.OUTPUT = outputBAM;
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.NUM_OUTPUTS = numOutputs;
+        bamSplitter.USE_JDK_DEFLATER = isMacOs();
+        setInflaterDeflaterIfMacOs();
         Assert.assertEquals(bamSplitter.doWork(), 0);
 
         List<File> splitBAMFileList = new ArrayList<>();
