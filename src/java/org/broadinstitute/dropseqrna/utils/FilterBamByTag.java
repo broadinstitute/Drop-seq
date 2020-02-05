@@ -26,9 +26,9 @@ package org.broadinstitute.dropseqrna.utils;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
-import htsjdk.samtools.util.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
@@ -41,6 +41,12 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.samtools.util.ProgressLogger;
+import htsjdk.samtools.util.RuntimeIOException;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
@@ -64,11 +70,14 @@ public class FilterBamByTag extends CommandLineProgram {
 	@Argument(doc = "A file with 1 column and 1 or more rows containing a barcode value per line.", optional = true)
 	public File TAG_VALUES_FILE;
 
-	@Argument(doc = "A single value for filtering reads.  Use instead of TAG_VALUES_FILE.", optional = true)
-	public String TAG_VALUE;
+	@Argument(doc = "A tag value(s) for filtering reads.  Use instead of TAG_VALUES_FILE.", optional = true)
+	public List<String> TAG_VALUE;
 
 	@Argument(doc = "If having a tag value matches the values in the file, accept the read.  If set to false, reject the read.")
 	public Boolean ACCEPT_TAG = true;
+	
+	@Argument(doc="Allow partial matching - if the tag value contains one of expected values, count as a match.  For example, if the allowed value is A and the tag is A,B, the read would match.", optional=true)
+	public Boolean ALLOW_PARTIAL_MATCH=false;
 
 	@Argument(doc = "In Paired Read Mode if the tag value is on either read the pair of reads is kept or discarded. This is slower when turned on because "
 			+ "of the need to queryname sort the data, so only turn it on if you need it!")
@@ -83,7 +92,7 @@ public class FilterBamByTag extends CommandLineProgram {
 
 	@Override
 	protected int doWork() {
-		if (TAG_VALUES_FILE == null && TAG == null) {
+		if (TAG_VALUES_FILE == null && TAG_VALUE==null) {
 			log.error("You must set either a file of tag values, or a single tag value.");
 			return(1);
 		}
@@ -99,7 +108,7 @@ public class FilterBamByTag extends CommandLineProgram {
 		} else {
 			values = new HashSet<>();
 			if (this.TAG_VALUE!=null)
-				values.add(this.TAG_VALUE);
+				values.addAll(this.TAG_VALUE);
 		}
 
 		SamReader in = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(INPUT);
@@ -107,9 +116,9 @@ public class FilterBamByTag extends CommandLineProgram {
 				in.getFileHeader(), true, OUTPUT);
 
 		if (!this.PAIRED_MODE)
-			processUnpairedMode(in, out, values, this.SUMMARY, MINIMUM_MAPPING_QUALITY);
+			processUnpairedMode(in, out, values, this.SUMMARY, MINIMUM_MAPPING_QUALITY, ALLOW_PARTIAL_MATCH);
 		else
-			processPairedMode(in, out, values, this.SUMMARY, MINIMUM_MAPPING_QUALITY);
+			processPairedMode(in, out, values, this.SUMMARY, MINIMUM_MAPPING_QUALITY, ALLOW_PARTIAL_MATCH);
 
 		return 0;
 	}
@@ -119,12 +128,12 @@ public class FilterBamByTag extends CommandLineProgram {
 	 * @param in
 	 * @param out
 	 */
-	void processUnpairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values, final File summaryFile, Integer mapQuality) {
+	void processUnpairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values, final File summaryFile, Integer mapQuality ,boolean allowPartial) {
 		FilteredReadsMetric m = new FilteredReadsMetric();
 		ProgressLogger progLog = new ProgressLogger(log);
 		for (final SAMRecord r : in) {
 			progLog.record(r);
-			boolean filterFlag = filterRead(r, this.TAG, values, this.ACCEPT_TAG, mapQuality);
+			boolean filterFlag = filterRead(r, this.TAG, values, this.ACCEPT_TAG, mapQuality, allowPartial);
 			if (!filterFlag) { 
 				out.addAlignment(r);
 				m.READS_ACCEPTED++;
@@ -158,7 +167,7 @@ public class FilterBamByTag extends CommandLineProgram {
 	 * @param out
 	 * @param values
 	 */
-	void processPairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values, final File summaryFile, Integer mapQuality) {
+	void processPairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values, final File summaryFile, Integer mapQuality, boolean allowPartial) {
 		ProgressLogger progLog = new ProgressLogger(log);
 		FilteredReadsMetric m = new FilteredReadsMetric();
 		
@@ -166,7 +175,7 @@ public class FilterBamByTag extends CommandLineProgram {
 		while (iter.hasNext()) {
 			SAMRecord r1 = iter.next();
 			progLog.record(r1);
-			boolean filterFlag1 = filterRead(r1, this.TAG, values, this.ACCEPT_TAG, mapQuality);
+			boolean filterFlag1 = filterRead(r1, this.TAG, values, this.ACCEPT_TAG, mapQuality, allowPartial);
 			
 			SAMRecord r2 = null;
 			if (iter.hasNext()) r2 = iter.peek();
@@ -175,7 +184,7 @@ public class FilterBamByTag extends CommandLineProgram {
 				// paired read found.
 				progLog.record(r2);
 				r2=iter.next();
-				boolean filterFlag2 = filterRead(r2, this.TAG, values, this.ACCEPT_TAG, mapQuality);
+				boolean filterFlag2 = filterRead(r2, this.TAG, values, this.ACCEPT_TAG, mapQuality, allowPartial);
 				// if in accept tag mode, if either read shouldn't be filterd accept the pair
 				// if in reject mode, if both reads shouldn't be filtered to accept the pair.
 				if ((!filterFlag1 || !filterFlag2 & this.ACCEPT_TAG) || (!filterFlag1 && !filterFlag2 & !this.ACCEPT_TAG)) {
@@ -215,7 +224,7 @@ public class FilterBamByTag extends CommandLineProgram {
 	}
 
 	boolean filterRead(final SAMRecord r, final String tag, final Set<String> values,
-			final boolean acceptFlag, final Integer mapQuality) {
+			final boolean acceptFlag, final Integer mapQuality, boolean allowPartial) {
 
 		// quickly filter on map quality if provided.
 		if (mapQuality!=null && r.getMappingQuality() < mapQuality) return true;
@@ -229,22 +238,18 @@ public class FilterBamByTag extends CommandLineProgram {
 		if (v == null && !acceptFlag)
 			return false;
 
-		String vv = null;
-
-		if (v instanceof Integer) {
-			Integer o = (Integer) v;
-			vv = Integer.toString(o);
-		} else if (v instanceof String)
-			vv = (String) v;
-		else
-			log.info("WHAT ELSE");
+		final String vv =  getTagValue(v);
 
 		// if there are no values to scan, it's a match. Start with that.
 		boolean hasElement = true;
-
+		
 		// if there are values, check to see if this tag matches one.
 		if (values != null && values.size() > 0)
-			hasElement = values.contains(vv);
+			if (!allowPartial)
+				hasElement = values.contains(vv);
+			else {
+				hasElement = values.stream().anyMatch((x -> vv.contains(x)));
+			}
 
 		if ((hasElement & acceptFlag)
 				| (hasElement == false & acceptFlag == false))
@@ -254,6 +259,19 @@ public class FilterBamByTag extends CommandLineProgram {
 			return true;
 
 		return false;
+	}
+	
+	private String getTagValue (Object v) {
+		String vv = null;
+
+		if (v instanceof Integer) {
+			Integer o = (Integer) v;
+			vv = Integer.toString(o);
+		} else if (v instanceof String)
+			vv = (String) v;
+		else
+			log.info("WHAT ELSE");
+		return vv;
 	}
 
 	private Set<String> readValues(File f) {
