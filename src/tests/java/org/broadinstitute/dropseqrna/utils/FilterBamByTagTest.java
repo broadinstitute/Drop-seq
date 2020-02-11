@@ -126,7 +126,7 @@ public class FilterBamByTagTest {
 		f.INPUT=UNPAIRED_INPUT_FILE;
 		f.OUTPUT=File.createTempFile("unpaired_input_single_cell", ".bam");
 		f.TAG="XC";
-		f.TAG_VALUE="AAAGTAGAGTGG";
+		f.TAG_VALUE=Arrays.asList("AAAGTAGAGTGG");
 		f.TAG_VALUES_FILE=null;
 		f.PAIRED_MODE=false;
 		f.OUTPUT.deleteOnExit();
@@ -141,7 +141,8 @@ public class FilterBamByTagTest {
 		
 
 	}
-
+	
+	
 	private double makePassingReadThreshold(final boolean pairedMode, final boolean fractionalThreshold, final boolean passing) {
 		final int addend = passing? -1: 1;
 		final double successThreshold;
@@ -192,46 +193,58 @@ public class FilterBamByTagTest {
 
 		FilterBamByTag t = new FilterBamByTag();
 		// read has attribute, accept any value, want to retain read.
-		boolean flag1 = t.filterRead(readHasAttribute, tag, null, true, null);
+		boolean flag1 = t.filterRead(readHasAttribute, tag, null, true, null, false);
 		Assert.assertFalse(flag1);
 
 		// read has attribute, accept any value, want to filter read.
-		boolean flag2 = t.filterRead(readHasAttribute, tag, null, false, null);
+		boolean flag2 = t.filterRead(readHasAttribute, tag, null, false, null, false);
 		Assert.assertTrue(flag2);
 
 		// read has attribute, accept certain value, want to retain read.
-		boolean flag3 = t.filterRead(readHasAttribute, tag, values, true, null);
+		boolean flag3 = t.filterRead(readHasAttribute, tag, values, true, null, false);
 		Assert.assertFalse(flag3);
 
 		// read has attribute, accept certain value, want to filter read.
-		boolean flag4 = t.filterRead(readHasAttribute, tag, values, false, null);
+		boolean flag4 = t.filterRead(readHasAttribute, tag, values, false, null, false);
 		Assert.assertTrue(flag4);
 
 		// read does not have attribute, accept any value, want to retain read.
-		boolean flag5 = t.filterRead(readNoAttribute, tag, null, true, null);
+		boolean flag5 = t.filterRead(readNoAttribute, tag, null, true, null, false);
 		Assert.assertTrue(flag5);
 
 		// read does not have attribute, accept any value, want to filter read.
-		boolean flag6 = t.filterRead(readNoAttribute, tag, null, false, null);
+		boolean flag6 = t.filterRead(readNoAttribute, tag, null, false, null, false);
 		Assert.assertFalse(flag6);
 
 		// read does not have attribute, accept certain value, want to retain read.
-		boolean flag7 = t.filterRead(readNoAttribute, tag, values, true, null);
+		boolean flag7 = t.filterRead(readNoAttribute, tag, values, true, null, false);
 		Assert.assertTrue(flag7);
 
 		// read does not have attribute, accept certain value, want to filter read.
-		boolean flag8 = t.filterRead(readNoAttribute, tag, values, false, null);
+		boolean flag8 = t.filterRead(readNoAttribute, tag, values, false, null, false);
 		Assert.assertFalse(flag8);
 		
 		// test map quality filtering
 		
 		readHasAttribute.setMappingQuality(10);
-		boolean flag9 = t.filterRead(readHasAttribute, tag, null, true, 10);
+		boolean flag9 = t.filterRead(readHasAttribute, tag, null, true, 10, false);
 		Assert.assertFalse(flag9);
-		boolean flag10 = t.filterRead(readHasAttribute, tag, null, true, 20);
+		boolean flag10 = t.filterRead(readHasAttribute, tag, null, true, 20, false);
 		Assert.assertTrue(flag10);
 		
+		// want to test partial matching.
+		SAMRecord readHasGene = new SAMRecord(null);
+		String geneNameTag = "gn";
+		readHasGene.setAttribute(geneNameTag, "A,B");
 
+		Set<String> geneValues = new HashSet<> (Arrays.asList("A"));
+		boolean flagExact =t.filterRead(readHasGene, geneNameTag, geneValues, true, 0, false);
+		boolean flagPartial =t.filterRead(readHasGene, geneNameTag, geneValues, true, 0, true);
+		// filter the exact match
+		Assert.assertTrue(flagExact);
+		// don't filter the partial match
+		Assert.assertFalse(flagPartial);
+		
 	}
 
 	/**
