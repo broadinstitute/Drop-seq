@@ -21,10 +21,10 @@ public class ChromosomeFilteringIteratorTest {
 
 		SAMRecordSetBuilder b = new SAMRecordSetBuilder();
 		// second argument is the contig index which is 0 based.  So contig index=0 -> chr1.  index=2 -> chr3, etc.
-		b.addFrag("1", 0, 1, false);
-		b.addFrag("2", 1, 1, false);
-		b.addFrag("3", 2, 1, false);
-		b.addFrag("4", 3, 1, false);
+		b.addFrag("chr1", 0, 1, false);
+		b.addFrag("chr2", 1, 1, false);
+		b.addFrag("chr3", 2, 1, false);
+		b.addFrag("chr4", 3, 1, false);
 		Iterator<SAMRecord> recs = b.getRecords().iterator();
 
 		Assert.assertTrue(f.filterOut(recs.next()));
@@ -45,10 +45,10 @@ public class ChromosomeFilteringIteratorTest {
 
 		SAMRecordSetBuilder b = new SAMRecordSetBuilder();
 		// second argument is the contig index which is 0 based.  So contig index=0 -> chr1.  index=2 -> chr3, etc.
-		b.addFrag("1", 0, 1, false);
-		b.addFrag("2", 1, 1, false);
-		b.addFrag("3", 2, 1, false);
-		b.addFrag("4", 3, 1, false);
+		b.addFrag("chr1", 0, 1, false);
+		b.addFrag("chr2", 1, 1, false);
+		b.addFrag("chr3", 2, 1, false);
+		b.addFrag("chr4", 3, 1, false);
 		Iterator<SAMRecord> recs = b.getRecords().iterator();
 
 		Assert.assertFalse(f.filterOut(recs.next()));

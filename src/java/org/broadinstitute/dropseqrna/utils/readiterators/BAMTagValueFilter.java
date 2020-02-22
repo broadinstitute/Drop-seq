@@ -2,13 +2,14 @@ package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+import org.broadinstitute.dropseqrna.utils.PredicateFilteredIterator;
 
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-public class BAMTagValueFilter extends FilteredIterator<SAMRecord>{
+public class BAMTagValueFilter extends PredicateFilteredIterator<SAMRecord>{
 
 	private String tagName;
 	private Set<String> tagValues;
@@ -21,18 +22,12 @@ public class BAMTagValueFilter extends FilteredIterator<SAMRecord>{
 	 * @param tagValues
 	 */
 	protected BAMTagValueFilter(final Iterator<SAMRecord> underlyingIterator, final String tagName, final Collection<String> tagValues) {
-		super(underlyingIterator);
-		this.tagName=tagName;
-		this.tagValues=new HashSet<String>(tagValues);
+		super(underlyingIterator, new RequiredTagStringValuePredicate(tagName, tagValues, false));
+
+		
 	}
 
-	@Override
-	public boolean filterOut(final SAMRecord rec) {
-		if (tagValues==null) return false;
-		if (tagValues.isEmpty()) return false;
-		if (tagValues.contains(rec.getStringAttribute(this.tagName))) return false;
-		return true;
-	}
+	
 
 
 

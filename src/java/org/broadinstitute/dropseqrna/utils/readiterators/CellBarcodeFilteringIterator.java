@@ -25,6 +25,7 @@ package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+import org.broadinstitute.dropseqrna.utils.PredicateFilteredIterator;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -36,25 +37,10 @@ import java.util.Set;
  * @author nemesh
  *
  */
-public class CellBarcodeFilteringIterator extends FilteredIterator<SAMRecord> {
-
-	private final Set<String> cellBarcodes;
-	private final String cellBarcodeTag;
-
+public class CellBarcodeFilteringIterator extends PredicateFilteredIterator<SAMRecord> {
+	
 	public CellBarcodeFilteringIterator (final Iterator<SAMRecord> underlyingIterator, final String cellBarcodeTag, final Collection<String> cellBarcodes) {
-		super(underlyingIterator);
-		this.cellBarcodeTag=cellBarcodeTag;
-		if (cellBarcodes==null) this.cellBarcodes=null;
-		else this.cellBarcodes=new HashSet<>(cellBarcodes);
+		super(underlyingIterator, new RequiredTagStringValuePredicate(cellBarcodeTag, cellBarcodes, false));		
 	}
-
-	@Override
-	public boolean filterOut(final SAMRecord rec) {
-		if (cellBarcodes==null) return false;
-		String cellBarcode = rec.getStringAttribute(this.cellBarcodeTag);
-		if (cellBarcode==null) return true;
-		return (!this.cellBarcodes.contains(cellBarcode));
-	}
-
-
+	
 }
