@@ -20,14 +20,11 @@ public class EditDistanceFilteringIteratorTest {
 		b.addFrag("1", 0, 1, false);
 		SAMRecord r = b.getRecords().iterator().next();
 
-		r.setAttribute(EditDistanceFilteringIterator.EDIT_DISTANCE_TAG, 1);
+		r.setAttribute(ReadEditDistancePredicate.EDIT_DISTANCE_TAG, 1);
 		Assert.assertFalse(f.filterOut(r));
-		r.setAttribute(EditDistanceFilteringIterator.EDIT_DISTANCE_TAG, 2);
+		r.setAttribute(ReadEditDistancePredicate.EDIT_DISTANCE_TAG, 2);
 		Assert.assertFalse(f.filterOut(r));
-		r.setAttribute(EditDistanceFilteringIterator.EDIT_DISTANCE_TAG, 3);
+		r.setAttribute(ReadEditDistancePredicate.EDIT_DISTANCE_TAG, 3);
 		Assert.assertTrue(f.filterOut(r));
-
-
-
 	}
 }
