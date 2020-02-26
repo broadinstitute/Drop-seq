@@ -27,8 +27,8 @@ public class RequiredTagStringValuePredicate implements Predicate<SAMRecord> {
     @Override
     public boolean test(SAMRecord rec) {
     	// if values are null or empty, don't filter.
-    	if (values==null) return false;
-		if (values.isEmpty()) return false;
+    	if (values==null) return true;
+		if (values.isEmpty()) return true;
 		
 		boolean contains=values.contains(rec.getStringAttribute(this.requiredTag));
 		// if exclude filter if contained.
