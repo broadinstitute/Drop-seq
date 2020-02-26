@@ -75,6 +75,8 @@ public class DgeHeaderMerger {
                 addLibrary(header.getLibrary(prefix));
             }
         }
+        for (final DgeHeaderCommand command: new IterableAdapter<>(header.iterateCommands()))
+            mergedHeader.addCommand(command);
     }
 
     private void addLibrary(final DgeHeaderLibrary lib) {
