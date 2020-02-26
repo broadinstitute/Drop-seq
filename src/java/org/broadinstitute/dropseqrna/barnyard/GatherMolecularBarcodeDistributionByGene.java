@@ -119,7 +119,7 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	}
 
 
-	private void writePerTranscriptHeader(final BufferedWriter out) {
+	public static void writePerTranscriptHeader(final BufferedWriter out) {
 		String [] header = {"Cell Barcode", "Gene", "Molecular_Barcode", "Num_Obs"};
 		String h = StringUtils.join(header, "\t");
 		OutputWriterUtil.writeResult(h, out);
