@@ -74,6 +74,9 @@ public class TestUtils {
 		}
 		CloserUtil.close(e);
 		CloserUtil.close(a);
+		// one of the files is incomplete.
+		if (e.hasNext() || a.hasNext()) 
+			return false;		
 		return true;
 	}
 
