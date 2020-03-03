@@ -76,6 +76,7 @@ public class DigitalExpressionTest {
 
 	private static final File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.bam");
 	private static final File IN_CELL_BARCODE_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.cellbarcodes.txt");
+	private static final File IN_CELL_BARCODE_WITH_EXTRAS_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_with_extras.cellbarcodes.txt");
 
 	// expected results for standard coding strand specific DGE
 	private static final File EXPECTED_OUTFILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.dge.txt");
@@ -109,45 +110,45 @@ public class DigitalExpressionTest {
 
 	// DigitalExpression I=5cell3gene_retagged.bam SUMMARY=5cell3gene.dge_summary.txt O=5cell3gene.dge.txt OUTPUT_LONG_FORMAT=5cell3gene.dge_long.txt CELL_BC_FILE=5cell3gene.cellbarcodes.txt
 
-	@Test
-	public void testDoWork () {
-		File outFile=null;
-		File summaryFile=null;
-		File cellBarcodesFile=null;
-		File longOutput=null;
-		try {
-			outFile = File.createTempFile("testDigitalExpression.", ".digital_expression.txt");
-			summaryFile = File.createTempFile("testDigitalExpression.", ".digital_expression_summary.txt");
-	        cellBarcodesFile = File.createTempFile("testDigitalExpression.", ".selectedCellBarcodes.txt");
-	        longOutput=File.createTempFile("testDigitalExpression.", ".digital_expression_long.txt");
-	        outFile.deleteOnExit();
-			summaryFile.deleteOnExit();
-	        cellBarcodesFile.deleteOnExit();
-	        longOutput.deleteOnExit();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+	@Test(dataProvider = "testDoWorkDataProvider")
+	public void testDoWork (final File cellBCFile, final boolean omitMissingCells, final boolean testExpectedOutput) throws IOException {
+		final File outFile = File.createTempFile("testDigitalExpression.", ".digital_expression.txt");
+		final File summaryFile = File.createTempFile("testDigitalExpression.", ".digital_expression_summary.txt");
+		final File cellBarcodesFile = File.createTempFile("testDigitalExpression.", ".selectedCellBarcodes.txt");
+		final File longOutput = File.createTempFile("testDigitalExpression.", ".digital_expression_long.txt");
+		outFile.deleteOnExit();
+		summaryFile.deleteOnExit();
+		cellBarcodesFile.deleteOnExit();
+		longOutput.deleteOnExit();
 
-        final DigitalExpression de = new DigitalExpression();
+		final DigitalExpression de = new DigitalExpression();
 		de.INPUT = IN_FILE;
-		de.CELL_BC_FILE = IN_CELL_BARCODE_FILE;
+		de.CELL_BC_FILE = cellBCFile;
 		de.OUTPUT = outFile;
 		de.SUMMARY = summaryFile;
-        de.OUTPUT_LONG_FORMAT=longOutput;
-        // the headers aren't going to match up because they contain specific path info.
-        // de.UNIQUE_EXPERIMENT_ID = "test";
+		de.OUTPUT_LONG_FORMAT=longOutput;
+		de.OMIT_MISSING_CELLS = omitMissingCells;
+		// the headers aren't going to match up because they contain specific path info.
+		// de.UNIQUE_EXPERIMENT_ID = "test";
 
-        int result = de.doWork();
-        Assert.assertEquals(result, 0);
+		int result = de.doWork();
+		Assert.assertEquals(result, 0);
 
-        try {
-			Assert.assertTrue (FileUtils.contentEquals(outFile, EXPECTED_OUTFILE));
-			Assert.assertTrue (FileUtils.contentEquals(summaryFile, EXPECTED_OUTFILE_SUMMARY));
-			Assert.assertTrue (FileUtils.contentEquals(longOutput, EXPECTED_OUTFILE_LONG));
-		} catch (IOException e) {
-			e.printStackTrace();
+		if (testExpectedOutput) {
+			Assert.assertTrue(FileUtils.contentEquals(outFile, EXPECTED_OUTFILE));
+			Assert.assertTrue(FileUtils.contentEquals(summaryFile, EXPECTED_OUTFILE_SUMMARY));
+			Assert.assertTrue(FileUtils.contentEquals(longOutput, EXPECTED_OUTFILE_LONG));
 		}
+	}
 
+	@DataProvider(name = "testDoWorkDataProvider")
+	public Object[][] testDoWorkDataProvider() {
+		return new Object[][] {
+				{IN_CELL_BARCODE_FILE, false, true},
+				{IN_CELL_BARCODE_FILE, true, true},
+				{IN_CELL_BARCODE_WITH_EXTRAS_FILE, true, true},
+				{IN_CELL_BARCODE_WITH_EXTRAS_FILE, false, false}
+		};
 	}
 
 	//TODO: set up the proper output files.

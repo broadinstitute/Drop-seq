@@ -57,6 +57,7 @@ public class SplitBamByCellTest {
         bamSplitter.OUTPUT_LIST=outputBAMList;
         bamSplitter.NUM_OUTPUTS = 3;
         bamSplitter.REPORT = report;
+        TestUtils.setInflaterDeflaterIfMacOs();
 		Assert.assertEquals(bamSplitter.doWork(), 0);
 
         List<String> splitBAMFileList;
@@ -73,12 +74,14 @@ public class SplitBamByCellTest {
                 args.add("INPUT=" + splitBAMFilePath);
             }
             args.add("OUTPUT=" + mergedOutputBAM.getAbsolutePath());
+            args.add("USE_JDK_DEFLATER=" + TestUtils.isMacOs());
             Assert.assertEquals(fileMerger.instanceMain(args.toArray(new String[args.size()])), 0);
 
             // Metrics for the input test BAM file
             args = new ArrayList<String>();
             args.add("INPUT=" + TEST_BAM.getAbsolutePath());
             args.add("OUTPUT=" + originalMetrics.getAbsolutePath());
+            args.add("USE_JDK_DEFLATER=" + TestUtils.isMacOs());
             final CollectAlignmentSummaryMetrics originalMetricsCollector = new CollectAlignmentSummaryMetrics();
             Assert.assertEquals(originalMetricsCollector.instanceMain(args.toArray(new String[args.size()])), 0);
 
@@ -86,6 +89,7 @@ public class SplitBamByCellTest {
             args = new ArrayList<String>();
             args.add("INPUT=" + mergedOutputBAM.getAbsolutePath());
             args.add("OUTPUT=" + mergedMetrics.getAbsolutePath());
+            args.add("USE_JDK_DEFLATER=" + TestUtils.isMacOs());
             final CollectAlignmentSummaryMetrics mergedMetricsCollector = new CollectAlignmentSummaryMetrics();
             Assert.assertEquals(mergedMetricsCollector.instanceMain(args.toArray(new String[args.size()])), 0);
 

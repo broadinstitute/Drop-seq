@@ -34,7 +34,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import htsjdk.samtools.util.*;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -43,6 +45,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeader;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderCodec;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderLibrary;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
+import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
@@ -53,12 +56,6 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.SortingCollection;
-import htsjdk.samtools.util.StringUtil;
 import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
@@ -104,6 +101,10 @@ public class DigitalExpression extends DGECommandLineBase {
 
     @Argument(shortName = "UEI", doc="If OUTPUT_HEADER=true, this is required", optional = true)
     public String UNIQUE_EXPERIMENT_ID;
+
+    @Argument(doc="When using CELL_BC_FILE, do not emit a column for a cell barcode that appears in CELL_BC_FILE if it " +
+            "does not appear in the input BAM.")
+    public boolean OMIT_MISSING_CELLS = false;
 
     private boolean OUTPUT_EXPRESSED_GENES_ONLY=false;
 
@@ -160,32 +161,43 @@ public class DigitalExpression extends DGECommandLineBase {
 
     @Override
     protected String[] customCommandLineValidation() {
-        final String[] superErrors = super.customCommandLineValidation();
-        if (OUTPUT_HEADER == null)
-			OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
-        if (UNIQUE_EXPERIMENT_ID != null || !OUTPUT_HEADER)
-			return superErrors;
-		else {
-            final ArrayList<String> list = new ArrayList<>(1);
-            if (superErrors != null)
-				for (final String msg: superErrors)
-					list.add(msg);
-            list.add("If OUTPUT_HEADER==true, UNIQUE_EXPERIMENT_ID must be set");
-            return list.toArray(new String[list.size()]);
+        if (OUTPUT_HEADER == null) {
+            OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
         }
+        final ArrayList<String> list = new ArrayList<>(1);
+        if (UNIQUE_EXPERIMENT_ID == null && OUTPUT_HEADER) {
+            list.add("If OUTPUT_HEADER==true, UNIQUE_EXPERIMENT_ID must be set");
+        }
+        if (OMIT_MISSING_CELLS && CELL_BC_FILE == null) {
+            list.add("OMIT_MISSING_CELLS can only be true if CELL_BC_FILE is supplied");
+        }
+        return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
     }
 
-    private void digitalExpression(final List<String> cellBarcodes) {
+    private void digitalExpression(List<String> cellBarcodes) {
         PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
 
         if (OUTPUT_HEADER)
 			writeDgeHeader(out);
 
-        writeHeader(out, cellBarcodes);
         //TODO should the ambiguous reads handling be a parameter?  It's set to false by default for DGE to get rid of ambiguous gene assignments on reads
-        UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
-        		GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
-        		this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ, false, cellBarcodes);
+        UMIIterator realUMIIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
+                GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
+                this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ, false, cellBarcodes,
+                false, OMIT_MISSING_CELLS);
+        CloseableIterator<UMICollection> umiIterator = realUMIIterator;
+
+        if (OMIT_MISSING_CELLS) {
+            // In order to find out what cell barcodes are present, need to start iteration, in order to force reading
+            // of entire input.
+            final PeekableIterator<UMICollection> peekableIterator = new PeekableIterator<>(umiIterator);
+            peekableIterator.peek();
+            umiIterator = peekableIterator;
+            // Filter the cell barcode list so that only cells seen in the input go into the output.
+            cellBarcodes = cellBarcodes.stream().filter(cell -> realUMIIterator.getCellBarcodesSeen().contains(cell)).collect(Collectors.toList());
+        }
+
+        writeHeader(out, cellBarcodes);
 
         String gene = null;
         Map<String, Integer> transcriptCountMap = new HashMap<>();

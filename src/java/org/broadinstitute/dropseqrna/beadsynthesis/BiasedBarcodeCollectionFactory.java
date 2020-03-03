@@ -57,7 +57,7 @@ public class BiasedBarcodeCollectionFactory {
 				GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG,
 				GeneFunctionCommandLineBase.DEFAULT_GENE_FUNCTION_TAG, GeneFunctionCommandLineBase.DEFAULT_STRAND_STRATEGY,
 				GeneFunctionCommandLineBase.DEFAULT_LOCUS_FUNCTION_LIST,
-				cellBarcodeTag, molBCTag, readMQ, false, cellBarcodes, true);
+				cellBarcodeTag, molBCTag, readMQ, false, cellBarcodes, true, false);
 
 	}
 
