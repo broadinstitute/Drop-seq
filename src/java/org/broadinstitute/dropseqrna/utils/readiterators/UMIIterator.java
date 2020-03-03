@@ -24,6 +24,7 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
@@ -31,6 +32,9 @@ import org.broadinstitute.dropseqrna.utils.*;
 import picard.annotation.LocusFunction;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 public class UMIIterator implements CloseableIterator<UMICollection>  {
 
@@ -42,6 +46,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	private final String cellBarcodeTag;
 	private final String molecularBarcodeTag;
     private final StringInterner stringCache = new StringInterner();
+    private final Set<String> cellBarcodesSeen;
 
 	/**
 	 * Construct an object that generates UMI objects from a BAM file
@@ -49,10 +54,10 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	 * @param geneTag The gene tag on BAM records
 	 * @param cellBarcodeTag The cell barcode tag on BAM records
 	 * @param molecularBarcodeTag The molecular barcode tag on BAM records
-	 * @param strandTag The strand tag on BAM records
+	 * @param geneStrandTag The strand tag on BAM records
 	 * @param readMQ The minimum map quality of the reads
 	 * @param assignReadsToAllGenes Should records tagged with multiple genes be double counted, once for each gene?
-	 * @param useStrandInfo should the gene and read strand match for the read to be accepted
+	 * @param strandStrategy should the gene and read strand match for the read to be accepted
 	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.
      *                     Only reads with these values will be used.  If set to null, all cell barcodes are used.
 	 */
@@ -67,7 +72,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final int readMQ,
                        final boolean assignReadsToAllGenes,
                        final Collection<String> cellBarcodes) {
-		this(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy, acceptedLociFunctions, cellBarcodeTag, molecularBarcodeTag, readMQ, assignReadsToAllGenes, cellBarcodes, false);
+		this(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy, acceptedLociFunctions,
+				cellBarcodeTag, molecularBarcodeTag, readMQ, assignReadsToAllGenes, cellBarcodes, false, false);
 	}
 
 	/**
@@ -76,14 +82,16 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	 * @param geneTag The geneExon tag on BAM records
 	 * @param cellBarcodeTag The cell barcode tag on BAM records
 	 * @param molecularBarcodeTag The molecular barcode tag on BAM records
-	 * @param strandTag The strand tag on BAM records
+	 * @param geneStrandTag The strand tag on BAM records
 	 * @param readMQ The minimum map quality of the reads
 	 * @param assignReadsToAllGenes Should records tagged with multiple genes be double counted, once for each gene?
-	 * @param useStrandInfo should the gene and read strand match for the read to be accepted
+	 * @param strandStrategy should the gene and read strand match for the read to be accepted
 	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.
      *                     Only reads with these values will be used.  If set to null, all cell barcodes are used.
 	 * @param cellFirstSort if true, then cell barcodes are sorted first, followed by gene/exon tags.
      *                      If false, then gene/exon tags are sorted first, followed by cells.  false is the default and used in the other constructor.
+	 * @param recordCellsInInput While sorting the input, keep track of what cells appear in the input.  This record
+	 *                           is not complete until iteration is started.
 	 */
 	public UMIIterator(final SamHeaderAndIterator headerAndIterator,
 					   final String geneTag,
@@ -96,7 +104,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final int readMQ,
                        final boolean assignReadsToAllGenes,
                        final Collection<String> cellBarcodes,
-                       final boolean cellFirstSort) {
+                       final boolean cellFirstSort,
+					   final boolean recordCellsInInput) {
 
         this.geneTag=geneTag;
         this.cellBarcodeTag=cellBarcodeTag;
@@ -110,20 +119,28 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		else
 			multiComparator = new MultiComparator<>(geneExonTagComparator, cellBarcodeTagComparator);
         // Filter records before sorting, to reduce I/O
-		MissingTagFilteringIterator filteringIterator =
+		Iterator<SAMRecord> filteringIterator =
                 new MissingTagFilteringIterator(headerAndIterator.iterator, cellBarcodeTag, geneTag, molecularBarcodeTag);
 
 		// Filter reads on map quality
-		MapQualityFilteredIterator filteringIterator2 = new MapQualityFilteredIterator(filteringIterator, readMQ, true);
+		filteringIterator = new MapQualityFilteredIterator(filteringIterator, readMQ, true);
+
+		if (recordCellsInInput) {
+			this.cellBarcodesSeen = new HashSet<>();
+			filteringIterator = new CellBarcodeRecorder(filteringIterator);
+		} else {
+			this.cellBarcodesSeen = null;
+		}
 
 		// Filter reads on if the read contains a cell barcode, if cell barcodes have been specified.
-		FilteredIterator<SAMRecord> filteringIterator3 =
-				(cellBarcodes != null?
-						new TagValueFilteringIterator<String>(filteringIterator2, this.cellBarcodeTag, cellBarcodes):
-				filteringIterator2);
+		if (cellBarcodes != null) {
+			filteringIterator =
+					new TagValueFilteringIterator<>(filteringIterator, this.cellBarcodeTag, cellBarcodes);
+		}
 
 		// Filter/assign reads based on functional annotations
-		GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator3, geneTag, geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
+		GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator, geneTag,
+				geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
 
         CloseableIterator<SAMRecord> sortedAlignmentIterator = SamRecordSortingIteratorFactory.create(
                 headerAndIterator.header, gfteratorWrapper, multiComparator, prog);
@@ -181,5 +198,30 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		return this.atoi.hasNext();
 	}
 
+	public Set<String> getCellBarcodesSeen() {
+		return cellBarcodesSeen;
+	}
 
+	private class CellBarcodeRecorder
+	implements Iterator<SAMRecord> {
+		private final Iterator<SAMRecord> underlyingIterator;
+		private final short cellBarcodeBinaryTag;
+
+		public CellBarcodeRecorder(Iterator<SAMRecord> underlyingIterator) {
+			this.underlyingIterator = underlyingIterator;
+			cellBarcodeBinaryTag = SAMTag.makeBinaryTag(cellBarcodeTag);
+		}
+
+		@Override
+		public boolean hasNext() {
+			return underlyingIterator.hasNext();
+		}
+
+		@Override
+		public SAMRecord next() {
+			final SAMRecord ret = underlyingIterator.next();
+			cellBarcodesSeen.add((String)ret.getAttribute(cellBarcodeBinaryTag));
+			return ret;
+		}
+	}
 }

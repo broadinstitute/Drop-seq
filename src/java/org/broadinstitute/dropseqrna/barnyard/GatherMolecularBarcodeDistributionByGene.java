@@ -86,7 +86,7 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
 				GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
         		this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-        		this.READ_MQ, false, cellBarcodes, true);
+        		this.READ_MQ, false, cellBarcodes, true, false);
 
 		UMICollection batch;
 
