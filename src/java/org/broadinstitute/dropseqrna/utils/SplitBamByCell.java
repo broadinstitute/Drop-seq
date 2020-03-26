@@ -24,21 +24,21 @@
 package org.broadinstitute.dropseqrna.utils;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import com.google.common.collect.Streams;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.IterableAdapter;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
+import htsjdk.samtools.util.*;
 import org.apache.commons.math3.stat.StatUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -77,7 +77,8 @@ public class SplitBamByCell extends CommandLineProgram {
     @Argument(doc="Number of output files to create")
     public Integer NUM_OUTPUTS;
 
-    @Argument(doc="Template for output file names.")
+    @Argument(doc="Template for output file names.  If OUTPUT_LIST is specified, and OUTPUT is a relative path," +
+            " output file paths will be relative to the directory of the OUTPUT_LIST.")
     public File OUTPUT;
 
     @Argument(optional=true, doc="For each output file, this string in the OUTPUT template will be replaced with an integer.")
@@ -115,8 +116,15 @@ public class SplitBamByCell extends CommandLineProgram {
     }
 
     private SAMFileInfo createWriterInfo(final SAMFileHeader header, int writerIdx) {
-        final File samFile = new File(OUTPUT.getAbsolutePath().replace(OUTPUT_SLUG, String.valueOf(writerIdx)));
-        final SAMFileWriter samFileWriter = samWriterFactory.makeSAMOrBAMWriter(header, true, samFile);
+        final String outputPath = OUTPUT.toString().replace(OUTPUT_SLUG, String.valueOf(writerIdx));
+        final File samFile = new File(outputPath);;
+        final File actualFileToOpen;
+        if (OUTPUT_LIST == null) {
+            actualFileToOpen = samFile;
+        } else {
+            actualFileToOpen = resolveBamPath(OUTPUT_LIST.getParentFile(), samFile);
+        }
+        final SAMFileWriter samFileWriter = samWriterFactory.makeSAMOrBAMWriter(header, true, actualFileToOpen);
         return new SAMFileInfo(samFile, samFileWriter, 0);
     }
 
@@ -166,7 +174,7 @@ public class SplitBamByCell extends CommandLineProgram {
         final PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT_LIST));
 
         for (SAMFileInfo writerInfo : writerInfoList) {
-            out.println(writerInfo.getSamFile().getAbsolutePath());
+            out.println(writerInfo.getSamFile().toString());
         }
 
         out.close();
@@ -213,5 +221,23 @@ public class SplitBamByCell extends CommandLineProgram {
         public void incrementReadCount() {
             readCount++;
         }
+    }
+
+    /**
+     * Implements the semantic in which a relative path in a bam_list is resolved relative to the canonical directory
+     * containing the bam_list itself.
+     */
+    public static List<File> readBamList(final File bamList) {
+        try {
+            final File canonicalDirectory = bamList.getCanonicalFile().getParentFile();
+            return Streams.stream((Iterable<String>)IOUtil.readLines(bamList)).
+                    map(s -> resolveBamPath(canonicalDirectory, new File(s))).collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new RuntimeIOException("Exception reading " + bamList, e);
+        }
+    }
+
+    private static File resolveBamPath(final File bamListDirectory, final File bamPath) {
+        return bamListDirectory.toPath().resolve(bamPath.toPath()).toFile();
     }
 }

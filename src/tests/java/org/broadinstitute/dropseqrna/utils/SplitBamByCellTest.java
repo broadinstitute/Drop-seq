@@ -25,11 +25,15 @@ package org.broadinstitute.dropseqrna.utils;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.io.FileUtils;
+import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 import picard.analysis.CollectAlignmentSummaryMetrics;
@@ -45,33 +49,31 @@ public class SplitBamByCellTest {
 	public void testDoWork() {
         final SplitBamByCell bamSplitter = new SplitBamByCell();
 
-		File outputBAM = getTempReportFile("SplitBamByCell", bamSplitter.OUTPUT_SLUG + ".bam");
-        File outputBAMList = getTempReportFile("SplitBamByCell", ".list");
-        File mergedOutputBAM = getTempReportFile("SplitBamByCell", ".bam");
-        File report = getTempReportFile("SplitBamByCell", ".report");
-        File originalMetrics = getTempReportFile("SplitBamByCell", ".metrics");
-        File mergedMetrics = getTempReportFile("SplitBamByCell", ".metrics");
+        File outputBAMList = TestUtils.getTempReportFile("SplitBamByCell.", ".list");
+        File mergedOutputBAM = TestUtils.getTempReportFile("SplitBamByCell.", ".bam");
+        File report = TestUtils.getTempReportFile("SplitBamByCell.", ".report");
+        File originalMetrics = TestUtils.getTempReportFile("SplitBamByCell.", ".metrics");
+        File mergedMetrics = TestUtils.getTempReportFile("SplitBamByCell.", ".metrics");
 
         bamSplitter.INPUT=Arrays.asList(TEST_BAM);
-        bamSplitter.OUTPUT=outputBAM;
+        bamSplitter.OUTPUT=new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST=outputBAMList;
         bamSplitter.NUM_OUTPUTS = 3;
         bamSplitter.REPORT = report;
         TestUtils.setInflaterDeflaterIfMacOs();
 		Assert.assertEquals(bamSplitter.doWork(), 0);
 
-        List<String> splitBAMFileList;
+        List<File> splitBAMFileList = SplitBamByCell.readBamList(outputBAMList);
 		try {
-            splitBAMFileList = FileUtils.readLines(outputBAMList);
-            for (String filePath : splitBAMFileList) {
-                new File(filePath).deleteOnExit();
+            for (File f : splitBAMFileList) {
+                f.deleteOnExit();
             }
 
             // Merge the split BAM files
             final MergeSamFiles fileMerger = new MergeSamFiles();
             List<String> args = new ArrayList<>();
-            for (String splitBAMFilePath : splitBAMFileList)  {
-                args.add("INPUT=" + splitBAMFilePath);
+            for (File splitBAMFilePath : splitBAMFileList)  {
+                args.add("INPUT=" + splitBAMFilePath.getAbsolutePath());
             }
             args.add("OUTPUT=" + mergedOutputBAM.getAbsolutePath());
             args.add("USE_JDK_DEFLATER=" + TestUtils.isMacOs());
@@ -109,15 +111,29 @@ public class SplitBamByCellTest {
 		}
     }
 
-    private File getTempReportFile (final String prefix, final String suffix) {
-        File tempFile;
-
-        try {
-            tempFile = File.createTempFile(prefix, suffix);
-            tempFile.deleteOnExit();
-        } catch (IOException ex) {
-            throw new RuntimeException("Error creating a temp file", ex);
-        }
-        return tempFile;
+    @Test
+    public void testReadBamList() throws IOException {
+        // Create a bam_list with one relative path and one absolute, and confirm that reader
+        // resolves them correctly.
+        final File bamList = TestUtils.getTempReportFile("testReadBamList.", ".bam_list");
+        final PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(bamList));
+        final String relative = "foo.bam";
+        out.println(relative);
+        final String absolute = "/an/absolute/path.bam";
+        out.println(absolute);
+        out.close();
+        final List<File> expected = Arrays.asList(
+          new File(bamList.getCanonicalFile().getParent(), relative),
+          new File(absolute)
+        );
+        Assert.assertEquals(expected, SplitBamByCell.readBamList(bamList));
+        // Confirm that when reading a symlink to a bam_list, relative paths are resolved relative to the directory
+        // of the actually bam_list file, not the directory containing the symlink.
+        final File otherDir = Files.createTempDirectory("testReadBamList").toFile();
+        otherDir.deleteOnExit();
+        final File symlink = new File(otherDir, "testReadBamList.bam_list");
+        symlink.deleteOnExit();
+        Files.createSymbolicLink(symlink.toPath(), bamList.toPath());
+        Assert.assertEquals(expected, SplitBamByCell.readBamList(symlink));
     }
 }
