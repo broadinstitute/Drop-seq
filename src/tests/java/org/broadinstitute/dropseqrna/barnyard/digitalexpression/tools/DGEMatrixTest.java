@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
@@ -43,6 +44,8 @@ public class DGEMatrixTest {
 	private final File matrixMarketMatrixFile = new File ("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/tenXMatrixMarket.mtx");
 	private final File matrixMarketCellFile = new File ("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/tenXMatrixMarketCellBarcodes.tsv");
 	private final File matrixMarketGeneFile = new File ("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/tenXMatrixMarketGenes.tsv");
+	// same cells as exampleOne, but different genes
+	private final File metageneExampleOne = new File("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/metagene_dge_example1.txt.gz");
 
 
 
@@ -400,5 +403,32 @@ public class DGEMatrixTest {
         Assert.assertEquals(dge1.getMatrix(), dge2.getMatrix());
     }
 
+
+	/**
+	 * Merge 2 DGEs with the same cell barcodes, but set of genes disjoint.
+	 */
+	@Test
+	public void testMergeIdenticalCells() {
+		final DGEMatrix m1 = DGEMatrix.parseFile(exampleOne);
+		final DGEMatrix m2 = DGEMatrix.parseFile(metageneExampleOne);
+		final DGEMatrix merged = m1.merge(m2);
+		final DGEMatrix mergedOtherWay = m2.merge(m1);
+		Assert.assertEquals(merged.getMatrix(), mergedOtherWay.getMatrix());
+		Assert.assertEquals(m1.getCellBarcodes(), merged.getCellBarcodes());
+		Assert.assertEquals(m2.getCellBarcodes(), merged.getCellBarcodes());
+		Assert.assertEquals(m1.getGenes().size() + m2.getGenes().size(), merged.getGenes().size());
+		assertSubset(merged, m1);
+		assertSubset(merged, m2);
+		Assert.assertTrue(TestUtils.testSorted(merged.getGenes()));
+	}
+
+	// assert that for every gene in sub, the expression of that gene is identical to m
+	private void assertSubset(final DGEMatrix m, final DGEMatrix sub) {
+		for (final String gene: sub.getGenes()) {
+			final double[] subExpression = sub.getExpression(gene);
+			final double[] mExpression = m.getExpression(gene);
+			Assert.assertTrue(Arrays.equals(subExpression, mExpression));
+		}
+	}
 
 }

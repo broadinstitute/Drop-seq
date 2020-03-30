@@ -23,20 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression.tools;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.ProgressLogger;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
@@ -51,12 +41,11 @@ import org.la4j.iterator.MatrixIterator;
 import org.la4j.matrix.SparseMatrix;
 import org.la4j.matrix.sparse.CRSMatrix;
 import org.la4j.vector.functor.VectorAccumulator;
-
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
 import picard.util.BasicInputParser;
 import picard.util.TabbedInputParser;
+
+import java.io.*;
+import java.util.*;
 
 /**
  * This class is designed to hold a matrix of gene expression, addressable by gene name and cell barcode
@@ -80,7 +69,7 @@ public class DGEMatrix {
 	// this is consistent across all cells.
 	private final Map<String, Integer> cellBarcodeMap;
 	// Computed as necessary, and invalidate when appropriate
-	private List<String> cellBarcodeCache = null;
+	private List<String> cellBarcodeCache;
 
 	// the expression data in a matrix
 	private Matrix expressionMatrix;
@@ -365,6 +354,38 @@ public class DGEMatrix {
 		return this.expressionMatrix.toDenseMatrix().toArray();
 	}
 
+	public DGEMatrix merge (final DGEMatrix other) {
+		if (this.getCellBarcodes().equals(other.getCellBarcodes())) {
+			return mergeExpressionForCells(other);
+		} else {
+			return mergeDisjointCells(other);
+		}
+	}
+
+	private DGEMatrix mergeExpressionForCells(DGEMatrix other) {
+		List<String> thisGenes = this.getGenes();
+		List<String> otherGenes = other.getGenes();
+		Collection<String> geneOverlap = CollectionUtils.intersection(thisGenes, otherGenes);
+		if (!geneOverlap.isEmpty()) {
+			throw new IllegalArgumentException("The two matrixes have overlapping genes, this should not happen:" +
+					geneOverlap.toString());
+		}
+		List<String> allGenes = new ArrayList<> (thisGenes);
+		CollectionUtils.addAll(allGenes, otherGenes);
+		Collections.sort(allGenes);
+		CRSMatrix m = new CRSMatrix(allGenes.size(), expressionMatrix.columns());
+		final ProgressLogger progressLogger = new ProgressLogger(log, 1000, "processed",
+				String.format("genes of %d", allGenes.size()));
+		final Set<String> thisGenesSet = new HashSet<>(thisGenes);
+		for (int i = 0; i < allGenes.size(); ++i) {
+			final String gene = allGenes.get(i);
+			final DGEMatrix sourceMatrix = thisGenesSet.contains(gene)? this: other;
+			m.setRow(i, sourceMatrix.expressionMatrix.getRow(sourceMatrix.geneMap.get(gene)));
+			progressLogger.record(gene, i);
+		}
+		return (new DGEMatrix(this.getCellBarcodes(), allGenes, m));
+	}
+
 	/**
 	 * Merges two DGE matrixes together.  This retains all columns in both experiments, and adds rows that are missing in either data set.
 	 * The missing values are set to <missingValue>.
@@ -372,10 +393,11 @@ public class DGEMatrix {
 	 * @param other The other data set to merge with this one.
 	 * @return a new DGEMatrix containing the merge of the this with other.
 	 */
-	public DGEMatrix merge (final DGEMatrix other) {
+	public DGEMatrix mergeDisjointCells (final DGEMatrix other) {
 		Collection<String>overlap = CollectionUtils.intersection(this.getCellBarcodes(), other.getCellBarcodes());
-		if (overlap.size()>0)
+		if (!overlap.isEmpty()) {
 			throw new IllegalArgumentException("The two matrixes have overlapping cell barcodes, this should not happen:" + overlap.toString());
+		}
 
 		// merge the cell barcodes.
 		List <String> cellBarcodes = new ArrayList<>(this.getCellBarcodes());
