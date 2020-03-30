@@ -157,4 +157,19 @@ public class TestUtils {
         }
         return tempFile;
     }
+
+	/**
+	 * @return true if l is sorted (equal values allowed)
+	 */
+	public static <T extends Comparable> boolean testSorted(final List<T> l) {
+		T prev = null;
+		for (T v : l) {
+			if (prev == null) {
+				prev = v;
+			} else if (prev.compareTo(v) > 0) {
+				return false;
+			}
+		}
+		return true;
+	}
 }
