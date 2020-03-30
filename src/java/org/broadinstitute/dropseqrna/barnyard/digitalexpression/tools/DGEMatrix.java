@@ -79,22 +79,29 @@ public class DGEMatrix {
 	// holds a map of the cell barcode to the position in the expression array
 	// this is consistent across all cells.
 	private final Map<String, Integer> cellBarcodeMap;
+	// Computed as necessary, and invalidate when appropriate
+	private List<String> cellBarcodeCache = null;
 
 	// the expression data in a matrix
 	private Matrix expressionMatrix;
 	private final double SPARSE_VALUE=0;
 
 	public DGEMatrix(final List<String> cellBarcodes, final List<String> geneNames, final double [] [] expressionMatrix) {
-		if (expressionMatrix.length!=geneNames.size())
-			throw new IllegalArgumentException("Rows of expression matrix [" + expressionMatrix.length +"] not equal to number of genes [" + geneNames.size()+ "]");
-		if (expressionMatrix[0].length!=cellBarcodes.size())
-			throw new IllegalArgumentException("Columns of expression matrix [" + expressionMatrix[0].length +"] not equal to number of cells [" + cellBarcodes.size()+ "]");
+		this(cellBarcodes, geneNames, from2DCtorHelper(cellBarcodes, geneNames, expressionMatrix));
+	}
 
-		// add data
-		this.expressionMatrix = CRSMatrix.from2DArray(expressionMatrix);
-		this.geneMap = listToMap(geneNames);
-		this.cellBarcodeMap=listToMap(cellBarcodes);
-
+	private static Matrix from2DCtorHelper(final List<String> cellBarcodes,
+										   final List<String> geneNames,
+										   final double [] [] expressionMatrix) {
+		if (expressionMatrix.length!=geneNames.size()) {
+			throw new IllegalArgumentException("Rows of expression matrix [" + expressionMatrix.length +
+					"] not equal to number of genes [" + geneNames.size() + "]");
+		}
+		if (expressionMatrix[0].length!=cellBarcodes.size()) {
+			throw new IllegalArgumentException("Columns of expression matrix [" + expressionMatrix[0].length +
+					"] not equal to number of cells [" + cellBarcodes.size() + "]");
+		}
+		return CRSMatrix.from2DArray(expressionMatrix);
 	}
 
 	/**
@@ -103,16 +110,14 @@ public class DGEMatrix {
 	 * @param cellBarcodes A list of cell barcodes that are columns of the matrix.
 	 */
 	public DGEMatrix(final List<String> cellBarcodes, final List<String> geneNames) {
-		// add data
-		this.expressionMatrix = CRSMatrix.zero(geneNames.size(), cellBarcodes.size());
-		this.geneMap = listToMap(geneNames);
-		this.cellBarcodeMap=listToMap(cellBarcodes);
+		this(cellBarcodes, geneNames, CRSMatrix.zero(geneNames.size(), cellBarcodes.size()));
 	}
 
 	private DGEMatrix(final List<String> cellBarcodes, final List<String> geneNames, final Matrix m) {
 		this.expressionMatrix = m;
 		this.geneMap = listToMap(geneNames);
 		this.cellBarcodeMap=listToMap(cellBarcodes);
+		this.cellBarcodeCache = new ArrayList<>(cellBarcodes);
 	}
 
 
@@ -173,9 +178,11 @@ public class DGEMatrix {
 	 *
 	 * @return a list of cell barcodes in this data set.
 	 */
-	// TODO: should these results be cached?
 	public List<String> getCellBarcodes () {
-		return (mapToList(this.cellBarcodeMap));
+		if (cellBarcodeCache == null) {
+			cellBarcodeCache = mapToList(this.cellBarcodeMap);
+		}
+		return Collections.unmodifiableList(cellBarcodeCache);
 	}
 
 	/**
@@ -196,6 +203,7 @@ public class DGEMatrix {
 		for (String cell: cellBarcodes) {
 			removeFromMap(cell, this.cellBarcodeMap);
 		}
+		cellBarcodeCache = null;
 		
 		Collections.sort(toRemove);
 		Collections.reverse(toRemove);
