@@ -38,8 +38,10 @@ import org.broadinstitute.dropseqrna.matrixmarket.MatrixMarketWriter;
 import org.la4j.Matrix;
 import org.la4j.Vectors;
 import org.la4j.iterator.MatrixIterator;
+import org.la4j.iterator.VectorIterator;
 import org.la4j.matrix.SparseMatrix;
 import org.la4j.matrix.sparse.CRSMatrix;
+import org.la4j.vector.SparseVector;
 import org.la4j.vector.functor.VectorAccumulator;
 import picard.util.BasicInputParser;
 import picard.util.TabbedInputParser;
@@ -313,6 +315,10 @@ public class DGEMatrix {
 			return (getExpressionDense(gene));
 	}
 
+	public double getExpression(final String gene, final String cellBarcode) {
+		return expressionMatrix.get(geneMap.get(gene), cellBarcodeMap.get(cellBarcode));
+	}
+
 	private double [] getExpressionSparse (final String gene) {
 		CRSMatrix thisM = (CRSMatrix) this.expressionMatrix;
 		Integer rowIdx = this.geneMap.get(gene);
@@ -355,13 +361,17 @@ public class DGEMatrix {
 	}
 
 	public DGEMatrix merge (final DGEMatrix other) {
-		if (this.getCellBarcodes().equals(other.getCellBarcodes())) {
+		if (!CollectionUtils.intersection(this.getCellBarcodes(), other.getCellBarcodes()).isEmpty()) {
 			return mergeExpressionForCells(other);
 		} else {
 			return mergeDisjointCells(other);
 		}
 	}
 
+	/**
+	 * Merge DGEs that have different genes in each DGE.  List of cells may overlap, or may not.
+	 * @return a new DGEMatrix that is the merge of this and other.
+	 */
 	private DGEMatrix mergeExpressionForCells(DGEMatrix other) {
 		List<String> thisGenes = this.getGenes();
 		List<String> otherGenes = other.getGenes();
@@ -373,17 +383,54 @@ public class DGEMatrix {
 		List<String> allGenes = new ArrayList<> (thisGenes);
 		CollectionUtils.addAll(allGenes, otherGenes);
 		Collections.sort(allGenes);
-		CRSMatrix m = new CRSMatrix(allGenes.size(), expressionMatrix.columns());
 		final ProgressLogger progressLogger = new ProgressLogger(log, 1000, "processed",
 				String.format("genes of %d", allGenes.size()));
-		final Set<String> thisGenesSet = new HashSet<>(thisGenes);
+		// Determine which DGE has more cells.
+		final DGEMatrix bigger;
+		final DGEMatrix smaller;
+		if (this.getCellBarcodes().size() >= other.getCellBarcodes().size()) {
+			bigger = this;
+			smaller = other;
+		} else {
+			bigger = other;
+			smaller = this;
+		}
+		// Cells from bigger list go first, and then any that are in the smaller but not the bigger.
+		final List<String> allCellBarcodes = new ArrayList<>(bigger.getCellBarcodes());
+		// Create a map of the old to new index of columns in the DGE with fewer columns.
+		final Map<Integer, Integer> smallerColumnMap = new HashMap<>();
+		for (int column = 0; column < smaller.getCellBarcodes().size(); ++column) {
+			final String cell = smaller.getCellBarcodes().get(column);
+			int newColumn = allCellBarcodes.indexOf(cell);
+			if (newColumn == -1) {
+				newColumn = allCellBarcodes.size();
+				allCellBarcodes.add(cell);
+			}
+			smallerColumnMap.put(column, newColumn);
+		}
+		CRSMatrix m = new CRSMatrix(allGenes.size(), allCellBarcodes.size());
+		final Set<String> biggerGenesSet = new HashSet<>(bigger.getGenes());
 		for (int i = 0; i < allGenes.size(); ++i) {
 			final String gene = allGenes.get(i);
-			final DGEMatrix sourceMatrix = thisGenesSet.contains(gene)? this: other;
-			m.setRow(i, sourceMatrix.expressionMatrix.getRow(sourceMatrix.geneMap.get(gene)));
+			org.la4j.Vector outVec;
+			if (biggerGenesSet.contains(gene)) {
+				outVec = bigger.expressionMatrix.getRow(bigger.geneMap.get(gene));
+				// append zeroes as appropriate
+				outVec = outVec.copyOfLength(allCellBarcodes.size());
+			} else {
+				final double[] primVec = new double[allCellBarcodes.size()];
+				final VectorIterator it = smaller.expressionMatrix.getRow(smaller.geneMap.get(gene)).toSparseVector().nonZeroIterator();
+				while (it.hasNext()) {
+					final double val = it.next();
+					final int newIndex = smallerColumnMap.get(it.index());
+					primVec[newIndex] = val;
+				}
+				outVec = SparseVector.fromArray(primVec);
+			}
+			m.setRow(i, outVec);
 			progressLogger.record(gene, i);
 		}
-		return (new DGEMatrix(this.getCellBarcodes(), allGenes, m));
+		return (new DGEMatrix(allCellBarcodes, allGenes, m));
 	}
 
 	/**
