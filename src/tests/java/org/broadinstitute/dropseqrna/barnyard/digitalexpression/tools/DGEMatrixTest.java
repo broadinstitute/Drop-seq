@@ -26,7 +26,9 @@ package org.broadinstitute.dropseqrna.barnyard.digitalexpression.tools;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.junit.Assert;
@@ -408,27 +410,33 @@ public class DGEMatrixTest {
 	 * Merge 2 DGEs with the same cell barcodes, but set of genes disjoint.
 	 */
 	@Test
-	public void testMergeIdenticalCells() {
+	public void testMergeExpressionForCells() {
 		final DGEMatrix m1 = DGEMatrix.parseFile(exampleOne);
 		final DGEMatrix m2 = DGEMatrix.parseFile(metageneExampleOne);
 		final DGEMatrix merged = m1.merge(m2);
 		final DGEMatrix mergedOtherWay = m2.merge(m1);
 		Assert.assertEquals(merged.getMatrix(), mergedOtherWay.getMatrix());
-		Assert.assertEquals(m1.getCellBarcodes(), merged.getCellBarcodes());
-		Assert.assertEquals(m2.getCellBarcodes(), merged.getCellBarcodes());
-		Assert.assertEquals(m1.getGenes().size() + m2.getGenes().size(), merged.getGenes().size());
-		assertSubset(merged, m1);
-		assertSubset(merged, m2);
+		final Set<String> allCellBarcodes = new HashSet<>(m1.getCellBarcodes());
+		allCellBarcodes.addAll(m2.getCellBarcodes());
+		Assert.assertEquals(allCellBarcodes, new HashSet<>(merged.getCellBarcodes()));
+		final Set<String> allGenes = new HashSet<>(m1.getGenes());
+		allGenes.addAll(m2.getGenes());
+		Assert.assertEquals(allGenes, new HashSet<>(merged.getGenes()));
 		Assert.assertTrue(TestUtils.testSorted(merged.getGenes()));
-	}
-
-	// assert that for every gene in sub, the expression of that gene is identical to m
-	private void assertSubset(final DGEMatrix m, final DGEMatrix sub) {
-		for (final String gene: sub.getGenes()) {
-			final double[] subExpression = sub.getExpression(gene);
-			final double[] mExpression = m.getExpression(gene);
-			Assert.assertTrue(Arrays.equals(subExpression, mExpression));
+		for (final String gene : merged.getGenes()) {
+			final DGEMatrix whichMatrix;
+			if (m1.getGenes().contains(gene)) {
+				whichMatrix = m1;
+			} else {
+				whichMatrix = m2;
+			}
+			for (final String cellBarcode : merged.getCellBarcodes()) {
+				if (whichMatrix.getCellBarcodes().contains(cellBarcode)) {
+					Assert.assertEquals(whichMatrix.getExpression(gene, cellBarcode), merged.getExpression(gene, cellBarcode), 0.0);
+				} else {
+					Assert.assertEquals(0.0, merged.getExpression(gene, cellBarcode), 0.0);
+				}
+			}
 		}
 	}
-
 }
