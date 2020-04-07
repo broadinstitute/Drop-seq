@@ -26,8 +26,8 @@ xmx=4g
 
 progname=__PROGNAME__
 thisdir=`dirname ${BASH_SOURCE[0]}`
-if [ -f $thisdir/loadDotKits.sh ]
-then source $thisdir/loadDotKits.sh
+if [ -f $thisdir/set_organization.sh ]
+then source $thisdir/set_organization.sh
 fi
 
 jar_deploy_dir=$thisdir/jar
@@ -63,13 +63,13 @@ while getopts ":m:vh" options; do
 done
 shift $(($OPTIND - 1))
 
-broad_tmpdir_root=/broad/hptmp
-if [ -z "$TMPDIR" -a -d $broad_tmpdir_root ]
-then export TMPDIR=$broad_tmpdir_root/$USER
-fi
-
 if (( $verbose ))
 then set -x
 fi
 
-java -Xmx${xmx} -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -XX:+HeapDumpOnOutOfMemoryError -Djava.io.tmpdir=$TMPDIR -jar $jar_deploy_dir/dropseq.jar $progname $*
+JAVA_OPTS="-XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -XX:+HeapDumpOnOutOfMemoryError"
+if [ ! -z "${ORG_JAVA_OPTS}" ]; then
+    JAVA_OPTS=$ORG_JAVA_OPTS
+fi
+
+java -Xmx${xmx} ${JAVA_OPTS} -Djava.io.tmpdir=$TMPDIR -jar $jar_deploy_dir/dropseq.jar $progname $*
