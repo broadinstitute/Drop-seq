@@ -63,7 +63,7 @@ public class SplitBamByCellTest {
         TestUtils.setInflaterDeflaterIfMacOs();
 		Assert.assertEquals(bamSplitter.doWork(), 0);
 
-        List<File> splitBAMFileList = SplitBamByCell.readBamList(outputBAMList);
+        List<File> splitBAMFileList = FileListParsingUtils.readFileList(outputBAMList);
 		try {
             for (File f : splitBAMFileList) {
                 f.deleteOnExit();
@@ -126,7 +126,7 @@ public class SplitBamByCellTest {
           new File(bamList.getCanonicalFile().getParent(), relative),
           new File(absolute)
         );
-        Assert.assertEquals(expected, SplitBamByCell.readBamList(bamList));
+        Assert.assertEquals(expected, FileListParsingUtils.readFileList(bamList));
         // Confirm that when reading a symlink to a bam_list, relative paths are resolved relative to the directory
         // of the actually bam_list file, not the directory containing the symlink.
         final File otherDir = Files.createTempDirectory("testReadBamList").toFile();
@@ -134,6 +134,6 @@ public class SplitBamByCellTest {
         final File symlink = new File(otherDir, "testReadBamList.bam_list");
         symlink.deleteOnExit();
         Files.createSymbolicLink(symlink.toPath(), bamList.toPath());
-        Assert.assertEquals(expected, SplitBamByCell.readBamList(symlink));
+        Assert.assertEquals(expected, FileListParsingUtils.readFileList(symlink));
     }
 }

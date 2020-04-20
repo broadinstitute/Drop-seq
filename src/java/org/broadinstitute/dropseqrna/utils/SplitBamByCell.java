@@ -24,16 +24,12 @@
 package org.broadinstitute.dropseqrna.utils;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-import com.google.common.collect.Streams;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
@@ -117,12 +113,12 @@ public class SplitBamByCell extends CommandLineProgram {
 
     private SAMFileInfo createWriterInfo(final SAMFileHeader header, int writerIdx) {
         final String outputPath = OUTPUT.toString().replace(OUTPUT_SLUG, String.valueOf(writerIdx));
-        final File samFile = new File(outputPath);;
+        final File samFile = new File(outputPath);
         final File actualFileToOpen;
         if (OUTPUT_LIST == null) {
             actualFileToOpen = samFile;
         } else {
-            actualFileToOpen = resolveBamPath(OUTPUT_LIST.getParentFile(), samFile);
+            actualFileToOpen = FileListParsingUtils.resolveFilePath(OUTPUT_LIST.getParentFile(), samFile);
         }
         final SAMFileWriter samFileWriter = samWriterFactory.makeSAMOrBAMWriter(header, true, actualFileToOpen);
         return new SAMFileInfo(samFile, samFileWriter, 0);
@@ -221,23 +217,5 @@ public class SplitBamByCell extends CommandLineProgram {
         public void incrementReadCount() {
             readCount++;
         }
-    }
-
-    /**
-     * Implements the semantic in which a relative path in a bam_list is resolved relative to the canonical directory
-     * containing the bam_list itself.
-     */
-    public static List<File> readBamList(final File bamList) {
-        try {
-            final File canonicalDirectory = bamList.getCanonicalFile().getParentFile();
-            return Streams.stream((Iterable<String>)IOUtil.readLines(bamList)).
-                    map(s -> resolveBamPath(canonicalDirectory, new File(s))).collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new RuntimeIOException("Exception reading " + bamList, e);
-        }
-    }
-
-    private static File resolveBamPath(final File bamListDirectory, final File bamPath) {
-        return bamListDirectory.toPath().resolve(bamPath.toPath()).toFile();
     }
 }
