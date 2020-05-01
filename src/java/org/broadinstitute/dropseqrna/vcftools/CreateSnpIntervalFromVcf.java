@@ -23,25 +23,33 @@
  */
 package org.broadinstitute.dropseqrna.vcftools;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.*;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFFileReader;
-import htsjdk.variant.vcf.VCFHeader;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import picard.cmdline.CommandLineProgram;
-import picard.cmdline.StandardOptionDefinitions;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.TreeSet;
+
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.priv.barnyard.digitalallelecounts.sampleassignment.genomicpool.CensusSeqUtils;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.samtools.util.ProgressLogger;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFFileReader;
+import htsjdk.variant.vcf.VCFHeader;
+import picard.cmdline.CommandLineProgram;
+import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
         summary = "Reads a VCF/VCF.gz/and extracts SNPs that are heterozygous for all listed samples",
@@ -84,9 +92,14 @@ public class CreateSnpIntervalFromVcf extends CommandLineProgram {
 	}
 
 
-	public IntervalList processData(final File vcfFile, final File sdFile, final Set<String> sample, final int GQThreshold, final boolean hetSNPsOnly) {
+	public IntervalList processData(final File vcfFile, final File sdFile, final Set<String> sample, int GQThreshold, final boolean hetSNPsOnly) {
 
 		final VCFFileReader reader = new VCFFileReader(vcfFile, false);
+		if (!CensusSeqUtils.GQInHeader(reader)) {
+			GQThreshold=-1;
+			log.info("Genotype Quality [GQ] not found in header.  Disabling GQ_THRESHOLD parameter");
+		}
+		
 		final VCFHeader inputVcfHeader = new VCFHeader(reader.getFileHeader().getMetaDataInInputOrder());
 		SAMSequenceDictionary sequenceDictionary = inputVcfHeader.getSequenceDictionary();
 		Set<String> sampleListFinal = sample;
