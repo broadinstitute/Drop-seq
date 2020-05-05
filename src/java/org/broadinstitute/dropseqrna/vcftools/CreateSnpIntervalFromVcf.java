@@ -97,7 +97,7 @@ public class CreateSnpIntervalFromVcf extends CommandLineProgram {
 		final VCFFileReader reader = new VCFFileReader(vcfFile, false);
 		if (!VCFUtils.GQInHeader(reader)) {
 			GQThreshold=-1;
-			log.info("Genotype Quality [GQ] not found in header.  Disabling GQ_THRESHOLD parameter");
+			log.info("Genotype Quality [GQ] not found in header.  Disabling GQ_THRESHOLD parameter");
 		}
 		
 		final VCFHeader inputVcfHeader = new VCFHeader(reader.getFileHeader().getMetaDataInInputOrder());
