@@ -13,6 +13,7 @@ package org.broadinstitute.dropseqrna.utils.alignmentcomparison;
 import java.io.File;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -28,6 +29,7 @@ import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
@@ -35,6 +37,8 @@ import org.broadinstitute.dropseqrna.utils.StringInterner;
 import org.broadinstitute.dropseqrna.utils.alignmentcomparison.QueryNameJointIterator.JointResult;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.MapQualityFilteredIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 
 import htsjdk.samtools.SAMFileHeader.SortOrder;
@@ -61,30 +65,36 @@ import picard.cmdline.CommandLineProgram;
 oneLineSummary = "Compare two alignments",
 programGroup = DropSeq.class)
 @groovy.transform.Generated
-public class CompareDropSeqAlignments extends CommandLineProgram {
+public class CompareDropSeqAlignments  extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(CompareDropSeqAlignments.class);
 
-	@Argument(doc = "The input SAM or BAM file to analyze.  If coordinate sorted this will save time, but is not required.")
-	public File INPUT_1;
+	@Argument(doc = "The input SAM or BAM file to analyze.  If query name sorted this will save time, but is not required.")
+	public List<File> INPUT_1;
 
-	@Argument(doc = "The comparison input SAM or BAM file to analyze.  If coordinate sorted this will save time, but is not required.")
-	public File INPUT_2;
+	@Argument(doc = "The comparison input SAM or BAM file to analyze.  If query name sorted this will save time, but is not required.")
+	public List<File> INPUT_2;
 
 	@Argument(doc="Output file that maps the contig the read uniquely mapped to in INPUT_1, and the contig the read mapped to in INPUT_2, with reads partitioned into groups that did/did not remained uniquely mapped.  This supports zipped formats like gz and bz2.", optional=true)
 	public File CONTIG_REPORT;
+	
+	@Argument(doc="Output each read that disagrees on mapping by contig/position.  Emits the read name, location, and map quality of the read in both alignments.  Also emits the TAG_NAME and values for those tags for the read in each alignment.", optional=true)
+	public File READ_REPORT;
 
-	@Argument(doc="Output file that maps the gene the read uniquely mapped to in INPUT_1, and the gene the read mapped to in INPUT_2, with reads partitioned into groups that did/did not remained uniquely mapped.  This supports zipped formats like gz and bz2.", optional=true)
-	public File GENE_REPORT;
+	@Argument(doc="A list of 1 or more tags who's values can be reported for read in the READ_REPORT.", optional=true)
+	public List<String> TAG_NAMES;
+	
+	// @Argument(doc="Output file that maps the gene the read uniquely mapped to in INPUT_1, and the gene the read mapped to in INPUT_2, with reads partitioned into groups that did/did not remained uniquely mapped.  This supports zipped formats like gz and bz2.", optional=true)
+	// public File GENE_REPORT;
 
-	@Argument(doc="Tag to extract", optional=true)
-	public String GENE_EXON_TAG="GE";
+	// @Argument(doc="Tag to extract", optional=true)
+	// public String GENE_EXON_TAG="GE";
 
 	@Argument(doc="The map quality for a read to be considered uniquely mapped.")
 	public int READ_QUALITY=10;
 
 	@Argument (doc="Trim this string from the contig names of both BAMs to make contig names comparable.  This is useful when one alignment strategy calls the first contig 'chr1' and the second strategy '1'")
-	public String TRIM_CONTIG_STRING="chr";
+	public String TRIM_CONTIG_STRING="";
 
 	private StringInterner stringInterner = new StringInterner();
 	final static String noGeneTag="NO_GENE";
@@ -94,14 +104,25 @@ public class CompareDropSeqAlignments extends CommandLineProgram {
 	protected int doWork() {
 		ObjectCounter<ContigResult> contigResults = null;
 		// key = original gene name, value = collection of mappings.
-		Map<String, GeneResult> geneResults = null;
-		IOUtil.assertFileIsReadable(INPUT_1);
-		IOUtil.assertFileIsReadable(INPUT_2);
-		if (this.CONTIG_REPORT==null && this.GENE_REPORT==null) log.error ("What's the point of running me if there's no output defined?");
+		// Map<String, GeneResult> geneResults = null;
+		INPUT_1=FileListParsingUtils.expandFileList(INPUT_1);
+		INPUT_2=FileListParsingUtils.expandFileList(INPUT_2);
+		INPUT_1.stream().forEach(x-> IOUtil.assertFileIsReadable(x));
+		INPUT_2.stream().forEach(x-> IOUtil.assertFileIsReadable(x));
+		// if (this.CONTIG_REPORT==null && this.GENE_REPORT==null) log.error ("What's the point of running me if there's no output defined?");
 		if (this.CONTIG_REPORT!=null) {
 			IOUtil.assertFileIsWritable(this.CONTIG_REPORT);
 			contigResults = new ObjectCounter<>();
 		}
+		
+		PrintStream readWriter=null;
+		if (this.READ_REPORT!=null) {
+			IOUtil.assertFileIsWritable(this.READ_REPORT);
+			readWriter = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.READ_REPORT));	
+			writeReadHeader(this.TAG_NAMES, readWriter);
+		}
+		
+		/*
 		if (this.GENE_REPORT!=null) {
 			IOUtil.assertFileIsWritable(this.GENE_REPORT);
 			if (this.GENE_EXON_TAG==null) {
@@ -111,9 +132,12 @@ public class CompareDropSeqAlignments extends CommandLineProgram {
 
 			geneResults = new HashMap<>();
 		}
-
-		PeekableIterator<List<SAMRecord>> oIter = getReadIterator(this.INPUT_1, this.READ_QUALITY);
-		PeekableIterator<List<SAMRecord>> nIter = getReadIterator(this.INPUT_2, null);
+		*/
+		
+		log.info("Reading INPUT_1");
+		PeekableIterator<List<SAMRecord>> oIter = getReadIterator(this.INPUT_1, this.READ_QUALITY, true);
+		log.info("Reading INPUT_2");
+		PeekableIterator<List<SAMRecord>> nIter = getReadIterator(this.INPUT_2, null, false);
 
 		QueryNameJointIterator qnji = new QueryNameJointIterator(oIter, nIter);
 
@@ -130,15 +154,76 @@ public class CompareDropSeqAlignments extends CommandLineProgram {
 				ContigResult cr = evaluateByContig(r1, r2);
 				contigResults.increment(cr);
 			}
-
+			if (readWriter!=null) {
+				writeReadReportLine(r1, r2, this.TAG_NAMES, readWriter);
+			}
+			/*
 			if (geneResults!=null)
 				geneResults=evaluateByGene(r1, r2, geneResults, this.GENE_EXON_TAG);
+			*/
 
 		}
+		log.info("Number of reads processed [" + counter + "]");
 
 		if (this.CONTIG_REPORT!=null) writeContigReport(this.CONTIG_REPORT, contigResults);
-		if (this.GENE_REPORT!=null) writeGeneReport (this.GENE_REPORT, geneResults);
+		if (readWriter!=null) readWriter.close();
+		
+		// if (this.GENE_REPORT!=null) writeGeneReport (this.GENE_REPORT, geneResults);
 		return 0;
+	}
+	
+	
+	private void writeReadHeader(List<String> tagNames, PrintStream writer) {
+		List<String> header = new ArrayList<>();
+		header.add("INPUT_1="+this.INPUT_1.toString());
+		header.add("INPUT_2="+this.INPUT_2.toString());
+		header.add("READ_QUALITY="+this.READ_QUALITY);
+		header.add("TRIM_CONTIG_STRING="+this.TRIM_CONTIG_STRING);
+		String h = StringUtils.join(header, "\t");		
+		writer.print("#");
+		writer.println(h);
+
+		List<String> columns = new ArrayList<String>(Arrays.asList("READ_NAME", "CONTIG_1", "POS_1", "MQ_1", "CONTIG_2", "POS_2", "MQ_2", "PRIMARY_MAPPING"));
+		for (String tag: tagNames) {
+			columns.add(tag+"_1");
+			columns.add(tag+"_2");
+		}
+		writer.println(StringUtils.join(columns, "\t"));
+	}
+	
+	private void writeReadReportLine(List<SAMRecord> r1List, List<SAMRecord> r2List, List<String> tagNames, PrintStream writer) {
+		// only the 2nd read can be a multimapper.
+		if (!validateReadSetSize(r1List, r2List)) return;
+		
+		SAMRecord r1 = r1List.get(0);
+		
+		String r1Contig=r1.getContig().replaceAll(this.TRIM_CONTIG_STRING, "");
+		int r1Pos=r1.getAlignmentStart();
+		
+		for (SAMRecord r: r2List) {
+			List<String> line = new ArrayList<>();
+			Collections.addAll(line, r1.getReadName(), r1Contig, Integer.toString(r1Pos), Integer.toString(r1.getMappingQuality()));
+			String r2Contig = r.getContig();
+			if (r2Contig!=null) r2Contig.replaceAll(this.TRIM_CONTIG_STRING, "");
+			if (r2Contig==null) r2Contig="NA";
+			int r2Pos=r.getAlignmentStart();
+			// if the contig and position are the same, don't emit the read
+			if (r1Contig.equals(r2Contig) && r1Pos==r2Pos) 
+				continue;
+			
+			Collections.addAll(line, r2Contig, Integer.toString(r2Pos), Integer.toString(r.getMappingQuality()), Boolean.toString(!r.isSecondaryAlignment()));
+			for (String tagName: tagNames) {
+				line.add(getTagValueAsString(r1, tagName));
+				line.add(getTagValueAsString(r, tagName));
+			}
+			writer.println(StringUtils.join(line, "\t"));
+		}		
+	}
+	
+	private String getTagValueAsString (SAMRecord r, String tagName) {
+		Object v = r.getAttribute(tagName);
+		if (v==null) return ("NA");
+		return v.toString();
 	}
 
 
@@ -184,25 +269,27 @@ public class CompareDropSeqAlignments extends CommandLineProgram {
 		return geneResults;
 	}
 
-
-
-
-
-
-
 	private ContigResult evaluateByContig (final List<SAMRecord> r1, final List<SAMRecord> r2) {
 		if (!validateReadSetSize(r1, r2)) return null;
-		String contigOne = stringInterner.intern(r1.get(0).getContig().replaceAll(this.TRIM_CONTIG_STRING, ""));
-		Collection<String> contigsNew = r2.stream().map(x-> x.getContig()).map(x -> x.replaceAll(this.TRIM_CONTIG_STRING, "")).map(x-> stringInterner.intern(x)).collect(Collectors.toList());
+		String contigOne = stringInterner.intern(r1.get(0).getContig().replaceAll(this.TRIM_CONTIG_STRING, ""));		
+		
+		// handle nulls in contig names.  List of contigs may be empty
+		Collection<String> contigsNew = r2.stream().map(x-> x.getContig()).filter(x->x!=null).map(x -> x.replaceAll(this.TRIM_CONTIG_STRING, "")).map(x-> stringInterner.intern(x)).collect(Collectors.toList());
+		
+		// Collection<String> contigsNew = r2.stream().map(x-> x.getContig()).map(x -> x.replaceAll(this.TRIM_CONTIG_STRING, "")).map(x-> stringInterner.intern(x)).collect(Collectors.toList());
 		List<String> contigsNewUnique = new ArrayList<>(new TreeSet<>(contigsNew));
+		// if the size is 0 re-encode as NA
+		if (contigsNewUnique.size()==0) {
+			contigsNewUnique= Collections.singletonList("NA");
+		}
 		ContigResult r = new ContigResult(contigOne, contigsNewUnique, contigsNewUnique.size()==1);
 		return (r);
 	}
 
-	private PeekableIterator<List<SAMRecord>> getReadIterator (final File bamFile, final Integer readQuality) {
+	private PeekableIterator<List<SAMRecord>> getReadIterator (final List<File> bamFile, final Integer readQuality, boolean removedUnmappedReads) {
         Iterator<SAMRecord> iter = getQueryNameSortedData(bamFile);
 		// filter out unmapped reads.
-		iter = new UnmappedReadFilter(iter);
+		if (removedUnmappedReads) iter = new UnmappedReadFilter(iter);
 		// optionally, filter out reads below a map quality threshold.
 		if (readQuality!=null) iter = new MapQualityFilteredIterator(iter, readQuality, false).iterator();
 		final GroupingIterator<SAMRecord> groupingIterator = new GroupingIterator<>(iter, READ_NAME_COMPARATOR);
@@ -210,24 +297,28 @@ public class CompareDropSeqAlignments extends CommandLineProgram {
 		return peekable;
 	}
 
-	private Iterator<SAMRecord> getQueryNameSortedData (final File bamFile) {
-		SamReader reader = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(bamFile);
-		if (reader.getFileHeader().getSortOrder().equals(SortOrder.queryname))
-			return reader.iterator();
+	private Iterator<SAMRecord> getQueryNameSortedData (final List<File> bamFiles) {
+		SamReaderFactory factory= SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);
+		
+		SamHeaderAndIterator headerIterator= SamFileMergeUtil.mergeInputs(bamFiles, false, factory);
+				
+		if (headerIterator.header.getSortOrder().equals(SortOrder.queryname))
+			return headerIterator.iterator;
 		log.info("Input SAM/BAM not in queryname order, sorting...");
         final ProgressLogger progressLogger = new ProgressLogger(log, 1000000, "Sorting reads in query name order");
-        final CloseableIterator<SAMRecord> result = SamRecordSortingIteratorFactory.create(reader.getFileHeader(), reader.iterator(), READ_NAME_COMPARATOR, progressLogger);
+        final CloseableIterator<SAMRecord> result = SamRecordSortingIteratorFactory.create(headerIterator.header, headerIterator.iterator, READ_NAME_COMPARATOR, progressLogger);
         log.info("Sorting finished.");
         return result;
 	}
 
+	/*
 	private void writeGeneReport (final File outFile, final Map<String, GeneResult> geneResults) {
 		PrintStream writer = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(outFile));
 		List<String> header = new ArrayList<>();
-		header.add("INPUT_1="+this.INPUT_1.getAbsolutePath());
-		header.add("INPUT_2="+this.INPUT_2.getAbsolutePath());
+		header.add("INPUT_1="+this.INPUT_1.toString());
+		header.add("INPUT_2="+this.INPUT_2.toString());
 		header.add("READ_QUALITY="+this.READ_QUALITY);
-		header.add("GENE_EXON_TAG="+this.GENE_EXON_TAG);
+		// header.add("GENE_EXON_TAG="+this.GENE_EXON_TAG);
 		String h = StringUtils.join(header, "\t");
 		writer.print("#");
 		writer.println(h);
@@ -252,12 +343,13 @@ public class CompareDropSeqAlignments extends CommandLineProgram {
 		}
 		writer.close();
 	}
-
+	*/
+	
 	private void writeContigReport (final File outFile, final ObjectCounter<ContigResult> contigResults) {
 		PrintStream writer = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(outFile));
 		List<String> header = new ArrayList<>();
-		header.add("INPUT_1="+this.INPUT_1.getAbsolutePath());
-		header.add("INPUT_2="+this.INPUT_2.getAbsolutePath());
+		header.add("INPUT_1="+this.INPUT_1.toString());
+		header.add("INPUT_2="+this.INPUT_2.toString());
 		header.add("READ_QUALITY="+this.READ_QUALITY);
 		header.add("TRIM_CONTIG_STRING="+this.TRIM_CONTIG_STRING);
 		String h = StringUtils.join(header, "\t");

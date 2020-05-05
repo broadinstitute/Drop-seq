@@ -3,6 +3,7 @@ package org.broadinstitute.dropseqrna.utils.alignmentcomparison;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
@@ -36,18 +37,18 @@ public class CompareDropSeqAlignmentsTest {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-		c.INPUT_1=OLD;
-		c.INPUT_2=NEW;
-		c.GENE_REPORT=outGeneReport;
+		
+		c.INPUT_1=Collections.singletonList(OLD);
+		c.INPUT_2=Collections.singletonList(NEW);
+		// c.GENE_REPORT=outGeneReport;
 		c.CONTIG_REPORT=outContigReport;
 		int ret = c.doWork();
 		Assert.assertTrue(ret==0);
 
 		boolean t1 = TestUtils.testFilesSame(this.CONTIG_REPORT, outContigReport);
-		boolean t2 = TestUtils.testFilesSame(this.GENE_REPORT, outGeneReport);
+		// boolean t2 = TestUtils.testFilesSame(this.GENE_REPORT, outGeneReport);
 		Assert.assertTrue(t1);
-		Assert.assertTrue(t2);
+		// Assert.assertTrue(t2);
 
 	}
 
