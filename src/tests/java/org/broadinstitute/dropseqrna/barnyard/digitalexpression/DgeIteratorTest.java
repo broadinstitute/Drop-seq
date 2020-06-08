@@ -23,7 +23,7 @@ public class DgeIteratorTest {
 		Assert.assertTrue(iter.hasNext());
 		DgeLine l = iter.next();
 		String gene = l.getGene();
-		int [] exp = l.getExpression();
+		double [] exp = l.getExpression();
 		List<String> ids = new ArrayList<>(l.getIdentifiers());
 
 		Assert.assertTrue(h!=null);
@@ -42,11 +42,11 @@ public class DgeIteratorTest {
 		Assert.assertEquals(expectedExpression.length, exp.length);
 
 		for (int j=0; j<expectedExpression.length; j++)
-			Assert.assertEquals(expectedExpression[j], exp[j]);
+			Assert.assertEquals(expectedExpression[j], exp[j], 0.0001);
 
 		// validate random access.
 		for (int j=0; j<cellBarcodes.length; j++)
-			Assert.assertEquals(expectedExpression[j], l.getExpression(cellBarcodes[j]));
+			Assert.assertEquals(expectedExpression[j], l.getExpression(cellBarcodes[j]), 0.0001);
 
 		// validate 10 lines in file.
 		int counter=1;
@@ -73,9 +73,9 @@ public class DgeIteratorTest {
 			Set<String> intersect = Sets.intersection(cellBarcodes, filtered.getIdentifiers());
 			Assert.assertTrue(intersect.size()==cellBarcodes.size());
 			for (String k : filtered.getIdentifiers()) {
-				int valueOld = l.getExpression(k);
-				int valueNew = filtered.getExpression(k);
-				Assert.assertEquals(valueOld, valueNew);
+				double valueOld = l.getExpression(k);
+				double valueNew = filtered.getExpression(k);
+				Assert.assertEquals(valueOld, valueNew, 0.00001);
 			}
 		}
 

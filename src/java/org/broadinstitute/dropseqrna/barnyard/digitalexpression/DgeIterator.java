@@ -26,7 +26,9 @@ package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
 import java.io.BufferedInputStream;
 import java.io.File;
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -128,18 +130,18 @@ public class DgeIterator implements Iterator <DgeLine>{
 
 	public class DgeLine {
 		private String gene;
-		private int [] expression;
+		private double [] expression;
 		LinkedHashMap<String, Integer> identifierMap;
 
 		DgeLine (final LinkedHashMap<String, Integer> identifierMap, final String [] line) {
 			this.identifierMap=identifierMap;
-			expression= new int [line.length-1];
+			expression= new double [line.length-1];
 			this.gene=line[0];
 			for (int i=1; i<line.length; i++)
-				expression[i-1]=Integer.parseInt(line[i]);
+				expression[i-1]=Double.parseDouble(line[i]);
 		}
 
-		DgeLine (final LinkedHashMap<String, Integer> identifierMap, final String gene, final int [] expression) {
+		DgeLine (final LinkedHashMap<String, Integer> identifierMap, final String gene, final double [] expression) {
 			this.identifierMap=identifierMap;
 			this.gene=gene;
 			this.expression=expression;
@@ -149,21 +151,21 @@ public class DgeIterator implements Iterator <DgeLine>{
 			return this.gene;
 		}
 
-		public int getExpression (final String identifier) {
+		public double getExpression (final String identifier) {
 			Integer pos = identifierMap.get(identifier);
 			if (pos==null)
 				throw new IllegalStateException ("Asked for an identifier ["+identifier+"] that doesn't exist.");
 			return expression[pos];
 		}
 
-		public void setExpression (final String identifier, final int value) {
+		public void setExpression (final String identifier, final double value) {
 			Integer pos = identifierMap.get(identifier);
 			if (pos==null)
 				throw new IllegalStateException ("Asked for an identifier ["+identifier+"] that doesn't exist.");
 			expression[pos]=value;
 		}
 
-		public int [] getExpression () {
+		public double [] getExpression () {
 			return this.expression;
 		}
 
@@ -180,16 +182,16 @@ public class DgeIterator implements Iterator <DgeLine>{
 		 * @return return true if at least one identifier is non-zero.
 		 */
 		public boolean isNonZero () {
-			for (int i : this.expression)
-				if (i>0) return true;
-			return false;
+			double totalCount = Arrays.stream(this.expression).sum();
+			if (BigDecimal.ZERO.equals(new BigDecimal(totalCount))) return false;
+			return true;
 		}
 
 		public DgeLine subset(final Set<String> identifiers) {
 			LinkedHashMap<String, Integer> newMap = new LinkedHashMap<>();
 
 			int index=0;
-			int [] exp = new int [identifiers.size()];
+			double [] exp = new double [identifiers.size()];
 
 			for (String id: this.identifierMap.keySet())
 				if (identifiers.contains(id)) {
