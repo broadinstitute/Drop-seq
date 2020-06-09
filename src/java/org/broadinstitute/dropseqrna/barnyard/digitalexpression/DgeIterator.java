@@ -29,13 +29,13 @@ import java.io.File;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeIterator.DgeLine;
 
+import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import picard.util.TabbedInputParser;
@@ -46,7 +46,7 @@ import picard.util.TabbedInputParser;
  * @author nemesh
  *
  */
-public class DgeIterator implements Iterator <DgeLine>{
+public class DgeIterator implements CloseableIterator <DgeLine>{
 
 	private final BufferedInputStream inputStream;
 	private final DgeHeader dgeHeader;
