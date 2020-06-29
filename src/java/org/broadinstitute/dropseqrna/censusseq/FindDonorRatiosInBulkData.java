@@ -46,25 +46,16 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.censusseq.VCFPileupJointIterator.JointResult;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-
-
-
-import org.broadinstitute.dropseqrna.priv.barnyard.digitalallelecounts.sampleassignment.genomicpool.SummaryPileUp;
-import org.broadinstitute.dropseqrna.priv.barnyard.digitalallelecounts.sampleassignment.genomicpool.commonsnps.CommonSNPsData;
-import org.broadinstitute.dropseqrna.priv.barnyard.digitalallelecounts.sampleassignment.genomicpool.commonsnps.OptimizeSampleRatiosCommonSNPs;
-import org.broadinstitute.dropseqrna.priv.barnyard.digitalallelecounts.sampleassignment.genomicpool.commonsnps.OptimizeSampleRatiosCommonSNPsResult;
-import org.broadinstitute.dropseqrna.priv.barnyard.digitalallelecounts.sampleassignment.genomicpool.privatesnps.OptimizeSampleRatiosLikelihoodFunction;
-import org.broadinstitute.dropseqrna.priv.barnyard.digitalallelecounts.sampleassignment.genomicpool.privatesnps.SNPSampleRecord;
-import org.broadinstitute.dropseqrna.priv.utils.AssertSequenceDictionaryIntersection;
-import org.broadinstitute.dropseqrna.priv.utils.statistics.Diversity;
-import org.broadinstitute.dropseqrna.priv.vcftools.filters.MonomorphicVariantContextFilter;
+import org.broadinstitute.dropseqrna.utils.AssertSequenceDictionaryIntersection;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.VCFUtils;
 import org.broadinstitute.dropseqrna.utils.VariantContextSingletonFilter;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+import org.broadinstitute.dropseqrna.utils.statistics.Diversity;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
 import org.broadinstitute.dropseqrna.vcftools.filters.ChromosomeVariantFilter;
 import org.broadinstitute.dropseqrna.vcftools.filters.CommonVariantContextFilter;
+import org.broadinstitute.dropseqrna.vcftools.filters.MonomorphicVariantContextFilter;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReader;
@@ -520,7 +511,7 @@ public class FindDonorRatiosInBulkData extends CommandLineProgram {
 		}
 		// normalize to 1.
 		if (normalizeToOne)
-			ratios=OptimizeSampleRatiosLikelihoodFunction.normalizeRatiosToOne(ratios);
+			ratios=OptimizeSampleRatiosLikelihoodFunctionPrivateSNPs.normalizeRatiosToOne(ratios);
 		counter=0;
 		for (String sample: sampleIDs) {
 			result.put(sample, ratios[counter]);
