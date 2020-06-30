@@ -33,29 +33,22 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.censusseq.VCFPileupJointIterator.JointResult;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.AssertSequenceDictionaryIntersection;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.VCFUtils;
-import org.broadinstitute.dropseqrna.utils.VariantContextSingletonFilter;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.statistics.Diversity;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
-import org.broadinstitute.dropseqrna.vcftools.filters.ChromosomeVariantFilter;
-import org.broadinstitute.dropseqrna.vcftools.filters.CommonVariantContextFilter;
-import org.broadinstitute.dropseqrna.vcftools.filters.MonomorphicVariantContextFilter;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReader;
@@ -73,15 +66,13 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFFileReader;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(summary = "Given a VCF file, a list of donors from that file, and BAM file, find the relative fraction of each donor contained in the sequencing experiment.  Handles both single and paired end reads. By default this filters reads with the PCR Duplicate flag.", oneLineSummary = "Create singleton SNP VCF", programGroup = DropSeq.class)
-public class FindDonorRatiosInBulkData extends CommandLineProgram {
+public class CensusSeq extends CommandLineProgram {
 
-	private static final Log log = Log.getInstance(FindDonorRatiosInBulkData.class);
+	private static final Log log = Log.getInstance(CensusSeq.class);
 
 	@Argument(doc = "The input BAM.")
 	public File INPUT_BAM;
@@ -107,12 +98,10 @@ public class FindDonorRatiosInBulkData extends CommandLineProgram {
 	@Argument (doc="At least <FRACTION_SAMPLES_PASSING> samples must have genotype scores >= GQ_THRESHOLD for the variant in the VCF to be included in the analysis.")
 	public double FRACTION_SAMPLES_PASSING=0.9;
 
-	@Argument (doc="Instead of using the private SNP analysis, use the common SNP analysis instead.")
-	public boolean COMMON_SNP_ANALYSIS=true;
-
 	@Argument (doc="At least this many samples must have the non-common genotype.")
 	public Integer MIN_NUM_VARIANT_SAMPLES=2;
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Argument (doc="A list of chromosomes to omit from the analysis.  The default is to omit the sex chromosomes.")
 	public List<String> IGNORED_CHROMOSOMES= new ArrayList(Arrays.asList("X", "Y", "MT"));
 
@@ -129,16 +118,10 @@ public class FindDonorRatiosInBulkData extends CommandLineProgram {
 			+ "that could inform the data. This tends to exclude bait contigs and alternative haplotypes.", optional=true)
 	public String KNOWN_DONOR_TAG=null;
 
-	@Argument (doc="For the common SNP analysis, report how many ref/het/alt/missing genotypes each donor has.", optional=true)
+	@Argument (doc="Report how many ref/het/alt/missing genotypes each donor has.", optional=true)
 	public Boolean REPORT_ALLELE_COUNTS=false;
 
 	private final String SNP_TAG = "YS";
-	// @Argument (doc="Should only heterozygous variant genotypes be considered?  If true, a site with homozygous variant genotype would be excluded.")
-	// this is a legacy parameter tied to the private SNP analysis.
-	private boolean HET_ONLY=true;
-
-	@Argument(doc="Output of each SNP record with the sample that is variant and the allele counts.  Only works for private SNP analysis (COMMON_SNP_ANALYSIS=false)", optional=true)
-	public File OUTPUT_VERBOSE;
 
 	@Argument(doc="The number of threads to use for likelihood calculations.")
 	public Integer NUM_THREADS=1;
@@ -158,10 +141,7 @@ public class FindDonorRatiosInBulkData extends CommandLineProgram {
 
 	@Override
 	public int doWork() {
-		if (this.MIN_NUM_VARIANT_SAMPLES>1 && this.COMMON_SNP_ANALYSIS==false) {
-			log.warn("If the common snp analysis mode is off, can only set MIN_NUM_VARIANT_SAMPLES to be 1.");
-			this.MIN_NUM_VARIANT_SAMPLES=1;
-		}
+		
 		IOUtil.assertFileIsReadable(INPUT_BAM);
 		IOUtil.assertFileIsReadable(INPUT_VCF);
 
@@ -175,53 +155,26 @@ public class FindDonorRatiosInBulkData extends CommandLineProgram {
 			this.GQ_THRESHOLD=-1;
 			log.info("Genotype Quality [GQ] not found in header.  Disabling GQ_THRESHOLD parameter");
 		}
+		
 		SAMSequenceDictionary sd = vcfReader.getFileHeader().getSequenceDictionary();
 
-		// get the list of samples.  Start with the list of all samples.
-		List<String> vcfSamples  = new ArrayList<>(vcfReader.getFileHeader().getSampleNameToOffset().keySet());
-		// if a sample list is passed in, restrict list to those samples.
-		if (this.SAMPLE_FILE!=null)  {
-			IOUtil.assertFileIsReadable(SAMPLE_FILE);
-			vcfSamples=ParseBarcodeFile.readCellBarcodeFile(this.SAMPLE_FILE);
-			List<String> validVcfSamples = SampleAssignmentVCFUtils.validateSampleNamesInVCF(vcfReader, vcfSamples, log);
-			vcfSamples.removeAll(validVcfSamples);
-			if (vcfSamples.size()>0) {
-				log.info("Samples found in sample list but not VCF, quitting " + vcfSamples.toString()+"");
-				return 1;
-			} else
-				vcfSamples=validVcfSamples;
-		}
-		// set up the variant writer to write to either the output file OR a temp file.
-		// write to a temp directory on the first pass so we can iterate on it along with the sorted BAM.
-		VariantContextWriter vcfWriter=null;
-		File outTempVCF=null;
-
-		try {
-			outTempVCF=File.createTempFile("tmp_vcf_", ".txt.gz", TMP_DIR.get(0));
-			// output to BCF as it should be faster.
-			// outTempVCF=File.createTempFile("tmp_vcf_", ".bcf", TMP_DIR.get(0));
-			outTempVCF.deleteOnExit();
-			log.info("Writing temp VCF to " + outTempVCF.getAbsolutePath());
-			vcfWriter = getVCFWriter (outTempVCF, vcfReader, vcfSamples);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		// set up the optional output
-		BufferedWriter outVerbose = null;
-		if (OUTPUT_VERBOSE!=null) {
-			IOUtil.assertFileIsWritable(OUTPUT_VERBOSE);
-			outVerbose = new BufferedWriter(new OutputStreamWriter(IOUtil.openFileForWriting(OUTPUT_VERBOSE)));
-			writeVerboseHeader(outVerbose);
-
-		}
-
+		// get the list of samples.  Start with the list of all samples, filter to the sample list if needed.  
+		List<String> vcfSamples  = CensusSeqUtils.getFinalSamplelist (vcfReader, this.SAMPLE_FILE);
+		if (vcfSamples==null) return 1; // exit if the vcf sample list is null
+		
+		// write VCF to a temp directory on the first pass so we can iterate on it along with the sorted BAM.
+		File outTempVCF=CensusSeqUtils.getTempVCFFile (this.TMP_DIR.get(0));
+		VariantContextWriter vcfWriter= CensusSeqUtils.getVCFWriter (outTempVCF, vcfReader, vcfSamples);
+					
 		// open iterator and scan VCF once to get a list of sites.
 		log.info("Looking through VCF for SNPs that fit criteria.  Will search for these in BAM.");
-		// this filters to SNPs in the sample set.
-		PeekableIterator<VariantContext> vcfIterator = getVCFIterator(this.INPUT_VCF, vcfSamples);
+		
+		// this filters to SNPs in the sample set.		 
+		PeekableIterator<VariantContext> vcfIterator = CensusSeqUtils.getVCFIterator (this.INPUT_VCF, vcfSamples, this.MIN_NUM_VARIANT_SAMPLES, this.GQ_THRESHOLD, 
+				this.FRACTION_SAMPLES_PASSING, this.IGNORED_CHROMOSOMES, log, false);
+		
 		// last argument is a bit funky.  If you aren't using the common SNP analysis, you need to preserve the full interval names.
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(vcfIterator, sd, log, vcfWriter, !COMMON_SNP_ANALYSIS);
+		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(vcfIterator, sd, log, vcfWriter, false);
 
 		if (snpIntervals.size()==0) {
 			log.error("0 SNPs found.  Something is very wrong!");
@@ -244,25 +197,20 @@ public class FindDonorRatiosInBulkData extends CommandLineProgram {
 		SNPGenomicBasePileupIterator pileUpIter = new SNPGenomicBasePileupIterator(reader, snpIntervals, SNP_TAG, READ_MQ, this.IGNORED_CHROMOSOMES, KNOWN_DONOR_TAG, this.MIN_BASE_QUALITY);
 
 		// reset the iterator for use in the full data set.  Use the cleaned up set of variants, which should be smaller and faster.
-		vcfIterator = getVCFIterator(outTempVCF, vcfSamples);
-
+		vcfIterator = CensusSeqUtils.getVCFIterator (outTempVCF, vcfSamples, this.MIN_NUM_VARIANT_SAMPLES, this.GQ_THRESHOLD, 
+				this.FRACTION_SAMPLES_PASSING, this.IGNORED_CHROMOSOMES, log, false);
+				
 		// set up the VCF writer for the final pass, if the VCF_OUTPUT is not null.
-		vcfWriter = getVCFWriter (this.VCF_OUTPUT, vcfReader, vcfSamples);
-
-		// run the analysis using only private SNPs.
-		int runResult=0;
-		if (COMMON_SNP_ANALYSIS)
-			runResult=findDonorsInBulkRatioCommonSNPs(vcfSamples, vcfIterator, pileUpIter, snpIntervals.size(), vcfWriter, sd, outSummary, SNP_COVERAGE_HISTOGRAM);
-		else
-			runResult=findDonorsInBulkRatioPrivateSNPs(vcfSamples, vcfIterator, pileUpIter, snpIntervals.size(), vcfWriter, sd, outVerbose, outSummary);
-
+		vcfWriter = CensusSeqUtils.getVCFWriter (this.VCF_OUTPUT, vcfReader, vcfSamples);
+		
+		int runResult=runCensusSeq(vcfSamples, vcfIterator, pileUpIter, snpIntervals.size(), vcfWriter, sd, outSummary, SNP_COVERAGE_HISTOGRAM);		
 
 		vcfReader.close();
 		return runResult;
 	}
 
 
-	private int findDonorsInBulkRatioCommonSNPs(final List<String> donorNames, final PeekableIterator<VariantContext> vcfIterator, final SNPGenomicBasePileupIterator pileUpIter,
+	private int runCensusSeq(final List<String> donorNames, final PeekableIterator<VariantContext> vcfIterator, final SNPGenomicBasePileupIterator pileUpIter,
 			final int numPossibleSNPs, final VariantContextWriter vcfWriter, final SAMSequenceDictionary sd, final BufferedWriter outSummary, final File snpHistogramFile) {
 
 		PeekableIterator<SNPGenomicBasePileUp> peekablePileUpIter = new PeekableIterator<>(pileUpIter);
@@ -388,143 +336,10 @@ public class FindDonorRatiosInBulkData extends CommandLineProgram {
 
 	}
 
-	private void writePrivateDonorRatioOutputAdditionalData (final BufferedWriter outTerse, final int numPossibleSNPs, final int numSNPsFound, final String knownDonorTag) {
-		String kdt= knownDonorTag;
-		if (kdt==null) kdt= "NULL";
-
-		String [] header={"NUM_POSSIBLE_SNPS="+numPossibleSNPs, "NUM_SNPS_USED="+numSNPsFound, "KNOWN_DONOR_TAG="+ kdt};
-		String h = StringUtils.join(header, "\t");
-
-		try {
-			outTerse.write("#");  // comment line for R code.
-			outTerse.write(h); outTerse.newLine();
-			outTerse.flush();
-		} catch (IOException e) {
-			throw new RuntimeException("Trouble writing to output file");
-		}
-
-	}
-
-	/**
-	 * Calculate the donor ratios using private SNPs (only observed on a single individual per SNP.)
-	 *
-	 * @param vcfIterator
-	 * @param vcfWriter
-	 * @param sd  The sequence dictionary from the VCF file.
-	 * @param outVerbose
-	 * @param outSummary
-	 * @return
-	 */
-	private int findDonorsInBulkRatioPrivateSNPs (final List<String> vcfSamples, final PeekableIterator<VariantContext> vcfIterator, final SNPGenomicBasePileupIterator pileUpIter,
-			final int numPossibleSNPs, final VariantContextWriter vcfWriter, final SAMSequenceDictionary sd, final BufferedWriter outVerbose, final BufferedWriter outSummary) {
-
-		PeekableIterator<SNPGenomicBasePileUp> peekablePileUpIter = new PeekableIterator<>(pileUpIter);
-		Map<String, SummaryPileUp> summaryResult = new HashMap<>();
-		List<SNPSampleRecord> allSNPs = new ArrayList<>();
-		Set<String> donorNames = new HashSet<>();
-
-		VCFPileupJointIterator jointIter = new VCFPileupJointIterator(peekablePileUpIter, vcfIterator, sd);
-
-		while (jointIter.hasNext()) {
-			JointResult jr = jointIter.next();
-			SNPSampleRecord r = processPileUp(jr.getVc(), jr.getPileup(), this.HET_ONLY);
-			donorNames.add(r.getDonorName());
-			addToSummary(summaryResult, r);
-			writeVerboseBody(outVerbose, r);
-			if (vcfWriter!=null) vcfWriter.add(jr.getVc());
-			allSNPs.add(r);
-		}
-
-		jointIter.close();
-		JointIteratorCounter counter = jointIter.getCounter();
-
-		if (counter.SAMPLE_GENE_ITER!=counter.BOTH)
-			log.info("Expected counts don't match: Pileup [" + counter.SAMPLE_GENE_ITER + "] both counter [" + counter.BOTH+ "]");
-
-		if (vcfWriter!=null) vcfWriter.close();
-
-		if (OUTPUT_VERBOSE!=null) CloserUtil.close(outVerbose);
-
-		Map<String,Double> normalizedRatios = getSampleRatios(summaryResult, true);
-		Map<String,Double> rawScores = getSampleRatios(summaryResult, false);
-		Map<String, Integer> numSNPs = getNumSNPs(summaryResult);
-		ObjectCounter<String> knownResults = pileUpIter.getKnownDonorCounts();
-
-		writePrivateDonorRatioOutputAdditionalData(outSummary, numPossibleSNPs,  counter.BOTH, this.KNOWN_DONOR_TAG);
-		writePrivateDonorRatioOutput (vcfSamples, normalizedRatios, rawScores, numSNPs, knownResults, outSummary);
-
-		log.info("Processed [" + counter.BOTH + "] SNPs in BAM + VCF");
-
-		return 0;
-
-	}
-
-	private Map<String, Integer> getNumSNPs (final Map<String, SummaryPileUp> summaryResult) {
-		Map<String, Integer> result = new HashMap<>();
-		for (String k: summaryResult.keySet()) {
-			int v = summaryResult.get(k).getNumSNPs();
-			result.put(k, v);
-		}
-		return result;
-
-	}
-
-	/**
-	 * Constructs a VCF writer if the outfile is not null.
-	 * New output will only contain the samples listed in vcfSamples.
-	 * @param out
-	 * @param vcfReader
-	 * @param vcfSamples
-	 * @return
-	 */
-	private VariantContextWriter getVCFWriter (final File out, final VCFFileReader vcfReader, final List<String> vcfSamples) {
-		if (out==null) return null;
-		IOUtil.assertFileIsWritable(out);
-		VariantContextWriter vcfWriter = SampleAssignmentVCFUtils.getVCFWriter(vcfReader, out);
-
-		VCFHeader header = vcfReader.getFileHeader();
-		Set<VCFHeaderLine> metaData = header.getMetaDataInInputOrder();
-		VCFHeader newHeader = new VCFHeader(metaData, vcfSamples); // set up the new header with the restricted list of samples.
-		vcfWriter.writeHeader(newHeader);
-		return (vcfWriter);
-	}
-
-	/**
-	 * Maybe a simpler implementation would be to put the values in the map and keep a running sum of the fractions,
-	 * then iterate through again and divide each result by that sum to normalize to 1.
-	 * @param summary
-	 * @return
-	 */
-	private Map<String, Double> getSampleRatios (final Map<String, SummaryPileUp> summary, final boolean normalizeToOne) {
-		Map<String, Double> result = new HashMap<>();
-
-		List<String> sampleIDs = new ArrayList<>(summary.keySet());
-		// hold the ratios before normalizing to 1.
-		double [] ratios = new double [summary.size()];
-		int counter=0;
-		for (String sample: sampleIDs) {
-			SummaryPileUp sp=summary.get(sample);
-			double ratio = sp.getRatioByAltAlleleFraction();
-			ratios[counter]=ratio;
-			counter++;
-			//result.put(sample, ratio);
-		}
-		// normalize to 1.
-		if (normalizeToOne)
-			ratios=OptimizeSampleRatiosLikelihoodFunctionPrivateSNPs.normalizeRatiosToOne(ratios);
-		counter=0;
-		for (String sample: sampleIDs) {
-			result.put(sample, ratios[counter]);
-			counter++;
-		}
-		return result;
-	}
-
-
 	private void writeDonorRatioOutputHeader (final BufferedWriter outTerse) {
 		String [] header={"INPUT_BAM="+this.INPUT_BAM.getAbsolutePath(), "INPUT_VCF="+this.INPUT_VCF.getAbsolutePath(),
 				"GQ_THRESHOLD="+Integer.toString(this.GQ_THRESHOLD), "FRACTION_SAMPLES_PASSING="+Double.toString(this.FRACTION_SAMPLES_PASSING),
-				"COMMON_SNP_ANALYSIS="+Boolean.toString(this.COMMON_SNP_ANALYSIS), "MIN_NUM_VARIANT_SAMPLES="+Integer.toString(this.MIN_NUM_VARIANT_SAMPLES),
+				"MIN_NUM_VARIANT_SAMPLES="+Integer.toString(this.MIN_NUM_VARIANT_SAMPLES),
 				"READ_MQ="+Integer.toString(this.READ_MQ)};
 		String h = StringUtils.join(header, "\t");
 
@@ -535,58 +350,6 @@ public class FindDonorRatiosInBulkData extends CommandLineProgram {
 		} catch (IOException e) {
 			throw new RuntimeException("Trouble writing to output file");
 		}
-	}
-
-
-	private void writePrivateDonorRatioOutput (final List<String> vcfSamples, final Map<String, Double> summary,  final Map<String, Double> rawScores, final Map<String, Integer> numSNPs, final ObjectCounter<String> knownDonorCounts, final BufferedWriter outTerse) {
-
-		// DecimalFormat pctFormat = new DecimalFormat("0.###");
-		DecimalFormat fracFormat = new DecimalFormat("0.#####");
-		if (outTerse==null) return;
-		try {
-			List<String> header = new ArrayList<>();
-			header.addAll(Arrays.asList("DONOR", "REPRESENTATION", "REP_IRVs", "NUM_SNPS"));
-			if (knownDonorCounts!=null)
-				header.addAll(Arrays.asList("KNOWN", "COUNT"));
-
-			String h = StringUtils.join(header, "\t");
-			outTerse.write(h); outTerse.newLine();
-			// List<String> samples = new ArrayList<>(summary.keySet());
-			List<String> samples = vcfSamples;
-			Collections.sort(samples);
-			Map<String, Double> knownFracMap = convertCountsToFractionalRep(knownDonorCounts);
-
-			for (String sample: samples) {
-				List<String> line = new ArrayList<>();
-				// empty result.
-				if (!summary.containsKey(sample))
-					line.addAll(Arrays.asList(sample, "0", "0", "0"));
-				else {
-					Double ratio=summary.get(sample);
-					String frac = fracFormat.format(ratio);
-					String score = fracFormat.format(rawScores.get(sample));
-					int numSNP = numSNPs.get(sample);
-					line.addAll(Arrays.asList(sample, frac, score, Integer.toString(numSNP)));
-				}
-				if (knownDonorCounts!=null) {
-					Double knownFrac = knownFracMap.get(sample);
-					if (knownFrac==null) {
-						line.add("0");
-						line.add("0");
-					}
-					else {
-						line.add(fracFormat.format(knownFrac));
-						line.add(Integer.toString(knownDonorCounts.getCountForKey(sample)));
-					}
-				}
-				String l = StringUtils.join(line, "\t");
-				outTerse.write(l); outTerse.newLine();
-			}
-			outTerse.close();
-		} catch (IOException e) {
-			throw new RuntimeException("Trouble writing to summary file");
-		}
-		return;
 	}
 
 	private void writeCommonDonorRatioOutput (final Map<String, Double> summary, final ObjectCounter<String> knownDonorCounts, final CommonSNPsData data, final BufferedWriter outTerse) {
@@ -651,19 +414,7 @@ public class FindDonorRatiosInBulkData extends CommandLineProgram {
 		}
 		return result;
 	}
-
-	void addToSummary (final Map<String, SummaryPileUp> summaryResult, final SNPSampleRecord r) {
-		String d = r.getDonorName();
-		SummaryPileUp p = summaryResult.get(d);
-		if (p==null)
-			p = new SummaryPileUp(d);
-
-		p.incrementRefCount(r.getRefCount());
-		p.incrementAltCount(r.getAltCount());
-		p.incrementNumSNPs();
-		summaryResult.put(d, p);
-	}
-
+		
 	/**
 	 * Build the data set of common SNPs for optimization.
 	 * @param data The current data set to add a variant to.
@@ -706,101 +457,9 @@ public class FindDonorRatiosInBulkData extends CommandLineProgram {
 		if (vcfWriter!=null) vcfWriter.add(vc);
 		return (data);
 	}
-
-	private SNPSampleRecord processPileUp (final VariantContext vc, final SNPGenomicBasePileUp pileup, final boolean hetVarOnly) {
-		Interval i = pileup.getSNPInterval();
-		List<String> samples = getVariantSamples(vc, hetVarOnly);
-		if (samples.size()>1) throw new IllegalStateException("Should only have 1 variant sample per record!");
-		String sample = samples.get(0);
-
-		char refBase = StringUtil.byteToChar(vc.getReference().getBases()[0]);
-		char altBase = CensusSeqUtils.getAltBase(vc);
-		Genotype g = vc.getGenotype(sample);
 		
-		String strGeno = "NA";
-		if (g.isHomRef()) strGeno="ref";
-		if (g.isHomVar()) strGeno="alt";
-		if (g.isHet()) strGeno = "het";
-		SNPSampleRecord result = new SNPSampleRecord(i, refBase, altBase, pileup.getCountBase(refBase),
-				pileup.getCountBase(altBase), sample, strGeno, pileup.getQualities());
-		return (result);
-	}
-
-
-
-
-
-	private PeekableIterator<VariantContext> getVCFIterator (final File inputVCFFile, final List<String> vcfSamples) {
-		IOUtil.assertFileIsReadable(inputVCFFile);
-		final VCFFileReader vcfReader = new VCFFileReader(inputVCFFile, false);
-		log.info("Searching for variants with at least [" + this.MIN_NUM_VARIANT_SAMPLES+ "] samples with the non-ref genotype");
-
-		PeekableIterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, false, this.GQ_THRESHOLD, this.FRACTION_SAMPLES_PASSING, IGNORED_CHROMOSOMES, log);
-		// if the genotype quality is disabled, be extra careful and filter out flip-snps (A/T, C/G SNPs that can be easily messed up in VCFs)
-		// this is done by default in SampleAssignmentVCFUtils.getVCFIterator
-
-		// filter monomorphic SNPs.
-		vcfIterator = new PeekableIterator<>(new MonomorphicVariantContextFilter(vcfIterator, vcfSamples));
-		// filter problematic chromosomes as defined by the user, usually the sex chromosomes.
-		vcfIterator = new PeekableIterator<>(new ChromosomeVariantFilter(vcfIterator, this.IGNORED_CHROMOSOMES));
-		vcfIterator = new PeekableIterator<>(new CommonVariantContextFilter(vcfIterator, vcfSamples, this.MIN_NUM_VARIANT_SAMPLES));
-		// add a filter for SNPs that are singletons if you're in private SNP mode.
-		if (!this.COMMON_SNP_ANALYSIS)
-			vcfIterator = new PeekableIterator<>(new VariantContextSingletonFilter(vcfIterator, HET_ONLY));
-
-		return vcfIterator;
-	}
-
-	public List<String> getVariantSamples (final VariantContext vc, final boolean hetVarOnly) {
-		GenotypesContext gc = vc.getGenotypes();
-		Iterator<Genotype> iter = gc.iterator();
-		List<String> result = new ArrayList<>();
-		while (iter.hasNext()) {
-			Genotype g = iter.next();
-			if ( (hetVarOnly & g.isHet()) || !hetVarOnly & !g.isHomRef() )
-				result.add(g.getSampleName());
-		}
-		return (result);
-	}
-
-	private void writeVerboseHeader (final BufferedWriter out) {
-		if (out==null) return;
-		try {
-			String [] header = {"CHR", "POS", "REF_BASE", "ALT", "REF_COUNT", "ALT_COUNT", "DONOR", "GENOTYPE", "BASE_QUALITY"};
-			String h = StringUtils.join(header, "\t");
-			out.write(h);
-			out.newLine();
-			out.flush();
-		} catch (IOException e) {
-			throw new RuntimeException("Trouble writing to donor estimation file");
-		}
-	}
-
-	private void writeVerboseBody (final BufferedWriter out, final SNPSampleRecord r) {
-		if (out==null) return;
-		try {			
-			List<String> header = new ArrayList<String> (Arrays.asList(r.getInterval().getContig(), Integer.toString(r.getInterval().getStart()),
-					Character.toString(r.getRefBase()), Character.toString(r.getAltBase()),
-					Integer.toString(r.getRefCount()), Integer.toString(r.getAltCount()),
-					r.getDonorName(), r.getGenotype()));
-			List<Byte> bq = r.getQualities();
-			if (bq!=null) 
-				header.add(StringUtils.join(bq, ","));
-			else
-				header.add("");
-			String h = StringUtils.join(header, "\t");
-			out.write(h);
-			out.newLine();
-			out.flush();
-		} catch (IOException e) {
-			throw new RuntimeException("Trouble writing to donor estimation file");
-		}
-	}
-
-
-
 	/** Stock main method. */
 	public static void main(final String[] args) {
-		System.exit(new FindDonorRatiosInBulkData().instanceMain(args));
+		System.exit(new CensusSeq().instanceMain(args));
 	}
 }

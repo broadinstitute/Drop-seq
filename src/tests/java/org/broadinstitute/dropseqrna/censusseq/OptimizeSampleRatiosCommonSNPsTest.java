@@ -49,8 +49,8 @@ public class OptimizeSampleRatiosCommonSNPsTest {
 	@Test(enabled=true)
 	public void testOptimize () {
 		List<double []> answerKey = getAnswerKey();
-		File snpReadCountFile = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalallelecounts/sampleassignment/genomicpool/commonsnps/readCounts.txt.gz");
-		File genotypeFile = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalallelecounts/sampleassignment/genomicpool/commonsnps/sampleGenotypeStates.txt.gz");
+		File snpReadCountFile = new File("testdata/org/broadinstitute/dropseq/censusseq/readCounts.txt.gz");
+		File genotypeFile = new File("testdata/org/broadinstitute/dropseq/censusseq/sampleGenotypeStates.txt.gz");
 		CommonSNPsData d = CommonSNPsData.parseFromFiles(snpReadCountFile, genotypeFile);
 		// data was calculated with an iteration factor of 0.05, need to maintain that.
 		// changes to optimized iteration factor ruin this test.
@@ -70,8 +70,8 @@ public class OptimizeSampleRatiosCommonSNPsTest {
 	@Test
 	// tests starting points random/non random, and logging
 	public void testGetStartPoint () {
-		File snpReadCountFile = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalallelecounts/sampleassignment/genomicpool/commonsnps/readCounts.txt.gz");
-		File genotypeFile = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalallelecounts/sampleassignment/genomicpool/commonsnps/sampleGenotypeStates.txt.gz");
+		File snpReadCountFile = new File("testdata/org/broadinstitute/dropseq/censusseq/readCounts.txt.gz");
+		File genotypeFile = new File("testdata/org/broadinstitute/dropseq/censusseq/sampleGenotypeStates.txt.gz");
 		CommonSNPsData d = CommonSNPsData.parseFromFiles(snpReadCountFile, genotypeFile);
 		Random random = new Random(1);
 		OptimizeSampleRatiosCommonSNPs optim = new OptimizeSampleRatiosCommonSNPs(d, 1, random);
@@ -105,7 +105,7 @@ public class OptimizeSampleRatiosCommonSNPsTest {
 
 
 	private List<double []>  getAnswerKey () {
-		File answerKeyFile = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalallelecounts/sampleassignment/genomicpool/commonsnps/answer_key.txt");
+		File answerKeyFile = new File("testdata/org/broadinstitute/dropseq/censusseq/answer_key.txt");
 		BasicInputParser snpParser = new BasicInputParser(false, answerKeyFile);
 		List<double []> result = new ArrayList<>();
 		snpParser.next(); // skip header.

@@ -178,8 +178,8 @@ public class CommonSNPsDataTest {
 
 	@Test
 	public void testPrintAlleleCountsPerDonor () {
-		File snpReadCountFile = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalallelecounts/sampleassignment/genomicpool/commonsnps/readCounts.txt.gz");
-		File genotypeFile = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalallelecounts/sampleassignment/genomicpool/commonsnps/sampleGenotypeStates.txt.gz");
+		File snpReadCountFile = new File("testdata/org/broadinstitute/dropseq/censusseq/readCounts.txt.gz");
+		File genotypeFile = new File("testdata/org/broadinstitute/dropseq/censusseq/sampleGenotypeStates.txt.gz");
 		CommonSNPsData result = CommonSNPsData.parseFromFiles(snpReadCountFile, genotypeFile);
 		Assert.assertTrue(result!=null);
 		Assert.assertEquals(result.getNumVariants(), 50000);
@@ -195,8 +195,8 @@ public class CommonSNPsDataTest {
 
 	@Test
 	public void testFileParser() {
-		File snpReadCountFile = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalallelecounts/sampleassignment/genomicpool/commonsnps/readCounts.txt.gz");
-		File genotypeFile = new File("testdata/org/broadinstitute/dropseq/private/barnyard/digitalallelecounts/sampleassignment/genomicpool/commonsnps/sampleGenotypeStates.txt.gz");
+		File snpReadCountFile = new File("testdata/org/broadinstitute/dropseq/censusseq/readCounts.txt.gz");
+		File genotypeFile = new File("testdata/org/broadinstitute/dropseq/censusseq/sampleGenotypeStates.txt.gz");
 		CommonSNPsData result = CommonSNPsData.parseFromFiles(snpReadCountFile, genotypeFile);
 		Assert.assertTrue(result!=null);
 		Assert.assertEquals(result.getNumVariants(), 50000);
