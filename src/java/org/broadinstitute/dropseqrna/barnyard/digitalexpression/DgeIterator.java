@@ -118,6 +118,10 @@ public class DgeIterator implements CloseableIterator <DgeLine>{
 	public List<String> getIdentifiers () {
 		return new ArrayList<>(this.identifierMap.keySet());
 	}
+	
+	public boolean hasIdentifier (String identifier) {
+		return this.identifierMap.containsKey(identifier);
+	}
 
 	/**
 	 * Get the identifier at the top right hand corner of the matrix that labels the gene column.
@@ -151,10 +155,14 @@ public class DgeIterator implements CloseableIterator <DgeLine>{
 			return this.gene;
 		}
 
-		public double getExpression (final String identifier) {
-			Integer pos = identifierMap.get(identifier);
-			if (pos==null)
-				throw new IllegalStateException ("Asked for an identifier ["+identifier+"] that doesn't exist.");
+		/**
+		 * Return the expression of this identifier if the identifier is in the data set, else return null.
+		 * @param identifier The donor/sample ID.
+		 * @return Return the expression of this identifier if the identifier is in the data set, else return null.
+		 */
+		public Double getExpression (final String identifier) {
+			if (!identifierMap.containsKey(identifier)) return (null);
+			Integer pos = identifierMap.get(identifier);			
 			return expression[pos];
 		}
 
