@@ -161,6 +161,9 @@
         <package-command visibility="public" title="ConvertTagToReadGroup"/>
         <package-command visibility="public" title="CountUnmatchedSampleIndices"/>
         <package-command visibility="public" title="SplitBamByCell"/>
+    	<package-command visibility="public" title="CensusSeq"/>
+    	<package-command visibility="public" title="RollCall"/>
+    	<package-command visibility="public" title="CsiAnalysis"/>
     </target>
 
 
