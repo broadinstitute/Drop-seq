@@ -147,7 +147,7 @@ public class CsiAnalysis extends CommandLineProgram {
 	@Override
 	public int doWork() {
 
-		if (this.EXCLUDE_KNOWN_DONOR!=null & this.KNOWN_DONOR_TAG==null) {
+		if (this.EXCLUDE_KNOWN_DONOR!=null && this.EXCLUDE_KNOWN_DONOR.size()>0 && this.KNOWN_DONOR_TAG==null) {
 			log.error("If excluding 1 or more donors, there must be a tag on all reads to indicate the donor of origin of the data!");
 			return(1);
 		}
@@ -186,7 +186,7 @@ public class CsiAnalysis extends CommandLineProgram {
 			return 1;
 
 		// remove requested known donors from calculation.
-		if (this.EXCLUDE_KNOWN_DONOR!=null) {
+		if (this.EXCLUDE_KNOWN_DONOR!=null && EXCLUDE_KNOWN_DONOR.size()>0) {
 			log.info("Excluding known donors from analysis " + this.EXCLUDE_KNOWN_DONOR.toString());
 			donorsInPool.removeAll(this.EXCLUDE_KNOWN_DONOR);
 			log.info("Remaining Donors in Pool [" +donorsInPool.size() +"]");
