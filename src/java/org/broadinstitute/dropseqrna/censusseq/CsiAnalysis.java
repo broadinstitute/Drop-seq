@@ -464,6 +464,7 @@ public class CsiAnalysis extends CommandLineProgram {
 				summary.addBaseErrorProbability(errorRate);
 				// add in the base quality aware info!
 				// if the base observed is the reference base, then construct the dosages of ref and alt where alt is the error.
+				/*
 				if (base==refAllele.getBases()[0]) {
 					summary.REF_DOSAGE+=(1-errorRate);
 					summary.ALT_DOSAGE+=errorRate;
@@ -472,6 +473,7 @@ public class CsiAnalysis extends CommandLineProgram {
 					summary.REF_DOSAGE+=errorRate;
 					summary.ALT_DOSAGE+=(1-errorRate);
 				}
+				*/
 				// we ignore the case where the base isn't the ref or the alt allele.  
 				//TODO: can we do anything with this info?  It doesn't support the ref base, but we can't use the MAF of the SNP because this is technically another site.
 			}						
