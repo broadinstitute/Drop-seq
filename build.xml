@@ -164,6 +164,9 @@
     	<package-command visibility="public" title="CensusSeq"/>
     	<package-command visibility="public" title="RollCall"/>
     	<package-command visibility="public" title="CsiAnalysis"/>
+    	<package-command visibility="public" title="TagBam"/>
+    	<package-command visibility="public" title="DownsampleBamByTag"/>
+    	        
     </target>
 
 

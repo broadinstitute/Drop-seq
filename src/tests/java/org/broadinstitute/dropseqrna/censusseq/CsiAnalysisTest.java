@@ -141,7 +141,9 @@ public class CsiAnalysisTest {
 	}
 	
 	
-	@Test (enabled=true)
+	
+	/*
+	@Test (enabled=false)
 	public void testBQSimple () {
 		CsiMetrics m = new CsiMetrics();
 		m.ALT_COUNT=0;
@@ -167,6 +169,6 @@ public class CsiAnalysisTest {
 		// 0.03633333
 				
 	}
-
+	*/
 
 }
