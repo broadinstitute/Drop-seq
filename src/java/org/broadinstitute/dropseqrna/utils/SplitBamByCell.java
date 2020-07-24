@@ -123,6 +123,10 @@ public class SplitBamByCell extends CommandLineProgram {
     }
 
     private void splitBAMsEqually(final List<SAMFileInfo> writerInfoList, final SamHeaderAndIterator headerAndIterator) {
+        if (headerAndIterator.header.getSortOrder() != SAMFileHeader.SortOrder.queryname) {
+            throw new IllegalArgumentException("The input BAM file(s) should be sorted by queryname");
+        }
+
         ProgressLogger pl = new ProgressLogger(log);
 
         Integer writerIdx = -1;
