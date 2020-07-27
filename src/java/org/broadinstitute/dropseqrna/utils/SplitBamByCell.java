@@ -96,10 +96,8 @@ public class SplitBamByCell extends CommandLineProgram {
 
         samWriterFactory = new SAMFileWriterFactory().setCreateIndex(CREATE_INDEX);
 
-        Map<String, Integer> cellBarcodeWriterIdxMap = new HashMap<>();
-        List<SAMFileInfo> writerInfoList = new ArrayList<>();
-
-        splitBAMs(cellBarcodeWriterIdxMap, writerInfoList);
+        final List<SAMFileInfo> writerInfoList = new ArrayList<>();
+        splitBAMs(writerInfoList);
 
         if (OUTPUT_LIST != null) {
             writeOutputList(writerInfoList);
@@ -124,14 +122,40 @@ public class SplitBamByCell extends CommandLineProgram {
         return new SAMFileInfo(samFile, samFileWriter, 0);
     }
 
-    private void splitBAMs (final Map<String, Integer> cellBarcodeWriterIdxMap, final List<SAMFileInfo> writerInfoList) {
-        log.info("Splitting BAM files");
-        final SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(INPUT, true);
-        SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
+    private void splitBAMsEqually(final List<SAMFileInfo> writerInfoList, final SamHeaderAndIterator headerAndIterator) {
+        if (headerAndIterator.header.getSortOrder() != SAMFileHeader.SortOrder.queryname) {
+            throw new IllegalArgumentException("The input BAM file(s) should be sorted by queryname");
+        }
 
         ProgressLogger pl = new ProgressLogger(log);
+
+        Integer writerIdx = -1;
+        String lastReadName = null;
+        for (SAMRecord r : new IterableAdapter<>(headerAndIterator.iterator)) {
+            pl.record(r);
+
+            if (lastReadName == null || !r.getReadName().equals(lastReadName)) {
+                writerIdx = (writerIdx + 1) % NUM_OUTPUTS;
+                if (writerIdx >= writerInfoList.size()) {
+                    writerInfoList.add(createWriterInfo(headerAndIterator.header, writerIdx));
+                }
+            }
+            lastReadName = r.getReadName();
+
+            final SAMFileInfo writerInfo = writerInfoList.get(writerIdx);
+            writerInfo.getWriter().addAlignment(r);
+            writerInfo.incrementReadCount();
+        }
+    }
+
+    private void splitBAMsByTag(final List<SAMFileInfo> writerInfoList, final SamHeaderAndIterator headerAndIterator) {
+        ProgressLogger pl = new ProgressLogger(log);
+
+        final Map<String, Integer> cellBarcodeWriterIdxMap = new HashMap<>();
+
         for (SAMRecord r: new IterableAdapter<>(headerAndIterator.iterator)) {
             pl.record(r);
+
             final String cellBarcode = r.getStringAttribute(SPLIT_TAG);
             if (cellBarcode == null) {
                 throw new IllegalArgumentException("Read " + r.getReadName() + " does not contain the attribute " + SPLIT_TAG);
@@ -156,10 +180,25 @@ public class SplitBamByCell extends CommandLineProgram {
             if (writerIdx == null) {
                 throw new TranscriptomeException("Failed to get a writer for read " + r.getReadName());
             }
+
             final SAMFileInfo writerInfo = writerInfoList.get(writerIdx);
             writerInfo.getWriter().addAlignment(r);
             writerInfo.incrementReadCount();
         }
+    }
+
+    private void splitBAMs (final List<SAMFileInfo> writerInfoList) {
+        log.info("Splitting BAM files");
+        final SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(INPUT, true);
+        SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
+
+        if (SPLIT_TAG == null) {
+            // Select writers in a round robin way, keeping read pairs together
+            splitBAMsEqually(writerInfoList, headerAndIterator);
+        } else {
+            splitBAMsByTag(writerInfoList, headerAndIterator);
+        }
+
         CloserUtil.close(headerAndIterator.iterator);
         for (SAMFileInfo writerInfo : writerInfoList) {
             writerInfo.getWriter().close();
