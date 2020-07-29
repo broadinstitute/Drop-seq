@@ -23,6 +23,8 @@
  */
 package org.broadinstitute.dropseqrna.cmdline;
 
+import org.apache.commons.lang.ArrayUtils;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,5 +52,17 @@ public class CustomCommandLineValidationHelper {
             }
         }
         return thisErrors.toArray(new String[thisErrors.size()]);
+    }
+
+    public static String[] makeValue(
+            final String[] superErrors,
+            final String[] thisErrors) {
+        if (superErrors == null) {
+            return thisErrors;
+        } else if (thisErrors == null) {
+            return superErrors;
+        } else {
+            return (String[])ArrayUtils.addAll(superErrors, thisErrors);
+        }
     }
 }
