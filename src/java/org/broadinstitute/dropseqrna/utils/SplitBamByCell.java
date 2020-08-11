@@ -73,10 +73,10 @@ public class SplitBamByCell extends CommandLineProgram {
     @Argument(doc="The tag to examine in order to partition reads.")
     public String SPLIT_TAG="XC";
 
-    @Argument(optional=true, doc="Number of output files to create")
+    @Argument(doc="Number of output files to create", mutex={"TARGET_BAM_SIZE"})
     public Integer NUM_OUTPUTS;
 
-    @Argument(optional=true, doc="Approximate size of split BAMs to be created. This can be a human-readable number like 500M or 2G. Default: 2G")
+    @Argument(doc="Approximate size of split BAMs to be created. This can be a human-readable number like 500M or 2G")
     public String TARGET_BAM_SIZE;
 
     @Argument(doc="Template for output file names.  If OUTPUT_LIST is specified, and OUTPUT is a relative path," +
@@ -190,7 +190,7 @@ public class SplitBamByCell extends CommandLineProgram {
                 }
 
                 if (OVERWRITE_EXISTING) {
-                    System.out.println("BAM file " + splitBamFile.getAbsolutePath() + " exists and will be overwritten");
+                    log.warn("BAM file " + splitBamFile.getAbsolutePath() + " exists and will be overwritten");
                 } else {
                     throw new IllegalArgumentException("BAM file " + splitBamFile.getAbsolutePath() + " already exists, but OVERWRITE_EXISTING is set to false.");
                 }
@@ -317,17 +317,21 @@ public class SplitBamByCell extends CommandLineProgram {
         for (File bamFile : INPUT) {
             Path bamPath = bamFile.toPath();
             try {
-                if (Files.isSymbolicLink(bamPath)) {
+                while (Files.isSymbolicLink(bamPath)) {
+                    Path symlinkPath = bamPath;
                     bamPath = Files.readSymbolicLink(bamPath);
-                    if (!bamPath.isAbsolute()) {
-                        bamPath = bamFile.toPath().getParent().resolve(bamPath);
-                    }
 
-                    // Delete symlink, but don't fail if there was a problem
-                    if (!bamFile.delete()) {
-                        System.err.println("Symbolic link " + bamFile.getAbsolutePath() + " could not be deleted");
+                    // Delete symlink, but don't fail if there is a problem
+                    try {
+                        Files.delete(symlinkPath);
+                    } catch (IOException var4) {
+                        log.error("Symbolic link " + symlinkPath.toAbsolutePath() + " could not be deleted");
                     }
                 }
+                if (!bamPath.isAbsolute()) {
+                    bamPath = bamFile.toPath().getParent().resolve(bamPath);
+                }
+
                 Files.delete(bamPath);
             } catch (IOException ex) {
                 throw new RuntimeException("Error deleting " + bamPath, ex);
