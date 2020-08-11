@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -35,9 +36,12 @@ import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.junit.Assert;
+import org.omg.PortableInterceptor.INACTIVE;
 import org.testng.annotations.Test;
 import picard.analysis.CollectAlignmentSummaryMetrics;
 import picard.sam.MergeSamFiles;
+
+import javax.print.DocFlavor;
 
 
 public class SplitBamByCellTest {
@@ -109,6 +113,55 @@ public class SplitBamByCellTest {
 		} catch (IOException ex) {
 			throw new RuntimeException("Error running the test", ex);
 		}
+    }
+
+    @Test
+    public void testTargetSplitSizeAndOverwrite() throws IOException {
+        SplitBamByCell bamSplitter;
+
+        File inputBam = TestUtils.getTempReportFile("SplitBamByCell.", ".bam");
+        File outputBAMList = TestUtils.getTempReportFile("SplitBamByCell.", ".list");
+
+        Files.copy(TEST_BAM.toPath(), inputBam.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+        bamSplitter = new SplitBamByCell();
+        bamSplitter.INPUT = Arrays.asList(inputBam);
+        bamSplitter.OUTPUT = new File("SplitBamByCell2." + bamSplitter.OUTPUT_SLUG + ".bam");
+        bamSplitter.OUTPUT_LIST = outputBAMList;
+        bamSplitter.TARGET_BAM_SIZE = "1.5M";
+        Assert.assertEquals(bamSplitter.doWork(), 0);
+
+        List<File> splitBAMFileList = FileListParsingUtils.readFileList(outputBAMList);
+        Assert.assertEquals(splitBAMFileList.size(), 3);
+        for (File f : splitBAMFileList) {
+            f.deleteOnExit();
+        }
+
+        // It should fail since OVERWRITE_EXISTING is false
+        boolean exceptionThrown = false;
+        try {
+            bamSplitter = new SplitBamByCell();
+            bamSplitter.INPUT = Arrays.asList(inputBam);
+            bamSplitter.OUTPUT = new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
+            bamSplitter.OUTPUT_LIST = outputBAMList;
+            bamSplitter.TARGET_BAM_SIZE = "2M";
+            bamSplitter.doWork();
+        } catch (IllegalArgumentException ex) {
+            exceptionThrown = true;
+        }
+        Assert.assertTrue(exceptionThrown);
+        Assert.assertTrue(inputBam.exists());
+
+        // Now it should overwrite the output BAM files and then delete the input BAM
+        bamSplitter = new SplitBamByCell();
+        bamSplitter.INPUT = Arrays.asList(inputBam);
+        bamSplitter.OUTPUT = new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
+        bamSplitter.OUTPUT_LIST = outputBAMList;
+        bamSplitter.TARGET_BAM_SIZE = "2M";
+        bamSplitter.OVERWRITE_EXISTING = true;
+        bamSplitter.DELETE_INPUTS = true;
+        Assert.assertEquals(bamSplitter.doWork(), 0);
+        Assert.assertFalse(inputBam.exists());
     }
 
     @Test

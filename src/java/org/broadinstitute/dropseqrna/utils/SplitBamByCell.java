@@ -24,7 +24,10 @@
 package org.broadinstitute.dropseqrna.utils;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -70,8 +73,11 @@ public class SplitBamByCell extends CommandLineProgram {
     @Argument(doc="The tag to examine in order to partition reads.")
     public String SPLIT_TAG="XC";
 
-    @Argument(doc="Number of output files to create")
+    @Argument(optional=true, doc="Number of output files to create")
     public Integer NUM_OUTPUTS;
+
+    @Argument(optional=true, doc="Approximate size of split BAMs to be created. This can be a human-readable number like 500M or 2G. Default: 2G")
+    public String TARGET_BAM_SIZE;
 
     @Argument(doc="Template for output file names.  If OUTPUT_LIST is specified, and OUTPUT is a relative path," +
             " output file paths will be relative to the directory of the OUTPUT_LIST.")
@@ -86,13 +92,56 @@ public class SplitBamByCell extends CommandLineProgram {
     @Argument(optional=true, doc="If specified, this file will be created, containing split BAM files' read count distribution stats.")
     public File REPORT;
 
+    @Argument(optional=true, doc="Overwrite existing files. Default: fail if any files to be created already exist.")
+    public boolean OVERWRITE_EXISTING = false;
+
+    @Argument(optional=true, doc="Delete input BAM(s) after splitting them. Default: do not delete input BAM(s).")
+    public boolean DELETE_INPUTS = false;
+
     private SAMFileWriterFactory samWriterFactory = null;
+
+    private enum FileSizeSuffix  {
+        k(1024L),
+        m(1024L * 1024L),
+        g(1024L * 1024L * 1024L),
+        t(1024L * 1024L * 1024L * 1024L);
+
+        private long size;
+
+        private FileSizeSuffix(long size) {
+            this.size = size;
+        }
+
+        public long getSize() {
+            return size;
+        }
+    }
 
     @Override
     protected int doWork() {
         if (!OUTPUT.getPath().contains(OUTPUT_SLUG)) {
             throw new IllegalArgumentException(OUTPUT + " does not contain the replacement token " + OUTPUT_SLUG);
         }
+
+        INPUT = FileListParsingUtils.expandFileList(INPUT);
+
+        // Check that input BAM files can be deleted
+        if (DELETE_INPUTS) {
+            for (File bamFile : INPUT) {
+                IOUtil.assertFileIsWritable(bamFile);
+            }
+        }
+
+        if (NUM_OUTPUTS == null && TARGET_BAM_SIZE == null || NUM_OUTPUTS != null && TARGET_BAM_SIZE != null) {
+            throw new IllegalArgumentException("Error: a value for either NUM_OUTPUTS or TARGET_BAM_SIZE must be specified");
+        }
+
+        if (TARGET_BAM_SIZE != null) {
+            long targetSize = dehumanizeFileSize(TARGET_BAM_SIZE);
+            NUM_OUTPUTS = (int) Math.max(1, Math.round(1.0 * getTotalBamSize(INPUT) / targetSize));
+        }
+
+        checkOutputOverwrites();
 
         samWriterFactory = new SAMFileWriterFactory().setCreateIndex(CREATE_INDEX);
 
@@ -106,18 +155,52 @@ public class SplitBamByCell extends CommandLineProgram {
             writeReport(writerInfoList);
         }
 
+        if (DELETE_INPUTS) {
+            deleteInputBamFiles();
+        }
+
         return 0;
     }
 
-    private SAMFileInfo createWriterInfo(final SAMFileHeader header, int writerIdx) {
-        final String outputPath = OUTPUT.toString().replace(OUTPUT_SLUG, String.valueOf(writerIdx));
-        final File samFile = new File(outputPath);
+    private File getRelativeSplitBamFile(int splitIdx) {
+        final String outputPath = OUTPUT.toString().replace(OUTPUT_SLUG, String.valueOf(splitIdx));
+        return new File(outputPath);
+    }
+
+    private File getActualSplitBamFile(File samFile) {
         final File actualFileToOpen;
         if (OUTPUT_LIST == null) {
             actualFileToOpen = samFile;
         } else {
             actualFileToOpen = FileListParsingUtils.resolveFilePath(OUTPUT_LIST.getParentFile(), samFile);
         }
+
+        return actualFileToOpen;
+    }
+
+    private void checkOutputOverwrites() {
+        for (int splitIdx=0; splitIdx<NUM_OUTPUTS; splitIdx++) {
+            final File splitBamFile = getActualSplitBamFile(getRelativeSplitBamFile(splitIdx));
+            if (splitBamFile.exists()) {
+                // Check that this output BAM is not one of the INPUT BAMs
+                for (File inputBam : INPUT) {
+                    if (splitBamFile.getAbsolutePath().equals(inputBam.getAbsolutePath())) {
+                        throw new IllegalArgumentException("Output BAM file " + splitBamFile.getAbsolutePath() + " is the same as input BAM " + inputBam.getAbsolutePath());
+                    }
+                }
+
+                if (OVERWRITE_EXISTING) {
+                    System.out.println("BAM file " + splitBamFile.getAbsolutePath() + " exists and will be overwritten");
+                } else {
+                    throw new IllegalArgumentException("BAM file " + splitBamFile.getAbsolutePath() + " already exists, but OVERWRITE_EXISTING is set to false.");
+                }
+            }
+        }
+    }
+
+    private SAMFileInfo createWriterInfo(final SAMFileHeader header, int splitIdx) {
+        final File samFile = getRelativeSplitBamFile(splitIdx);
+        final File actualFileToOpen = getActualSplitBamFile(samFile);
         final SAMFileWriter samFileWriter = samWriterFactory.makeSAMOrBAMWriter(header, true, actualFileToOpen);
         return new SAMFileInfo(samFile, samFileWriter, 0);
     }
@@ -228,6 +311,64 @@ public class SplitBamByCell extends CommandLineProgram {
         out.println("variance = " + StrictMath.round(StatUtils.variance(readCounts)));
 
         out.close();
+    }
+
+    private void deleteInputBamFiles() {
+        for (File bamFile : INPUT) {
+            Path bamPath = bamFile.toPath();
+            try {
+                if (Files.isSymbolicLink(bamPath)) {
+                    bamPath = Files.readSymbolicLink(bamPath);
+                    if (!bamPath.isAbsolute()) {
+                        bamPath = bamFile.toPath().getParent().resolve(bamPath);
+                    }
+
+                    // Delete symlink, but don't fail if there was a problem
+                    if (!bamFile.delete()) {
+                        System.err.println("Symbolic link " + bamFile.getAbsolutePath() + " could not be deleted");
+                    }
+                }
+                Files.delete(bamPath);
+            } catch (IOException ex) {
+                throw new RuntimeException("Error deleting " + bamPath, ex);
+            }
+        }
+    }
+
+    private long dehumanizeFileSize(String fileSizeString) {
+        long conversionFactor = 1;
+
+        char suffix = fileSizeString.charAt(fileSizeString.length() - 1);
+        if (Character.isAlphabetic(suffix)) {
+            try {
+                conversionFactor = FileSizeSuffix.valueOf(String.valueOf(suffix).toLowerCase()).getSize();
+                fileSizeString = fileSizeString.substring(0, fileSizeString.length() -1);
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException("Error: " + suffix + " is not a valid file size suffix");
+            }
+        }
+
+        double size;
+        try {
+            size = Double.parseDouble(fileSizeString);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Error: " + fileSizeString + " is not a valid number");
+        }
+
+        return (long) (conversionFactor * size);
+    }
+
+    private long getTotalBamSize(List<File> inputList) {
+        long size = 0;
+        try {
+            for (File file : inputList) {
+                size += Files.size(file.toPath());
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException("Error computing the total BAM file size", ex);
+        }
+
+        return size;
     }
 
     private static class SAMFileInfo {
