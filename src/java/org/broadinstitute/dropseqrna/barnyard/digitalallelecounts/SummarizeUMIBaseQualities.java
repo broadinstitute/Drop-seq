@@ -24,7 +24,10 @@
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.IntStream;
 
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
@@ -57,15 +60,11 @@ public class SummarizeUMIBaseQualities {
 		this (convert(bases), convert(qualities));
 	}
 
-
-
-
-
 	/**
 	 * Return the most commonly observed base in this pileup.
 	 * Only looks at bases that occur, not at their quality.
-	 * If there's only one base, in the pileup, the second most common base
-	 * is selected at random, but of course has 0 reads assigned to it.
+	 * EXCEPTION - if there are exactly 2 observations and they disagree, 
+	 * then the most common base is the one with the higher quality.
 	 * @return
 	 */
 	public Byte getMostCommonBase() {
@@ -75,35 +74,29 @@ public class SummarizeUMIBaseQualities {
 		ObjectCounter<Byte> r = new ObjectCounter<>();
 		for (Byte b : this.bases)
 			r.increment(b);
-		this.mostCommonBase=r.getMode();
-		/*
-		r.remove(this.mostCommonBase);
-		if (r.getSize()>0)
-			this.secondCommonBase=r.getMode();
-		else {
-			byte [] temp = {this.mostCommonBase};
-			Bases b = Bases.valueOf(StringUtil.bytesToString(temp));
-			char newBase =b.getOtherBase(b, true).getBase();
-			this.secondCommonBase=StringUtil.charToByte(newBase);
+		
+		// this is a rare tie situation.  Select the highest quality base.
+		if (getBasesTied(r)) {			
+		    int maxIndex= IntStream.range(0, qualities.size())
+		            .reduce((i, j) -> qualities.get(i) > qualities.get(j) ? i : j)
+		            .getAsInt();
+		    this.mostCommonBase=this.bases.get(maxIndex);		
+		}  else {
+			this.mostCommonBase=r.getMode();	
 		}
-		*/
+		
 		return this.mostCommonBase;
 	}
-	/**
-	 * Return the second most commonly observed base in this pileup.
-	 * Only looks at bases that occur, not at their quality.
-	 * If there's only one base, in the pileup, the second most common base
-	 * is selected at random, but of course has 0 reads assigned to it.
-	 * @return
-	 */
-	/*
-	public Byte getSecondMostCommonBase() {
-		if (this.secondCommonBase!=null) return this.secondCommonBase;
-		getMostCommonBase();
-		return this.secondCommonBase;
+	
+	private boolean getBasesTied (ObjectCounter<Byte> r) {
+		// if there's one key, it's not a tie.
+		if (r.getKeys().size()==1) return false;
+		// if there's more than 1 key, then see if all keys have the same number of counts.
+		Set<Integer> counts = new HashSet<>(r.getCounts());
+		if (counts.size()==1) return true; // all the same counts.
+		return false;
 	}
-	*/
-
+	
 	/**
 	 * Summarize the phread scores of all the bases piles in the given pileup.
 	 * This calculates the mean quality score.
