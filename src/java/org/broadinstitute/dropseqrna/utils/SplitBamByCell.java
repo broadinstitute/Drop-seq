@@ -76,7 +76,7 @@ public class SplitBamByCell extends CommandLineProgram {
     @Argument(doc="Number of output files to create", mutex={"TARGET_BAM_SIZE"})
     public Integer NUM_OUTPUTS;
 
-    @Argument(doc="Approximate size of split BAMs to be created. This can be a human-readable number like 500M or 2G")
+    @Argument(doc="Approximate size of split BAMs to be created. This can be a human-readable number like 500M or 2G", mutex={"NUM_OUTPUTS"})
     public String TARGET_BAM_SIZE;
 
     @Argument(doc="Template for output file names.  If OUTPUT_LIST is specified, and OUTPUT is a relative path," +
