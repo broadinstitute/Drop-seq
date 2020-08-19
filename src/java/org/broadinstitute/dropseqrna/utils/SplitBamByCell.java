@@ -79,7 +79,7 @@ public class SplitBamByCell extends CommandLineProgram {
     @Argument(doc="Approximate size of split BAMs to be created. This can be a human-readable number like 500M or 2G", mutex={"NUM_OUTPUTS"})
     public String TARGET_BAM_SIZE;
 
-    @Argument(doc="Template for output file names.  If OUTPUT_LIST is specified, and OUTPUT is a relative path," +
+    @Argument(optional=true, doc="Template for output file names.  If OUTPUT_LIST is specified, and OUTPUT is a relative path," +
             " output file paths will be relative to the directory of the OUTPUT_LIST.")
     public File OUTPUT;
 
@@ -100,6 +100,10 @@ public class SplitBamByCell extends CommandLineProgram {
 
     private SAMFileWriterFactory samWriterFactory = null;
 
+    private final String BAM_EXTENSION = ".bam";
+    private final String BAM_LIST_EXTENSION = ".bam_list";
+    private final String BAM_REPORT_EXTENSION =".split_bam_report";
+
     private enum FileSizeSuffix  {
         k(1024L),
         m(1024L * 1024L),
@@ -119,21 +123,21 @@ public class SplitBamByCell extends CommandLineProgram {
 
     @Override
     protected int doWork() {
-        if (!OUTPUT.getPath().contains(OUTPUT_SLUG)) {
+        INPUT = FileListParsingUtils.expandFileList(INPUT);
+
+        if (OUTPUT != null && !OUTPUT.getPath().contains(OUTPUT_SLUG)) {
             throw new IllegalArgumentException(OUTPUT + " does not contain the replacement token " + OUTPUT_SLUG);
         }
 
-        INPUT = FileListParsingUtils.expandFileList(INPUT);
+        if (OUTPUT == null) {
+            setDefaultOutput();
+        }
 
         // Check that input BAM files can be deleted
         if (DELETE_INPUTS) {
             for (File bamFile : INPUT) {
                 IOUtil.assertFileIsWritable(bamFile);
             }
-        }
-
-        if (NUM_OUTPUTS == null && TARGET_BAM_SIZE == null || NUM_OUTPUTS != null && TARGET_BAM_SIZE != null) {
-            throw new IllegalArgumentException("Error: a value for either NUM_OUTPUTS or TARGET_BAM_SIZE must be specified");
         }
 
         if (TARGET_BAM_SIZE != null) {
@@ -148,18 +152,28 @@ public class SplitBamByCell extends CommandLineProgram {
         final List<SAMFileInfo> writerInfoList = new ArrayList<>();
         splitBAMs(writerInfoList);
 
-        if (OUTPUT_LIST != null) {
-            writeOutputList(writerInfoList);
-        }
-        if (REPORT != null) {
-            writeReport(writerInfoList);
-        }
+        writeOutputList(writerInfoList);
+        writeReport(writerInfoList);
 
         if (DELETE_INPUTS) {
             deleteInputBamFiles();
         }
 
         return 0;
+    }
+
+    private void setDefaultOutput() {
+        if (INPUT.size() > 1) {
+            throw new IllegalArgumentException("OUTPUT must be specified when INPUT list contains more than one BAM file");
+        }
+
+        File bamFile = INPUT.get(0);
+        if (!bamFile.getName().endsWith(BAM_EXTENSION)) {
+            throw new IllegalArgumentException("Input BAM file " + bamFile.getAbsolutePath() + " does not have the extension " + BAM_EXTENSION);
+        }
+
+        String bamRootName = bamFile.getName().replaceAll("\\" + BAM_EXTENSION + "$", "");
+        OUTPUT = new File(bamFile.getParent(), bamRootName + "." + OUTPUT_SLUG + BAM_EXTENSION);
     }
 
     private File getRelativeSplitBamFile(int splitIdx) {
@@ -288,8 +302,28 @@ public class SplitBamByCell extends CommandLineProgram {
         }
     }
 
+    private String getOutputNameRoot() {
+        String outputName = OUTPUT.getName().replaceAll("\\" + BAM_EXTENSION + "$", "");;
+
+        String outputNameRoot;
+        int index = outputName.indexOf(OUTPUT_SLUG);
+        if (index < 0) {
+            outputNameRoot = outputName;
+        } else if (index == 0) {
+            outputNameRoot = "split";
+        } else {
+            outputNameRoot = outputName.substring(0, index);
+        }
+        outputNameRoot = outputNameRoot.replaceAll("\\.+$", "");
+
+        return outputNameRoot;
+    }
+
     private void writeOutputList(final List<SAMFileInfo> writerInfoList) {
-        final PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT_LIST));
+        final File listFile = (OUTPUT_LIST == null)
+            ? new File(OUTPUT.getParent(), getOutputNameRoot() + BAM_LIST_EXTENSION)
+            : OUTPUT_LIST;
+        final PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(listFile));
 
         for (SAMFileInfo writerInfo : writerInfoList) {
             out.println(writerInfo.getSamFile().toString());
@@ -299,7 +333,10 @@ public class SplitBamByCell extends CommandLineProgram {
     }
 
     private void writeReport(final List<SAMFileInfo> writerInfoList) {
-        final PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(REPORT));
+        final File reportFile = (REPORT == null)
+            ? new File(OUTPUT.getParent(), getOutputNameRoot() + BAM_REPORT_EXTENSION)
+            : REPORT;
+        final PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(reportFile));
         out.println("BAM_INDEX" + "\t" + "NUM_READS");
 
         final double[] readCounts = new double[writerInfoList.size()];

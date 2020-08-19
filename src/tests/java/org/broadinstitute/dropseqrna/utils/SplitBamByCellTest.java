@@ -121,6 +121,7 @@ public class SplitBamByCellTest {
 
         File inputBam = TestUtils.getTempReportFile("SplitBamByCell.", ".bam");
         File outputBAMList = TestUtils.getTempReportFile("SplitBamByCell.", ".list");
+        File reportFile = TestUtils.getTempReportFile("SplitBamByCell.", ".split_bam_report");
 
         Files.copy(TEST_BAM.toPath(), inputBam.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
@@ -128,6 +129,7 @@ public class SplitBamByCellTest {
         bamSplitter.INPUT = Arrays.asList(inputBam);
         bamSplitter.OUTPUT = new File("SplitBamByCell2." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST = outputBAMList;
+        bamSplitter.REPORT = reportFile;
         bamSplitter.TARGET_BAM_SIZE = "1.5M";
         Assert.assertEquals(bamSplitter.doWork(), 0);
 
@@ -157,6 +159,7 @@ public class SplitBamByCellTest {
         bamSplitter.INPUT = Arrays.asList(inputBam);
         bamSplitter.OUTPUT = new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST = outputBAMList;
+        bamSplitter.REPORT = reportFile;
         bamSplitter.TARGET_BAM_SIZE = "2M";
         bamSplitter.OVERWRITE_EXISTING = true;
         bamSplitter.DELETE_INPUTS = true;
