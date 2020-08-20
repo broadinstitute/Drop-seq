@@ -58,7 +58,11 @@ import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
         summary = "Splits input BAM file(s) into NUM_OUTPUTS output BAM files, " +
-              "in such a way that all the reads for each cell barcode are in exactly one output BAM file",
+              "in such a way that all the reads for each cell barcode are in exactly one output BAM file.\n" +
+              "Option NUM_OUTPUTS is either supplied explicitly, or computed by dividing the total input BAM file(s) size by the value of TARGET_BAM_SIZE.\n" +
+              "When submitting this command to UGER:\n" +
+              "* memory: -m 16G should be sufficient.\n" +
+              "* time:   3 minutes/GB of input BAM should be enough.",
         oneLineSummary = "Splits input BAM file(s) by cell barcode",
         programGroup = DropSeq.class
 )
@@ -73,30 +77,30 @@ public class SplitBamByCell extends CommandLineProgram {
     @Argument(doc="The tag to examine in order to partition reads.")
     public String SPLIT_TAG="XC";
 
-    @Argument(doc="Number of output files to create", mutex={"TARGET_BAM_SIZE"})
+    @Argument(shortName="N", doc="Number of output files to create", mutex={"TARGET_BAM_SIZE"})
     public Integer NUM_OUTPUTS;
 
-    @Argument(doc="Approximate size of split BAMs to be created. This can be a human-readable number like 500M or 2G", mutex={"NUM_OUTPUTS"})
+    @Argument(shortName="S", doc="Approximate size of split BAMs to be created. This can be a human-readable number like 500M or 2G", mutex={"NUM_OUTPUTS"})
     public String TARGET_BAM_SIZE;
 
-    @Argument(optional=true, doc="Template for output file names.  If OUTPUT_LIST is specified, and OUTPUT is a relative path," +
+    @Argument(optional=true, shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Template for output file names.  If OUTPUT_LIST is specified, and OUTPUT is a relative path," +
             " output file paths will be relative to the directory of the OUTPUT_LIST.")
     public File OUTPUT;
 
     @Argument(optional=true, doc="For each output file, this string in the OUTPUT template will be replaced with an integer.")
     public String OUTPUT_SLUG="__SPLITNUM__";
 
-    @Argument(optional=true, doc="If specified, this file will be created, with NUM_OUTPUTS lines, containing all the output files created.")
+    @Argument(optional=true, shortName="L", doc="If specified, this file will be created, with NUM_OUTPUTS lines, containing all the output files created.")
     public File OUTPUT_LIST;
 
     @Argument(optional=true, doc="If specified, this file will be created, containing split BAM files' read count distribution stats.")
     public File REPORT;
 
-    @Argument(optional=true, doc="Overwrite existing files. Default: fail if any files to be created already exist.")
+    @Argument(optional=true, shortName="W", doc="Overwrite existing files. Default: fail if any files to be created already exist.")
     public boolean OVERWRITE_EXISTING = false;
 
-    @Argument(optional=true, doc="Delete input BAM(s) after splitting them. Default: do not delete input BAM(s).")
-    public boolean DELETE_INPUTS = false;
+    @Argument(optional=true, shortName="D", doc="Delete input BAM(s) after splitting them. Default: delete input BAM(s).")
+    public boolean DELETE_INPUTS = true;
 
     private SAMFileWriterFactory samWriterFactory = null;
 
