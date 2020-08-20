@@ -63,6 +63,8 @@ public class SplitBamByCellTest {
         bamSplitter.OUTPUT=new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST=outputBAMList;
         bamSplitter.NUM_OUTPUTS = 3;
+        bamSplitter.DELETE_INPUTS = false;
+        bamSplitter.OVERWRITE_EXISTING = true;
         bamSplitter.REPORT = report;
         TestUtils.setInflaterDeflaterIfMacOs();
 		Assert.assertEquals(bamSplitter.doWork(), 0);
@@ -131,6 +133,7 @@ public class SplitBamByCellTest {
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.REPORT = reportFile;
         bamSplitter.TARGET_BAM_SIZE = "1.5M";
+        bamSplitter.DELETE_INPUTS = false;
         Assert.assertEquals(bamSplitter.doWork(), 0);
 
         List<File> splitBAMFileList = FileListParsingUtils.readFileList(outputBAMList);
@@ -146,6 +149,7 @@ public class SplitBamByCellTest {
             bamSplitter.INPUT = Arrays.asList(inputBam);
             bamSplitter.OUTPUT = new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
             bamSplitter.OUTPUT_LIST = outputBAMList;
+            bamSplitter.DELETE_INPUTS = false;
             bamSplitter.TARGET_BAM_SIZE = "2M";
             bamSplitter.doWork();
         } catch (IllegalArgumentException ex) {
@@ -160,6 +164,7 @@ public class SplitBamByCellTest {
         bamSplitter.OUTPUT = new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.REPORT = reportFile;
+        bamSplitter.DELETE_INPUTS = false;
         bamSplitter.TARGET_BAM_SIZE = "2M";
         bamSplitter.OVERWRITE_EXISTING = true;
         bamSplitter.DELETE_INPUTS = true;
