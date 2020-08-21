@@ -132,6 +132,7 @@ public class TestUtils {
         bamSplitter.OUTPUT = outputBAM;
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.NUM_OUTPUTS = numOutputs;
+        bamSplitter.DELETE_INPUTS = false;
         bamSplitter.USE_JDK_DEFLATER = isMacOs();
         setInflaterDeflaterIfMacOs();
         Assert.assertEquals(bamSplitter.doWork(), 0);
