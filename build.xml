@@ -179,7 +179,7 @@
         <zip zipfile="${dist}/${zip.label}.zip">
             <zipfileset dir="${dist}" includes="dropseq.jar" prefix="${zip.label}/jar"/>
             <zipfileset dir="${lib}" includes="*.*" prefix="${zip.label}/jar/lib"/>
-            <zipfileset dir="${picard.executable.dir}" includes="*.*" prefix="${zip.label}/3rdParty/picard"/>
+            <zipfileset dir="${lib}" includes="picard*.jar" fullpath="${zip.label}/3rdParty/picard/picard.jar"/>
             <zipfileset dir="${dist}/scripts" prefix="${zip.label}" filemode="755" includes="*"/>
             <zipfileset dir="src/scripts" includes="Drop-seq_alignment.sh"  filemode="755" prefix="${zip.label}"/>
             <zipfileset dir="src/scripts" includes="create_Drop-seq_reference_metadata.sh"  filemode="755" prefix="${zip.label}"/>
