@@ -23,6 +23,14 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.util.IOUtil;
+import org.apache.commons.io.FileUtils;
+import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+import org.junit.Assert;
+import org.testng.annotations.Test;
+import picard.analysis.CollectAlignmentSummaryMetrics;
+import picard.sam.MergeSamFiles;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -31,17 +39,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import htsjdk.samtools.util.IOUtil;
-import org.apache.commons.io.FileUtils;
-import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
-import org.junit.Assert;
-import org.omg.PortableInterceptor.INACTIVE;
-import org.testng.annotations.Test;
-import picard.analysis.CollectAlignmentSummaryMetrics;
-import picard.sam.MergeSamFiles;
-
-import javax.print.DocFlavor;
 
 
 public class SplitBamByCellTest {
