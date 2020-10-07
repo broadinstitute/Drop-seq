@@ -59,8 +59,7 @@ public class ValidateReferenceTest {
         final FileReader reader = new FileReader(output);
         final ValidateReference.Messages messages = new Gson().fromJson(reader, ValidateReference.Messages.class);
         CloserUtil.close(reader);
-        Assert.assertEquals(messages.transcriptsWithNoExons.size(), 1);
-        Assert.assertTrue(messages.transcriptsWithNoExons.get(0).contains("bogus-transcript"));
+        Assert.assertEquals(messages.transcriptsWithNoExons.size(), 0);
         Assert.assertNotNull(messages.baseErrors);
         Assert.assertTrue(messages.baseErrors.contains("88"));
         Assert.assertEquals(messages.sequencesOnlyInReference.size(), 2);
@@ -68,9 +67,8 @@ public class ValidateReferenceTest {
         Assert.assertTrue(messages.sequencesOnlyInReference.contains("NOT_IN_GTF"));
         Assert.assertEquals(messages.sequencesOnlyInGtf.size(), 1);
         Assert.assertEquals(messages.sequencesOnlyInGtf.get(0), "BOGUS_SEQUENCE");
-        Assert.assertEquals(messages.geneBiotypes.size(), 2);
+        Assert.assertEquals(messages.geneBiotypes.size(), 1);
         Assert.assertTrue(messages.geneBiotypes.contains(null));
-        Assert.assertTrue(messages.geneBiotypes.contains("test-biotype"));
         Assert.assertEquals(messages.fractionOfSequencesOnlyInReference, 2/93.0, 0.001);
         Assert.assertEquals(messages.fractionOfSequencesOnlyInGtf, 1/92.0, 0.001);
         Assert.assertEquals(messages.fractionOfGenomeOfSequencesOnlyInReference, 551.0/82802, 0.0001);

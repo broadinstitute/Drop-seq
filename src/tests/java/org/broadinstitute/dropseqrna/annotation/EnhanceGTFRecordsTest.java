@@ -28,6 +28,7 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Interval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.annotation.AnnotationException;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -74,9 +75,10 @@ public class EnhanceGTFRecordsTest {
 		
 	}
 	
-	@Test(enabled=true, expectedExceptions=java.lang.IllegalStateException.class)
+	@Test(enabled=true, expectedExceptions= AnnotationException.class)
 	public void testGeneNoExon () {
 		EnhanceGTFRecords e = new EnhanceGTFRecords();
+		e.setValidationStringency(ValidationStringency.STRICT);
 		GTFParser parser = new GTFParser(GTF_FILE3, ValidationStringency.STRICT);
         List<GTFRecord> records;
         try {

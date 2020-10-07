@@ -55,6 +55,8 @@ public class GTFReader {
     private final Set<String> skippedChromosomeTranscriptDescription = new HashSet<>();
     private final Set<String> unrecognizedSequences = new HashSet<>();
 
+    private ValidationStringency validationStringency = ValidationStringency.LENIENT;
+
     public GTFReader(final File gtfFlatFile, final SAMSequenceDictionary sequenceDictionary) {
         this.gtfFlatFile = gtfFlatFile;
         // turns out this has to be non-null to not null pointer!
@@ -68,7 +70,9 @@ public class GTFReader {
         this(gtfFlatFile, DropSeqSamUtil.loadSequenceDictionary(sequenceDictionary));
     }
 
-
+    public void setValidationStringency(ValidationStringency validationStringency) {
+        this.validationStringency = validationStringency;
+    }
 
     static OverlapDetector<GeneFromGTF> load(final File refFlatFile, final SAMSequenceDictionary sequenceDictionary) {
         return new GTFReader(refFlatFile, sequenceDictionary).load();
@@ -91,7 +95,11 @@ public class GTFReader {
                 if (gene.length() > longestInterval) longestInterval = gene.length();
                 if (gene.length() > 1000000) ++numIntervalsOver1MB;
             } catch (AnnotationException e) {
-                LOG.info(e.getMessage() + " -- skipping");
+			    switch (validationStringency) {
+                    case STRICT: throw e;
+                    case LENIENT: LOG.warn(e.getMessage() + " -- skipping"); break;
+                    case SILENT: break;
+                }
             }
         LOG.debug("Longest gene: " + longestInterval + "; number of genes > 1MB: " + numIntervalsOver1MB);
         LOG.debug("Total number of genes loaded [" + overlapDetector.getAll().size() +"]");

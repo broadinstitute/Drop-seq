@@ -23,9 +23,11 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.OverlapDetector;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.annotation.AnnotationException;
 import picard.annotation.Gene;
 import picard.annotation.Gene.Transcript;
 
@@ -37,10 +39,14 @@ import java.util.Map;
 
 
 public class GTFReaderTest {
-	private final File GTF_FILE1 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_ISG15.gtf.gz");
-	private final File GTF_FILE2 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_ISG15_FAM41C.gtf.gz");
-	private final File GTF_FILE3 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_SNORD18.gtf.gz");
-	private final File SD = new File("testdata/org/broadinstitute/transcriptome/annotation/human_g1k_v37_decoy_50.dict");
+	File TEST_DATA_DIR = new File("testdata/org/broadinstitute/transcriptome/annotation");
+
+	private final File GTF_FILE1 = new File(TEST_DATA_DIR, "human_ISG15.gtf.gz");
+	private final File GTF_FILE2 = new File(TEST_DATA_DIR, "human_ISG15_FAM41C.gtf.gz");
+	private final File GTF_FILE3 = new File(TEST_DATA_DIR, "human_SNORD18.gtf.gz");
+	private final File SD = new File(TEST_DATA_DIR, "human_g1k_v37_decoy_50.dict");
+	File PSEUDOGENE_GTF = new File(TEST_DATA_DIR, "pseudogene.gtf");
+
 
 
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
@@ -136,6 +142,22 @@ public class GTFReaderTest {
 		Assert.assertNotNull(od);
 	}
 
+	@Test
+	public void testGeneWithNoExonTranscriptRejectedLenient() {
+		final OverlapDetector<GeneFromGTF> od = load(PSEUDOGENE_GTF, SD, ValidationStringency.LENIENT);
+		Assert.assertTrue(od.getAll().isEmpty());
+	}
 
+	@Test(expectedExceptions = AnnotationException.class)
+	public void testGeneWithNoExonTranscriptRejectedStrict() {
+		final OverlapDetector<GeneFromGTF> od = load(PSEUDOGENE_GTF, SD, ValidationStringency.STRICT);
+		Assert.assertTrue(od.getAll().isEmpty());
+	}
+
+	private OverlapDetector<GeneFromGTF> load(final File gtf, final File sd, final ValidationStringency stringency) {
+		final GTFReader reader = new GTFReader(gtf, sd);
+		reader.setValidationStringency(stringency);
+		return reader.load();
+	}
 
 }

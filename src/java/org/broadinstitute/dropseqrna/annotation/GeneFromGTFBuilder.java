@@ -167,6 +167,9 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
             }
         }
         Collections.sort(exons);
+        if (exons.isEmpty()) {
+            throw new AnnotationException(transcriptDescription + " has no exons");
+        }
         if (codingStart==Integer.MAX_VALUE) codingStart=transcriptionStart;
         if (codingEnd==Integer.MIN_VALUE) codingEnd=transcriptionEnd;
 

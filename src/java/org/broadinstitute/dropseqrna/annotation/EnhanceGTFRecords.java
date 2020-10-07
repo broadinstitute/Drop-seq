@@ -23,6 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.OverlapDetector;
@@ -43,8 +44,13 @@ public class EnhanceGTFRecords {
     public static final String GENE_FEATURE_TYPE = "gene";
     public static final String TRANSCRIPT_FEATURE_TYPE = "transcript";
 
+    private ValidationStringency validationStringency = ValidationStringency.LENIENT;
 
-    /**
+	public void setValidationStringency(ValidationStringency validationStringency) {
+		this.validationStringency = validationStringency;
+	}
+
+	/**
 	 * @param records GTFRecords, potentially from many genes
 	 * @return The input records, plus gene, transcript, intron and conserved_intron records.
 	 */
@@ -60,7 +66,11 @@ public class EnhanceGTFRecords {
                 LOG.debug("Enhancing Gene [" + gene.getName() + "]");
                 result.addAll(enhanceGene(gene));
             } catch (AnnotationException e) {
-                LOG.info(e.getMessage() + " -- skipping");
+				switch (validationStringency) {
+					case STRICT: throw e;
+					case LENIENT: LOG.warn(e.getMessage() + " -- skipping"); break;
+					case SILENT: break;
+				}
             }
         }
 		return result;
