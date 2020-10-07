@@ -34,11 +34,12 @@ import java.util.Collection;
 
 public class ConvertToRefFlatTest {
 
-	File GTF_FILE1 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_ISG15.gtf.gz");
+	File TEST_DATA_DIR = new File("testdata/org/broadinstitute/transcriptome/annotation");
+	File GTF_FILE1 = new File(TEST_DATA_DIR, "human_ISG15.gtf.gz");
 	// cat Homo_sapiens_assembly19.refFlat |grep ISG15 > ~/1chip/trunk/transcriptome_java/testdata/org/broadinstitute/transcriptome/annotation/human_ISG15_refFlat
-	File REF_FLAT1 = new File("testdata/org/broadinstitute/transcriptome/annotation/human_ISG15.refFlat.gz");
-	File SD = new File("testdata/org/broadinstitute/transcriptome/annotation/human_g1k_v37_decoy_50.dict");
-	
+	File REF_FLAT1 = new File(TEST_DATA_DIR, "human_ISG15.refFlat.gz");
+	File SD = new File(TEST_DATA_DIR, "human_g1k_v37_decoy_50.dict");
+
 	@Test(enabled=true, groups={"dropseq", "transcriptome"})
 	public void testConvert() {
 		ConvertToRefFlat crf = new ConvertToRefFlat();
@@ -80,28 +81,5 @@ public class ConvertToRefFlatTest {
 		
 		
 	}
-	
-	/*
-	private void assertTwoTranscriptsSame (Transcript t, Transcript t2) {
-		// the transcript names don't match up for these guys, but the other crap does.
-		
-		//Assert.assertEquals(t.getGene().getName(), t2.getGene().getName());
-		Assert.assertEquals(t.getGene().getSequence(), t2.getGene().getSequence());
-		Assert.assertEquals(t.getGene().getStart(), t2.getGene().getStart());
-		Assert.assertEquals(t.getGene().getEnd(), t2.getGene().getEnd());
-		Assert.assertEquals(t.codingStart, t2.codingStart);
-		Assert.assertEquals(t.codingEnd, t2.codingEnd);
-		Assert.assertEquals(t.transcriptionStart, t2.transcriptionStart);
-		Assert.assertEquals(t.transcriptionEnd, t2.transcriptionEnd);
 
-		Exon [] e1 = t.exons;
-		Exon [] e2 = t2.exons;
-
-		Assert.assertEquals(e1.length, e2.length);
-		for (int i=0; i<e1.length; i++) {
-			Assert.assertEquals(e1[i].start, e2[i].start);
-			Assert.assertEquals(e1[i].end, e2[i].end);
-		}
-	}
-	*/
 }

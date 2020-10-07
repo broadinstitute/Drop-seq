@@ -1,0 +1,3 @@
+X	Gnomon	pseudogene	38100	40859	.	+	.	gene_id "118151120"; gene_name "LOC118151120"; transcript_id "LOC118151120"; transcript_name "LOC118151120"; gbkey "Gene"; gene_biotype "transcribed_pseudogene";
+X	Gnomon	transcript	38100	40859	.	+	.	gene_id "118151120"; gene_name "LOC118151120"; product "E3 ubiquitin-protein ligase KCMF1-like"; Genbank "XR_004739243.1"; transcript_id "XR_004739243.1"; transcript_name "XR_004739243.1"; gbkey "misc_RNA"; gene_biotype "transcribed_pseudogene";
+X	Gnomon	exon	38100	40859	.	+	.	gene_id "118151120"; gene_name "LOC118151120"; product "E3 ubiquitin-protein ligase KCMF1-like"; Genbank "XR_004739243.1"; transcript_id "XR_004739243.1"; transcript_name "XR_004739243.1"; gbkey "misc_RNA"; gene_biotype "transcribed_pseudogene";
