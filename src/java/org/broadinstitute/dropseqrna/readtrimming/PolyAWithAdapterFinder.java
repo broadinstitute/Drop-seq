@@ -27,6 +27,16 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.StringUtil;
 import picard.util.ClippingUtility;
 
+/**
+ * Look for adapter sequence at the end of read, and start search for polyA before the adapter sequence.
+ * Note that if the entire read is adapter, the entire read is trimmed.  If some adapter sequence was found,
+ * a polyA run at least minPolyALength is considered unless the entire read before the adapter is polyA.
+ * If no polyA run was found, and the adapter sequence length is <= dubiousAdapterMatchLength, the search
+ * is repeated as if no adapter sequence was found.
+ * If no adapter sequence was found, polyA need only be minPolyALengthNoAdapterMatch, because some of the
+ * polyA tail might not be captured in the read.  
+ * The longest sequence of polyA with mismatch rate <= maxPolyAErrorRate is the polyA tail.
+ */
 public class PolyAWithAdapterFinder implements PolyAFinder {
 
     private static char A = 'A';
