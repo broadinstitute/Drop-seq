@@ -58,7 +58,7 @@ public class PolyATrimmer extends CommandLineProgram {
 	public File OUTPUT_SUMMARY;
 
 	@Argument(shortName = "NEW", doc="The old polyA trimmer looks for the longest run of As that is at least NUM_BASES" +
-			" long and has no more than MISMATCHES bases that are not A.  For the new polyA trimmer, it is assumed that" +
+			" long and has no more than MISMATCHES bases that are not A.  For the new polyA trimmer, it is assumed that " +
 			"the polyA run either extends to the end of the read, or to the beginning of adapter sequence at the end of " +
 			"the read.  If the entire read is adapter sequence, the entire read is trimmed by setting all base qualities low. " +
 			"If adapter sequence was found, the polyA run must be at least MIN_POLY_A_LENGTH long.  If no adapter sequence" +
