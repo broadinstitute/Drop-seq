@@ -72,5 +72,8 @@ public class ValidateReferenceTest {
         Assert.assertEquals(messages.fractionOfSequencesOnlyInReference, 2/93.0, 0.001);
         Assert.assertEquals(messages.fractionOfSequencesOnlyInGtf, 1/92.0, 0.001);
         Assert.assertEquals(messages.fractionOfGenomeOfSequencesOnlyInReference, 551.0/82802, 0.0001);
+        Assert.assertEquals(messages.invalidGeneNames.size(), 1);
+        Assert.assertEquals(messages.invalidGeneNames.get(0), "ERCC-00170:1");
+
     }
 }
