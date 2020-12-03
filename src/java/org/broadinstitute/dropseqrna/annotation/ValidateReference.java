@@ -85,6 +85,7 @@ import java.util.*;
         List<String> sequencesOnlyInReference = new ArrayList<>();
         List<String> sequencesOnlyInGtf = new ArrayList<>();
         List<String> geneBiotypes = new ArrayList<>();
+        List<String> invalidGeneNames = new ArrayList<>();
         double fractionOfSequencesOnlyInReference;
         double fractionOfSequencesOnlyInGtf;
         double fractionOfGenomeOfSequencesOnlyInReference;
@@ -110,6 +111,7 @@ import java.util.*;
 
 
         for (final GeneFromGTF gene : geneAnnotations) {
+            validateGeneName(gene.getName());
             sequencesInGtf.add(gene.getContig());
             transcriptTypes.add(gene.getTranscriptType());
             for (final Gene.Transcript transcript : gene) {
@@ -161,6 +163,10 @@ import java.util.*;
         System.out.println("\n(Sum of lengths of sequences only in reference FASTA)/(size of genome): " + messages.fractionOfGenomeOfSequencesOnlyInReference);
         System.out.println("\nFraction of sequences only in GTF: " + messages.fractionOfSequencesOnlyInGtf);
 
+        if (!messages.invalidGeneNames.isEmpty()) {
+            System.out.println("\nInvalid gene names: " + StringUtil.join(", ", messages.invalidGeneNames));
+        }
+
         if (OUTPUT != null) {
             final Gson gson = new GsonBuilder().setPrettyPrinting().create();
             try {
@@ -202,6 +208,12 @@ import java.util.*;
                     break;
                 }
             }
+        }
+    }
+
+    private void validateGeneName(final String gene) {
+        if (gene.contains(":")) {
+            messages.invalidGeneNames.add(gene);
         }
     }
 

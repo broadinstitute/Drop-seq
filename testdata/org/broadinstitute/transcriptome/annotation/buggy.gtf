@@ -88,6 +88,6 @@ ERCC_00163	ERCC	exon	1	543	0	+	.	gene_id ERCC-00163; transcript_id DQ668359;gene
 ERCC_00164	ERCC	exon	1	1022	0	+	.	gene_id ERCC-00164; transcript_id DQ516779;gene_name ERCC-00164; transcript_name DQ516779;
 ERCC_00165	ERCC	exon	1	872	0	+	.	gene_id ERCC-00165; transcript_id DQ668363;gene_name ERCC-00165; transcript_name DQ668363;
 ERCC_00168	ERCC	exon	1	1024	0	+	.	gene_id ERCC-00168; transcript_id DQ516776;gene_name ERCC-00168; transcript_name DQ516776;
-ERCC_00170	ERCC	exon	1	1023	0	+	.	gene_id ERCC-00170; transcript_id DQ516773;gene_name ERCC-00170; transcript_name DQ516773;
+ERCC_00170	ERCC	exon	1	1023	0	+	.	gene_id ERCC-00170; transcript_id DQ516773;gene_name ERCC-00170:1; transcript_name DQ516773;
 BOGUS_SEQUENCE	ERCC	exon	1	1023	0	+	.	gene_id ERCC-00043; transcript_id DQ516787;gene_name ERCC-00043; transcript_name DQ516787;
 ERCC_00042	ERCC	start_codon	1	3	0	+	.	gene_id bogus-gene; transcript_id bogus-transcript;gene_name bogus-gene; gene_biotype "test-biotype"; transcript_name bogus-transcript;
