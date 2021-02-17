@@ -84,7 +84,9 @@ public class DigitalExpressionTest {
 	private static final File EXPECTED_OUTFILE_LONG = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.dge_long.txt");
 
 	private static final File EXPECTED_OUTPUT_SINGLE_CELL=new File("testdata/org/broadinstitute/transcriptome/barnyard/1_cell.dge.txt");
-			//
+	public static final String DIGITAL_EXPRESSION_EXTENSION = ".digital_expression.txt.gz";
+	public static final String DIGITAL_EXPRESSION_SUMMARY_EXTENSION = ".digital_expression_summary.txt";
+	//
 
 	private String GENE_NAME_TAG="gn";
 	private String GENE_STRAND_TAG="gs";
@@ -380,10 +382,17 @@ public class DigitalExpressionTest {
 		return makeDigitalExpressionFile(outputHeader, new File("."));
 	}
 
+	public static File makeSummaryPathFromDgePath(final File dge) {
+		String dgeName = dge.getName();
+		String basename = dgeName.substring(0, dgeName.length() - DigitalExpressionTest.DIGITAL_EXPRESSION_EXTENSION.length());
+		return new File(dge.getParentFile(),
+				basename + DigitalExpressionTest.DIGITAL_EXPRESSION_SUMMARY_EXTENSION);
+	}
+
 	/** Use this version when calling from private tests */
     public static File makeDigitalExpressionFile(final boolean outputHeader, final File basedir) throws IOException {
-		final File outFile = File.createTempFile("testDigitalExpression.", ".digital_expression.txt.gz");
-		final File summaryFile = File.createTempFile("testDigitalExpression.", ".digital_expression_summary.txt");
+		final File outFile = File.createTempFile("testDigitalExpression.", DIGITAL_EXPRESSION_EXTENSION);
+		final File summaryFile = makeSummaryPathFromDgePath(outFile);
         final File cellBarcodesFile = File.createTempFile("testDigitalExpression.", ".selectedCellBarcodes.txt");
 		outFile.deleteOnExit();
 		summaryFile.deleteOnExit();
