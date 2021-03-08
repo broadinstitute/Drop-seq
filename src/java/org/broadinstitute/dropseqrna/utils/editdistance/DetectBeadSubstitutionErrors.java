@@ -39,6 +39,7 @@ import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.beadsynthesis.BeadSynthesisErrorData;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
@@ -118,6 +119,7 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 
 	@Override
 	protected int doWork() {
+		INPUT = FileListParsingUtils.expandFileList(INPUT);
 		for (final File input : INPUT)
 			IOUtil.assertFileIsReadable(input);
         if (this.OUTPUT!=null) IOUtil.assertFileIsWritable(this.OUTPUT);
