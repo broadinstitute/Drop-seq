@@ -44,13 +44,7 @@ import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.BaseDistributionMetric;
-import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
-import org.broadinstitute.dropseqrna.utils.Bases;
-import org.broadinstitute.dropseqrna.utils.GroupingIterator;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
-import org.broadinstitute.dropseqrna.utils.StringInterner;
+import org.broadinstitute.dropseqrna.utils.*;
 import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
@@ -159,6 +153,7 @@ public class DetectBeadSynthesisErrors extends GeneFunctionCommandLineBase {
 
 	@Override
 	protected int doWork() {
+		INPUT = FileListParsingUtils.expandFileList(INPUT);
 		// primer detection if requested.
 		if (this.PRIMER_SEQUENCE!=null)
 			this.detectPrimerTool = new DetectPrimerInUMI(this.PRIMER_SEQUENCE);
