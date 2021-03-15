@@ -25,7 +25,6 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
 import java.io.File;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -34,6 +33,7 @@ import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
 import org.broadinstitute.dropseqrna.utils.MultiComparator;
 import org.broadinstitute.dropseqrna.utils.ProgressLoggingIterator;
+import org.broadinstitute.dropseqrna.utils.SamWriterSink;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
 import org.broadinstitute.dropseqrna.utils.readiterators.ChromosomeFilteringIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionIteratorWrapper;
@@ -64,7 +64,8 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	private final IntervalList snpIntervals;
 	private final SortOrder sortOrder;
 	private final String functionTag;
-
+	private SamWriterSink sink;
+	
 	/**
 	 * Construct an object that generates SNPUMIBasePileup objects from a BAM file.
 	 * Each of these objects constructs a pileup of the bases and qualities
@@ -189,6 +190,16 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 
 		this.atoi = new GroupingIterator<>(sortingIterator, multiComparator);
 	}
+	
+	public void addReadSink (SamWriterSink sink) {
+		this.sink=sink;
+	}
+	
+	public void closeSink () {
+		if (this.sink!=null) {
+			this.sink.writer.close();
+		}
+	}
 
 	public SortOrder getSortOrder() {
 		return this.sortOrder;
@@ -209,6 +220,9 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 		for (SAMRecord r: records) {
 			result.addRead(r);
 			result=addLocusFunction(result, r);
+			// if there's a BAM sink, add the informative read.
+			if (this.sink!=null) 
+				sink.add(r); 
 		}
 		return result;
 	}
@@ -247,6 +261,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 
 	@Override
 	public void close() {
+		this.closeSink();
         CloserUtil.close(this.atoi);
 	}
 
