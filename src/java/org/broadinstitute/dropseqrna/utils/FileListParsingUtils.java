@@ -57,19 +57,25 @@ public class FileListParsingUtils {
             final String fileName = file.getName();
             if (fileName.endsWith(".bam_list") || fileName.endsWith(".file_list"))
                 expandedFileList.addAll(readFileList(file));
-            else
+            else {
+            	IOUtil.assertFileIsReadable(file);
                 expandedFileList.add(file);
+            }
         }));
 
         return expandedFileList;
     }
 
-    public static Collection<File> expandWildcardFile(final File wildcardFile) {
+    @SuppressWarnings("unchecked")
+	public static Collection<File> expandWildcardFile(final File wildcardFile) {
+    	Collection <File> result = new ArrayList<File>(); 
         final String fileName = wildcardFile.getName();
         if (fileName.contains("*") || fileName.contains("?"))
-            return FileUtils.listFiles(wildcardFile.getParentFile(), new WildcardFileFilter(wildcardFile.getName()), null);
+            result= FileUtils.listFiles(wildcardFile.getParentFile(), new WildcardFileFilter(wildcardFile.getName()), null);
         else
-            return Collections.singleton(wildcardFile);
+            result= Collections.singleton(wildcardFile);
+        result.stream().forEach(x -> IOUtil.assertFileIsReadable(x));
+        return (result);
     }
 
     /**
@@ -77,6 +83,7 @@ public class FileListParsingUtils {
      * containing the file list itself.
      */
     public static List<File> readFileList(final File fileList) {
+    	IOUtil.assertFileIsReadable(fileList);
         try {
             final File canonicalDirectory = fileList.getCanonicalFile().getParentFile();
             return Streams.stream((Iterable<String>) IOUtil.readLines(fileList)).
