@@ -23,30 +23,34 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.OutputWriterUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
+
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
 import picard.annotation.LocusFunction;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 
 @CommandLineProgramProperties(
         summary = "For each gene, count the number of times each molecular barcode is observed [The UMI]" +
@@ -71,7 +75,7 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	@Override
 	protected int doWork() {
 
-		IOUtil.assertFileIsReadable(INPUT);
+		INPUT = FileListParsingUtils.expandFileList(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
 		BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT);
 
@@ -83,7 +87,7 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
                 this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
                 this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD));
 
-		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
+		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(this.INPUT, false),
 				GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
         		this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
         		this.READ_MQ, false, cellBarcodes, true, false);
@@ -139,12 +143,14 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	 * @param useStrandInfo
 	 * @return
 	 */
-	public ObjectCounter<String> getNumTranscriptsPerCell (final File bamFile, final String cellBarcodeTag, final String molecularBarcodeTag,
+	public ObjectCounter<String> getNumTranscriptsPerCell (final List<File> bamFile, final String cellBarcodeTag, final String molecularBarcodeTag,
 			final String geneNameTag, final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList,
 			final Integer mapQuality, final int editDistance, final int minNumReadsMolBarcode, final Collection<String> cellBarcodes) {
 
-
-		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(bamFile), false),
+		SamReaderFactory factory= SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);		
+		SamHeaderAndIterator headerIterator= SamFileMergeUtil.mergeInputs(bamFile, false, factory);
+		
+		UMIIterator umiIterator = new UMIIterator(headerIterator,
 				geneNameTag, strandTag, geneFunctionTag,
 				strategy, locusFunctionList, cellBarcodeTag, molecularBarcodeTag,
 				mapQuality, false, cellBarcodes);

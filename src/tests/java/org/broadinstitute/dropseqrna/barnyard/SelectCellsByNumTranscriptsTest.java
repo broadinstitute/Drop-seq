@@ -30,7 +30,7 @@ public class SelectCellsByNumTranscriptsTest {
 		outFile.deleteOnExit();
 		outFileMinReads.deleteOnExit();
 
-		s.INPUT=this.SINGLE_ORGANISM_BAM;
+		s.INPUT=Collections.singletonList(this.SINGLE_ORGANISM_BAM);
 		s.MIN_TRANSCRIPTS_PER_CELL=100;
 		s.OUTPUT=outFile;
 		s.MIN_READS_PER_CELL=100;
@@ -64,7 +64,7 @@ public class SelectCellsByNumTranscriptsTest {
 
 		List<String> organisms = Arrays.asList("HUMAN", "MOUSE");
 		SelectCellsByNumTranscripts s = new SelectCellsByNumTranscripts();
-		s.INPUT=this.DUAL_ORGANISM_BAM;
+		s.INPUT=Collections.singletonList(this.DUAL_ORGANISM_BAM);
 		s.ORGANISM=organisms;
 		s.MIN_TRANSCRIPTS_PER_CELL=100;
 		s.OUTPUT=outFile;

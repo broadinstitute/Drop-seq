@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.PrintStream;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
@@ -34,13 +35,14 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.CustomBAMIterators;
+import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
@@ -57,8 +59,8 @@ public class BamTagOfTagCounts extends CommandLineProgram {
 
 private static final Log log = Log.getInstance(BamTagOfTagCounts.class);
 
-	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. (???)")
-	public File INPUT;
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
+	public List<File> INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of tag frequencies. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
@@ -85,8 +87,7 @@ private static final Log log = Log.getInstance(BamTagOfTagCounts.class);
 
 	@Override
 	protected int doWork() {
-
-		IOUtil.assertFileIsReadable(INPUT);
+		INPUT = FileListParsingUtils.expandFileList(INPUT);		
 		IOUtil.assertFileIsWritable(OUTPUT);
 		PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
 
@@ -103,11 +104,11 @@ private static final Log log = Log.getInstance(BamTagOfTagCounts.class);
 		return(0);
 	}
 
-	public TagOfTagResults<String,String> getResults (final File inputBAM, final String primaryTag, final String secondaryTag, final boolean filterPCRDuplicates, final Integer readQuality) {
+	public TagOfTagResults<String,String> getResults (final List<File> inputBAM, final String primaryTag, final String secondaryTag, final boolean filterPCRDuplicates, final Integer readQuality) {
+		
 		TagOfTagResults<String,String> result = new TagOfTagResults<>();
-		SamReader reader = SamReaderFactory.makeDefault().open(inputBAM);
-		CloseableIterator<SAMRecord> iter = CustomBAMIterators.getReadsInTagOrder(reader, primaryTag);
-		CloserUtil.close(reader);
+		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(inputBAM, false, SamReaderFactory.makeDefault());		
+		CloseableIterator<SAMRecord> iter = CustomBAMIterators.getReadsInTagOrder(headerAndIter, primaryTag);				
 		String currentTag="";
 		Set<String> otherTagCollection=new HashSet<>();
 

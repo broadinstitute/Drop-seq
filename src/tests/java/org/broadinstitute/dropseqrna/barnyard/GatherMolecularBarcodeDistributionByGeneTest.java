@@ -2,6 +2,7 @@ package org.broadinstitute.dropseqrna.barnyard;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 
 import org.apache.commons.io.FileUtils;
 import org.testng.Assert;
@@ -28,7 +29,7 @@ public class GatherMolecularBarcodeDistributionByGeneTest {
 
 		GatherMolecularBarcodeDistributionByGene g = new GatherMolecularBarcodeDistributionByGene();
 		g.CELL_BC_FILE=IN_CELL_BARCODE_FILE;
-		g.INPUT=IN_FILE;
+		g.INPUT=Collections.singletonList(IN_FILE);
 		g.OUTPUT=outFile;
 
 

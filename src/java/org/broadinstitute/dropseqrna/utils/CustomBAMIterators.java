@@ -28,6 +28,8 @@ import htsjdk.samtools.SAMFileHeader.SortOrder;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
+
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 
 import java.util.List;
@@ -37,10 +39,10 @@ public class CustomBAMIterators {
 	private static final Log log = Log.getInstance(CustomBAMIterators.class);
 	public static final int MAX_RECORDS_IN_RAM = 500000;
 	
-	public static CloseableIterator<SAMRecord> getReadsInTagOrder (SamReader reader, String primaryTag) {
+	public static CloseableIterator<SAMRecord> getReadsInTagOrder (SamHeaderAndIterator headIter, String primaryTag) {
 		// SamReader reader = SamReaderFactory.makeDefault().open(bamFile);
-		SAMSequenceDictionary dict= reader.getFileHeader().getSequenceDictionary();
-		List<SAMProgramRecord> programs =reader.getFileHeader().getProgramRecords();
+		SAMSequenceDictionary dict= headIter.header.getSequenceDictionary();
+		List<SAMProgramRecord> programs =headIter.header.getProgramRecords();
 		
 		final SAMFileHeader writerHeader = new SAMFileHeader();
         writerHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
@@ -51,7 +53,7 @@ public class CustomBAMIterators {
         final ProgressLogger progressLogger = new ProgressLogger(log, 1000000);
         log.info("Reading in records for TAG name sorting");
         final CloseableIterator<SAMRecord> result =
-                SamRecordSortingIteratorFactory.create(writerHeader, reader.iterator(), new StringTagComparator(primaryTag), progressLogger);
+                SamRecordSortingIteratorFactory.create(writerHeader, headIter.iterator, new StringTagComparator(primaryTag), progressLogger);
 
 		log.info("Sorting finished.");
 		return (result);

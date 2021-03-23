@@ -30,6 +30,8 @@ import org.broadinstitute.dropseqrna.metrics.BamTagHistogram;
 import org.broadinstitute.dropseqrna.metrics.BamTagOfTagCounts;
 import org.broadinstitute.dropseqrna.metrics.TagOfTagResults;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import picard.annotation.LocusFunction;
 
@@ -57,7 +59,7 @@ public class BarcodeListRetrieval {
 	 * @param numCoreBarcodes
 	 * @return
 	 */
-	public List<String> getCellBarcodes(final File bamFile, final String cellBarcodeTag, final String molecularBarcodeTag,
+	public List<String> getCellBarcodes(final List<File> bamFile, final String cellBarcodeTag, final String molecularBarcodeTag,
 			final String geneNameTag, final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList, final File cellBCFile, final Integer readQuality, final Integer minNumTranscriptsPerCell,
 			final Integer minNumNumGenesPerCell, final Integer minNumReadsPerCell, final Integer numCoreBarcodes, final Integer editDistance, final Integer minNumReadsMolBarcode) {
 		List<String> cellBarcodes=new ArrayList<String>();
@@ -101,9 +103,10 @@ public class BarcodeListRetrieval {
      * If there are no cell barcodes, return an empty set.
      * @return
      */
-    public List<String> getListCellBarcodesByReadCount (final File input, final String cellBarcodeTag, final int readQuality, final Integer minNumReads, final Integer numReadsCore) {
+    public List<String> getListCellBarcodesByReadCount (final List<File> input, final String cellBarcodeTag, final int readQuality, final Integer minNumReads, final Integer numReadsCore) {
+    	SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(input, false, SamReaderFactory.makeDefault());
         return getListCellBarcodesByReadCount(
-                SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(input).iterator(),
+        		headerAndIter.iterator,
                 cellBarcodeTag,
                 readQuality,
                 minNumReads,
@@ -132,7 +135,7 @@ public class BarcodeListRetrieval {
         return (result);
     }
 
-    public List<String> getListCellBarcodesByGeneCount(final File input, final String cellBarcodeTag, final String geneExonTag, final int readQuality, final int minNumGenes) {
+    public List<String> getListCellBarcodesByGeneCount(final List<File> input, final String cellBarcodeTag, final String geneExonTag, final int readQuality, final int minNumGenes) {
 		List<String> result = new ArrayList<String>();
 
 		BamTagOfTagCounts tot = new BamTagOfTagCounts();
@@ -145,9 +148,10 @@ public class BarcodeListRetrieval {
 		return (result);
 	}
 
-	public List<String> getListCellBarcodesByTranscriptCount(final File input, final String cellBarcodeTag, final String molecularBarcodeTag, final String geneNameTag,
+	public List<String> getListCellBarcodesByTranscriptCount(final List<File> input, final String cellBarcodeTag, final String molecularBarcodeTag, final String geneNameTag,
 			final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList,
 			final int readQuality, final int editDistance, final int minNumReadsMolBarcode, final int minNumTranscripts) {
+		
 		List<String> result = new ArrayList<String>();
 		List<String> initialCells = getListCellBarcodesByReadCount(input, cellBarcodeTag, readQuality, minNumTranscripts, null);
 

@@ -38,6 +38,7 @@ import picard.cmdline.StandardOptionDefinitions;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -118,7 +119,7 @@ public class ConvertTagToReadGroup extends CommandLineProgram {
 	private Set<String> getCellBarcodes () {
 		BarcodeListRetrieval u = new BarcodeListRetrieval();
 		if (this.NUM_CORE_BARCODES!=null) {
-			Set<String> cellBarcodes = new HashSet<>(u.getListCellBarcodesByReadCount(this.INPUT, this.CELL_BARCODE_TAG, this.READ_MQ, null, this.NUM_CORE_BARCODES));
+			Set<String> cellBarcodes = new HashSet<>(u.getListCellBarcodesByReadCount(Collections.singletonList(this.INPUT), this.CELL_BARCODE_TAG, this.READ_MQ, null, this.NUM_CORE_BARCODES));
 			return (cellBarcodes);
 		}
 

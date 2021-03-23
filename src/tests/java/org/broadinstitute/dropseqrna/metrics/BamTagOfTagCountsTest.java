@@ -2,6 +2,7 @@ package org.broadinstitute.dropseqrna.metrics;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
@@ -23,7 +24,7 @@ public class BamTagOfTagCountsTest {
 		}
 
 		BamTagOfTagCounts b = new BamTagOfTagCounts();
-		b.INPUT=IN_FILE;
+		b.INPUT=Collections.singletonList(IN_FILE);
 		b.PRIMARY_TAG="XC";
 		b.MINIMUM_MAPPING_QUALITY=0;
 		b.SECONDARY_TAG="XM";
@@ -50,7 +51,7 @@ public class BamTagOfTagCountsTest {
 		}
 
 		BamTagOfTagCounts b = new BamTagOfTagCounts();
-		b.INPUT=IN_FILE;
+		b.INPUT=Collections.singletonList(IN_FILE);
 		b.PRIMARY_TAG="XC";
 		b.MINIMUM_MAPPING_QUALITY=0;
 		b.SECONDARY_TAG="NM";
