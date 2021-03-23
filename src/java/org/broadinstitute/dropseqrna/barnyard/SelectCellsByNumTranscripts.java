@@ -27,20 +27,28 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import htsjdk.samtools.metrics.MetricBase;
-import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.metrics.MetricBase;
+import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
@@ -56,8 +64,8 @@ import picard.cmdline.StandardOptionDefinitions;
 public class SelectCellsByNumTranscripts
         extends GeneFunctionCommandLineBase {
 
-    @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "SAM or BAM file to analyze.")
-    public File INPUT;
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
+    public List<File> INPUT;
 
     @Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="List of cell barcodes, one per line")
     public File OUTPUT;
@@ -99,6 +107,7 @@ public class SelectCellsByNumTranscripts
 
     @Override
     protected int doWork() {
+    	this.INPUT = FileListParsingUtils.expandFileList(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
         if (MIN_READS_PER_CELL == null || MIN_READS_PER_CELL < MIN_TRANSCRIPTS_PER_CELL)
 			MIN_READS_PER_CELL = MIN_TRANSCRIPTS_PER_CELL;
@@ -112,7 +121,7 @@ public class SelectCellsByNumTranscripts
         if (OUTPUT_INTERIM_CELLS != null)
 			writeBarcodes(OUTPUT_INTERIM_CELLS, cellBarcodes);
 
-        SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false);
+        SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(this.INPUT, false);
 
         final MapContainer mapContainer;
         if (ORGANISM != null && !ORGANISM.isEmpty()) {

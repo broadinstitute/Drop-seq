@@ -27,6 +27,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -82,7 +83,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     private static final Log log = Log.getInstance(SingleCellRnaSeqMetricsCollector.class);
     private static final int MINIMUM_TRANSCRIPT_LENGTH = 500;
 
-    @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
+    @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
 	public File INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of per-cell exonic/intronic/genic/intergenic/rRNA levels.  This supports zipped formats like gz and bz2.")
@@ -160,7 +161,7 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     		return cellBarcodes;
     	}
     	BarcodeListRetrieval u = new BarcodeListRetrieval();
-        return u.getListCellBarcodesByReadCount (bamFile, cellBarcodeTag, readMQ, null, numCoreBarcodes);
+        return u.getListCellBarcodesByReadCount (Collections.singletonList(bamFile), cellBarcodeTag, readMQ, null, numCoreBarcodes);
 
     }
 

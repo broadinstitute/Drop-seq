@@ -23,15 +23,17 @@
  */
 package org.broadinstitute.dropseqrna.barnyard;
 
-import org.broadinstitute.barclay.argparser.Argument;
-import picard.cmdline.StandardOptionDefinitions;
-
 import java.io.File;
+import java.util.List;
+
+import org.broadinstitute.barclay.argparser.Argument;
+
+import picard.cmdline.StandardOptionDefinitions;
 
 public abstract class DGECommandLineBase extends GeneFunctionCommandLineBase {
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
-	public File INPUT;
+	public List<File> INPUT;
 	
 	@Argument(doc="The cell barcode tag.  If there are no reads with this tag, the program will assume that all reads belong to the same cell and process in single sample mode.")
 	public String CELL_BARCODE_TAG="XC";

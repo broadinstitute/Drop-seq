@@ -69,10 +69,10 @@ public class CompareDropSeqAlignments  extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(CompareDropSeqAlignments.class);
 
-	@Argument(doc = "The input SAM or BAM file to analyze.  If query name sorted this will save time, but is not required.")
+	@Argument(doc = "The input SAM or BAM file to analyze.  If query name sorted this will save time, but is not required.", minElements = 1)
 	public List<File> INPUT_1;
 
-	@Argument(doc = "The comparison input SAM or BAM file to analyze.  If query name sorted this will save time, but is not required.")
+	@Argument(doc = "The comparison input SAM or BAM file to analyze.  If query name sorted this will save time, but is not required.", minElements = 1)
 	public List<File> INPUT_2;
 
 	@Argument(doc="Output file that maps the contig the read uniquely mapped to in INPUT_1, and the contig the read mapped to in INPUT_2, with reads partitioned into groups that did/did not remained uniquely mapped.  This supports zipped formats like gz and bz2.", optional=true)
