@@ -85,7 +85,7 @@ import picard.cmdline.StandardOptionDefinitions;
 public class DigitalExpression extends DGECommandLineBase {
 
     private static final Log log = Log.getInstance(DigitalExpression.class);
-
+    
     @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
     public File INPUT;
         
