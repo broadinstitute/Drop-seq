@@ -69,6 +69,9 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 
 	private static final Log log = Log.getInstance(GatherMolecularBarcodeDistributionByGene.class);
 
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
+	public List<File> INPUT;
+	
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of with 4 columns: CELL, GENE, MOLECULAR BC, #Observations. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
 
@@ -80,7 +83,6 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 		BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT);
 
 		writePerTranscriptHeader(out);
-
 
 		Set<String> cellBarcodes=new HashSet<>(new BarcodeListRetrieval().getCellBarcodes(this.INPUT, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
                 this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
