@@ -57,11 +57,11 @@ public class FilterBamByTagTest {
 		FilterBamByTag f = new FilterBamByTag();
 		final String prefix;
 		if (pairedMode) {
-			f.INPUT=PAIRED_INPUT_FILE;
+			f.INPUT=Collections.singletonList(PAIRED_INPUT_FILE);
 			f.TAG_VALUES_FILE=PAIRED_INPUT_CELL_BARCODES;
 			prefix = "paired_input";
 		} else {
-			f.INPUT=UNPAIRED_INPUT_FILE;
+			f.INPUT=Collections.singletonList(UNPAIRED_INPUT_FILE);
 			// For some reason, use the same file as for paired
 			f.TAG_VALUES_FILE = PAIRED_INPUT_CELL_BARCODES;
 			prefix = "unpaired_input";
@@ -123,7 +123,7 @@ public class FilterBamByTagTest {
 		Assert.assertEquals(r, 0);
 
 		// test alternate path without tag values file.
-		f.INPUT=UNPAIRED_INPUT_FILE;
+		f.INPUT=Collections.singletonList(UNPAIRED_INPUT_FILE);
 		f.OUTPUT=File.createTempFile("unpaired_input_single_cell", ".bam");
 		f.TAG="XC";
 		f.TAG_VALUE=Arrays.asList("AAAGTAGAGTGG");
@@ -301,7 +301,7 @@ public class FilterBamByTagTest {
 	@Test
 	public void testArgErrors () throws IOException {
 		FilterBamByTag f = new FilterBamByTag();
-		f.INPUT=PAIRED_INPUT_FILE;
+		f.INPUT=Collections.singletonList(PAIRED_INPUT_FILE);
 		f.OUTPUT=File.createTempFile("paired_input", ".bam");
 		f.PAIRED_MODE=true;
 		f.OUTPUT.deleteOnExit();
