@@ -154,10 +154,10 @@ public class CensusSeq extends CommandLineProgram {
 
 		final VCFFileReader vcfReader = new VCFFileReader(this.INPUT_VCF, true);
 		
-		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.INPUT_BAM, false, SamReaderFactory.makeDefault());				
-		AssertSequenceDictionaryIntersection.assertIntersectionObjectVcf(headerAndIter.header, "BAM INPUT(S)", this.INPUT_VCF, log);		
+		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.INPUT_BAM, false, SamReaderFactory.makeDefault());
 		SAMSequenceDictionary sd = vcfReader.getFileHeader().getSequenceDictionary();
-
+		AssertSequenceDictionaryIntersection.assertIntersection(headerAndIter.header, "BAM INPUT(S)", sd, "VCF INPUT", log);		
+		
 		if (!VCFUtils.GQInHeader(vcfReader)) {
 			this.GQ_THRESHOLD=-1;
 			log.info("Genotype Quality [GQ] not found in header.  Disabling GQ_THRESHOLD parameter");

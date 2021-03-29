@@ -160,7 +160,6 @@ public class CsiAnalysis extends CommandLineProgram {
 		IOUtil.assertFileIsWritable(this.OUTPUT);
 		if (this.VCF_OUTPUT!=null) IOUtil.assertFileIsWritable(this.VCF_OUTPUT);
 
-		
 		// set up the optional output
 		BufferedWriter outVerbose = null;
 		if (OUTPUT_VERBOSE != null) {
@@ -170,10 +169,10 @@ public class CsiAnalysis extends CommandLineProgram {
 
 		VCFFileReader vcfReader = new VCFFileReader(this.INPUT_VCF, true);
 		
-		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.INPUT_BAM, false, SamReaderFactory.makeDefault());				
-		AssertSequenceDictionaryIntersection.assertIntersectionObjectVcf(headerAndIter.header, "BAM INPUT(S)", this.INPUT_VCF, log);		
+		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.INPUT_BAM, false, SamReaderFactory.makeDefault());
 		SAMSequenceDictionary sd = vcfReader.getFileHeader().getSequenceDictionary();
-
+		AssertSequenceDictionaryIntersection.assertIntersection(headerAndIter.header, "BAM INPUT(S)", sd, "VCF INPUT", log);		
+		
 		// validate VCF is indexed.
 		if (!VCFUtils.hasIndex(this.INPUT_VCF)) return 1;
 
