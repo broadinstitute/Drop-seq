@@ -25,10 +25,13 @@ package org.broadinstitute.dropseqrna.censusseq;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.broadinstitute.dropseqrna.censusseq.SNPGenomicBasePileUp;
 import org.broadinstitute.dropseqrna.censusseq.SNPGenomicBasePileupIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -46,17 +49,17 @@ public class SNPGenomicBasePileupIteratorTest {
 	 * Read 4 will be unpaired A
 	 * Read 5 will not overlap the SNP.
 	 */
-	private final File smallBAMFile = new File(
-			"testdata/org/broadinstitute/dropseq/censusseq/genomic_pileup_test.sam");
+	private final List<File> smallBAMFile = new ArrayList<File> (Collections.singletonList(new File(
+			"testdata/org/broadinstitute/dropseq/censusseq/genomic_pileup_test.sam")));
 
 	@Test(enabled=true)
 	public void testAllReadsPileup() {
-		SamReader reader = SamReaderFactory.makeDefault().open(smallBAMFile);
+		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.smallBAMFile, false, SamReaderFactory.makeDefault());
 		int snpPos=23816120;
 		Interval snpInterval = new Interval("1", snpPos, snpPos, true, "test");
-		IntervalList intervalList = new IntervalList(reader.getFileHeader());
+		IntervalList intervalList = new IntervalList(headerAndIter.header);
 		intervalList.add(snpInterval);
-		SNPGenomicBasePileupIterator snpIter = new SNPGenomicBasePileupIterator(reader, intervalList, "ZS", 10, null, null);
+		SNPGenomicBasePileupIterator snpIter = new SNPGenomicBasePileupIterator(headerAndIter, intervalList, "ZS", 10, null, null);
 
 		// there's just 1 pileup.
 		SNPGenomicBasePileUp p = snpIter.next();
@@ -86,12 +89,12 @@ public class SNPGenomicBasePileupIteratorTest {
 
 	@Test (expectedExceptions=UnsupportedOperationException.class)
 	public void testRemove () {
-		SamReader reader = SamReaderFactory.makeDefault().open(smallBAMFile);
+		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.smallBAMFile, false, SamReaderFactory.makeDefault());
 		int snpPos=23816120;
 		Interval snpInterval = new Interval("1", snpPos, snpPos, true, "test");
-		IntervalList intervalList = new IntervalList(reader.getFileHeader());
+		IntervalList intervalList = new IntervalList(headerAndIter.header);
 		intervalList.add(snpInterval);
-		SNPGenomicBasePileupIterator snpIter = new SNPGenomicBasePileupIterator(reader, intervalList, "ZS", 10, null, null);
+		SNPGenomicBasePileupIterator snpIter = new SNPGenomicBasePileupIterator(headerAndIter, intervalList, "ZS", 10, null, null);
 
 		snpIter.remove();
 	}

@@ -39,6 +39,7 @@ import org.broadinstitute.dropseqrna.utils.readiterators.BamTagCountingIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.ChromosomeFilteringIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.MapQualityFilteredIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.PCRDuplicateFilteringIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 
 import htsjdk.samtools.AlignmentBlock;
@@ -69,15 +70,15 @@ public class SNPGenomicBasePileupIterator implements CloseableIterator<SNPGenomi
 	private final Byte minBaseQuality;
 	
 	// private final OverlapDetector<Interval> snpOverlapDetector;
-	public SNPGenomicBasePileupIterator(final SamReader reader, final IntervalList snpIntervals, final String snpTag,
+	public SNPGenomicBasePileupIterator(SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String snpTag,
             final int readMQ, final Collection<String> contigsToFilter, final String knownDonorTag) {
-		this(reader, snpIntervals, snpTag, readMQ, contigsToFilter, knownDonorTag, null);
+		this(headerAndIter, snpIntervals, snpTag, readMQ, contigsToFilter, knownDonorTag, null);
 	}
 	
-	public SNPGenomicBasePileupIterator(final SamReader reader, final IntervalList snpIntervals, final String snpTag,
+	public SNPGenomicBasePileupIterator(final SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String snpTag,
             final int readMQ, final Collection<String> contigsToFilter, final String knownDonorTag, final Integer minBaseQuality) {
 		final ProgressLogger logger = new ProgressLogger(log);
-		ProgressLoggingIterator loggingIterator = new ProgressLoggingIterator (reader.iterator(), logger);
+		ProgressLoggingIterator loggingIterator = new ProgressLoggingIterator (headerAndIter.iterator, logger);
 		OverlapDetector<Interval> snpOverlapDetector = new OverlapDetector<>(0, 0);
 		snpOverlapDetector.addAll(snpIntervals.getIntervals(), snpIntervals.getIntervals());
 		this.snpTag=snpTag;
@@ -104,7 +105,7 @@ public class SNPGenomicBasePileupIterator implements CloseableIterator<SNPGenomi
 		IntervalTagComparator snpTagComparator = new IntervalTagComparator(this.snpTag, sd);
 
 		final CloseableIterator<SAMRecord> sortingIterator =
-                SamRecordSortingIteratorFactory.create(reader.getFileHeader(), snpTaggingIterator, snpTagComparator, logger);
+                SamRecordSortingIteratorFactory.create(headerAndIter.header, snpTaggingIterator, snpTagComparator, logger);
 		iter = new GroupingIterator<>(sortingIterator, snpTagComparator);
 
 	}

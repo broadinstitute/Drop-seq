@@ -37,6 +37,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -44,9 +45,12 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.censusseq.VCFPileupJointIterator.JointResult;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.AssertSequenceDictionaryIntersection;
+import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.VCFUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.statistics.Diversity;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
 
@@ -74,9 +78,9 @@ public class CensusSeq extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(CensusSeq.class);
 
-	@Argument(doc = "The input BAM.")
-	public File INPUT_BAM;
-
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
+	public List<File> INPUT_BAM;
+	
 	@Argument(doc = "The input VCF.")
 	public File INPUT_VCF;
 
@@ -142,22 +146,23 @@ public class CensusSeq extends CommandLineProgram {
 	@Override
 	public int doWork() {
 		
-		IOUtil.assertFileIsReadable(INPUT_BAM);
+		this.INPUT_BAM = FileListParsingUtils.expandFileList(INPUT_BAM);
 		IOUtil.assertFileIsReadable(INPUT_VCF);
 
 		// validate VCF is indexed.
 		if (!VCFUtils.hasIndex(this.INPUT_VCF)) return 1;
 
 		final VCFFileReader vcfReader = new VCFFileReader(this.INPUT_VCF, true);
-		AssertSequenceDictionaryIntersection.assertIntersectionObjectBam(vcfReader, INPUT_VCF.getName(), INPUT_BAM, log);
-
+		
+		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.INPUT_BAM, false, SamReaderFactory.makeDefault());
+		SAMSequenceDictionary sd = vcfReader.getFileHeader().getSequenceDictionary();
+		AssertSequenceDictionaryIntersection.assertIntersection(headerAndIter.header, "BAM INPUT(S)", sd, "VCF INPUT", log);		
+		
 		if (!VCFUtils.GQInHeader(vcfReader)) {
 			this.GQ_THRESHOLD=-1;
 			log.info("Genotype Quality [GQ] not found in header.  Disabling GQ_THRESHOLD parameter");
 		}
-		
-		SAMSequenceDictionary sd = vcfReader.getFileHeader().getSequenceDictionary();
-
+				
 		// get the list of samples.  Start with the list of all samples, filter to the sample list if needed.  
 		List<String> vcfSamples  = CensusSeqUtils.getFinalSamplelist (vcfReader, this.SAMPLE_FILE);
 		if (vcfSamples==null) return 1; // exit if the vcf sample list is null
@@ -192,9 +197,8 @@ public class CensusSeq extends CommandLineProgram {
 		}
 
 		// build the BAM iterator.
-		log.info("Finding SNPs in BAM.");
-		SamReader reader = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(this.INPUT_BAM);
-		SNPGenomicBasePileupIterator pileUpIter = new SNPGenomicBasePileupIterator(reader, snpIntervals, SNP_TAG, READ_MQ, this.IGNORED_CHROMOSOMES, KNOWN_DONOR_TAG, this.MIN_BASE_QUALITY);
+		log.info("Finding SNPs in BAM.");		
+		SNPGenomicBasePileupIterator pileUpIter = new SNPGenomicBasePileupIterator(headerAndIter, snpIntervals, SNP_TAG, READ_MQ, this.IGNORED_CHROMOSOMES, KNOWN_DONOR_TAG, this.MIN_BASE_QUALITY);
 
 		// reset the iterator for use in the full data set.  Use the cleaned up set of variants, which should be smaller and faster.
 		vcfIterator = CensusSeqUtils.getVCFIterator (outTempVCF, vcfSamples, this.MIN_NUM_VARIANT_SAMPLES, this.GQ_THRESHOLD, 
@@ -337,7 +341,10 @@ public class CensusSeq extends CommandLineProgram {
 	}
 
 	private void writeDonorRatioOutputHeader (final BufferedWriter outTerse) {
-		String [] header={"INPUT_BAM="+this.INPUT_BAM.getAbsolutePath(), "INPUT_VCF="+this.INPUT_VCF.getAbsolutePath(),
+		List<String> paths= this.INPUT_BAM.stream().map(x -> x.getAbsolutePath()).collect(Collectors.toList());		
+		String bamList=StringUtils.join(paths, ",");
+		
+		String [] header={"INPUT_BAM="+bamList, "INPUT_VCF="+this.INPUT_VCF.getAbsolutePath(),
 				"GQ_THRESHOLD="+Integer.toString(this.GQ_THRESHOLD), "FRACTION_SAMPLES_PASSING="+Double.toString(this.FRACTION_SAMPLES_PASSING),
 				"MIN_NUM_VARIANT_SAMPLES="+Integer.toString(this.MIN_NUM_VARIANT_SAMPLES),
 				"READ_MQ="+Integer.toString(this.READ_MQ)};

@@ -2,7 +2,10 @@ package org.broadinstitute.dropseqrna.censusseq;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.annotations.BeforeClass;
@@ -12,7 +15,7 @@ import junit.framework.Assert;
 
 public class RollCallTest {
 
-	private static final File IN_BAM = new File("testdata/org/broadinstitute/dropseq/censusseq/10_donors_chr22.selected_sites.bam");
+	private static final List<File> IN_BAM = new ArrayList<File> (Collections.singletonList(new File("testdata/org/broadinstitute/dropseq/censusseq/10_donors_chr22.selected_sites.bam")));
 	private static final File IN_VCF = new File("testdata/org/broadinstitute/dropseq/censusseq/10_donors_chr22.selected_sites.vcf.gz");
 	
 	private static final File OUT_ROLL_CALL = new File("testdata/org/broadinstitute/dropseq/censusseq/10_donors_chr22.selected_sites.roll_call.txt");

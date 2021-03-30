@@ -44,9 +44,12 @@ import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.LikelihoodUtil
 import org.broadinstitute.dropseqrna.censusseq.VCFPileupJointIterator.JointResult;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.VCFUtils;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
 import org.broadinstitute.dropseqrna.vcftools.filters.FindMonomorphicSitesInDonorPool;
 import org.broadinstitute.dropseqrna.utils.AssertSequenceDictionaryIntersection;
+import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -80,9 +83,9 @@ public class CsiAnalysis extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(CsiAnalysis.class);
 
-	@Argument(doc = "The input BAM.")
-	public File INPUT_BAM;
-
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
+	public List<File> INPUT_BAM;
+	
 	@Argument(doc = "The input VCF.")
 	public File INPUT_VCF;
 
@@ -151,14 +154,12 @@ public class CsiAnalysis extends CommandLineProgram {
 			log.error("If excluding 1 or more donors, there must be a tag on all reads to indicate the donor of origin of the data!");
 			return(1);
 		}
-		
-		IOUtil.assertFileIsReadable(INPUT_BAM);
+		this.INPUT_BAM = FileListParsingUtils.expandFileList(INPUT_BAM);		
 		IOUtil.assertFileIsReadable(INPUT_VCF);
 		IOUtil.assertFileIsReadable(SAMPLE_FILE);
 		IOUtil.assertFileIsWritable(this.OUTPUT);
 		if (this.VCF_OUTPUT!=null) IOUtil.assertFileIsWritable(this.VCF_OUTPUT);
 
-		
 		// set up the optional output
 		BufferedWriter outVerbose = null;
 		if (OUTPUT_VERBOSE != null) {
@@ -167,9 +168,11 @@ public class CsiAnalysis extends CommandLineProgram {
 		}
 
 		VCFFileReader vcfReader = new VCFFileReader(this.INPUT_VCF, true);
-		AssertSequenceDictionaryIntersection.assertIntersectionObjectBam(vcfReader, INPUT_BAM.getName(), INPUT_BAM, log);
+		
+		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.INPUT_BAM, false, SamReaderFactory.makeDefault());
 		SAMSequenceDictionary sd = vcfReader.getFileHeader().getSequenceDictionary();
-
+		AssertSequenceDictionaryIntersection.assertIntersection(headerAndIter.header, "BAM INPUT(S)", sd, "VCF INPUT", log);		
+		
 		// validate VCF is indexed.
 		if (!VCFUtils.hasIndex(this.INPUT_VCF)) return 1;
 
@@ -203,9 +206,8 @@ public class CsiAnalysis extends CommandLineProgram {
 		vcfReader.close();
 
 		// build the BAM iterator.
-		log.info("Finding SNPs in BAM.");
-		SamReader reader = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(this.INPUT_BAM);
-		SNPGenomicBasePileupIterator pileUpIter = new SNPGenomicBasePileupIterator(reader, snpIntervals, SNP_TAG,
+		log.info("Finding SNPs in BAM.");		
+		SNPGenomicBasePileupIterator pileUpIter = new SNPGenomicBasePileupIterator(headerAndIter, snpIntervals, SNP_TAG,
 				READ_MQ, this.IGNORED_CHROMOSOMES, KNOWN_DONOR_TAG, this.MIN_BASE_QUALITY);
 
 		// reset the iterator for use in the full data set. Use the cleaned up

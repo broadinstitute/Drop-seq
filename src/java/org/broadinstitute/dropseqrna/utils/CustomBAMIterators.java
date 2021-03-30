@@ -88,4 +88,28 @@ public class CustomBAMIterators {
         return result; 
 	}
 	
+	public static CloseableIterator<SAMRecord> getQuerynameSortedRecords(final SamHeaderAndIterator headerAndIter) {
+		if (headerAndIter.header.getSortOrder().equals(SortOrder.queryname)) {
+			return headerAndIter.iterator;
+		}
+		log.info("Input SAM/BAM not in queryname order, sorting...");
+		SAMSequenceDictionary dict= headerAndIter.header.getSequenceDictionary();
+		List<SAMProgramRecord> programs =headerAndIter.header.getProgramRecords();
+		
+		final SAMFileHeader writerHeader = new SAMFileHeader();
+        writerHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
+        writerHeader.setSequenceDictionary(dict);
+        for (SAMProgramRecord spr : programs) {
+        	writerHeader.addProgramRecord(spr);
+        }
+        log.info("Reading in records for query name sorting");
+        final ProgressLogger progressLogger = new ProgressLogger(log, 1000000, "Sorting reads in query name order");
+        final CloseableIterator<SAMRecord> result =
+                SamRecordSortingIteratorFactory.create(writerHeader, headerAndIter.iterator, new SAMRecordQueryNameComparator(), progressLogger);
+        log.info("Sorting finished.");
+        return result; 
+	}
+	
+	
+	
 }

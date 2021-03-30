@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.utils;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -34,6 +35,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.modularfileparser.DelimiterParser;
 import org.broadinstitute.dropseqrna.utils.modularfileparser.ModularFileParser;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
@@ -55,9 +58,9 @@ public class FilterBamByTag extends CommandLineProgram {
 
 	private final Log log = Log.getInstance(FilterBamByTag.class);
 
-	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
-	public File INPUT;
-
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
+	public List<File> INPUT;
+	
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
 	public File OUTPUT;
 	
@@ -97,7 +100,8 @@ public class FilterBamByTag extends CommandLineProgram {
 			return(1);
 		}
 
-		IOUtil.assertFileIsReadable(INPUT);
+		this.INPUT = FileListParsingUtils.expandFileList(INPUT);
+		
 		IOUtil.assertFileIsWritable(OUTPUT);
 		if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(this.SUMMARY);
 		Set<String> values;
@@ -111,14 +115,13 @@ public class FilterBamByTag extends CommandLineProgram {
 				values.addAll(this.TAG_VALUE);
 		}
 
-		SamReader in = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(INPUT);
-		SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(
-				in.getFileHeader(), true, OUTPUT);
+		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.INPUT, false, SamReaderFactory.makeDefault());
+		SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(headerAndIter.header, true, OUTPUT);
 
 		if (!this.PAIRED_MODE)
-			processUnpairedMode(in, out, values, this.SUMMARY, MINIMUM_MAPPING_QUALITY, ALLOW_PARTIAL_MATCH);
+			processUnpairedMode(headerAndIter, out, values, this.SUMMARY, MINIMUM_MAPPING_QUALITY, ALLOW_PARTIAL_MATCH);
 		else
-			processPairedMode(in, out, values, this.SUMMARY, MINIMUM_MAPPING_QUALITY, ALLOW_PARTIAL_MATCH);
+			processPairedMode(headerAndIter, out, values, this.SUMMARY, MINIMUM_MAPPING_QUALITY, ALLOW_PARTIAL_MATCH);
 
 		return 0;
 	}
@@ -128,10 +131,12 @@ public class FilterBamByTag extends CommandLineProgram {
 	 * @param in
 	 * @param out
 	 */
-	void processUnpairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values, final File summaryFile, Integer mapQuality ,boolean allowPartial) {
+	void processUnpairedMode (final SamHeaderAndIterator headerAndIter, final SAMFileWriter out, final Set<String> values, final File summaryFile, Integer mapQuality ,boolean allowPartial) {
 		FilteredReadsMetric m = new FilteredReadsMetric();
 		ProgressLogger progLog = new ProgressLogger(log);
-		for (final SAMRecord r : in) {
+		Iterator<SAMRecord> in = headerAndIter.iterator;
+		while (in.hasNext()) {
+			SAMRecord r = in.next();
 			progLog.record(r);
 			boolean filterFlag = filterRead(r, this.TAG, values, this.ACCEPT_TAG, mapQuality, allowPartial);
 			if (!filterFlag) { 
@@ -167,11 +172,11 @@ public class FilterBamByTag extends CommandLineProgram {
 	 * @param out
 	 * @param values
 	 */
-	void processPairedMode (final SamReader in, final SAMFileWriter out, final Set<String> values, final File summaryFile, Integer mapQuality, boolean allowPartial) {
+	void processPairedMode (final SamHeaderAndIterator headerAndIter, final SAMFileWriter out, final Set<String> values, final File summaryFile, Integer mapQuality, boolean allowPartial) {
 		ProgressLogger progLog = new ProgressLogger(log);
 		FilteredReadsMetric m = new FilteredReadsMetric();
 		
-		PeekableIterator<SAMRecord> iter = new PeekableIterator<>(CustomBAMIterators.getQuerynameSortedRecords(in));
+		PeekableIterator<SAMRecord> iter = new PeekableIterator<>(CustomBAMIterators.getQuerynameSortedRecords(headerAndIter));
 		while (iter.hasNext()) {
 			SAMRecord r1 = iter.next();
 			progLog.record(r1);
@@ -199,8 +204,7 @@ public class FilterBamByTag extends CommandLineProgram {
 			} else {
 				m.READS_REJECTED++;
 			}
-		}
-		CloserUtil.close(in);
+		}		
 		writeSummary(summaryFile, m);
 		out.close();
 		reportAndCheckFilterResults(m);
