@@ -114,7 +114,7 @@ public class SequenceDictionaryIntersection {
         onlyIn1.removeAll(sequences2);
         this.sequencesOnlyIn1 = Collections.unmodifiableSet(onlyIn1);
         final TreeSet<String> onlyIn2 = new TreeSet<>(sequences2);
-        onlyIn1.removeAll(sequences1);
+        onlyIn2.removeAll(sequences1);
         this.sequencesOnlyIn2 = Collections.unmodifiableSet(onlyIn2);
     }
 
@@ -220,7 +220,11 @@ public class SequenceDictionaryIntersection {
         if (intersection.isEmpty()) {
             sb.append("No contigs in common!\n");
         } else {
-            sb.append(String.format("Contigs in common: %s.\n", getIntersectionAsString()));
+            sb.append(String.format("Number of contigs in common: %s.\n", this.intersection.size()));
+            if(this.sequencesOnlyIn1.size()>0) 
+            	sb.append(String.format("Contigs only in %s: %s\n", description1, asString(this.sequencesOnlyIn1)));
+            if(this.sequencesOnlyIn2.size()>0)
+            	sb.append(String.format("Contigs only in %s: %s\n", description2, asString(this.sequencesOnlyIn2)));
         }
         if (verbose || intersection.isEmpty()) {
             sb.append(String.format("%s contigs: %s\n", description1, getSequences1AsString()));
