@@ -79,10 +79,14 @@ public class DigitalAlleleCountsIterator implements CloseableIterator<DigitalAll
 
 		// get the pileup object and make the initial DAC with the first pileup.
 		final Iterator<SNPUMIBasePileup> pileupIter = groupingIter.next().iterator();
+        DigitalAlleleCounts dac = getDAC(pileupIter, this.baseQualityThreshold); 		
+		return dac;
+	}
+	
+	public static DigitalAlleleCounts getDAC (Iterator<SNPUMIBasePileup> pileupIter, int baseQualityThreshold) {
+		SNPUMIBasePileup p = pileupIter.next();
 
-        SNPUMIBasePileup p = pileupIter.next();
-
-		final DigitalAlleleCounts dac = new DigitalAlleleCounts(p.getSNPInterval(), p.getGene(), p.getCell(), this.baseQualityThreshold);
+		final DigitalAlleleCounts dac = new DigitalAlleleCounts(p.getSNPInterval(), p.getGene(), p.getCell(), baseQualityThreshold);
 		dac.addPileup(p);
 
 		// get SNPUMIBasePileup objects until the gene, cell, or snpInterval changes.
