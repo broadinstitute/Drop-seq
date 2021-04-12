@@ -12,7 +12,19 @@ import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
 
+/**
+ * Converts a group of SNP UMI pileups (all the reads that support a single UMI/gene/SNP) into a DigitalAlleleCounts Object, 
+ * which tracks the number of UMIs and reads for each expressed allele.
+ * 
+ * At a single SNP location, there may be more than one gene annotation present.  Reads that overlap multiple genes will be assigned
+ * to both genes.  The goal of this iterator is to filter all but one gene from the SNP in a consistent way across cells.  This is done
+ * by counting the number of UMIs expressed on each gene across cells, then filtering the SNPUMIBasePileup list to the subset that are 
+ * assigned to this gene.
+ * @author nemesh
+ *
+ */
 public class DigitalAlleleCountsBestGeneIterator implements CloseableIterator<DigitalAlleleCounts> {
 
 	private final GroupingIterator<SNPUMIBasePileup> groupingIter;
@@ -22,6 +34,11 @@ public class DigitalAlleleCountsBestGeneIterator implements CloseableIterator<Di
 	// stash results for a list of cells/genes for a single pileup here.
 	private final Queue<DigitalAlleleCounts> stash;
 
+	/**
+	 * Construct an iterator that generates DigitalAlleleCount Objects
+	 * @param iter An interator across SNPUMIBasePileup objects that contains data about one cell/gene/SNP/UMI for some number of reads
+	 * @param baseQualityThreshold A minimum base quality threshold to retain a SNPUMIBasePileup. 
+	 */
 	protected DigitalAlleleCountsBestGeneIterator(SNPUMIBasePileupIterator iter, final int baseQualityThreshold) {
 		this.dict = iter.getSNPIntervals().getHeader().getSequenceDictionary();
 		// group the data by SNP interval ONLY.
@@ -57,6 +74,12 @@ public class DigitalAlleleCountsBestGeneIterator implements CloseableIterator<Di
 		return null;
 	}
 
+	/**
+	 * For a collection of SNPUMIBasePileup objects grouped by SNP to include all cells and genes,
+	 * iterator over the collection, find the "best" gene as defined by the gene having the largest number of UMIs, then
+	 * filter the collection to only include that gene.  Construct DigitalAlleleCounts objects for each cell, and queue
+	 * then so they can be retrieved by calls to next()
+	 */
 	private void populateStash() {
 		// stash is empty, poll the data and build the next SNP interval worth of data.
 		// if there's no data left, exit early.
@@ -81,6 +104,9 @@ public class DigitalAlleleCountsBestGeneIterator implements CloseableIterator<Di
 		}
 	}
 
+	/** 
+	 * Group SNPUMIBasePileup objects by cell barcode
+	 */
 	private static final Comparator<SNPUMIBasePileup> cellComparator = new Comparator<SNPUMIBasePileup>() {
 		@Override
 		public int compare(final SNPUMIBasePileup o1, final SNPUMIBasePileup o2) {
@@ -91,8 +117,7 @@ public class DigitalAlleleCountsBestGeneIterator implements CloseableIterator<Di
 
 	@Override
 	public void close() {
-		// TODO Auto-generated method stub
-
+		CloserUtil.close(this.groupingIter);
 	}
 
 }
