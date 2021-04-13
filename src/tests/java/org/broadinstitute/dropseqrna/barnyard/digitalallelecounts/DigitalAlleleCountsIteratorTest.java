@@ -23,22 +23,21 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
-import htsjdk.samtools.util.IntervalList;
-import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
-import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.DigitalAlleleCounts;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.DigitalAlleleCountsIterator;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileupIterator;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
-import org.junit.Assert;
-import org.testng.annotations.Test;
-import picard.annotation.LocusFunction;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
+import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
+import org.junit.Assert;
+import org.testng.annotations.Test;
+
+import htsjdk.samtools.util.IntervalList;
+import picard.annotation.LocusFunction;
 
 public class DigitalAlleleCountsIteratorTest {
 
@@ -71,10 +70,10 @@ public class DigitalAlleleCountsIteratorTest {
 		int baseQualityThreshold=10;
 
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
-				smallBAMFile, snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+				new SamHeaderAndIterator(smallBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 				LOCUS_FUNCTION_LIST,STRAND_STRATEGY, cellBarcodeTag, molBCTag, snpTag,
 				GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG, readMQ, assignReadsToAllGenes,
-				cellBarcodes);
+				cellBarcodes, null, SortOrder.SNP_GENE);
 
 		DigitalAlleleCountsIterator daci = new DigitalAlleleCountsIterator(sbpi, baseQualityThreshold);
 		int counter=0;
@@ -95,10 +94,10 @@ public class DigitalAlleleCountsIteratorTest {
 		int baseQualityThreshold=10;
 
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
-				smallBAMFile2, snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+				new SamHeaderAndIterator(smallBAMFile2), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 				LOCUS_FUNCTION_LIST,STRAND_STRATEGY, cellBarcodeTag, molBCTag, snpTag,
 				GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG, readMQ, assignReadsToAllGenes,
-				cellBarcodes);
+				cellBarcodes, null, SortOrder.SNP_GENE);
 
 		DigitalAlleleCountsIterator daci = new DigitalAlleleCountsIterator(sbpi, baseQualityThreshold);
 		int counter=0;

@@ -189,7 +189,7 @@ public class GenotypeSperm extends CommandLineProgram {
 			SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 					headerAndIter, snpIntervals, GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_FUNCTION_TAG,
 					GeneFunctionCommandLineBase.DEFAULT_LOCUS_FUNCTION_LIST, StrandStrategy.BOTH, this.CELL_BARCODE_TAG,
-					this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, null, this.READ_MQ, true, cellBarcodes, SortOrder.SNP_GENE);
+					this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, null, this.READ_MQ, true, cellBarcodes, null, SortOrder.SNP_GENE);
 			
 			return sbpi;
 			

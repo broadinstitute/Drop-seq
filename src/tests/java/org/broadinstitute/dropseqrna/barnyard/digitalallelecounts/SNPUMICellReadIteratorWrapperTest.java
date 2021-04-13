@@ -81,7 +81,7 @@ public class SNPUMICellReadIteratorWrapperTest {
 
         GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator2, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, false, STRAND_STRATEGY, LOCUS_FUNCTION_LIST);
 
-        SNPUMICellReadIteratorWrapper snpumiCellReadIterator = new SNPUMICellReadIteratorWrapper(gfteratorWrapper, loci, cellBarcodeTag, cellBarcodeList, GENE_NAME_TAG, snpTag, readMQ);
+        SNPUMICellReadIteratorWrapper snpumiCellReadIterator = new SNPUMICellReadIteratorWrapper(gfteratorWrapper, loci, cellBarcodeTag, cellBarcodeList, GENE_NAME_TAG, snpTag, readMQ, null);
 
         // create comparators in the order the data should be sorted
         final MultiComparator<SAMRecord> multiComparator = new MultiComparator<>(
@@ -155,7 +155,7 @@ public class SNPUMICellReadIteratorWrapperTest {
 
     private List<SAMRecord> processOneRead(final SAMRecord rec, final IntervalList loci, final List<String> cellBarcodeList) {
 
-        SNPUMICellReadIteratorWrapper it = new SNPUMICellReadIteratorWrapper(Collections.singletonList(rec).iterator(), loci, cellBarcodeTag, cellBarcodeList, GENE_NAME_TAG, snpTag, readMQ);
+        SNPUMICellReadIteratorWrapper it = new SNPUMICellReadIteratorWrapper(Collections.singletonList(rec).iterator(), loci, cellBarcodeTag, cellBarcodeList, GENE_NAME_TAG, snpTag, readMQ, null);
         final ArrayList<SAMRecord> ret = new ArrayList<>();
         while (it.hasNext())
 			ret.add(it.next());

@@ -8,10 +8,13 @@ import java.util.List;
 import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.IntervalList;
 import picard.annotation.LocusFunction;
 
@@ -41,12 +44,12 @@ public class DigitalAlleleCountsBestGeneIteratorTest {
 			List<String> cellBarcodes = ParseBarcodeFile.readCellBarcodeFile(cellBCFile);
 			IntervalList snpIntervals = IntervalList.fromFile(snpIntervalsFile);
 			int baseQualityThreshold=10;
-
+			
 			SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
-					smallBAMFile2, snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+					new SamHeaderAndIterator(smallBAMFile2), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 					LOCUS_FUNCTION_LIST,STRAND_STRATEGY, cellBarcodeTag, molBCTag, snpTag,
 					GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG, readMQ, assignReadsToAllGenes,
-					cellBarcodes);
+					cellBarcodes, null, SortOrder.SNP_GENE);
 
 			DigitalAlleleCountsBestGeneIterator daci = new DigitalAlleleCountsBestGeneIterator(sbpi, baseQualityThreshold);
 			int counter=0;
