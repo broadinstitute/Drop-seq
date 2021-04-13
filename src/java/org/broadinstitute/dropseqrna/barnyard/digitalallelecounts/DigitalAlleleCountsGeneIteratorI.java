@@ -1,7 +1,7 @@
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
-import htsjdk.samtools.util.CloseableIterator;
+import java.util.Iterator;
 
-public interface DigitalAlleleCountsGeneIteratorI extends CloseableIterator<DigitalAlleleCounts> {
+public interface DigitalAlleleCountsGeneIteratorI extends Iterator<DigitalAlleleCounts> {
 	
 }

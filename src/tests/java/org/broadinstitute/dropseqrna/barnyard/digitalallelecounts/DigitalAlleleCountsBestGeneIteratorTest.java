@@ -56,8 +56,7 @@ public class DigitalAlleleCountsBestGeneIteratorTest {
 				counter++;
 			}
 			// assert that you saw 2 dacs, for the 2 cells.
-			Assert.assertEquals(2, counter);
-			daci.close();
+			Assert.assertEquals(2, counter);			
 		}
 		
 				

@@ -85,7 +85,6 @@ public class DigitalAlleleCountsIteratorTest {
 		}
 		// assert that you saw 2 dacs, for the 2 cells.
 		Assert.assertEquals(2, counter);
-		daci.close();
 	}
 	
 	@Test
@@ -110,7 +109,6 @@ public class DigitalAlleleCountsIteratorTest {
 		}
 		// assert that you saw 3 dacs, for the 2 cells.
 		Assert.assertEquals(3, counter);
-		daci.close();
 	}
 	
 	

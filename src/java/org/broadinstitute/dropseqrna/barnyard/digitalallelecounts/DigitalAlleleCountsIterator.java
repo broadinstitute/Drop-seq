@@ -100,12 +100,7 @@ public class DigitalAlleleCountsIterator implements DigitalAlleleCountsGeneItera
 	public void remove() {
 		this.groupingIter.remove();
 	}
-
-	@Override
-	public void close() {
-		CloserUtil.close(this.groupingIter);
-	}
-
+	
 	@Override
 	public boolean hasNext() {
 		return this.groupingIter.hasNext();

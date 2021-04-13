@@ -114,10 +114,6 @@ public class DigitalAlleleCountsBestGeneIterator implements DigitalAlleleCountsG
 			return ret;
 		}
 	};
-
-	@Override
-	public void close() {
-		CloserUtil.close(this.groupingIter);
-	}
+	
 
 }
