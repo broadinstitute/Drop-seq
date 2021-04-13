@@ -39,7 +39,7 @@ public class MultiCellDigitalAlleleCountsIterator implements CloseableIterator<M
 
 	private final PeekableIterator<DigitalAlleleCounts> iter;
 	
-	public MultiCellDigitalAlleleCountsIterator (DigitalAlleleCountsIterator iter) {
+	public MultiCellDigitalAlleleCountsIterator (DigitalAlleleCountsGeneIteratorI iter) {
 		this.iter=new PeekableIterator<DigitalAlleleCounts>(iter);
 	}
 	

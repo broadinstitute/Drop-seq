@@ -25,7 +25,7 @@ import htsjdk.samtools.util.CloserUtil;
  * @author nemesh
  *
  */
-public class DigitalAlleleCountsBestGeneIterator implements CloseableIterator<DigitalAlleleCounts> {
+public class DigitalAlleleCountsBestGeneIterator implements DigitalAlleleCountsGeneIteratorI {
 
 	private final GroupingIterator<SNPUMIBasePileup> groupingIter;
 	private final SAMSequenceDictionary dict;
@@ -39,7 +39,7 @@ public class DigitalAlleleCountsBestGeneIterator implements CloseableIterator<Di
 	 * @param iter An interator across SNPUMIBasePileup objects that contains data about one cell/gene/SNP/UMI for some number of reads
 	 * @param baseQualityThreshold A minimum base quality threshold to retain a SNPUMIBasePileup. 
 	 */
-	protected DigitalAlleleCountsBestGeneIterator(SNPUMIBasePileupIterator iter, final int baseQualityThreshold) {
+	public DigitalAlleleCountsBestGeneIterator(SNPUMIBasePileupIterator iter, final int baseQualityThreshold) {
 		this.dict = iter.getSNPIntervals().getHeader().getSequenceDictionary();
 		// group the data by SNP interval ONLY.
 

@@ -39,7 +39,7 @@ import java.util.Iterator;
  * @author nemesh
  *
  */
-public class DigitalAlleleCountsIterator implements CloseableIterator<DigitalAlleleCounts>{
+public class DigitalAlleleCountsIterator implements DigitalAlleleCountsGeneIteratorI {
 
 	private final GroupingIterator<SNPUMIBasePileup> groupingIter;
 
