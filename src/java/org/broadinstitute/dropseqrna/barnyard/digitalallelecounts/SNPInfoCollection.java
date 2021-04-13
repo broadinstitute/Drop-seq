@@ -28,7 +28,8 @@ public class SNPInfoCollection {
 
 	private Map<Interval, String> refAllele;
 	private Map<Interval, String> altAllele;
-	private Map<Interval, Integer> averageGQ;
+	private Map<Interval, Double> averageGQ;
+	
 	private IntervalList intervalList;
 	
 	/**
@@ -54,7 +55,7 @@ public class SNPInfoCollection {
 	 * @param snpInterval The snp interval to query
 	 * @return The mean GQ across donors
 	 */
-	public Integer getAverageGQ(Interval snpInterval) {
+	public Double getAverageGQ(Interval snpInterval) {
 		return averageGQ.get(snpInterval);
 	}
 
@@ -64,6 +65,30 @@ public class SNPInfoCollection {
 	 */
 	public IntervalList getIntervalList() {
 		return intervalList;
+	}
+	
+	/**
+	 * Get a map from the SNP Interval to the reference allele for that SNP
+	 * @return
+	 */
+	public Map<Interval, String> getRefAllele() {
+		return refAllele;
+	}
+
+	/**
+	 * Get a map from the SNP Interval to the alternate for that SNP.  Missing alleles are coded as N.
+	 * @return
+	 */
+	public Map<Interval, String> getAltAllele() {
+		return altAllele;
+	}
+
+	/**
+	 * Get a map from the SNP Interval to the average genotype quality for a variant across all included samples.
+	 * @return
+	 */
+	public Map<Interval, Double> getAverageGQ() {
+		return averageGQ;
 	}
 
 	/**
@@ -96,7 +121,7 @@ public class SNPInfoCollection {
 			String alt = alleleCache.intern(getAltAllele(site));			
 			altAllele.put(variant, alt);
 			
-			int gqAverage = (int) Math.round(site.getGenotypes().stream().mapToInt(x -> x.getGQ()).average().orElse(-1));
+			double gqAverage = site.getGenotypes().stream().mapToInt(x -> x.getGQ()).average().orElse(-1);
 			averageGQ.put(variant, gqAverage);
 		}
 		if (log!=null) log.info("Found [" + result.getIntervals().size() +"] potential SNP sites to query.");
