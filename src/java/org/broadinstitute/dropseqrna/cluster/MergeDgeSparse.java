@@ -149,7 +149,7 @@ public class MergeDgeSparse
         final List<Map> dataSets = (List<Map>) getRequiredValue(yamlMap, YamlKeys.DATASETS_KEY);
 
         if (CELL_BC_FILE != null && CELL_BC_FILE.size() > 0)
-			selectedCells = loadSelectedCellsLists(CELL_BC_FILE);
+            selectedCells = loadSelectedCellsLists(CELL_BC_FILE);
 
         List<SparseDge> dges = loadDataSets(dataSets);
 
@@ -165,8 +165,9 @@ public class MergeDgeSparse
         for (final SparseDge dge : dges) {
             totalNumElements += dge.getNumNonZeroEntries();
             for (int i = 0; i < dge.getNumCells(); ++i)
-				cellBarcodes.add(dge.getCellBarcode(i));
+                cellBarcodes.add(dge.getCellBarcode(i));
         }
+        totalNumElements -= geneFiltererSorter.getNumFilteredElements();
 
         final MergeDgeOutputWriter writer = new MergeDgeOutputWriter(RAW_DGE_OUTPUT_FILE, SCALED_DGE_OUTPUT_FILE,
                 totalNumElements, geneFiltererSorter.getSortedGeneNames(), cellBarcodes);
@@ -189,6 +190,10 @@ public class MergeDgeSparse
             cellIndexOffset += dge.getNumCells();
         }
         writer.close();
+
+        if (numFilteredElements != geneFiltererSorter.getNumFilteredElements())
+            throw new RuntimeException(String.format("numFilteredElements (%d) != geneFiltererSorter.getNumFilteredElements() (%d)", numFilteredElements, geneFiltererSorter.getNumFilteredElements()));
+
         LOG.info(numFilteredElements + " filtered by a gene filter.");
         return 0;
     }
@@ -208,7 +213,7 @@ public class MergeDgeSparse
                         // Remove trailing whitespace
                         fields = whitespace.split(fields[0], 2);
                         if (!fields[0].isEmpty())
-							ret.add(fields[0]);
+                            ret.add(fields[0]);
                     }
                 }
             } catch (IOException e) {
@@ -222,14 +227,15 @@ public class MergeDgeSparse
     protected String[] customCommandLineValidation() {
         String[] superMessages = super.customCommandLineValidation();
         if (RAW_DGE_OUTPUT_FILE == null && SCALED_DGE_OUTPUT_FILE == null)
-			return CustomCommandLineValidationHelper.makeValue(superMessages,
+            return CustomCommandLineValidationHelper.makeValue(superMessages,
                     Collections.singletonList("At least one of RAW_DGE_OUTPUT_FILE and SCALED_DGE_OUTPUT_FILE should be set"));
-		else
-			return superMessages;
+        else
+            return superMessages;
     }
 
     private class GeneFiltererSorter {
         private int numOutputGenes = 0;
+        private int numFilteredElements = 0;
         private final int[] geneIdMapping;
         private final List<String> sortedGeneNames;
 
@@ -238,25 +244,31 @@ public class MergeDgeSparse
             geneIdMapping = new int[geneEnumerator.getGenes().size()];
             final Map<String, Integer> geneMap = new TreeMap<>();
             for (int i = 0; i < geneIdMapping.length; ++i)
-				if (cellsPerGene[i] >= minCellsPerGene)
-					geneMap.put(geneEnumerator.getGeneName(i), i);
-				else
-					geneIdMapping[i] = -1;
+                if (cellsPerGene[i] >= minCellsPerGene)
+                    geneMap.put(geneEnumerator.getGeneName(i), i);
+                else {
+                    geneIdMapping[i] = -1;
+                    numFilteredElements += cellsPerGene[i];
+                }
             for (final Map.Entry<String, Integer> entry : geneMap.entrySet())
-				geneIdMapping[entry.getValue()] = numOutputGenes++;
+                geneIdMapping[entry.getValue()] = numOutputGenes++;
             sortedGeneNames = Collections.unmodifiableList(new ArrayList<>(geneMap.keySet()));
         }
 
         private int[] countCellsPerGene(final List<SparseDge> dges) {
             final int[] cellsPerGene = new int[geneEnumerator.getGenes().size()];
             for (final SparseDge dge : dges)
-				for (final SparseDge.Triplet triplet : dge.getTriplets())
-					++cellsPerGene[triplet.geneIndex];
+                for (final SparseDge.Triplet triplet : dge.getTriplets())
+                    ++cellsPerGene[triplet.geneIndex];
             return cellsPerGene;
         }
 
         public int getNumOutputGenes() {
             return numOutputGenes;
+        }
+
+        public int getNumFilteredElements() {
+            return numFilteredElements;
         }
 
         public int getOutputGeneIndex(final int originalGeneIndex) {
@@ -286,8 +298,8 @@ public class MergeDgeSparse
             LOG.info("Writing " + CELL_SIZE_OUTPUT_FILE.getAbsolutePath());
             final CellSizeWriter cellSizeWriter = new CellSizeWriter(CELL_SIZE_OUTPUT_FILE);
             for (final SparseDge dge : dges)
-				for (int i = 0; i < dge.getNumCells(); ++i)
-					cellSizeWriter.writeSize(dge.getCellBarcode(i), dge.getNumTranscripts(i));
+                for (int i = 0; i < dge.getNumCells(); ++i)
+                    cellSizeWriter.writeSize(dge.getCellBarcode(i), dge.getNumTranscripts(i));
             cellSizeWriter.close();
         }
     }
@@ -312,12 +324,12 @@ public class MergeDgeSparse
 
     private List<SparseDge> loadDataSets(final List datasets) {
         if (datasets.size() == 0)
-			throw new RuntimeException("List of datasets is empty in " + YAML.getAbsolutePath());
+            throw new RuntimeException("List of datasets is empty in " + YAML.getAbsolutePath());
         final ArrayList<SparseDge> dges = new ArrayList<>(datasets.size());
 
         for (final Object dataset : datasets) {
             if (! (dataset instanceof Map))
-				throw new RuntimeException("dataset element is not map in " + YAML.getAbsolutePath());
+                throw new RuntimeException("dataset element is not map in " + YAML.getAbsolutePath());
             final Map datasetMap = (Map)dataset;
             final File dgePath = new File((String)getRequiredValue(datasetMap, YamlKeys.DatasetsKeys.PATH_KEY));
             String prefix = (String)getValueOrDefault(datasetMap, YamlKeys.DatasetsKeys.NAME_KEY, "");
@@ -325,13 +337,13 @@ public class MergeDgeSparse
             LOG.info(String.format("Loaded %d cells from %s", dge.getNumCells(), dgePath.getAbsolutePath()));
 
             if (!prefix.isEmpty())
-				dge.prefixCellBarcodes(prefix + "_");
+                dge.prefixCellBarcodes(prefix + "_");
             Integer cell_count = (Integer)getValueOrDefault(datasetMap, YamlKeys.DatasetsKeys.CELL_COUNT_KEY, 0);
             if (cell_count > 0 && cell_count < dge.getNumCells())
-				dge.discardSmallestCells(cell_count);
+                dge.discardSmallestCells(cell_count);
 
             if (selectedCells != null)
-				dge.retainOnlyTheseCells(selectedCells);
+                dge.retainOnlyTheseCells(selectedCells);
 
             if (MIN_GENES > 0) {
                 int numCells = dge.getNumCells();
@@ -351,15 +363,15 @@ public class MergeDgeSparse
     private Object getRequiredValue(final Map map, final String key) {
         final Object ret = map.get(key);
         if (ret == null)
-			throw new RuntimeException(YAML.getAbsolutePath() + " does not contain key " + key);
+            throw new RuntimeException(YAML.getAbsolutePath() + " does not contain key " + key);
         return ret;
     }
 
     private Object getValueOrDefault(final Map map, final String key, final Object defaultValue) {
         final Object ret = map.get(key);
         if (ret == null)
-			return defaultValue;
-		else
-			return ret;
+            return defaultValue;
+        else
+            return ret;
     }
 }
