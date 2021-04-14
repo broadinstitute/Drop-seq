@@ -167,6 +167,7 @@ public class MergeDgeSparse
             for (int i = 0; i < dge.getNumCells(); ++i)
 				cellBarcodes.add(dge.getCellBarcode(i));
         }
+        totalNumElements -= geneFiltererSorter.getNumFilteredElements();
 
         final MergeDgeOutputWriter writer = new MergeDgeOutputWriter(RAW_DGE_OUTPUT_FILE, SCALED_DGE_OUTPUT_FILE,
                 totalNumElements, geneFiltererSorter.getSortedGeneNames(), cellBarcodes);
@@ -189,6 +190,10 @@ public class MergeDgeSparse
             cellIndexOffset += dge.getNumCells();
         }
         writer.close();
+
+        if (numFilteredElements != geneFiltererSorter.getNumFilteredElements())
+            throw new RuntimeException(String.format("numFilteredElements (%d) != geneFiltererSorter.getNumFilteredElements() (%d)", numFilteredElements, geneFiltererSorter.getNumFilteredElements()));
+
         LOG.info(numFilteredElements + " filtered by a gene filter.");
         return 0;
     }
@@ -230,6 +235,7 @@ public class MergeDgeSparse
 
     private class GeneFiltererSorter {
         private int numOutputGenes = 0;
+        private int numFilteredElements = 0;
         private final int[] geneIdMapping;
         private final List<String> sortedGeneNames;
 
@@ -240,8 +246,10 @@ public class MergeDgeSparse
             for (int i = 0; i < geneIdMapping.length; ++i)
 				if (cellsPerGene[i] >= minCellsPerGene)
 					geneMap.put(geneEnumerator.getGeneName(i), i);
-				else
-					geneIdMapping[i] = -1;
+				else {
+                    geneIdMapping[i] = -1;
+                    numFilteredElements += cellsPerGene[i];
+                }
             for (final Map.Entry<String, Integer> entry : geneMap.entrySet())
 				geneIdMapping[entry.getValue()] = numOutputGenes++;
             sortedGeneNames = Collections.unmodifiableList(new ArrayList<>(geneMap.keySet()));
@@ -257,6 +265,10 @@ public class MergeDgeSparse
 
         public int getNumOutputGenes() {
             return numOutputGenes;
+        }
+
+        public int getNumFilteredElements() {
+            return numFilteredElements;
         }
 
         public int getOutputGeneIndex(final int originalGeneIndex) {
