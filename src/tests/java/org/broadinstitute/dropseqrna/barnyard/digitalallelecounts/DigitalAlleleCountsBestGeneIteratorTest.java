@@ -51,7 +51,7 @@ public class DigitalAlleleCountsBestGeneIteratorTest {
 					GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG, readMQ, assignReadsToAllGenes,
 					cellBarcodes, null, SortOrder.SNP_GENE);
 
-			DigitalAlleleCountsBestGeneIterator daci = new DigitalAlleleCountsBestGeneIterator(sbpi, baseQualityThreshold);
+			DigitalAlleleCountsBestGeneIterator daci = new DigitalAlleleCountsBestGeneIterator(sbpi, baseQualityThreshold, null, null);
 			int counter=0;
 			while (daci.hasNext()) {
 				DigitalAlleleCounts dac = daci.next();

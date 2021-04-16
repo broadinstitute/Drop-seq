@@ -83,33 +83,6 @@ public class BinomialStatistics {
 		return (pval);
 	}
 
-	/**
-	public static double getTwoSidedPvalueColt(int numTrials, int numSuccesses, double probability) {
-		double result =0;
-		//  R code to replicate.
-		//twoTailedUnbiasedTest<-function (numSuccesses, numTrials) {
-		//	x=c(numSuccesses, numTrials-numSuccesses)
-		//	dbinom(min(x), sum(x), 0.5) + ifelse( min(x)==0, 0, 2*sum(dbinom(0:(min(x)-1), sum(x), 0.5)))
-		//
-
-
-		// make numSuccesses less than 1/2 of the num successes.
-		numSuccesses=Math.min(numSuccesses, numTrials-numSuccesses);
-
-		//result=2*sum(dbinom(0:(min(x)), sum(x), 0.5)
-		Binomial b = new Binomial(numTrials, probability, rand);
-
-		for (int i=0; i<numSuccesses; i++) {
-			result+=b.pdf(i);
-		}
-
-		result=result*2;
-		result+=b.pdf(numSuccesses);
-
-		return (result);
-	}
-	*/
-
 	public static double getTwoSidedPvalue(final int numTrials, int numSuccesses, final double probability) {
 		double result =0;
 

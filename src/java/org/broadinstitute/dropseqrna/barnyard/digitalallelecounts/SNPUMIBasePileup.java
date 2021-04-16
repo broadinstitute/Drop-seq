@@ -23,13 +23,17 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.Log;
 import picard.annotation.LocusFunction;
-
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * A pileup of bases and qualities at a SNP in the context of a UMI (gene/cell/molecular barcode).
@@ -84,6 +88,16 @@ public class SNPUMIBasePileup extends SNPBasePileUp {
 
 	public Set<LocusFunction> getLocusFunctions() {
 		return this.locusFunctionSet;
+	}
+	
+	public double getUMIPurity () {
+		ObjectCounter<Character> counts = new ObjectCounter<>();
+		this.getBasesAsCharacters().stream().forEach(x -> counts.increment(x));		
+		List<Character> keys = counts.getKeysOrderedByCount(true);
+		int first = counts.getCountForKey(keys.get(0));
+		int total = counts.getTotalCount();				
+		double result = (double) first / (double) (total);
+		return result;
 	}
 
 	@Override

@@ -147,7 +147,7 @@ public class MultiCellDigitalAlleleCountsTest {
 	public void testUMIPurityFilter () {
 		Interval snpInterval = new Interval("1", 1, 1);
 
-		DigitalAlleleCounts dac = new DigitalAlleleCounts(snpInterval, "FOO", "CELL", 10);
+		DigitalAlleleCounts dac = new DigitalAlleleCounts(snpInterval, "FOO", "CELL", 10, 'N', 'N');
 		ObjectCounter<Character> umi1 = new ObjectCounter<>();
 		umi1.incrementByCount('T', 4);
 		umi1.incrementByCount('A', 1);

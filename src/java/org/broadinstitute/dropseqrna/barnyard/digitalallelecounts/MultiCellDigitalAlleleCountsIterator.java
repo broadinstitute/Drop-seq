@@ -65,7 +65,7 @@ public class MultiCellDigitalAlleleCountsIterator implements CloseableIterator<M
 			} else {
 				 break; // the next peeked object was a a pileup for a different DAC, quit the loop.
 			}
-		}		
+		}
 		return (multiDAC);
 				
 		
