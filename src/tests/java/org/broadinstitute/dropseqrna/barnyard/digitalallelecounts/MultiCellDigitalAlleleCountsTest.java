@@ -23,22 +23,24 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.DigitalAlleleCounts;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.DigitalAlleleCountsIterator;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.MultiCellDigitalAlleleCounts;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.MultiCellDigitalAlleleCountsIterator;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileupIterator;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-import picard.annotation.LocusFunction;
 
-import java.io.File;
-import java.util.*;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
+import picard.annotation.LocusFunction;
 
 public class MultiCellDigitalAlleleCountsTest {
 
@@ -76,9 +78,9 @@ public class MultiCellDigitalAlleleCountsTest {
 		int baseQualityThreshold=10;
 
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
-				smallBAMFile, snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+				new SamHeaderAndIterator(smallBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
-				molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes);
+				molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, null, SortOrder.SNP_GENE);
 
 		MultiCellDigitalAlleleCountsIterator multiIter = new MultiCellDigitalAlleleCountsIterator(new DigitalAlleleCountsIterator(sbpi, baseQualityThreshold));
 		MultiCellDigitalAlleleCounts r = multiIter.next();
@@ -99,9 +101,9 @@ public class MultiCellDigitalAlleleCountsTest {
 		int baseQualityThreshold=10;
 
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
-				bigBAMFile, snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+				new SamHeaderAndIterator(bigBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
-				molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes);
+				molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, null, SortOrder.SNP_GENE);
 
 		MultiCellDigitalAlleleCountsIterator multiIter = new MultiCellDigitalAlleleCountsIterator(new DigitalAlleleCountsIterator(sbpi, baseQualityThreshold));
 		MultiCellDigitalAlleleCounts r = multiIter.next();
@@ -145,7 +147,7 @@ public class MultiCellDigitalAlleleCountsTest {
 	public void testUMIPurityFilter () {
 		Interval snpInterval = new Interval("1", 1, 1);
 
-		DigitalAlleleCounts dac = new DigitalAlleleCounts(snpInterval, "FOO", "CELL", 10);
+		DigitalAlleleCounts dac = new DigitalAlleleCounts(snpInterval, "FOO", "CELL", 10, 'N', 'N');
 		ObjectCounter<Character> umi1 = new ObjectCounter<>();
 		umi1.incrementByCount('T', 4);
 		umi1.incrementByCount('A', 1);

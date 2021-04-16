@@ -42,8 +42,8 @@ public class DigitalAlleleCountsTest {
 	private String gene="ACADM";
 	private String cell="fake_cell";
 
-	private DigitalAlleleCounts getTestDataSet1 () {
-		DigitalAlleleCounts dac = new DigitalAlleleCounts(snpInterval, gene, cell, 10);
+	private DigitalAlleleCounts getTestDataSet1 (char refAllele) {
+		DigitalAlleleCounts dac = new DigitalAlleleCounts(snpInterval, gene, cell, 10, refAllele, 'N');
 		SNPUMIBasePileup p1 = buildPileUp(dac, "AAAAA", new char [] {'A', 'A'}, new byte [] {27,17});
 		SNPUMIBasePileup p2 = buildPileUp(dac, "TTTTT", new char [] {'T', 'T'}, new byte [] {27,17});
 		SNPUMIBasePileup p3 = buildPileUp(dac, "AATTT", new char [] {'T', 'T', 'T'}, new byte [] {27,17,11});
@@ -64,7 +64,7 @@ public class DigitalAlleleCountsTest {
 	@Test(enabled=true)
 	public void testUMIMeanPurity() {
 		// AAAAA collapses with the other two.
-		DigitalAlleleCounts dac = new DigitalAlleleCounts(snpInterval, gene, cell, 10);
+		DigitalAlleleCounts dac = new DigitalAlleleCounts(snpInterval, gene, cell, 10, 'N','N');
 		SNPUMIBasePileup p1 = buildPileUp(dac, "AAAAA", new char [] {'A', 'A','A','A', 'A'}, new byte [] {27,17,18,25,17});
 		SNPUMIBasePileup p2 = buildPileUp(dac, "AAAAT", new char [] {'T', 'T','T', 'T'}, new byte [] {27,17,20,21});
 		SNPUMIBasePileup p3 = buildPileUp(dac, "TAAAA", new char [] {'A','A','A'}, new byte [] {27,17,11});
@@ -84,7 +84,7 @@ public class DigitalAlleleCountsTest {
 	@Test(enabled=true)
 	public void testUMICollapse () {
 		// AAAAA absorbs AAAAT before AAATTT can get to it.
-		DigitalAlleleCounts dac = new DigitalAlleleCounts(snpInterval, gene, cell, 10);
+		DigitalAlleleCounts dac = new DigitalAlleleCounts(snpInterval, gene, cell, 10, 'N', 'N');
 		SNPUMIBasePileup p1 = buildPileUp(dac, "AAAAA", new char [] {'A', 'A','A','A', 'A'}, new byte [] {27,17,18,25,17});
 		SNPUMIBasePileup p2 = buildPileUp(dac, "AAATT", new char [] {'T', 'T','T', 'T'}, new byte [] {27,17,20,21});
 		SNPUMIBasePileup p3 = buildPileUp(dac, "AAAAT", new char [] {'A','A','A'}, new byte [] {27,17,11});
@@ -117,7 +117,7 @@ public class DigitalAlleleCountsTest {
 
 	@Test(enabled=true)
 	public void getReadCounts() {
-		DigitalAlleleCounts dac = getTestDataSet1 ();
+		DigitalAlleleCounts dac = getTestDataSet1 ('N');
 		ObjectCounter<Character> result = dac.getReadCounts();
 		Assert.assertEquals(5, result.getCountForKey('A'));
 		Assert.assertEquals(7, result.getCountForKey('T'));
@@ -125,7 +125,7 @@ public class DigitalAlleleCountsTest {
 
 	@Test(enabled=true)
 	public void getReadsPerUMI() {
-		DigitalAlleleCounts dac = getTestDataSet1 ();
+		DigitalAlleleCounts dac = getTestDataSet1 ('N');
 		Collection<String> umiList = dac.umis();
 		for (String umi: umiList) {
 			ObjectCounter<Character> result = dac.getReadsPerUMI(umi);
@@ -148,7 +148,7 @@ public class DigitalAlleleCountsTest {
 
 	@Test(enabled=true)
 	public void getUMIAlleleCount() {
-		DigitalAlleleCounts dac = getTestDataSet1 ();
+		DigitalAlleleCounts dac = getTestDataSet1 ('N');
 		ObjectCounter<Character> result = dac.getUMIAlleleCount();
 		Assert.assertEquals(2, result.getCountForKey('A'));
 		Assert.assertEquals(3, result.getCountForKey('T'));
@@ -158,7 +158,7 @@ public class DigitalAlleleCountsTest {
 
 	@Test(enabled=true)
 	public void getUMIPurity() {
-		DigitalAlleleCounts dac = getTestDataSet1 ();
+		DigitalAlleleCounts dac = getTestDataSet1 ('N');
 		Collection<String> umiList = dac.umis();
 		for (String umi: umiList) {
 			double purity = dac.getUMIPurity(umi);
@@ -179,7 +179,7 @@ public class DigitalAlleleCountsTest {
 
 	@Test
 	public void umis() {
-		DigitalAlleleCounts dac = getTestDataSet1 ();
+		DigitalAlleleCounts dac = getTestDataSet1 ('N');
 		Collection<String> umiList = dac.umis();
 
 		String [] umisExpected = new String [] {"AAAAA", "TTTTT", "AATTT", "GGGGG", "CCCCC"};
@@ -193,11 +193,12 @@ public class DigitalAlleleCountsTest {
 	
 	@Test
 	public void testMostCommonCounts () {
-		DigitalAlleleCounts dac = getTestDataSet1 ();
-		dac.setCommonBase('A');
+		DigitalAlleleCounts dac = getTestDataSet1 ('A');
+		
 		BinomialStatistics readsA = dac.getReadConfidenceInterval(0.95);
 		Assert.assertEquals(0.416, readsA.getRatio(), 0.001);
-		dac.setCommonBase('T');
+		
+		dac = getTestDataSet1 ('T');
 		BinomialStatistics readsT = dac.getReadConfidenceInterval(0.95);
 		Assert.assertEquals(0.583, readsT.getRatio(), 0.001);
 	}

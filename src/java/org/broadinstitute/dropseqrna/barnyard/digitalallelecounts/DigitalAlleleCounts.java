@@ -54,8 +54,9 @@ public class DigitalAlleleCounts {
 	private final String gene;
 	private final String cell;
 	private final int baseQualityThreshold;
-	private Character referenceBase=null;
-
+	private final Character referenceAllele;
+	private final Character alternateAllele;
+	
 	private Map<String, ObjectCounter<Character>> umiReadCounts = new HashMap<String, ObjectCounter<Character>>();
 	private final MapBarcodesByEditDistance med = new MapBarcodesByEditDistance(false, 1, 0);
 
@@ -67,11 +68,13 @@ public class DigitalAlleleCounts {
 	 * @param cell The cell for this DAC
 	 * @param baseQualityThreshold Only accept bases that have a quality score of at least baseQualityThreshold.
 	 */
-	public DigitalAlleleCounts (final Interval snpInterval, final String gene, final String cell, final int baseQualityThreshold) {
+	public DigitalAlleleCounts (final Interval snpInterval, final String gene, final String cell, final int baseQualityThreshold, final char refAllele, final char altAllele) {
 		this.snpInterval=snpInterval;
 		this.gene=gene;
 		this.cell=cell;
 		this.baseQualityThreshold=baseQualityThreshold;
+		this.referenceAllele=refAllele;
+		this.alternateAllele=altAllele;
 	}
 
 	/**
@@ -161,10 +164,10 @@ public class DigitalAlleleCounts {
 	 * for this analysis.
 	 * @param counts Contains allele counts at either the read or UMI level.
 	 * @param confidenceLevel confidenceLevel the desired probability that the true probability of success falls within the returned interval.
-	 * @return A ConfidenceInterval object, which contains the upper and lower confidence intervals.
+	 * @return A ConfidenceInterval object, which contains the upper and lower confidence intervals.  
 	 */
 	public BinomialStatistics getBinomialStatistics (final ObjectCounter<Character> counts, final double confidenceLevel) {
-		int [] values = getMostCommonCounts(counts, this.referenceBase);
+		int [] values = getMostCommonCounts(counts, this.referenceAllele, this.alternateAllele);
 		int numberOfTrials=values[0]+values[1];
 		int numberOfSuccesses=values[0];
 		BinomialStatistics bs = new BinomialStatistics(numberOfTrials, numberOfSuccesses, confidenceLevel, 0.5);
@@ -204,7 +207,7 @@ public class DigitalAlleleCounts {
 	 */
 	public double getUMIPurity (final String umi) {
 		// don't use the reference base, we just want the most common base!
-		int [] values = getMostCommonCounts(this.umiReadCounts.get(umi),null);
+		int [] values = getMostCommonCounts(this.umiReadCounts.get(umi),null, null);
 		int first = values[0];
 		int second = values[1];
 
@@ -252,12 +255,19 @@ public class DigitalAlleleCounts {
 	 * @param counts
 	 * @return
 	 */
-	int [] getMostCommonCounts (final ObjectCounter<Character> counts, final Character referenceBase) {
+	int [] getMostCommonCounts (final ObjectCounter<Character> counts, final Character referenceBase, final Character altBase) {
+		
+		// if both bases are defined, use them for the two most common counts.
+		if (referenceBase!=null && altBase!=null && !altBase.equals('N')) {
+			int [] result = {counts.getCountForKey(referenceBase),counts.getCountForKey(altBase)}; 
+			return (result);
+		}				
+		
 		List<Character> keys = counts.getKeysOrderedByCount(true);
 
 		int [] result=new int[2];
 		Arrays.fill(result, 0);
-
+		
 		// the default behavior.
 		if (referenceBase==null) {
 			if (keys.size()>=1)
@@ -265,31 +275,22 @@ public class DigitalAlleleCounts {
 			if (keys.size()>=2)
 				result[1]=counts.getCountForKey(keys.get(1));
 		} else {
-			result[0]=counts.getCountForKey(this.referenceBase);
+			result[0]=counts.getCountForKey(referenceBase);
 			keys.remove(referenceBase);
 			if (keys.size()>=1)
 				result[1]=counts.getCountForKey(keys.get(0));
-
 		}
-
 		return (result);
 	}
 
 
-
-	/**
-	 * Sets the reference base for this DAC.
-	 * When this is set, BinomialStatistics use this base as the most common one
-	 */
-	public void setCommonBase (final char base) {
-		this.referenceBase=new Character(base);
+	public char getReferenceAllele () {
+		return this.referenceAllele;
 	}
-
-	public char getReferenceBase () {
-		return this.referenceBase;
+	
+	public char getAltAllele () {
+		return this.alternateAllele;
 	}
-
-
 
 	/**
 	 * Convert the pileup of bases and qualities into a filtered count of bases.
@@ -323,7 +324,7 @@ public class DigitalAlleleCounts {
 	 * @return A shallow copy of the input DigitalAlleleCounts object with UMIs collapsed.
 	 */
 	public DigitalAlleleCounts collapseUMIs (final int editDistance) {
-		DigitalAlleleCounts result = new DigitalAlleleCounts(this.snpInterval, this.gene, this.cell, this.baseQualityThreshold);
+		DigitalAlleleCounts result = new DigitalAlleleCounts(this.snpInterval, this.gene, this.cell, this.baseQualityThreshold, this.referenceAllele, this.alternateAllele);
 		// short circuit for ED=0.
 		if (editDistance==0) {
 			result.umiReadCounts = this.umiReadCounts;

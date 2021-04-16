@@ -23,24 +23,21 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
-import htsjdk.samtools.util.IntervalList;
-import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.DigitalAlleleCounts;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.DigitalAlleleCountsIterator;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.MultiCellDigitalAlleleCounts;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.MultiCellDigitalAlleleCountsIterator;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileupIterator;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
-import org.junit.Assert;
-import org.testng.annotations.Test;
-import picard.annotation.LocusFunction;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+
+import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
+import org.junit.Assert;
+import org.testng.annotations.Test;
+
+import htsjdk.samtools.util.IntervalList;
+import picard.annotation.LocusFunction;
 
 public class MultiCellDigitalAlleleCountsIteratorTest {
 
@@ -73,9 +70,9 @@ public class MultiCellDigitalAlleleCountsIteratorTest {
 
 			int baseQualityThreshold=10;
 			SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
-					smallBAMFile, snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+					new SamHeaderAndIterator(smallBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 					LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
-					molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes);
+					molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, null, SortOrder.SNP_GENE);
 
 			MultiCellDigitalAlleleCountsIterator multiIter = new MultiCellDigitalAlleleCountsIterator(new DigitalAlleleCountsIterator(sbpi, baseQualityThreshold));
 
@@ -158,9 +155,9 @@ public class MultiCellDigitalAlleleCountsIteratorTest {
 			int baseQualityThreshold=0;
 
 			SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
-					largeBAMFile, snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+					new SamHeaderAndIterator(largeBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 					LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
-					molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes);
+					molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, null, SortOrder.SNP_GENE);
 
 			MultiCellDigitalAlleleCountsIterator multiIter = new MultiCellDigitalAlleleCountsIterator(new DigitalAlleleCountsIterator(sbpi, baseQualityThreshold));
 
@@ -195,9 +192,9 @@ public class MultiCellDigitalAlleleCountsIteratorTest {
 			int baseQualityThreshold=0;
 
 			SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
-					largeBAMFile, snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+					new SamHeaderAndIterator(largeBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 					LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
-					molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes);
+					molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, null, SortOrder.SNP_GENE);
 
 			MultiCellDigitalAlleleCountsIterator multiIter = new MultiCellDigitalAlleleCountsIterator(new DigitalAlleleCountsIterator(sbpi, baseQualityThreshold));
 
@@ -274,9 +271,9 @@ public class MultiCellDigitalAlleleCountsIteratorTest {
 			int baseQualityThreshold=0;
 			int editDistance=1;
 			SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
-					largeBAMFile, snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+					new SamHeaderAndIterator(largeBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 					LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
-					molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes);
+					molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, null, SortOrder.SNP_GENE);
 
 			MultiCellDigitalAlleleCountsIterator multiIter = new MultiCellDigitalAlleleCountsIterator(new DigitalAlleleCountsIterator(sbpi, baseQualityThreshold));
 

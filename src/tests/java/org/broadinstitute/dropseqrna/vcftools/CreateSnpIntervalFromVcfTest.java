@@ -39,6 +39,11 @@ public class CreateSnpIntervalFromVcfTest {
     private static final int[] EXPECTED_START_POS = {
             243901, 76227022, 150199123, 150199124
     };
+    
+    private static final int[] EXPECTED_START_POS_HET_ONLY = {
+            76227022
+    };
+    
 
     @Test
     public void testBasic() throws IOException {
@@ -60,4 +65,30 @@ public class CreateSnpIntervalFromVcfTest {
         }
         Assert.assertFalse(it.hasNext());
     }
+    
+    @Test
+    public void testHetOnly() throws IOException {
+        final CreateSnpIntervalFromVcf clp = new CreateSnpIntervalFromVcf();
+        clp.INPUT = TEST_FILE;
+        clp.HET_SNPS_ONLY=true;
+        clp.OUTPUT = File.createTempFile("CreateSnpIntervalFromVcfTest.", ".intervals");
+        clp.OUTPUT.deleteOnExit();
+        Assert.assertEquals(clp.doWork(), 0);
+        final IntervalList intervals = IntervalList.fromFile(clp.OUTPUT);
+        // 6 variants in input, but one is an indel and one is filtered
+        Assert.assertEquals(intervals.size(), EXPECTED_START_POS_HET_ONLY.length);
+        final Iterator<Interval> it = intervals.iterator();
+        for (final int startPos : EXPECTED_START_POS_HET_ONLY) {
+            Assert.assertTrue(it.hasNext());
+            final Interval interval = it.next();
+            Assert.assertEquals(interval.getContig(), EXPECTED_CONTIG);
+            Assert.assertEquals(interval.getStart(), startPos);
+            Assert.assertEquals(interval.length(), 1);
+        }
+        Assert.assertFalse(it.hasNext());
+    }
+    
+    
+    
+    
 }

@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 import java.io.File;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -66,50 +67,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	private final String functionTag;
 	private SamWriterSink sink;
 	
-	/**
-	 * Construct an object that generates SNPUMIBasePileup objects from a BAM file.
-	 * Each of these objects constructs a pileup of the bases and qualities
-	 * @param bamFile The BAM file to extract UMIs from
-	 * @param geneTag The geneExon tag on BAM records
-	 * @param cellBarcodeTag The cell barcode tag on BAM records
-	 * @param molecularBarcodeTag The molecular barcode tag on BAM records
-	 * @param strandTag The strand tag on BAM records
-	 * @param readMQ The minimum map quality of the reads
-	 * @param assignReadsToAllGenes Should records tagged with multiple genes be double counted, once for each gene?
-	 * @param useStrandInfo should the gene and read strand match for the read to be accepted
-	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.  Only reads with these values will be used.  If set to null, all cell barcodes are used.
-	 */
-	public SNPUMIBasePileupIterator (final File bamFile, final IntervalList snpIntervals, final String geneTag, final String geneStrandTag, final String geneFunctionTag,
-									 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, final String cellBarcodeTag,
-                                     final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
-                                     final boolean assignReadsToAllGenes, final List<String> cellBarcodes) {
-		this(bamFile, snpIntervals, geneTag, geneStrandTag, geneFunctionTag, acceptedLociFunctions, strandStrategy, cellBarcodeTag, molecularBarcodeTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, SortOrder.SNP_GENE);
-	}
-
-
-	/**
-	 * Construct an object that generates SNPUMIBasePileup objects from a BAM file.
-	 * Each of these objects constructs a pileup of the bases and qualities
-	 * @param bamFile The BAM file to extract UMIs from
-	 * @param geneTag The geneExon tag on BAM records
-	 * @param cellBarcodeTag The cell barcode tag on BAM records
-	 * @param molecularBarcodeTag The molecular barcode tag on BAM records
-	 * @param strandTag The strand tag on BAM records
-	 * @param readMQ The minimum map quality of the reads
-	 * @param assignReadsToAllGenes Should records tagged with multiple genes be double counted, once for each gene?
-	 * @param useStrandInfo should the gene and read strand match for the read to be accepted
-	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.  Only reads with these values will be used.  If set to null, all cell barcodes are used.
-	 */
-	public SNPUMIBasePileupIterator (final File bamFile, final IntervalList snpIntervals, final String geneTag, final String geneStrandTag, final String geneFunctionTag,
-									 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, final String cellBarcodeTag,
-                                     final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
-                                     final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final SortOrder order) {
 		
-		
-		// this is a big ugly.
-		this(new SamHeaderAndIterator(bamFile), snpIntervals, geneTag, geneStrandTag, geneFunctionTag, acceptedLociFunctions, strandStrategy, cellBarcodeTag, molecularBarcodeTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, order);
-	}
-	
 	/**
 	 * Construct an object that generates SNPUMIBasePileup objects from a BAM file.
 	 * Each of these objects constructs a pileup of the bases and qualities
@@ -122,11 +80,13 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	 * @param assignReadsToAllGenes Should records tagged with multiple genes be double counted, once for each gene?
 	 * @param useStrandInfo should the gene and read strand match for the read to be accepted
 	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.  Only reads with these values will be used.  If set to null, all cell barcodes are used.
+	 * @param A map from SNP Intervals to the mean genotype quality.  This is an optional parameter.  If supplied, in cases where a read has 
+	 * multiple SNPs, the SNP with the highest average genotype quality will be selected to avoid read "double counting".
 	 */
 	public SNPUMIBasePileupIterator (final SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String geneTag, final String geneStrandTag, final String geneFunctionTag,
 			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, final String cellBarcodeTag,
             final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
-            final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final SortOrder order) {
+            final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final Map<Interval, Double> meanGenotypeQuality, final SortOrder order) {
 		
 		this.geneTag=geneTag;
 		this.cellBarcodeTag=cellBarcodeTag;
@@ -134,7 +94,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 		this.snpTag = snpTag;
 		this.snpIntervals=snpIntervals;
 		this.sortOrder=order;
-		this.functionTag = functionTag;
+		this.functionTag = functionTag;		
 		
 		final ProgressLogger logger = new ProgressLogger(LOG);
 
@@ -155,7 +115,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
      	// Filter/assign reads based on functional annotations
      	GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator2, geneTag, geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
 
-        SNPUMICellReadIteratorWrapper snpumiCellReadIterator = new SNPUMICellReadIteratorWrapper(gfteratorWrapper, snpIntervals, cellBarcodeTag, cellBarcodes, geneTag, snpTag, readMQ);
+        SNPUMICellReadIteratorWrapper snpumiCellReadIterator = new SNPUMICellReadIteratorWrapper(gfteratorWrapper, snpIntervals, cellBarcodeTag, cellBarcodes, geneTag, snpTag, readMQ, meanGenotypeQuality);
 
         // create comparators in the order the data should be sorted
         SAMSequenceDictionary sd = snpIntervals.getHeader().getSequenceDictionary();

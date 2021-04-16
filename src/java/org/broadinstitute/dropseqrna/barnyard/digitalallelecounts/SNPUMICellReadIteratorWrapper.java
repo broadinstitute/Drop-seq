@@ -42,7 +42,7 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
 	private String geneTag;
 	private final String snpTag;
 	private final OverlapDetector<Interval> snpIntervals;
-
+	private final Map<Interval, Double> meanGenotypeQuality;
 
 	/**
 	 * Filters and copies reads for generating SNPCellUMIBasePileups.
@@ -57,6 +57,8 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
 	 * @param geneTag The gene/exon tag.
 	 * @param strandTag The strand tag
 	 * @param readMQ The minimum map quality of a read to be retained.
+	 * @param A map from SNP Intervals to the mean genotype quality.  This is an optional parameter.  If supplied, in cases where a read has 
+	 * multiple SNPs, the SNP with the highest average genotype quality will be selected to avoid read "double counting".
 	 */
 	public SNPUMICellReadIteratorWrapper(final Iterator<SAMRecord> underlyingIterator,
                                          final IntervalList snpIntervals,
@@ -64,13 +66,14 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
                                          final Collection<String> cellBarcodeList,
                                          final String geneTag,
                                          final String snpTag,
-                                         final int readMQ) {
+                                         final int readMQ,
+                                         final Map<Interval, Double> meanGenotypeQuality) {
         super(underlyingIterator);
 		this.cellBarcodeTag = cellBarcodeTag;
 		this.cellBarcodeList = new HashSet<String>(cellBarcodeList);
 		this.geneTag=geneTag;
 		this.snpTag=snpTag;
-
+		this.meanGenotypeQuality=meanGenotypeQuality;
 
 		// construct OverlapDetector
 		OverlapDetector<Interval> od = new OverlapDetector<>(0, 0);
@@ -99,25 +102,57 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
 	 */
 	private void processSNP (final SAMRecord r) {
 		List<AlignmentBlock> blocks = r.getAlignmentBlocks();
-
-		Collection<String> snps = new HashSet<>();
-
+		
+		Collection<Interval> snpIntervals = new HashSet<>();
+		
 		for (AlignmentBlock b: blocks) {
 			int start = b.getReferenceStart();
 			int end = start + b.getLength() -1;
 
-			Interval i = new Interval(r.getReferenceName(), start, end);
+			Interval i = new Interval(r.getReferenceName(), start, end);			
 			Collection<Interval> overlaps = this.snpIntervals.getOverlaps(i);
-			for (Interval o: overlaps)
-				snps.add(IntervalTagComparator.toString(o));
+			snpIntervals.addAll(overlaps);
 		}
 
+		// exit early if no SNPs found.
+		if (snpIntervals.size()==0) return;
+								
+		// exit without cloning if not needed.
+		if (snpIntervals.size()==1) {
+			r.setAttribute(this.snpTag, IntervalTagComparator.toString(snpIntervals.iterator().next()));
+			queueRecordForOutput(r);
+			return;
+		}
+		
+		if (this.meanGenotypeQuality!=null) {
+			snpIntervals=Arrays.asList(getBestSNP(snpIntervals));
+			r.setAttribute(this.snpTag, IntervalTagComparator.toString(snpIntervals.iterator().next()));
+			queueRecordForOutput(r);
+			return;
+		}
+		
 		// 1 read per SNP.
-		for (String snp:snps) {
+		for (Interval snp:snpIntervals) {
 			SAMRecord rr = Utils.getClone(r);
-			rr.setAttribute(this.snpTag, snp);
+			rr.setAttribute(this.snpTag, IntervalTagComparator.toString(snp));
 			queueRecordForOutput(rr);
 		}
+		
+		
+	}
+	
+	private Interval getBestSNP (Collection<Interval> snpIntervals) {
+		double maxGQ=Double.MIN_VALUE;
+		Interval best=null;
+		
+		for (Interval i: snpIntervals) {
+			double gq = this.meanGenotypeQuality.get(i);
+			if (gq>maxGQ) {
+				maxGQ=gq;
+				best=i;
+			}
+		}
+		return (best);
 	}
 
 

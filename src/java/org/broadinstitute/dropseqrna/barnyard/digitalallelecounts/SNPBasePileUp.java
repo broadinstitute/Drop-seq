@@ -23,18 +23,20 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.math3.stat.descriptive.moment.Mean;
+
 import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.StringUtil;
-import org.apache.commons.lang.ArrayUtils;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
 
 public abstract class SNPBasePileUp {
 
@@ -90,6 +92,13 @@ public abstract class SNPBasePileUp {
 
 	public List<Byte> getQualities() {
 		return qualities;
+	}
+	
+	public Double getAverageQuality () {
+		if (this.qualities.size()==0) return null;
+		Mean m = new Mean();
+		double [] q = this.qualities.stream().mapToDouble(x -> new Double(x)).toArray();
+		return m.evaluate(q);		
 	}
 
 	/**

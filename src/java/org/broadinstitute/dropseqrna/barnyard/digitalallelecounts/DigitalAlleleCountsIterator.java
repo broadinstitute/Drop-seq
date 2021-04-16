@@ -26,12 +26,14 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.Interval;
 
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
 
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.Map;
 
 /**
  * Constructs an iterator to produce DigitalAlleleCounts objects from a SNPUMIBasePileupIterator. Iteratorception!
@@ -39,18 +41,22 @@ import java.util.Iterator;
  * @author nemesh
  *
  */
-public class DigitalAlleleCountsIterator implements CloseableIterator<DigitalAlleleCounts>{
+public class DigitalAlleleCountsIterator implements DigitalAlleleCountsGeneIteratorI {
 
 	private final GroupingIterator<SNPUMIBasePileup> groupingIter;
 
 	private final int baseQualityThreshold;
 	private final SAMSequenceDictionary dict;
-
-	public DigitalAlleleCountsIterator (final SNPUMIBasePileupIterator iter, final int baseQualityThreshold) {
+	private final Map<Interval, String> refAllele;
+	private final Map<Interval, String> altAllele;
+	
+	public DigitalAlleleCountsIterator (final SNPUMIBasePileupIterator iter, final int baseQualityThreshold, Map<Interval, String> refAllele, Map<Interval, String> altAllele) {
 
 		this.baseQualityThreshold=baseQualityThreshold;
 		this.dict=iter.getSNPIntervals().getHeader().getSequenceDictionary();
-
+		this.refAllele=refAllele;
+		this.altAllele=altAllele;
+		
         final Comparator<SNPUMIBasePileup> groupingComparator = new Comparator<SNPUMIBasePileup>() {
             @Override
             public int compare(final SNPUMIBasePileup o1, final SNPUMIBasePileup o2) {
@@ -67,6 +73,15 @@ public class DigitalAlleleCountsIterator implements CloseableIterator<DigitalAll
         };
 		this.groupingIter = new GroupingIterator<SNPUMIBasePileup>(iter, groupingComparator);
 	}
+	
+	/**
+	 * For backwards compatibility with GenotypeSperm.
+	 * @param iter
+	 * @param baseQualityThreshold
+	 */
+	public DigitalAlleleCountsIterator (final SNPUMIBasePileupIterator iter, final int baseQualityThreshold) {
+		this(iter, baseQualityThreshold, null, null);
+	}
 
 	/**
 	 * Return the next DigitalAlleleCounts object.
@@ -79,10 +94,17 @@ public class DigitalAlleleCountsIterator implements CloseableIterator<DigitalAll
 
 		// get the pileup object and make the initial DAC with the first pileup.
 		final Iterator<SNPUMIBasePileup> pileupIter = groupingIter.next().iterator();
-
-        SNPUMIBasePileup p = pileupIter.next();
-
-		final DigitalAlleleCounts dac = new DigitalAlleleCounts(p.getSNPInterval(), p.getGene(), p.getCell(), this.baseQualityThreshold);
+        DigitalAlleleCounts dac = getDAC(pileupIter, this.baseQualityThreshold, this.refAllele, this.altAllele); 		
+		return dac;
+	}
+	
+	public static DigitalAlleleCounts getDAC (Iterator<SNPUMIBasePileup> pileupIter, int baseQualityThreshold, Map<Interval, String> refAllele, Map<Interval, String> altAllele) {
+		SNPUMIBasePileup p = pileupIter.next();
+		
+		char ref = getBaseElseN (p.getSNPInterval(), refAllele);
+		char alt = getBaseElseN (p.getSNPInterval(), altAllele);
+		
+		final DigitalAlleleCounts dac = new DigitalAlleleCounts(p.getSNPInterval(), p.getGene(), p.getCell(), baseQualityThreshold, ref, alt);
 		dac.addPileup(p);
 
 		// get SNPUMIBasePileup objects until the gene, cell, or snpInterval changes.
@@ -91,17 +113,19 @@ public class DigitalAlleleCountsIterator implements CloseableIterator<DigitalAll
 		}
 		return dac;
 	}
+	
+	static char getBaseElseN (Interval i, Map<Interval, String> map) {
+		if (map==null) return 'N';
+		String r = map.get(i);
+		if (r==null) return 'N';
+		return r.charAt(0);
+	}
 
 	@Override
 	public void remove() {
 		this.groupingIter.remove();
 	}
-
-	@Override
-	public void close() {
-		CloserUtil.close(this.groupingIter);
-	}
-
+	
 	@Override
 	public boolean hasNext() {
 		return this.groupingIter.hasNext();

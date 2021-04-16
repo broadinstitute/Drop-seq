@@ -23,25 +23,28 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
-import htsjdk.samtools.util.IntervalList;
-import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileup;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileupIterator;
-import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
-import org.junit.Assert;
-import org.testng.annotations.Test;
-import picard.annotation.LocusFunction;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
+import org.junit.Assert;
+import org.testng.annotations.Test;
+
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
+import picard.annotation.LocusFunction;
 
 public class SNPUMIBasePileupIteratorTest {
 
 	// See smallTest_snpUMIPileUp.summary.txt for a listing of the bases/qualities/cell/molecular barcodes for all 15 reads
 	private final File smallBAMFile = new File(
-			"testdata/org/broadinstitute/dropseq/barnyard/digitalallelecounts/smallTest_snpUMIPileUp.sam");
+			"testdata/org/broadinstitute/dropseq/barnyard/digitalallelecounts/smallTest_snpUMIPileUp.retagged.bam");
 	private final File cellBCFile = new File(
 			"testdata/org/broadinstitute/dropseq/barnyard/digitalallelecounts/hek_cells_cell_barcodes.txt");
 	private final File snpIntervalsFile = new File(
@@ -65,17 +68,64 @@ public class SNPUMIBasePileupIteratorTest {
 		IntervalList snpIntervals = IntervalList.fromFile(snpIntervalsFile);
 
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
-				smallBAMFile, snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+				new SamHeaderAndIterator(smallBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
-				molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes);
+				molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, null, SortOrder.SNP_GENE);
 
+		int expectedPileups=8;
+		int count=0;
 		while (sbpi.hasNext()) {
 			SNPUMIBasePileup p = sbpi.next();
 			checkAnswer(p);
+			count++;
 		}
-
+		Assert.assertEquals(expectedPileups, count);
+	}
+	
+	
+	// for reads that have more than 1 SNP in the data, filter the SNPs tagging the read to a single SNP.
+	// This means the read only contributes to a single pileup.
+	@Test(enabled=true)
+	public void testDuplicateReadsWithMultipleSNPs() {
+		List<String> cellBarcodes = ParseBarcodeFile.readCellBarcodeFile(cellBCFile);
+		IntervalList snpIntervals = IntervalList.fromFile(snpIntervalsFile);
+		// add an interval one base later.  This intersects a subset of reads.  
+		snpIntervals.add(new Interval("HUMAN_1", 76227021, 76227021, false, "reject"));
+		
+		// with the additional SNP, there are 16 total pileups, using both names, so names are untested.
+		testSNPQualities (snpIntervals, cellBarcodes, null, 16, null);
+						
+		// if we mark the 3nd snp as lower quality we're back to 8 pileups, with the snp named HUMAN_1:76227022
+		Map<Interval, Double> genotypeQuality = new HashMap<>();
+		genotypeQuality.put(snpIntervals.getIntervals().get(0), 100d);		
+		genotypeQuality.put(snpIntervals.getIntervals().get(2), 10d);
+		testSNPQualities (snpIntervals, cellBarcodes, genotypeQuality, 8, "HUMAN_1:76227022");
+		
+		// if we mark the 1st snp as lower quality we have 8 pileups. The snp named "reject" is in all the pileups	
+		genotypeQuality = new HashMap<>();
+		genotypeQuality.put(snpIntervals.getIntervals().get(0), 10d);		
+		genotypeQuality.put(snpIntervals.getIntervals().get(2), 100d);
+		testSNPQualities (snpIntervals, cellBarcodes, genotypeQuality, 8, "reject");
+				
 	}
 
+	private void testSNPQualities (IntervalList snpIntervals, List<String> cellBarcodes, Map<Interval, Double> genotypeQuality, int expectedPileUps, String expectedSnpNamePrefix) {
+		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
+				new SamHeaderAndIterator(smallBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
+				molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, genotypeQuality, SortOrder.SNP_GENE);
+		
+		int count=0;
+		while (sbpi.hasNext()) {
+			SNPUMIBasePileup p = sbpi.next();
+			if (expectedSnpNamePrefix!=null) 
+				Assert.assertTrue(p.getSnpID().contains(expectedSnpNamePrefix));
+			System.out.println (p);
+			count++;
+		}
+		System.out.println ();
+		Assert.assertEquals(expectedPileUps, count);		
+	}
 
 	private void checkAnswer (final SNPUMIBasePileup p) {
 		// G37, G37, G27

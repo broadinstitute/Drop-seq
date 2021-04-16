@@ -126,7 +126,7 @@ public class MultiCellDigitalAlleleCounts {
 		if (!iter.hasNext())
 			return null;
 		DigitalAlleleCounts first = iter.next();
-		DigitalAlleleCounts result = new DigitalAlleleCounts(first.getSnpInterval(), first.getGene(), META_ANALYSIS_CELL, first.getBaseQualityThreshold());
+		DigitalAlleleCounts result = new DigitalAlleleCounts(first.getSnpInterval(), first.getGene(), META_ANALYSIS_CELL, first.getBaseQualityThreshold(), first.getReferenceAllele(), first.getAltAllele());
 
 		result=addDAC(result, first);
 		while (iter.hasNext()) {
@@ -152,7 +152,7 @@ public class MultiCellDigitalAlleleCounts {
 
 		PeekableIterator<DigitalAlleleCounts> pIter= new PeekableIterator<DigitalAlleleCounts>(iter);
 		DigitalAlleleCounts first = pIter.peek();
-		DigitalAlleleCounts result = new DigitalAlleleCounts(first.getSnpInterval(), first.getGene(), clusterID, first.getBaseQualityThreshold());
+		DigitalAlleleCounts result = new DigitalAlleleCounts(first.getSnpInterval(), first.getGene(), clusterID, first.getBaseQualityThreshold(), first.getReferenceAllele(), first.getAltAllele());
 		while (pIter.hasNext()) {
 			DigitalAlleleCounts next=pIter.next();
 			if (cells.contains(next.getCell()))

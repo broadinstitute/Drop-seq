@@ -189,7 +189,7 @@ public class SampleAssignmentVCFUtils {
 		if (log!=null) log.info("Found [" + result.getIntervals().size() +"] potential SNP sites to query.");
 		return (result);
 	}
-
+		
 	/*
 	public static IntervalAndFrequencyResult getIntervalAndFrequency (final Iterator<VariantContext> vcfIterator, final SAMSequenceDictionary sd, final Log log, final VariantContextWriter vcfWriter, final boolean preserveIntervalNames) {
 		IntervalAndFrequencyResult fullResult = new IntervalAndFrequencyResult();
