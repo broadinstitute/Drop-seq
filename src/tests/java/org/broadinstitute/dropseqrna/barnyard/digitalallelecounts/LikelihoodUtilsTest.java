@@ -43,6 +43,24 @@ import htsjdk.variant.variantcontext.GenotypeType;
  */
 public class LikelihoodUtilsTest {
 
+	
+	@Test(enabled=true)
+	public void testGetContaminationErrorRates () {
+		// Easy first test.
+		double [] r = LikelihoodUtils.getInstance().getContaminationErrorRates((byte) 20, 0.2, 0.2);
+		Assert.assertEquals(r[0], 0.1684, 0.0001);
+		Assert.assertEquals(r[1], 0.0496, 0.0001);
+		
+		// Test C=1, F=1 bound.
+		r = LikelihoodUtils.getInstance().getContaminationErrorRates((byte) 20, 1, 1);
+		Assert.assertEquals(r[0], 0.01, 0.0001);
+		Assert.assertEquals(r[1], 0.99, 0.0001);
+		
+		
+	}
+	
+	
+	
 	@Test(enabled=true)
 	public void testMixedLikelihoodMultiRead () {
 		GenotypeType [] g = {GenotypeType.HOM_REF, GenotypeType.HET, GenotypeType.HOM_VAR};
