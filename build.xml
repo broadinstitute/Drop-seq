@@ -167,7 +167,7 @@
     	<package-command visibility="public" title="TagBam"/>
     	<package-command visibility="public" title="DownsampleBamByTag"/>
     	<package-command visibility="public" title="ValidateAlignedSam"/>
-    	        
+    	<package-command visibility="public" title="FilterBamByGeneFunction"/>
     </target>
 
 
