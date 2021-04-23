@@ -24,11 +24,14 @@
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.math3.stat.StatUtils;
 
 import htsjdk.samtools.util.StringUtil;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeType;
 
 /**
@@ -140,7 +143,7 @@ public class LikelihoodUtils {
 	 * @param contamination The fraction of transcripts estimated to come from cell free RNA
 	 * @return A double array containing the reference and alternate allele error rates
 	 */
-	public double [] getContaminationErrorRates (Byte baseQuality, double minorAlleleFrequency, double contamination) {
+	public double [] getContaminationErrorRates (byte baseQuality, double minorAlleleFrequency, double contamination) {
 		
 		double baseErrorRate = phredScoreToErrorProbability(baseQuality);		
 		double maxErrorRate=1-baseErrorRate;		
@@ -211,7 +214,8 @@ public class LikelihoodUtils {
 		double result=0;
 
 		for (int i=0; i<bases.size(); i++) {
-			double likelihood = getLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases.get(i), qualities.get(i), missingDataPenality, genotypeProbability, maximumObservationProbability);			
+			//TODO add contamination information per cell and minor allele frequency data to integrate into the model.
+			double likelihood = getLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases.get(i), qualities.get(i), missingDataPenality, genotypeProbability, maximumObservationProbability, null, null);			
 			result+=Math.log10(likelihood);						
 		}
 		return result;
@@ -241,58 +245,6 @@ public class LikelihoodUtils {
 		return result;
 	}
 
-
-	/**
-	 * Calculates the likelihood for a list of genotype states for a single observation.
-	 * @param ref the reference allele for the variant
-	 * @param alt the alternate allele for the variant
-	 * @param genotypes The list of genotypes to calculate likelihoods for
-	 * @param mixture A list of mixture coefficients for the list of genotypes.
-	 * @param base The observed base in the sequence pileup
-	 * @param quality The phred quality of the observed base
-	 * @param missingDataPenality a pre-computed likelihood to use instead of computing a likelihood for a genotype.
-	 * @param genotypeProbability The likelihood of the genotype.  Can be null to ignore.
-	 * @param maximumObservationProbability If set, this is the maximum penalty that can be generated for a single observation.
-	 * @return the likelihood of the base/quality, given a mixture of genotypes.
-	 */
-	private double getLikelihoodMixedModel(final byte ref, final byte alt, final List<GenotypeType> genotypes, final List<Double> mixture,
-			final Byte base, final Byte quality, final Double missingDataPenality, final Double genotypeProbability, final Double maximumObservationProbability) {
-
-		double result=0;
-		double sumMixture=0;
-		// for each genotype model, calculate the likelihood, multiply by the mixture for that model, then add to the result.
-		for (int i=0; i<genotypes.size(); i++) {
-			GenotypeType genotype = genotypes.get(i);
-			if ((genotype==GenotypeType.NO_CALL || genotype==GenotypeType.UNAVAILABLE) && missingDataPenality==null)
-				throw new IllegalArgumentException("If using NO_CALL or UNAVAILABLE genotypes, must set a missingDataPenality!");
-			double mix = mixture.get(i);
-			sumMixture+=mix;
-			double likelihood = 0;
-			// calculate the single likelihood.
-			switch (genotype) {
-			case HOM_REF:
-				likelihood=getLikelihoodHomozygote(ref, ref, base, quality, null, maximumObservationProbability); break;
-			case HOM_VAR:
-				likelihood=getLikelihoodHomozygote(alt, alt, base, quality, null, maximumObservationProbability); break;
-			case HET:
-				likelihood=getLikelihoodHeterozygote(ref, alt, base, quality, null, maximumObservationProbability); break;
-			case NO_CALL:
-				likelihood=missingDataPenality; break;
-			case UNAVAILABLE:
-				likelihood=missingDataPenality; break;
-			default:
-			}
-			// multiply the calculated model likelihood by the ratio
-			likelihood=likelihood*mix;
-			// multiply the result by the genotype probability if it is not null
-			if (genotypeProbability!=null)
-				likelihood*=genotypeProbability;
-			result+=likelihood;
-		}
-		result=result/sumMixture;		
-		return result;
-	}
-	
 	/**
 	 * Calculates the likelihood for a list of genotype states for a single UMI observation.
 	 * Here, the likelihoods for the genotype states have been precomputed.  The number of likelihoods should be equal to the number of mixture coefficients.
@@ -314,9 +266,53 @@ public class LikelihoodUtils {
 		result=result/sumMixture;
 		return result;
 	}
+
+	/**
+	 * Calculates the likelihood for a list of genotype states for a single observation.
+	 * @param ref the reference allele for the variant
+	 * @param alt the alternate allele for the variant
+	 * @param genotypes The list of genotypes to calculate likelihoods for
+	 * @param mixture A list of mixture coefficients for the list of genotypes.
+	 * @param base The observed base in the sequence pileup
+	 * @param quality The phred quality of the observed base
+	 * @param missingDataPenality a pre-computed likelihood to use instead of computing a likelihood for a genotype.
+	 * @param genotypeProbability The likelihood of the genotype.  Can be null to ignore.
+	 * @param maximumObservationProbability If set, this is the maximum penalty that can be generated for a single observation.
+ 	 * @param minorAlleleFrequency The minor allele frequency in the population. Optional. Set null to ignore.
+	 * @param contamination The contamination rate in the population . Optional. Set null to ignore.
+	 * @return the likelihood of the base/quality, given a mixture of genotypes.
+	 */
+	private double getLikelihoodMixedModel(final byte ref, final byte alt, final List<GenotypeType> genotypes, final List<Double> mixture,
+			final byte base, final byte quality, final Double missingDataPenality, final Double genotypeProbability, final Double maximumObservationProbability, 
+			Double minorAlleleFrequency, Double contamination) {
+
+		double result=0;
+		double sumMixture=0;
+		// for each genotype model, calculate the likelihood, multiply by the mixture for that model, then add to the result.
+		for (int i=0; i<genotypes.size(); i++) {
+			GenotypeType genotype = genotypes.get(i);
+			if ((genotype==GenotypeType.NO_CALL || genotype==GenotypeType.UNAVAILABLE) && missingDataPenality==null)
+				throw new IllegalArgumentException("If using NO_CALL or UNAVAILABLE genotypes, must set a missingDataPenality!");
+			double mix = mixture.get(i);
+			sumMixture+=mix;			
+			double likelihood=getLikelihood (ref, alt, genotype, base, quality, missingDataPenality, genotypeProbability, maximumObservationProbability, minorAlleleFrequency, contamination);
+			// multiply the calculated model likelihood by the ratio
+			likelihood=likelihood*mix;
+			// multiply the result by the genotype probability if it is not null
+			if (genotypeProbability!=null)
+				likelihood*=genotypeProbability;
+			result+=likelihood;
+		}
+		result=result/sumMixture;		
+		return result;
+	}
+	
+	
 	
 	/**
 	 * Get a list of likelihoods for a given base/quality for a list of genotypes.
+	 * 
+	 * If the referenceAllele, minorAlleleFrequency and contamination parameters are all set, take contamination into account when calculating the error rate to see alleles.
 	 * 
 	 * @param ref the reference allele for the variant
 	 * @param alt the alternate allele for the variant
@@ -326,152 +322,231 @@ public class LikelihoodUtils {
 	 * @param missingDataPenality a pre-computed likelihood to use instead of computing a likelihood for a genotype.
 	 * @param genotypeProbability The likelihood of the genotype.  Can be null to ignore.
 	 * @param maximumObservationProbability If set, this is the maximum penalty that can be generated for a single observation.
+	 * @param minorAlleleFrequency The minor allele frequency in the population. Optional. Set null to ignore.
+	 * @param contamination The contamination rate in the population . Optional. Set null to ignore.
 	 * @return An array of likelihoods in the same order as the submitted genotypes.
      */
-	public double [] getLikelihoodManyObservations (final byte ref, final byte alt, final List<GenotypeType> genotypes, final Byte base, final Byte quality, 
-			final Double missingDataPenality, final Double genotypeProbability, final Double maximumObservationProbability) {
+	public double [] getLikelihoodManyObservations (final byte ref, final byte alt, final List<GenotypeType> genotypes, final byte base, final byte quality, 
+			final Double missingDataPenality, final Double genotypeProbability, final Double maximumObservationProbability,
+			Double minorAlleleFrequency, Double contamination) {
 		
 		double [] result = new double [genotypes.size()];
-		
+		// this doesn't implement caching as the typical use case is a genotype list of 2 different genotypes for doublet detection.
 		for (int i=0; i<genotypes.size(); i++) {
 			GenotypeType genotype = genotypes.get(i);
-			if ((genotype==GenotypeType.NO_CALL || genotype==GenotypeType.UNAVAILABLE) && missingDataPenality==null)
-				throw new IllegalArgumentException("If using NO_CALL or UNAVAILABLE genotypes, must set a missingDataPenality!");
-			double likelihood = 0;
-			// calculate the single likelihood.
-			switch (genotype) {
-			case HOM_REF:
-				likelihood=getLikelihoodHomozygote(ref, ref, base, quality, null, maximumObservationProbability); break;
-			case HOM_VAR:
-				likelihood=getLikelihoodHomozygote(alt, alt, base, quality, null, maximumObservationProbability); break;
-			case HET:
-				likelihood=getLikelihoodHeterozygote(ref, alt, base, quality, null, maximumObservationProbability); break;
-			case NO_CALL:
-				likelihood=missingDataPenality; break;
-			case UNAVAILABLE:
-				likelihood=missingDataPenality; break;
-			default:
-			}
-			result[i]=likelihood;
+			result[i]=getLikelihood (ref, alt, genotype, base, quality, missingDataPenality, genotypeProbability, maximumObservationProbability,
+					minorAlleleFrequency, contamination);			
 		}				
-		return result;
-		
+		return result;		
 	}
+	
+	
 
 	/**
 	 * Calculates the likelihood for a single donor genotype for one or more UMI observations.
 	 * 
+	 * If the referenceAllele, minorAlleleFrequency and contamination parameters are all set, take contamination into account when calculating the error rate to see alleles.
 	 * @param alleleOne The first allele of the SNP for the sample
 	 * @param alleleTwo The second allele of the SNP for the sample
 	 * @param bases The observed bases in the sequence pileup
 	 * @param qualities	The phred quality of the observed base
 	 * @param genotypeProbability The likelihood of the genotype.  Can be null to ignore.
-	 * @param maximumObservationProbability If set, this is the maximum penalty that can be generated for a single observation.  
+	 * @param maximumObservationProbability If set, this is the maximum penalty that can be generated for a single observation.  This is ignored if the contamination parameters are set.
+	 * @param referenceAllele The reference allele for this variant in the population. Optional. Set null to ignore.
+	 * @param minorAlleleFrequency The minor allele frequency in the population. Optional. Set null to ignore.
+	 * @param contamination The contamination rate in the population . Optional. Set null to ignore.
+  
 	 * @return the likelihood of the bases/qualities, given the alleles observed.
 	 */
-	public double getLogLikelihood (final char alleleOne, final char alleleTwo, final List<Byte> bases, final List<Byte> qualities, final Double genotypeQuality, final Double maximumObservationProbability) {
+	public double getLogLikelihood (final char alleleOne, final char alleleTwo, final List<Byte> bases, final List<Byte> qualities, final Double genotypeProbability, final Double maximumObservationProbability, 
+			final Byte referenceAllele, Double minorAlleleFrequency, Double contamination) {
 		byte ref= StringUtil.charToByte(alleleOne);
 		byte alt= StringUtil.charToByte(alleleTwo);
-		return getLogLikelihood(ref, alt, bases, qualities, genotypeQuality, maximumObservationProbability);
+		return getLogLikelihood(ref, alt, bases, qualities, genotypeProbability, maximumObservationProbability, referenceAllele, minorAlleleFrequency, contamination);
 	}
 
 	/**
 	 * Calculates the likelihood for a single donor genotype for one or more UMI observations.
 	 * 
+	 * This dispatches to the proper likelihood calculation depending on which parameters are not null.
+	 * 
+	 * If the referenceAllele, minorAlleleFrequency and contamination parameters are all set, take contamination into account when calculating the error rate to see alleles.
+	 * 
+	 * 
 	 * @param alleleOne The first allele of the SNP for the sample
 	 * @param alleleTwo The second allele of the SNP for the sample
 	 * @param bases The observed bases in the sequence pileup
 	 * @param qualities	The phred quality of the observed base
-	 * @param genotypeProbability The likelihood of the genotype.  Can be null to ignore.
-	 * @param maximumObservationProbability If set, this is the maximum penalty that can be generated for a single observation.
+	 * @param genotypeProbability The likelihood of the genotype.  Optional. Set null to ignore.
+	 * @param maximumObservationProbability If set, this is the maximum penalty that can be generated for a single observation.  This is ignored if the contamination parameters are set.
+	 * @param referenceAllele The reference allele for this variant in the population. Optional. Set null to ignore.
+	 * @param minorAlleleFrequency The minor allele frequency in the population. Optional. Set null to ignore.
+	 * @param contamination The contamination rate in the population . Optional. Set null to ignore.
 	 * @return the likelihood of the bases/qualities, given the alleles observed.
 	 */
-	public double getLogLikelihood (final byte alleleOne, final byte alleleTwo, final List<Byte> bases, final List<Byte> qualities, final Double genotypeQuality, final Double maximumObservationProbability) {
-		if (alleleOne==alleleTwo)
-			return getLogLikelihoodHomozygote(alleleOne, alleleTwo, bases, qualities, genotypeQuality, maximumObservationProbability);
-		else
-			return getLogLikelihoodHeterozygote(alleleOne, alleleTwo, bases, qualities, genotypeQuality, maximumObservationProbability);
-	}
-
-	
-	/**
-	 * The one or more observation version to get the homozygous log likelihood.
-	 * Iteratively calculates the homozygous log likelihood, takes the log, and sums those logs.
-	 * @param alleleOne The first allele of the SNP for the sample
-	 * @param alleleTwo The second allele of the SNP for the sample
-	 * @param bases A list of observed bases
-	 * @param qualities A list of observed phred qualities for the bases.
-	 * @param genotypeQuality The confidence in the genotype.  If set to null this is ignored.
-	 * @param maximumObservationProbability A cap on the maximum likelihood penalty at any one UMI. If set to null this is ignored.  
-	 * @return The total log10 likelihood across one or more UMI observations
-	 */
-	private double getLogLikelihoodHomozygote (final byte alleleOne, final byte alleleTwo, final List<Byte> bases, final List<Byte> qualities, final Double genotypeQuality, final Double maximumObservationProbability) {
-		if (alleleOne!=alleleTwo)
-			throw new IllegalArgumentException("For homozygous likelihood, ref allele [" + alleleOne +"] and alt allele [" + alleleTwo+ "] must match!");
-		
+	public double getLogLikelihood (final byte alleleOne, final byte alleleTwo, final List<Byte> bases, final List<Byte> qualities, final Double genotypeProbability, final Double maximumObservationProbability, 
+			final Byte referenceAllele, Double minorAlleleFrequency, Double contamination) {
 		double logScore=0;
 		// iterate over bases and sum the log scores.
 		for (int i=0; i<bases.size(); i++)
-			logScore+=Math.log10(getLikelihoodHomozygote(alleleOne, alleleTwo, bases.get(i), qualities.get(i), genotypeQuality, maximumObservationProbability));
-		return logScore;				
+			logScore+=Math.log10(getLikelihood(alleleOne, alleleTwo, bases.get(i), qualities.get(i), genotypeProbability, maximumObservationProbability, referenceAllele, minorAlleleFrequency, contamination));
+		return logScore;							
+	}
+	
+	
+	/**
+	 * Convenience method to get a likelihood for a given base/quality for a genotype.
+	 * 
+	 * This is parameterized to run on a Genotype object in combination with the reference and alternate allele.
+	 * 
+	 * If the referenceAllele, minorAlleleFrequency and contamination parameters are all set, take contamination into account when calculating the error rate to see alleles.
+	 * 
+	 * @param ref the reference allele for the variant
+	 * @param alt the alternate allele for the variant
+	 * @param genotype The genotype to calculate likelihoods for
+	 * @param base The observed base in the sequence pileup
+	 * @param quality The phred quality of the observed base
+	 * @param missingDataPenality a pre-computed likelihood to use instead of computing a likelihood for a genotype.
+	 * @param genotypeProbability The likelihood of the genotype.  Can be null to ignore.
+	 * @param maximumObservationProbability If set, this is the maximum penalty that can be generated for a single observation.
+	 * @param minorAlleleFrequency The minor allele frequency in the population. Optional. Set null to ignore.
+	 * @param contamination The contamination rate in the population . Optional. Set null to ignore.
+	 * @return An array of likelihoods in the same order as the submitted genotypes.
+     */
+	public double getLikelihood (final byte ref, final byte alt, final GenotypeType genotype, final byte base, final byte quality, 
+			final Double missingDataPenality, final Double genotypeProbability, final Double maximumObservationProbability,
+			Double minorAlleleFrequency, Double contamination) {
+		
+		if ((genotype==GenotypeType.NO_CALL || genotype==GenotypeType.UNAVAILABLE) && missingDataPenality==null)
+			throw new IllegalArgumentException("If using NO_CALL or UNAVAILABLE genotypes, must set a missingDataPenality!");
+		double likelihood = 0;
+		// calculate the single likelihood.
+		switch (genotype) {
+		case HOM_REF:
+			likelihood=getLikelihood(ref, ref, base, quality, genotypeProbability, maximumObservationProbability, ref, minorAlleleFrequency, contamination); break;				
+		case HOM_VAR:
+			likelihood=getLikelihood(alt, alt, base, quality, genotypeProbability, maximumObservationProbability, ref, minorAlleleFrequency, contamination); break;				
+		case HET:
+			likelihood=getLikelihood(ref, alt, base, quality, genotypeProbability, maximumObservationProbability, ref, minorAlleleFrequency, contamination); break;
+		case NO_CALL:
+			likelihood=missingDataPenality; break;
+		case UNAVAILABLE:
+			likelihood=missingDataPenality; break;
+		default:
+		}
+		return (likelihood);
+	}
+	
+	/**
+	 * Convenience method to dispatch likelihood calculation for a single UMI to the correct likelihood method. 
+	 * 
+	 * @param alleleOne
+	 * @param alleleTwo
+	 * @param base
+	 * @param quality
+	 * @param genotypeProbability
+	 * @param maximumObservationProbability
+	 * @param referenceAllele
+	 * @param minorAlleleFrequency
+	 * @param contamination
+	 * @return
+	 */
+	public double getLikelihood (final byte alleleOne, final byte alleleTwo, final byte base, final byte quality, final Double genotypeProbability, final Double maximumObservationProbability, 
+			final Byte referenceAllele, Double minorAlleleFrequency, Double contamination) {
+		if (alleleOne==alleleTwo) {
+			if (contamination!=null && minorAlleleFrequency!=null && referenceAllele!=null) 
+				return getLikelihoodHomozygoteWithContamination(alleleOne, alleleTwo, base, quality, genotypeProbability, referenceAllele, minorAlleleFrequency, contamination);			
+			return getLikelihoodHomozygote(alleleOne, alleleTwo, base, quality, genotypeProbability, maximumObservationProbability);	
+		}			
+		else {
+			if (contamination!=null && minorAlleleFrequency!=null && referenceAllele!=null)
+				return getLikelihoodHeterozygoteWithContamination(alleleOne, alleleTwo, base, quality, genotypeProbability, referenceAllele, minorAlleleFrequency, contamination);
+			return getLikelihoodHeterozygote(alleleOne, alleleTwo, base, quality, genotypeProbability, maximumObservationProbability);
+		}		
 	}
 
+	
+	
+	/****************************************************************************************************
+	 * Likelihood calculations for homozygous and heterozygous sites
+	 * Single observations -> likelihood or many observations summarized by the sum log10(likelihoods)
+	 * With or without factoring in contamination
+	 ****************************************************************************************************/
+	
 	/**
 	 * Calculate the likelihood of a single UMI at a homozygous genotype
 	 * 
 	 * By default, this uses the base error to determine the likelihood - if a base has an error rate of 0.01, then when the base and genotype agree the likelihood is 1- error rate,
 	 * otherwise the likelihood = the error rate.
+	 *  
+	 * @param alleleOne The first allele of the SNP for the sample
+	 * @param alleleTwo The second allele of the SNP for the sample
+	 * @param base The observed base
+	 * @param quality A list of observed phred quality for the base.
+	 * @param genotypeProbability The confidence in the genotype.  If set to null this is ignored.
+	 * @param maximumObservationProbability A cap on the maximum likelihood penalty at any one UMI. If set to null this is ignored.  
+	 * @return The likelihood for one observation
+	 */
+	private double getLikelihoodHomozygote (final byte alleleOne, final byte alleleTwo, final Byte base, final Byte quality, final Double genotypeProbability, final Double maximumObservationProbability) {
+		double errrorProb = phredScoreToErrorProbability(quality);
+		errrorProb=getMaxErrorScore(errrorProb, maximumObservationProbability);
+		return (getLikelihoodHomozygote(alleleOne, alleleTwo, base, errrorProb, genotypeProbability));
+	}
+	
+	/**
+	 * Compute the likelihood of a homozygous allele, and take into account contamination with cell free RNA.
+	 * This likelihood depends on both the error rate of the base AND the contamination of this cell and allele frequency data of this SNP.
 	 * 
-	 * This can be over-ridden by custom likelihoods.  
-	 * TODO: Actually implement this.  sigh.
+	 * The penalty score will change for every UMI (different base qualities), 
+	 * every SNP (different allele frequency), 
+	 * and every cell (different contamination rates)
 	 * 
 	 * @param alleleOne The first allele of the SNP for the sample
 	 * @param alleleTwo The second allele of the SNP for the sample
 	 * @param base The observed base
 	 * @param quality A list of observed phred quality for the base.
-	 * @param genotypeQuality The confidence in the genotype.  If set to null this is ignored.
-	 * @param maximumObservationProbability A cap on the maximum likelihood penalty at any one UMI. If set to null this is ignored.  
-	 * @return The likelihood for one observation
+	 * @param genotypeProbability The confidence in the genotype.  If set to null this is ignored.
+	 * @param referenceAllele The reference allele for this variant in the population.
+	 * @param minorAlleleFrequency The minor allele frequency in the population
+	 * @param contamination The contamination rate in the population 
+	 * @return @see getContaminationErrorRates
 	 */
-	private double getLikelihoodHomozygote (final byte alleleOne, final byte alleleTwo, final Byte base, final Byte quality, final Double genotypeQuality, final Double maximumObservationProbability) {
-		double errrorProb = phredScoreToErrorProbability(quality);
-		errrorProb=getMaxErrorScore(errrorProb, maximumObservationProbability);
-		double score;
-		if (base==alleleOne)
-			score = 1-errrorProb;
-		else
-			score = errrorProb;
-		if (genotypeQuality!=null)
-			score*=genotypeQuality;
-		return score;
+	private double getLikelihoodHomozygoteWithContamination (final byte alleleOne, final byte alleleTwo, final byte base, final byte quality, final Double genotypeProbability, 
+			final byte referenceAllele, double minorAlleleFrequency, double contamination) {
+		
+		double [] penaltyScores = getContaminationErrorRates(quality, minorAlleleFrequency, contamination);
+		// If this donor has the reference allele, use the referencee allele penalty.
+		double errrorProb = penaltyScores[0];
+		// otherwise use the alternate allele penalty
+		if (alleleTwo==referenceAllele) errrorProb = penaltyScores[1];		
+		double result = getLikelihoodHomozygote(alleleOne, alleleTwo, base, errrorProb, genotypeProbability);
+		return (result);
 	}
-
-
+	
 	/**
-	 * The one or more observation version to get the heterozygous log likelihood.
-	 * Iteratively calculates the heterozygous log likelihood, takes the log, and sums those logs.
+	 * Simple computation of the homozygous likelihood of a single observation.
+	 * If the allele matches the sequencing base return 1-error probability, else return the error probability.
+	 * 
 	 * @param alleleOne The first allele of the SNP for the sample
 	 * @param alleleTwo The second allele of the SNP for the sample
-	 * @param bases A list of observed bases
-	 * @param qualities A list of observed phred qualities for the bases.
-	 * @param genotypeQuality The confidence in the genotype.  If set to null this is ignored.
-	 * @param maximumObservationProbability A cap on the maximum likelihood penalty at any one UMI. If set to null this is ignored.  
-	 * @return The total log10 likelihood across one or more UMI observations
+	 * @param base The observed base in the sequencing data
+	 * @param errorPenalty The likelihood score when the donor allele doesn't match the observed allele in the sequencing data.
+	 * @param genotypeProbability The confidence in the genotype.  If set to null this is ignored.
+	 * @return
 	 */
-	private double getLogLikelihoodHeterozygote (final byte alleleOne, final byte alleleTwo, final List<Byte> bases, final List<Byte> qualities, final Double genotypeQuality, final Double maximumObservationProbability) {
-		if (alleleOne==alleleTwo)
-			throw new IllegalArgumentException("For heterozygous likelihood, ref allele [" + alleleOne +"] and alt allele [" + alleleTwo+ "] must not match!");
-
-		double logScore=0;
-		// iterate over bases and sum the log scores.
-		for (int i=0; i<bases.size(); i++) {
-			//accumulate
-			double score = getLikelihoodHeterozygote(alleleOne, alleleTwo, bases.get(i), qualities.get(i), genotypeQuality, maximumObservationProbability);
-			logScore+=Math.log10(score);
-		}
-		return logScore;
+	private double getLikelihoodHomozygote (final byte alleleOne, final byte alleleTwo, final byte base, final double errorPenalty, final Double genotypeProbability) {
+		if (alleleOne!=alleleTwo)
+			throw new IllegalArgumentException("For homozygous likelihood, ref allele [" + alleleOne +"] and alt allele [" + alleleTwo+ "] must match!");
+		double score;
+		if (base==alleleOne)
+			score = 1-errorPenalty;
+		else
+			score = errorPenalty;
+		if (genotypeProbability!=null)
+			score*=genotypeProbability;
+		return score;
 	}
-
+		
 	/**
 	 * Calculate the likelihood of a single UMI at a heterozygous genotype
 	 * 
@@ -482,11 +557,11 @@ public class LikelihoodUtils {
 	 * @param alleleTwo The second allele of the SNP for the sample
 	 * @param base The observed base
 	 * @param quality A list of observed phred quality for the base.
-	 * @param genotypeQuality The confidence in the genotype.  If set to null this is ignored.
+	 * @param genotypeProbability The confidence in the genotype.  If set to null this is ignored.
 	 * @param maximumObservationProbability A cap on the maximum likelihood penalty at any one UMI. If set to null this is ignored.  
 	 * @return The likelihood for one observation
 	 */
-	private double getLikelihoodHeterozygote (final byte alleleOne, final byte alleleTwo, final Byte base, final Byte quality, final Double genotypeQuality, final Double maximumObservationProbability) {
+	private double getLikelihoodHeterozygote (final byte alleleOne, final byte alleleTwo, final Byte base, final Byte quality, final Double genotypeProbability, final Double maximumObservationProbability) {
 		if (alleleOne==alleleTwo)
 			throw new IllegalArgumentException("For heterozygous likelihood, ref allele [" + alleleOne +"] and alt allele [" + alleleTwo+ "] must not match!");
 
@@ -497,8 +572,44 @@ public class LikelihoodUtils {
 			score=((1-errorProb)/2)+(errorProb/2);
 		else
 			score=errorProb;
-		if (genotypeQuality!=null)
-			score*=genotypeQuality;
+		if (genotypeProbability!=null)
+			score*=genotypeProbability;
+		return (score);
+	}
+	
+	/**
+	 * Compute the likelihood of a heterozygous allele, and take into account contamination with cell free RNA.
+	 * This likelihood depends on both the error rate of the base AND the contamination of this cell and allele frequency data of this SNP.
+	 * 
+	 * @param alleleOne The first allele of the SNP for the sample
+	 * @param alleleTwo The second allele of the SNP for the sample
+	 * @param base The observed base
+	 * @param quality A list of observed phred quality for the base.
+	 * @param genotypeProbability The confidence in the genotype.  If set to null this is ignored.
+	 * @param maximumObservationProbability A cap on the maximum likelihood penalty at any one UMI. If set to null this is ignored.  
+	 * @return The likelihood for one observation
+	 */
+	private double getLikelihoodHeterozygoteWithContamination (final byte alleleOne, final byte alleleTwo, final byte base, final byte quality, final Double genotypeProbability, 
+			final byte referenceAllele, double minorAlleleFrequency, double contamination) {
+		
+		if (alleleOne==alleleTwo)
+			throw new IllegalArgumentException("For heterozygous likelihood, ref allele [" + alleleOne +"] and alt allele [" + alleleTwo+ "] must not match!");
+
+		double [] penaltyScores = getContaminationErrorRates(quality, minorAlleleFrequency, contamination);
+		
+		// TODO: UNIT TEST THIS: 
+		// When at a heterozygous site, the likelihood of the donor should be higher when observing the allele that is less frequent in the population.
+		// That likelihood diffrence should be encoded in the error rates of each allele.
+		double score;
+		if (base==alleleOne || base==alleleTwo) 			
+			score=((1-penaltyScores[0])/2)+((1-penaltyScores[1])/2);															
+		else  {
+			// otherwise pick the bigger penalty, giving the lowest likelihood. 
+			double maxError= Arrays.stream(penaltyScores).max().getAsDouble();
+			score=1-maxError;
+		}			
+		if (genotypeProbability!=null)
+			score*=genotypeProbability;
 		return (score);
 	}
 

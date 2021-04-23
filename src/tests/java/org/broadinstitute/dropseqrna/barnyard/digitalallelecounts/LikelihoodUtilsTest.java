@@ -99,7 +99,7 @@ public class LikelihoodUtilsTest {
 		double result = LikelihoodUtils.getInstance().getLogLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases, qualities, null, null, null);
 		Assert.assertEquals(result, Math.log10(0.6), 0.001);
 		
-		double [] likes =  LikelihoodUtils.getInstance().getLikelihoodManyObservations ((byte) refAllele, (byte) altAllele, genotypes, bases.get(0), qualities.get(0), null, null, null);
+		double [] likes =  LikelihoodUtils.getInstance().getLikelihoodManyObservations ((byte) refAllele, (byte) altAllele, genotypes, bases.get(0), qualities.get(0), null, null, null, null, null);
 
 		double result2=LikelihoodUtils.getInstance().getLikelihoodMixedModel(likes, mixture);
 		Assert.assertEquals(Math.log10(result2), Math.log10(0.6), 0.001);
@@ -119,21 +119,21 @@ public class LikelihoodUtilsTest {
 		List<Byte> qualities = convert (q);
 
 		// probability if genotype is AA
-		double result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'A', bases, qualities, null, null);
+		double result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'A', bases, qualities, null, null, null, null, null);
 		// > log10 (getRefLikelihood(5,0,0.9))
 		// [1] -0.2287875
 		double expected = -0.2287875;
 		Assert.assertEquals(result,  expected, 0.000001);
 
 		// probability if genotype is TT
-		result = LikelihoodUtils.getInstance().getLogLikelihood('T', 'T', bases, qualities, null, null);
+		result = LikelihoodUtils.getInstance().getLogLikelihood('T', 'T', bases, qualities, null, null, null, null, null);
 		// > log10 (getRefLikelihood(0,5,0.9))
 		// [1] -5
 		expected = -5.000002;
 		Assert.assertEquals(result,  expected, 0.00001);
 
 		// probability if genotype is AT
-		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'T', bases, qualities, null, null);
+		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'T', bases, qualities, null, null, null, null, null);
 		// log10(getHetLikelihood(5,0,0.9))
 		// [1] -1.50515
 		expected = -1.50515;
@@ -150,21 +150,21 @@ public class LikelihoodUtilsTest {
 		List<Byte> qualities = convert (q);
 
 		// probability if genotype is AA
-		double result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'A', bases, qualities, null, null);
+		double result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'A', bases, qualities, null, null, null, null, null);
 		// log10 (getRefLikelihood(3,2,0.99))
 		// [1] -4.013094
 		double expected = -4.013094;
 		Assert.assertEquals(result,  expected, 0.000001);
 
 		// probability if genotype is TT
-		result = LikelihoodUtils.getInstance().getLogLikelihood('T', 'T', bases, qualities, null, null);
+		result = LikelihoodUtils.getInstance().getLogLikelihood('T', 'T', bases, qualities, null, null, null, null, null);
 		// log10 (getRefLikelihood(2,3,0.99))
 		// [1] -6.00873
 		expected = -6.008729;
 		Assert.assertEquals(result,  expected, 0.00001);
 
 		// probability if genotype is AT
-		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'T', bases, qualities, null, null);
+		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'T', bases, qualities, null, null, null, null, null);
 		// log10(getHetLikelihood(3,2,0.99))
 		// [1] -1.50515
 		expected = -1.50515;
@@ -183,35 +183,35 @@ public class LikelihoodUtilsTest {
 		Double maxProb = 0.01;
 
 		// probability if genotype is AA
-		double result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'A', bases, qualities, null, null);
+		double result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'A', bases, qualities, null, null, null, null, null);
 		// log10 (getRefLikelihood(3,2,0.999))
 		// [1] -6.001304
 		double expected = -6.001304;
 		Assert.assertEquals(result,  expected, 0.000001);
 		// log10 (getRefLikelihood(3,2,0.99))
 		// [1] -4.013094
-		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'A', bases, qualities, null, maxProb);
+		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'A', bases, qualities, null, maxProb, null, null, null);
 		Assert.assertEquals(result,  -4.013094, 0.000001);
 
 		// probability if genotype is TT
-		result = LikelihoodUtils.getInstance().getLogLikelihood('T', 'T', bases, qualities, null, null);
+		result = LikelihoodUtils.getInstance().getLogLikelihood('T', 'T', bases, qualities, null, null, null, null, null);
 		// log10 (getRefLikelihood(2,3,0.999))
 		// [1] -9.000869
 		expected = -9.000869;
 		Assert.assertEquals(result,  expected, 0.00001);
 		// log10 (getRefLikelihood(2,3,0.99))
 		// [1] -6.00873
-		result = LikelihoodUtils.getInstance().getLogLikelihood('T', 'T', bases, qualities, null, maxProb);
+		result = LikelihoodUtils.getInstance().getLogLikelihood('T', 'T', bases, qualities, null, maxProb, null, null, null);
 		Assert.assertEquals(result,  -6.00873, 0.000001);
 
 
 		// probability if genotype is AT
-		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'T', bases, qualities, null, null);
+		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'T', bases, qualities, null, null, null, null, null);
 		// log10(getHetLikelihood(3,2,0.99))
 		// [1] -1.50515
 		expected = -1.50515;
 		Assert.assertEquals(result,  expected, 0.00001);
-		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'T', bases, qualities, null, maxProb);
+		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'T', bases, qualities, null, maxProb, null, null, null);
 		Assert.assertEquals(result,  expected, 0.00001); // doesn't matter what the error rate is for the het genotype state.
 
 	}
