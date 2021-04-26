@@ -59,7 +59,7 @@ public class ValidateAlignedSam extends CommandLineProgram {
     @Argument(shortName = StandardOptionDefinitions.SORT_ORDER_SHORT_NAME)
     public SAMFileHeader.SortOrder SORT_ORDER = SAMFileHeader.SortOrder.coordinate;
 
-    @Argument(doc = "Flag indicating whether to check each input BAM file(s) for the presence of a paired-end read", shortName = "PR", optional = true)
+    @Argument(doc = "Flag indicating whether to check each input BAM file(s) for the presence of a paired-end read", shortName = "PR")
     public boolean CHECK_CONTAINS_PAIRED_READS = false;
 
     @Override
@@ -76,6 +76,7 @@ public class ValidateAlignedSam extends CommandLineProgram {
                 IOUtil.assertFileIsReadable(inputBam);
             } catch (Exception ex) {
                 appendErrorToErrorMessage(ex.getMessage(), errorMsg);
+                continue;
             }
 
             final SamReader samReader = samReaderFactory.open(inputBam);
