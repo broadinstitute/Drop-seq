@@ -25,7 +25,8 @@ public class FilterBamByGeneFunctionTest {
 	private File SMALL_UNFILTERED_EMPTY_RESULT=new File ("testdata/org/broadinstitute/dropseq/utils/SmallUnfilteredEmptyResult.bam");
 	
 	// 2 reads that are both INTRONIC and CODING.
-	private File SMALL=new File ("testdata/org/broadinstitute/dropseq/utils/FilterBamByGeneFunction.sam");
+	private File SMALL=new File ("testdata/org/broadinstitute/dropseq/utils/FilterBamByGeneFunction.bam");
+	private File SMALL_CB_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/SmallUnfilteredResult.cell_barcodes.txt");
 	
 	// Small tests of 2 reads, make sure reads tagging two functions are retained when filtering to either.
 	
@@ -56,10 +57,12 @@ public class FilterBamByGeneFunctionTest {
 	
 	@Test (enabled=true)
 	public void filterToIntronicSmall () {
+		
 		FilterBamByGeneFunction f = new FilterBamByGeneFunction();
 		f.INPUT=Collections.singletonList(SMALL);
 		f.OUTPUT= TestUtils.getTempReportFile("small", ".bam");
 		f.LOCUS_FUNCTION_LIST=Arrays.asList(LocusFunction.INTRONIC);
+		f.CELL_BC_FILE=SMALL_CB_FILE;
 		int result = f.doWork();
 		Assert.assertEquals(0, result);
 		TestUtils.assertSamFilesSame(f.OUTPUT, SMALL_UNFILTERED_RESULT);				
@@ -99,11 +102,13 @@ public class FilterBamByGeneFunctionTest {
 		Assert.assertEquals(0, result);
 		int numReads = getNumReads(f.OUTPUT);
 		
-		// 18 reads have the CODING annotation but are  on the wrong strand!
+		// 18 reads have the CODING annotation but are on the wrong strand!
 		// 765 (total reads) -18 = 747
 		
 		Assert.assertEquals(747, numReads);		
 	}
+	
+	
 	
 	
 	
