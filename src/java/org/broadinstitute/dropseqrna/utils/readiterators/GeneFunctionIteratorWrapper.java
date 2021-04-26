@@ -106,7 +106,7 @@ public class GeneFunctionIteratorWrapper extends
 		return (r);
 	}
 
-	private LocusFunction[] getLocusFunctionFromRead(final String functionList) {
+	static LocusFunction[] getLocusFunctionFromRead(final String functionList) {
 		String[] fl = functionList.split(DELIMITER);
 		LocusFunction[] result = new LocusFunction[fl.length];
 		for (int i = 0; i < fl.length; i++) {
