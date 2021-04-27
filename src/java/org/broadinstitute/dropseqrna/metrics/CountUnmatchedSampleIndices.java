@@ -83,12 +83,12 @@ public class CountUnmatchedSampleIndices
         }
         NUM_THREADS = Math.min(NUM_THREADS, allBarcodeFiles.size());
 
-        final Iterator<File> barcodeFiles;
+        final Queue<File> barcodeFiles;
 
         if (NUM_THREADS > 1) {
-            barcodeFiles = new ThreadSafeIterator<>(allBarcodeFiles.iterator());
+            barcodeFiles = new ArrayBlockingQueue<>(allBarcodeFiles.size(), false, allBarcodeFiles);
         } else {
-            barcodeFiles = allBarcodeFiles.iterator();
+            barcodeFiles = new LinkedList<>(allBarcodeFiles);
         }
         final Worker[] workers = new Worker[NUM_THREADS];
         for (int i = 0; i < NUM_THREADS; ++i) {
@@ -143,19 +143,20 @@ public class CountUnmatchedSampleIndices
 
     private class Worker
             implements Callable<Boolean> {
-        private final Iterator<File> barcodeFiles;
+        private final Queue<File> barcodeFiles;
         private final ConcurrentHashMap<String, LongAdder> map;
         long totalReads = 0;
         long totalUnmatchedReads = 0;
 
-        public Worker(Iterator<File> barcodeFiles, ConcurrentHashMap<String, LongAdder> map) {
+        public Worker(Queue<File> barcodeFiles, ConcurrentHashMap<String, LongAdder> map) {
             this.barcodeFiles = barcodeFiles;
             this.map = map;
         }
 
         @Override
         public Boolean call() throws Exception {
-            for (final File barcodeFile: new IterableAdapter<>(barcodeFiles)) {
+            File barcodeFile = null;
+            while ((barcodeFile = barcodeFiles.poll()) != null) {
                 LOG.info("Processing", barcodeFile);
                 final TabbedInputParser parser = new TabbedInputParser(false, barcodeFile);
                 for (final String[] row : parser) {
@@ -184,25 +185,6 @@ public class CountUnmatchedSampleIndices
         @Override
         public int compareTo(IndexAndCount o) {
             return Long.compare(this.count, o.count);
-        }
-    }
-
-    // I can't quite believe there isn't something that already exists in java.concurrent, but I guess not.
-    private static class ThreadSafeIterator<T> implements Iterator<T> {
-        private final Iterator<T> underlyingIterator;
-
-        public ThreadSafeIterator(Iterator<T> underlyingIterator) {
-            this.underlyingIterator = underlyingIterator;
-        }
-
-        @Override
-        public synchronized boolean hasNext() {
-            return underlyingIterator.hasNext();
-        }
-
-        @Override
-        public synchronized T next() {
-            return underlyingIterator.next();
         }
     }
 
