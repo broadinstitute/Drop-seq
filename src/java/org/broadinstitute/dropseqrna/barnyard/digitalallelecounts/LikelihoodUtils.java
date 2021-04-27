@@ -52,7 +52,7 @@ public class LikelihoodUtils {
 	}
 
 	public static synchronized LikelihoodUtils getInstance() {
-        if (instance == null)
+        if (instance == null) 
 			instance = new LikelihoodUtils();
 
         return instance;
@@ -511,14 +511,14 @@ public class LikelihoodUtils {
 	 * @param contamination The contamination rate in the population 
 	 * @return @see getContaminationErrorRates
 	 */
-	private double getLikelihoodHomozygoteWithContamination (final byte alleleOne, final byte alleleTwo, final byte base, final byte quality, final Double genotypeProbability, 
+	double getLikelihoodHomozygoteWithContamination (final byte alleleOne, final byte alleleTwo, final byte base, final byte quality, final Double genotypeProbability, 
 			final byte referenceAllele, double minorAlleleFrequency, double contamination) {
 		
 		double [] penaltyScores = getContaminationErrorRates(quality, minorAlleleFrequency, contamination);
 		// If this donor has the reference allele, use the referencee allele penalty.
 		double errrorProb = penaltyScores[0];
 		// otherwise use the alternate allele penalty
-		if (alleleTwo==referenceAllele) errrorProb = penaltyScores[1];		
+		if (base!=referenceAllele) errrorProb = penaltyScores[1];		
 		double result = getLikelihoodHomozygote(alleleOne, alleleTwo, base, errrorProb, genotypeProbability);
 		return (result);
 	}
@@ -589,24 +589,31 @@ public class LikelihoodUtils {
 	 * @param maximumObservationProbability A cap on the maximum likelihood penalty at any one UMI. If set to null this is ignored.  
 	 * @return The likelihood for one observation
 	 */
-	private double getLikelihoodHeterozygoteWithContamination (final byte alleleOne, final byte alleleTwo, final byte base, final byte quality, final Double genotypeProbability, 
+	double getLikelihoodHeterozygoteWithContamination (final byte alleleOne, final byte alleleTwo, final byte base, final byte quality, final Double genotypeProbability, 
 			final byte referenceAllele, double minorAlleleFrequency, double contamination) {
 		
 		if (alleleOne==alleleTwo)
 			throw new IllegalArgumentException("For heterozygous likelihood, ref allele [" + alleleOne +"] and alt allele [" + alleleTwo+ "] must not match!");
 
-		double [] penaltyScores = getContaminationErrorRates(quality, minorAlleleFrequency, contamination);
+		double ref;
+		double alt;
+		if (base==alleleOne) {
+			ref=getLikelihoodHomozygoteWithContamination(alleleOne, alleleOne, alleleOne, quality, genotypeProbability, referenceAllele, minorAlleleFrequency, contamination);
+			alt=getLikelihoodHomozygoteWithContamination(alleleOne, alleleOne, alleleTwo, quality, genotypeProbability, referenceAllele, minorAlleleFrequency, contamination);				
+		} else {
+			ref=getLikelihoodHomozygoteWithContamination(alleleTwo, alleleTwo, alleleOne, quality, genotypeProbability, referenceAllele, minorAlleleFrequency, contamination);
+			alt=getLikelihoodHomozygoteWithContamination(alleleTwo, alleleTwo, alleleTwo, quality, genotypeProbability, referenceAllele, minorAlleleFrequency, contamination);
+		}
 		
 		// TODO: UNIT TEST THIS: 
 		// When at a heterozygous site, the likelihood of the donor should be higher when observing the allele that is less frequent in the population.
-		// That likelihood diffrence should be encoded in the error rates of each allele.
+		// That likelihood difference should be encoded in the error rates of each allele.
 		double score;
 		if (base==alleleOne || base==alleleTwo) 			
-			score=((1-penaltyScores[0])/2)+((1-penaltyScores[1])/2);															
+			score=(ref+alt)/2;															
 		else  {
 			// otherwise pick the bigger penalty, giving the lowest likelihood. 
-			double maxError= Arrays.stream(penaltyScores).max().getAsDouble();
-			score=1-maxError;
+			score= Math.min(ref, alt);			
 		}			
 		if (genotypeProbability!=null)
 			score*=genotypeProbability;
