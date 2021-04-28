@@ -359,10 +359,12 @@ public class LikelihoodUtils {
 	 * @return the likelihood of the bases/qualities, given the alleles observed.
 	 */
 	public double getLogLikelihood (final char alleleOne, final char alleleTwo, final List<Byte> bases, final List<Byte> qualities, final Double genotypeProbability, final Double maximumObservationProbability, 
-			final Byte referenceAllele, Double minorAlleleFrequency, Double contamination) {
+			final Character referenceAllele, Double minorAlleleFrequency, Double contamination) {
 		byte ref= StringUtil.charToByte(alleleOne);
 		byte alt= StringUtil.charToByte(alleleTwo);
-		return getLogLikelihood(ref, alt, bases, qualities, genotypeProbability, maximumObservationProbability, referenceAllele, minorAlleleFrequency, contamination);
+		Byte refAllele=null;
+		if (referenceAllele!=null) refAllele=StringUtil.charToByte(referenceAllele);		
+		return getLogLikelihood(ref, alt, bases, qualities, genotypeProbability, maximumObservationProbability, refAllele, minorAlleleFrequency, contamination);
 	}
 
 	/**
@@ -508,7 +510,7 @@ public class LikelihoodUtils {
 	 * @param genotypeProbability The confidence in the genotype.  If set to null this is ignored.
 	 * @param referenceAllele The reference allele for this variant in the population.
 	 * @param minorAlleleFrequency The minor allele frequency in the population
-	 * @param contamination The contamination rate in the population 
+	 * @param contamination The fraction of UMIs estimated to come from ambient RNA for this cell. 
 	 * @return @see getContaminationErrorRates
 	 */
 	double getLikelihoodHomozygoteWithContamination (final byte alleleOne, final byte alleleTwo, final byte base, final byte quality, final Double genotypeProbability, 

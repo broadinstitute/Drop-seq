@@ -28,14 +28,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.LikelihoodUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.util.StringUtil;
 import htsjdk.variant.variantcontext.GenotypeType;
-import sun.security.jca.GetInstance;
 
 /**
  * Note that the likelihoods have been changed from log to log 10.
@@ -173,13 +171,13 @@ public class LikelihoodUtilsTest {
 		// Assert.assertEquals(result,  -5.00000, 0.000001);
 		
 		//Modest contamination		
-		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'A', bases, qualities, null, null, refAllele, 0.2d, 0.3d);
+		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'A', bases, qualities, null, null, 'A', 0.2d, 0.3d);
 		Assert.assertEquals(result, -0.8247195, 0.000001);
 		
-		result = LikelihoodUtils.getInstance().getLogLikelihood('T', 'T', bases, qualities, null, null, refAllele, 0.2d, 0.3d);
+		result = LikelihoodUtils.getInstance().getLogLikelihood('T', 'T', bases, qualities, null, null, 'A', 0.2d, 0.3d);
 		Assert.assertEquals(result,  -5.77451, 0.000001);
 		
-		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'T', bases, qualities, null, null, refAllele, 0.2d, 0.3d);
+		result = LikelihoodUtils.getInstance().getLogLikelihood('A', 'T', bases, qualities, null, null, 'A', 0.2d, 0.3d);
 		Assert.assertEquals(result,  -1.50515, 0.000001);
 		
 		
