@@ -257,9 +257,9 @@ public class CsiAnalysis extends CommandLineProgram {
 		summary.SEQUENCING_ERROR_RATE = this.SEQUENCING_ERROR_RATE;
 
 		if (outVerbose!=null) writeVerboseHeader(outVerbose);
-		VCFPileupJointIterator jointIter = new VCFPileupJointIterator(peekablePileUpIter, vcfIterator, sd);
+		VCFPileupJointIterator<SNPGenomicBasePileUp> jointIter = new VCFPileupJointIterator<>(peekablePileUpIter, vcfIterator, sd);
 		while (jointIter.hasNext()) {
-			JointResult jr = jointIter.next();
+			VCFPileupJointIterator<SNPGenomicBasePileUp>.JointResult jr = jointIter.next();
 			SNPGenomicBasePileUp pileup = jr.getPileup();
 			summary = processPileUp(mafThreshold, alleleFreqTag, summary, donorsInPool, jr.getVc(), pileup, outVerbose);
 		}

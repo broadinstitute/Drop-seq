@@ -95,7 +95,7 @@ public class DigitalAlleleCountsBestGeneIterator implements DigitalAlleleCountsG
 	private void processRecordGroup (List<SNPUMIBasePileup> startList) {
 		// stash is empty, poll the data and build the next SNP interval worth of data.				
 				
-		if (startList.get(0).getPosition()==154823512)
+		if (startList.get(0).getStart()==154823512)
 			System.out.println("STOP");
 								
 		List<GeneScore> scores = getGeneScoreList  (startList);
