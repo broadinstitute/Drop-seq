@@ -121,6 +121,7 @@ public class MergeDgeSparse
         static class DatasetsKeys {
             static final String PATH_KEY = "path";
             static final String CELL_COUNT_KEY = "cell_count";
+            static final String CELL_BARCODE_PATH_KEY = "cell_barcode_path";
             static final String NAME_KEY = "name";
         }
     }
@@ -332,9 +333,18 @@ public class MergeDgeSparse
                 throw new RuntimeException("dataset element is not map in " + YAML.getAbsolutePath());
             final Map datasetMap = (Map)dataset;
             final File dgePath = new File((String)getRequiredValue(datasetMap, YamlKeys.DatasetsKeys.PATH_KEY));
+            final String cellBarcodePath = (String) getValueOrDefault(datasetMap, YamlKeys.DatasetsKeys.CELL_BARCODE_PATH_KEY, null);
             String prefix = (String)getValueOrDefault(datasetMap, YamlKeys.DatasetsKeys.NAME_KEY, "");
             final SparseDge dge = new SparseDge(dgePath, geneEnumerator);
             LOG.info(String.format("Loaded %d cells from %s", dge.getNumCells(), dgePath.getAbsolutePath()));
+
+            // If specified, this file contains actual un-prefixed cell barcodes for the cells to be retained from this DGE file
+            if (cellBarcodePath != null) {
+                final File cellBarcodeFile = new File(cellBarcodePath);
+                Set<String> unprefixedSelectedCells = loadSelectedCellsLists(Collections.singletonList(cellBarcodeFile));
+
+                dge.retainOnlyTheseCells(unprefixedSelectedCells);
+            }
 
             if (!prefix.isEmpty())
                 dge.prefixCellBarcodes(prefix + "_");
