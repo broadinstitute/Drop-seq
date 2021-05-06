@@ -19,8 +19,10 @@
         <SOURCES>
           <root url="file://$USER_HOME$/Development/la4j/src/main/java" />
           <root url="file://$USER_HOME$/Development/snakeyaml/src/main/java" />
-          <root url="file://$MODULE_DIR$/../../../git-picard/src/main/java" />
+          <root url="file://$PICARD$/main/java" />
           <root url="jar://$USER_HOME$/.ideaLibSources/picard-2.10.3-sources.jar!/" />
+          <root url="file://$PICARD$/main/java" />
+          <root url="file://$PICARD$/main/java" />
         </SOURCES>
         <jarDirectory url="file://$MODULE_DIR$/lib" recursive="false" />
       </library>
