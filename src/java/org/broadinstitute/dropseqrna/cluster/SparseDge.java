@@ -168,7 +168,7 @@ public class SparseDge {
         for (int i = 0; i < cellBarcode.length; ++i)
 			if (!cellBarcodesToRetain.contains(cellBarcode[i]))
 				cellsToDiscard.set(i);
-        discardCells(cellsToDiscard);
+        discardCells(cellsToDiscard, false);
     }
 
     public void discardCellsWithFewGenes(final int minGenes) {
@@ -176,7 +176,7 @@ public class SparseDge {
         for (int i = 0; i < numGenes.length; ++i)
 			if (numGenes[i] < minGenes)
 				cellsToDiscard.set(i);
-        discardCells(cellsToDiscard);
+        discardCells(cellsToDiscard, true);
     }
 
     public void discardCellsWithFewTranscripts(final int minTranscripts) {
@@ -184,10 +184,10 @@ public class SparseDge {
         for (int i = 0; i < numTranscripts.length; ++i)
 			if (numTranscripts[i] < minTranscripts)
 				cellsToDiscard.set(i);
-        discardCells(cellsToDiscard);
+        discardCells(cellsToDiscard, true);
     }
 
-    private void discardCells(final BitSet cellsToDiscard) {
+    private void discardCells(final BitSet cellsToDiscard, boolean shouldCaptureDiscardedCells) {
         if (!cellsToDiscard.isEmpty()) {
             final int[] cellIndexMap = new int[getNumCells()];
             int newCellIndex = 0;
@@ -198,7 +198,11 @@ public class SparseDge {
                     cellIndexMap[i] = newCellIndex++;
                 }
             }
-            captureDiscardedCellBarcodes(cellsToDiscard);
+
+            // We only capture the cells being discarded due to having insufficient number of genes or transcripts
+            if (shouldCaptureDiscardedCells) {
+                captureDiscardedCellBarcodes(cellsToDiscard);
+            }
             numTranscripts = removeElements(numTranscripts, cellsToDiscard);
             numGenes = removeElements(numGenes, cellsToDiscard);
             cellBarcode = removeElements(cellBarcode, cellsToDiscard);
