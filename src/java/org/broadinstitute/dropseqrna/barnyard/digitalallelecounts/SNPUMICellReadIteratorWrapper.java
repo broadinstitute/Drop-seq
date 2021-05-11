@@ -23,20 +23,28 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
-import htsjdk.samtools.AlignmentBlock;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecord.SAMTagAndValue;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.OverlapDetector;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.utils.CountChangingIteratorWrapper;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
 
-import java.util.*;
+import htsjdk.samtools.AlignmentBlock;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.OverlapDetector;
 
 public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<SAMRecord> {
-
+	private static final Log log = Log.getInstance(SNPUMICellReadIteratorWrapper.class);
+	
 	private String cellBarcodeTag;
 	private Set<String> cellBarcodeList;
 	private String geneTag;
@@ -102,6 +110,8 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
 	 */
 	private void processSNP (final SAMRecord r) {
 		List<AlignmentBlock> blocks = r.getAlignmentBlocks();
+		if (r.getReadName().equals("HKKV3DMXX_JuneNova8:2:2324:28854:20870"))
+			log.info("Stop");
 		
 		Collection<Interval> snpIntervals = new HashSet<>();
 		
@@ -142,7 +152,8 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
 	}
 	
 	private Interval getBestSNP (Collection<Interval> snpIntervals) {
-		double maxGQ=Double.MIN_VALUE;
+		// set the worse score to be worse than the missing value of -1.
+		double maxGQ=-2d;
 		Interval best=null;
 		
 		for (Interval i: snpIntervals) {
