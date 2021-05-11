@@ -23,19 +23,24 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.broadinstitute.dropseqrna.barnyard.Utils;
+import org.broadinstitute.dropseqrna.utils.CountChangingIteratorWrapper;
+import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
+
 import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecord.SAMTagAndValue;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.OverlapDetector;
-import org.broadinstitute.dropseqrna.barnyard.Utils;
-import org.broadinstitute.dropseqrna.priv.barnyard.digitalallelecounts.GatherDigitalAlleleCounts;
-import org.broadinstitute.dropseqrna.utils.CountChangingIteratorWrapper;
-import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
-
-import java.util.*;
 
 public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<SAMRecord> {
 	private static final Log log = Log.getInstance(SNPUMICellReadIteratorWrapper.class);
