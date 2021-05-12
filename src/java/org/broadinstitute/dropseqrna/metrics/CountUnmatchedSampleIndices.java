@@ -54,8 +54,14 @@ public class CountUnmatchedSampleIndices
             doc="File to which metrics will be written")
     public File OUTPUT;
 
-    @Argument(doc="This many of the most frequent sample indices will be written to the output file.")
-    public int MAX_OUTPUT = 100;
+    @Argument(doc="This many of the most frequent sample indices will be written to the output file. " +
+            "Set to null to remove this limit.",
+            optional = true)
+    public Integer MAX_OUTPUT = 100;
+
+    @Argument(doc="Only emit sample indices that appear at least this many times.  Default: no threshold.",
+            optional = true)
+    public Integer MIN_COUNT;
 
     @Argument(doc="Use this many background threads.", minValue = 1)
     public int NUM_THREADS = 1;
@@ -118,9 +124,15 @@ public class CountUnmatchedSampleIndices
 
         // Note that there for sample indices with counts that are equal, at the tail end of MAX_OUTPUT, it is
         // arbitrary which will be included in the output.
-        for (Map.Entry<String, LongAdder> entry: tally.entrySet()) {
+        final Collection<Map.Entry<String, LongAdder>> entries;
+        if (MIN_COUNT == null) {
+            entries = tally.entrySet();
+        } else {
+            entries = tally.entrySet().stream().filter(entry -> entry.getValue().intValue() >= MIN_COUNT).collect(Collectors.toList());
+        }
+        for (Map.Entry<String, LongAdder> entry: entries) {
             final int count = entry.getValue().intValue();
-            if (indexAndCounts.size() < MAX_OUTPUT) {
+            if (MAX_OUTPUT == null || indexAndCounts.size() < MAX_OUTPUT) {
                 indexAndCounts.add(new IndexAndCount(entry.getKey(), count));
             } else if (count > indexAndCounts.first().count) {
                 indexAndCounts.remove(indexAndCounts.first());

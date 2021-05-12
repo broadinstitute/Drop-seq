@@ -36,6 +36,7 @@ import java.util.Arrays;
 public class CountUnmatchedSampleIndicesTest {
     private static final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/metrics/CountUnmatchedSampleIndices");
     private static final File EXPECTED_METRICS = new File(TEST_DATA_DIR, "expected.unmatched_index_metrics");
+    private static final File MIN_COUNT_METRICS = new File(TEST_DATA_DIR, "min_count.unmatched_index_metrics");
     private static final int NUM_BARCODE_FILES = 9;
     private static final String BARCODE_FILE_TEMPLATE = "s_1_1110%d_barcode.txt.gz";
 
@@ -63,6 +64,32 @@ public class CountUnmatchedSampleIndicesTest {
         Assert.assertEquals(clp.doWork(), 0);
         Assert.assertTrue(TestUtils.testMetricsFilesEqual(EXPECTED_METRICS, clp.OUTPUT));
     }
+
+    @Test(dataProvider = "testBasicDataProvider")
+    public void testBothThresholds(int numThreads) throws IOException {
+        final CountUnmatchedSampleIndices clp = new CountUnmatchedSampleIndices();
+        clp.NUM_THREADS=numThreads;
+        clp.MIN_COUNT = 100;
+        clp.OUTPUT = File.createTempFile("CountUnmatchedSampleIndicesTest.", "unmatched_index_metrics");
+        clp.OUTPUT.deleteOnExit();
+        clp.BARCODE_FILES = Arrays.asList(TEST_DATA_DIR);
+        Assert.assertEquals(clp.doWork(), 0);
+        Assert.assertTrue(TestUtils.testMetricsFilesEqual(EXPECTED_METRICS, clp.OUTPUT));
+    }
+
+    @Test(dataProvider = "testBasicDataProvider")
+    public void testMinCount(int numThreads) throws IOException {
+        final CountUnmatchedSampleIndices clp = new CountUnmatchedSampleIndices();
+        clp.NUM_THREADS=numThreads;
+        clp.MIN_COUNT = 100;
+        clp.MAX_OUTPUT = null;
+        clp.OUTPUT = File.createTempFile("CountUnmatchedSampleIndicesTest.", "unmatched_index_metrics");
+        clp.OUTPUT.deleteOnExit();
+        clp.BARCODE_FILES = Arrays.asList(TEST_DATA_DIR);
+        Assert.assertEquals(clp.doWork(), 0);
+        Assert.assertTrue(TestUtils.testMetricsFilesEqual(MIN_COUNT_METRICS, clp.OUTPUT));
+    }
+
     @DataProvider(name="testBasicDataProvider")
     public Object[][]testBasicDataProvider() {
         return new Object[][] {
