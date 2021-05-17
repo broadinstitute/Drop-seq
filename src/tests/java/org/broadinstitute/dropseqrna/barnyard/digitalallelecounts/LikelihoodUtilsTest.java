@@ -207,7 +207,7 @@ public class LikelihoodUtilsTest {
 		Byte [] q = {new Byte ((byte)10), new Byte ((byte)10)};
 		List<Byte> qualities =Arrays.asList(q);
 
-		double result = LikelihoodUtils.getInstance().getLogLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases, qualities, null, null, null);
+		double result = LikelihoodUtils.getInstance().getLogLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases, qualities, null, null, null, null, null);
 		Assert.assertEquals(result, Math.log10(0.36), 0.001);
 
 	}
@@ -226,7 +226,7 @@ public class LikelihoodUtilsTest {
 		List<Byte> bases = Collections.singletonList(StringUtil.charToByte('A'));
 		List<Byte> qualities =Collections.singletonList(new Byte ((byte)10));
 
-		double result = LikelihoodUtils.getInstance().getLogLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases, qualities, null, null, null);
+		double result = LikelihoodUtils.getInstance().getLogLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases, qualities, null, null, null, null, null);
 		Assert.assertEquals(result, Math.log10(0.6), 0.001);
 		
 		double [] likes =  LikelihoodUtils.getInstance().getLikelihoodManyObservations ((byte) refAllele, (byte) altAllele, genotypes, bases.get(0), qualities.get(0), null, null, null, null, null);

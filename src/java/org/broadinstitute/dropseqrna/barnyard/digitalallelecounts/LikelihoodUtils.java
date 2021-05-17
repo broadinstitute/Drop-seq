@@ -176,14 +176,17 @@ public class LikelihoodUtils {
 	 * @param missingDataPenality a pre-computed likelihood to use instead of computing a likelihood for a genotype.
 	 * @param genotypeProbability The probability of the genotype being correct (as set by the GQ field of the genotype in the VCF).  Can be set null to ignore.
 	 * @param maximumObservationProbability If set, this is the maximum penalty that can be generated for a single observation.  Optional (set to null to ignore) 
+	 * @param minorAlleleFrequency The minor allele frequency in the population. Optional. Set null to ignore.
+	 * @param contamination The contamination rate in the population . Optional. Set null to ignore.
 	 * @return The likelihood of observing this set of UMIs. 
 	 */
 	public double getLogLikelihoodMixedModel (final char refAllele, final char altAllele, final List<GenotypeType> genotypes,
-			final List<Double> mixture, final List<Byte> bases, final List<Byte> qualities, final Double missingDataPenality, final Double genotypeProbability, final Double maximumObservationProbability) {
+			final List<Double> mixture, final List<Byte> bases, final List<Byte> qualities, final Double missingDataPenality, final Double genotypeProbability, 
+			final Double maximumObservationProbability, Double minorAlleleFrequency, Double contamination) {
 
 		byte ref= StringUtil.charToByte(refAllele);
 		byte alt= StringUtil.charToByte(altAllele);
-		double result = getLogLikelihoodMixedModel(ref, alt, genotypes, mixture, bases, qualities, missingDataPenality, genotypeProbability, maximumObservationProbability);
+		double result = getLogLikelihoodMixedModel(ref, alt, genotypes, mixture, bases, qualities, missingDataPenality, genotypeProbability, maximumObservationProbability, minorAlleleFrequency, contamination);
 		return result;
 	}
 
@@ -203,10 +206,13 @@ public class LikelihoodUtils {
 	 * @param missingDataPenality a pre-computed likelihood to use instead of computing a likelihood for a genotype.
 	 * @param genotypeProbability The probability of the genotype being correct (as set by the GQ field of the genotype in the VCF).  Can be set null to ignore.
 	 * @param maximumObservationProbability If set, this is the maximum penalty that can be generated for a single observation.  Optional (set to null to ignore) 
+	 * @param minorAlleleFrequency The minor allele frequency in the population. Optional. Set null to ignore.
+	 * @param contamination The contamination rate in the population . Optional. Set null to ignore.
 	 * @return The likelihood of observing this set of UMIs. 
 	 */
 	public double getLogLikelihoodMixedModel (final byte refAllele, final byte altAllele, final List<GenotypeType> genotypes,
-			final List<Double> mixture, final List<Byte> bases, final List<Byte> qualities, final Double missingDataPenality, final Double genotypeProbability, final Double maximumObservationProbability) {
+			final List<Double> mixture, final List<Byte> bases, final List<Byte> qualities, final Double missingDataPenality, final Double genotypeProbability, 
+			final Double maximumObservationProbability, Double minorAlleleFrequency, Double contamination) {
 
 		if (genotypes.size()!=mixture.size())
 			throw new IllegalArgumentException("Genotype list and mixture list must be the same size.");
@@ -214,8 +220,7 @@ public class LikelihoodUtils {
 		double result=0;
 
 		for (int i=0; i<bases.size(); i++) {
-			//TODO add contamination information per cell and minor allele frequency data to integrate into the model.
-			double likelihood = getLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases.get(i), qualities.get(i), missingDataPenality, genotypeProbability, maximumObservationProbability, null, null);			
+			double likelihood = getLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases.get(i), qualities.get(i), missingDataPenality, genotypeProbability, maximumObservationProbability, minorAlleleFrequency, contamination);			
 			result+=Math.log10(likelihood);						
 		}
 		return result;
@@ -607,9 +612,7 @@ public class LikelihoodUtils {
 			alt=getLikelihoodHomozygoteWithContamination(alleleTwo, alleleTwo, alleleTwo, quality, genotypeProbability, referenceAllele, minorAlleleFrequency, contamination);
 		}
 		
-		// TODO: UNIT TEST THIS: 
 		// When at a heterozygous site, the likelihood of the donor should be higher when observing the allele that is less frequent in the population.
-		// That likelihood difference should be encoded in the error rates of each allele.
 		double score;
 		if (base==alleleOne || base==alleleTwo) 			
 			score=(ref+alt)/2;															
