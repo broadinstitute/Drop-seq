@@ -74,17 +74,17 @@ public class DownsampleBamByTag extends CommandLineProgram {
 	public String TAG="ZC";
 
 	@Argument(doc="The map quality of the read to be included.")
-	public Integer READ_MQ=10;
+	public int READ_MQ=10;
 
-	@Argument(doc="The number of reads to include per TAG.", optional=true)
-	public Integer NUM_READS=null;
+	@Argument(doc="The number of reads to include per TAG.", mutex={"TAG_FILE"})
+	public Integer NUM_READS;
 
 	@Argument(doc="Filter PCR Duplicates.  Defaults to false")
 	public boolean FILTER_PCR_DUPLICATES=false;
 
 	@Argument(doc="Instead of specifying a set number of reads to downsample all tags by, instead input a file that has values for the tag, with numbers of reads to downsample by.  If this is used then the NUM_READS is ignored." +
-			"Has 2 columns.  The value of the tag, and the number of reads.  Tab seperated.", optional=true)
-	public File TAG_FILE=null;
+			"Has 2 columns.  The value of the tag, and the number of reads.  Tab seperated.", mutex={"NUM_READS"})
+	public File TAG_FILE;
 
 	@Argument (doc="If true, use a probabilistic strategy that will not generate the exact number of reads asked for (though very close), but will run much faster.")
 	public Boolean USE_PROBABILISTIC_STRATEGY=true;
@@ -109,11 +109,6 @@ public class DownsampleBamByTag extends CommandLineProgram {
 		IOUtil.assertFileIsWritable(OUTPUT);
 		ObjectCounter<String> tc = null;
 
-		if (TAG_FILE==null & this.NUM_READS==null) {
-			log.error("Must set the NUM_READS property or provide a TAG_FILE");
-			return 1;
-		}
-
 		if (TAG_FILE!=null) {
 			IOUtil.assertFileIsReadable(TAG_FILE);
 			tc=parseTagFile(TAG_FILE);
@@ -135,7 +130,6 @@ public class DownsampleBamByTag extends CommandLineProgram {
 	 * @param readQuality
 	 * @param output
 	 * @param desiredReads
-	 * @param observedReads
 	 * @param numReads
 	 */
 	public void downsampleBAMByTagProbabilistic (final File input, final String tag, final int readQuality, final File output, ObjectCounter<String> desiredReads, final boolean pairedReadMode, final Integer numReads, final int randomSeed) {
