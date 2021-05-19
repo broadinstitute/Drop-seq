@@ -137,9 +137,18 @@ public class ConvertTagToReadGroup extends CommandLineProgram {
 	 */
 	private SAMReadGroupRecord getReadGroupTemplate(final SAMFileHeader inHeader) {
 		List<SAMReadGroupRecord> recs = inHeader.getReadGroups();
-		String library = recs.get(0).getLibrary();
-		String platform = recs.get(0).getPlatform();
-		String platformUmit = recs.get(0).getPlatformUnit();
+		String library = null;
+		String platform = null;
+		String platformUmit = null;
+		final SAMReadGroupRecord template;
+		if (!recs.isEmpty()) {
+			template = inHeader.getReadGroups().get(0);
+			library = template.getLibrary();
+			platform = template.getPlatform();
+			platformUmit = template.getPlatformUnit();
+		} else {
+			template = new SAMReadGroupRecord("Dummy");
+		}
 		boolean multiple=false;
 		// checks to see that the params are the same if there are multiple read groups.
 		for (SAMReadGroupRecord gr : recs) {
@@ -153,20 +162,28 @@ public class ConvertTagToReadGroup extends CommandLineProgram {
 		else
 			log.info("Auto-determined Project, Platform, Platform Unit.");
 
-		SAMReadGroupRecord gr = inHeader.getReadGroups().get(0);
 		if (this.PLATFORM!=null ) {
 			log.info("Overriding Platform with value " + this.PLATFORM);
-			gr.setPlatform(this.PLATFORM);
+			template.setPlatform(this.PLATFORM);
 		}
 		if (this.PLATFORM_UNIT!=null) {
 			log.info("Overriding Platform Unit with value " + this.PLATFORM_UNIT);
-			gr.setPlatformUnit(this.PLATFORM_UNIT);
+			template.setPlatformUnit(this.PLATFORM_UNIT);
 		}
 		if (this.LIBRARY_NAME!=null) {
 			log.info("Overriding Library Name with value " + this.LIBRARY_NAME);
-			gr.setLibrary(this.LIBRARY_NAME);
+			template.setLibrary(this.LIBRARY_NAME);
 		}
-		return gr;
+		if (template.getPlatform() == null) {
+			throw new IllegalArgumentException("Either input has no read group, or input read group has no PL field.  Use the PLATFORM option.");
+		}
+		if (template.getPlatformUnit() == null) {
+			throw new IllegalArgumentException("Either input has no read group, or input read group has no PU field.  Use the PLATFORM_UNIT option.");
+		}
+		if (template.getLibrary() == null) {
+			throw new IllegalArgumentException("Either input has no read group, or input read group has no LB field.  Use the LIBRARY option.");
+		}
+		return template;
 	}
 
 
