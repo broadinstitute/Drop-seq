@@ -23,6 +23,8 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
@@ -45,6 +47,7 @@ public class SplitBamByCellTest {
 
     public static final File TEST_BAM = new File("testdata/org/broadinstitute/dropseq/barnyard/DgeStrandFuncTest/DgeStrandFuncTest.bam");
     private static File EXPECTED_REPORT = new File ("testdata/org/broadinstitute/dropseq/utils/SplitBamByCell.report");
+    private static final File QUERYNAME_SORTED_BAM = new File("testdata/org/broadinstitute/dropseq/metrics/compute_umi_sharing.unmapped.sam");
 
     @Test
 	public void testDoWork() {
@@ -193,5 +196,40 @@ public class SplitBamByCellTest {
         symlink.deleteOnExit();
         Files.createSymbolicLink(symlink.toPath(), bamList.toPath());
         Assert.assertEquals(expected, FileListParsingUtils.readFileList(symlink));
+    }
+
+    @Test
+    public void testSplitEqually() {
+        final SplitBamByCell bamSplitter = new SplitBamByCell();
+
+        File mergedOutputBAM = TestUtils.getTempReportFile("SplitBamByCell.", ".sam");
+
+        bamSplitter.INPUT=Arrays.asList(QUERYNAME_SORTED_BAM);
+        bamSplitter.OUTPUT=new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
+        bamSplitter.OUTPUT_LIST= TestUtils.getTempReportFile("SplitBamByCell.", ".list");
+        bamSplitter.NUM_OUTPUTS = 3;
+        bamSplitter.DELETE_INPUTS = false;
+        bamSplitter.OVERWRITE_EXISTING = true;
+        bamSplitter.REPORT = TestUtils.getTempReportFile("SplitBamByCell.", ".report");
+        bamSplitter.SPLIT_TAG = null;
+        TestUtils.setInflaterDeflaterIfMacOs();
+        Assert.assertEquals(bamSplitter.doWork(), 0);
+
+        List<File> splitBAMFileList = FileListParsingUtils.readFileList(bamSplitter.OUTPUT_LIST);
+        for (File f : splitBAMFileList) {
+            f.deleteOnExit();
+        }
+
+        // Merge the split BAM files
+        final MergeSamFiles fileMerger = new MergeSamFiles();
+        List<String> args = new ArrayList<>();
+        for (File splitBAMFilePath : splitBAMFileList)  {
+            args.add("INPUT=" + splitBAMFilePath.getAbsolutePath());
+        }
+        args.add("OUTPUT=" + mergedOutputBAM.getAbsolutePath());
+        args.add("USE_JDK_DEFLATER=" + TestUtils.isMacOs());
+        args.add("SORT_ORDER=queryname");
+        Assert.assertEquals(fileMerger.instanceMain(args.toArray(new String[args.size()])), 0);
+        TestUtils.assertSamRecordsSame(mergedOutputBAM, QUERYNAME_SORTED_BAM);
     }
 }

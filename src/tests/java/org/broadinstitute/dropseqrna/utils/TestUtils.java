@@ -92,7 +92,26 @@ public class TestUtils {
 	public static void assertSamFilesSame(final File actual, final File expected) {
 		final SamReader expectedReader = SamReaderFactory.makeDefault().open(expected);
 		final SamReader actualReader = SamReaderFactory.makeDefault().open(actual);
-		Assert.assertEquals(expectedReader.getFileHeader(), actualReader.getFileHeader());
+		try {
+			Assert.assertEquals(expectedReader.getFileHeader(), actualReader.getFileHeader());
+			assertSamRecordsSame(actual, expected, expectedReader, actualReader);
+		} finally {
+			CloserUtil.close(expectedReader);
+			CloserUtil.close(actualReader);
+		}
+	}
+	public static void assertSamRecordsSame(File actual, File expected) {
+		final SamReader expectedReader = SamReaderFactory.makeDefault().open(expected);
+		final SamReader actualReader = SamReaderFactory.makeDefault().open(actual);
+		try {
+			assertSamRecordsSame(actual, expected, expectedReader, actualReader);
+		} finally {
+			CloserUtil.close(expectedReader);
+			CloserUtil.close(actualReader);
+		}
+	}
+
+	public static void assertSamRecordsSame(File actual, File expected, SamReader expectedReader, SamReader actualReader) {
 		final SAMRecordIterator expectedIterator = expectedReader.iterator();
 		final SAMRecordIterator actualIterator = actualReader.iterator();
 		while (expectedIterator.hasNext()) {
