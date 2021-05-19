@@ -43,14 +43,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-@CommandLineProgramProperties(summary = "Convert from a cell barcode tag to a sample group", oneLineSummary = "Convert from a cell barcode tag to a sample group", omitFromCommandLine = false, programGroup = DropSeq.class)
+@CommandLineProgramProperties(summary = "For a read tag (like a cell barcode) find the top set of tags as defined by reads that have at least some map quality.  \"\n" +
+		"\t\t\t+ \"Tag reads to have a read group with the same name as the tag, to take advantage of Picard programs that aggregate data by read group.",
+		oneLineSummary = "Convert from a cell barcode tag to a sample group", omitFromCommandLine = false,
+		programGroup = DropSeq.class)
 public class ConvertTagToReadGroup extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(ConvertTagToReadGroup.class);
 	private ProgressLogger progress = new ProgressLogger(log);
-
-	public final String USAGE = "USAGE: ConvertTagToReadGroup.  For a read tag (like a cell barcode) find the top set of tags as defined by reads that have at least some map quality.  "
-			+ "Tag reads to have a read group with the same name as the tag, to take advantage of Picard programs that aggregate data by read group.";
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. (???)")
 	public File INPUT;
@@ -70,7 +70,7 @@ public class ConvertTagToReadGroup extends CommandLineProgram {
 	@Argument(doc="Override NUM_CORE_BARCODES, and process reads that have the cell barcodes in this file instead.  The file has 1 column with no header.", optional=false, mutex={"NUM_CORE_BARCODES"})
 	public File CELL_BC_FILE=null;
 
-	@Argument(doc = "The same name for the experiment.  If given, will be concatonated onto the cell barcode in the fashion sample:cell.", optional = false)
+	@Argument(doc = "The same name for the experiment.  Will be prepended onto the cell barcode in the fashion sample:cell.", optional = false)
 	public String SAMPLE_NAME;
 
 	@Argument(shortName="LB", doc="The library name to place into the LB attribute in the read group header", optional=true)
