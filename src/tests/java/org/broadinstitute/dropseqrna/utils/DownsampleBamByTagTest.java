@@ -36,12 +36,6 @@ import java.io.PrintStream;
 import java.util.*;
 
 public class DownsampleBamByTagTest {
-    // Test matrix
-    // paired, unpaired
-    // probabilistic, not
-    // MQ filtered, not
-    // filter PCR dupes, not
-    // tag file, num reads
 
     private static final File TESTDATA_DIR = new File("testdata/org/broadinstitute/dropseq/utils");
     private static final File ALIGNED_UNPAIRED_BAM = new File(TESTDATA_DIR, "N701_small.bam");
@@ -115,7 +109,7 @@ public class DownsampleBamByTagTest {
         return ret.toArray(new Object[0][]);
     }
 
-    private ObjectCounter<String> getTagCounts(final File bam, final String tag, int READ_MQ, boolean FILTER_PCR_DUPLICATES) {
+    public static ObjectCounter<String> getTagCounts(final File bam, final String tag, int READ_MQ, boolean FILTER_PCR_DUPLICATES) {
         return new BamTagHistogram().getBamTagCounts (bam, tag, READ_MQ, FILTER_PCR_DUPLICATES);
     }
 
