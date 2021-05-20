@@ -24,9 +24,11 @@
 package org.broadinstitute.dropseqrna.utils;
 
 import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.StringUtil;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.junit.Assert;
+import org.testng.Reporter;
 import org.testng.annotations.Test;
 import picard.analysis.CollectAlignmentSummaryMetrics;
 import picard.sam.MergeSamFiles;
@@ -255,6 +257,7 @@ public class SplitBamByCellTest {
         List<File> outputFiles = Arrays.asList(tempDir.listFiles());
         outputFiles.forEach(File::deleteOnExit);
         final Set<String> outputFileNames = outputFiles.stream().map(File::getName).collect(Collectors.toSet());
+        Reporter.log(String.format("Files found: %s", StringUtil.join(", ", outputFileNames)), true);
 
         final List<String> expectedExtensions = new ArrayList<>(Arrays.asList(SplitBamByCell.BAM_LIST_EXTENSION, SplitBamByCell.BAM_REPORT_EXTENSION));
         for (int i = 0; i < NUM_OUTPUTS; ++i) {
