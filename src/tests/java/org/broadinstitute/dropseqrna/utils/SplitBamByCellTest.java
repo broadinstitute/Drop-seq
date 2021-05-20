@@ -23,8 +23,6 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
@@ -38,15 +36,14 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 public class SplitBamByCellTest {
 
     public static final File TEST_BAM = new File("testdata/org/broadinstitute/dropseq/barnyard/DgeStrandFuncTest/DgeStrandFuncTest.bam");
-    private static File EXPECTED_REPORT = new File ("testdata/org/broadinstitute/dropseq/utils/SplitBamByCell.report");
+    private static final File EXPECTED_REPORT = new File ("testdata/org/broadinstitute/dropseq/utils/SplitBamByCell.report");
     private static final File QUERYNAME_SORTED_BAM = new File("testdata/org/broadinstitute/dropseq/metrics/compute_umi_sharing.unmapped.sam");
 
     @Test
@@ -59,7 +56,7 @@ public class SplitBamByCellTest {
         File originalMetrics = TestUtils.getTempReportFile("SplitBamByCell.", ".metrics");
         File mergedMetrics = TestUtils.getTempReportFile("SplitBamByCell.", ".metrics");
 
-        bamSplitter.INPUT=Arrays.asList(TEST_BAM);
+        bamSplitter.INPUT= Collections.singletonList(TEST_BAM);
         bamSplitter.OUTPUT=new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST=outputBAMList;
         bamSplitter.NUM_OUTPUTS = 3;
@@ -83,23 +80,23 @@ public class SplitBamByCellTest {
             }
             args.add("OUTPUT=" + mergedOutputBAM.getAbsolutePath());
             args.add("USE_JDK_DEFLATER=" + TestUtils.isMacOs());
-            Assert.assertEquals(fileMerger.instanceMain(args.toArray(new String[args.size()])), 0);
+            Assert.assertEquals(fileMerger.instanceMain(args.toArray(new String[0])), 0);
 
             // Metrics for the input test BAM file
-            args = new ArrayList<String>();
+            args = new ArrayList<>();
             args.add("INPUT=" + TEST_BAM.getAbsolutePath());
             args.add("OUTPUT=" + originalMetrics.getAbsolutePath());
             args.add("USE_JDK_DEFLATER=" + TestUtils.isMacOs());
             final CollectAlignmentSummaryMetrics originalMetricsCollector = new CollectAlignmentSummaryMetrics();
-            Assert.assertEquals(originalMetricsCollector.instanceMain(args.toArray(new String[args.size()])), 0);
+            Assert.assertEquals(originalMetricsCollector.instanceMain(args.toArray(new String[0])), 0);
 
             // Metrics for the split and merged test BAM file
-            args = new ArrayList<String>();
+            args = new ArrayList<>();
             args.add("INPUT=" + mergedOutputBAM.getAbsolutePath());
             args.add("OUTPUT=" + mergedMetrics.getAbsolutePath());
             args.add("USE_JDK_DEFLATER=" + TestUtils.isMacOs());
             final CollectAlignmentSummaryMetrics mergedMetricsCollector = new CollectAlignmentSummaryMetrics();
-            Assert.assertEquals(mergedMetricsCollector.instanceMain(args.toArray(new String[args.size()])), 0);
+            Assert.assertEquals(mergedMetricsCollector.instanceMain(args.toArray(new String[0])), 0);
 
             // Make sure the input test BAM and the merged BAM files' metrics are identical
             TestUtils.testMetricsFilesEqual(originalMetrics, mergedMetrics);
@@ -128,7 +125,7 @@ public class SplitBamByCellTest {
         Files.copy(TEST_BAM.toPath(), inputBam.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
         bamSplitter = new SplitBamByCell();
-        bamSplitter.INPUT = Arrays.asList(inputBam);
+        bamSplitter.INPUT = Collections.singletonList(inputBam);
         bamSplitter.OUTPUT = new File("SplitBamByCell2." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.REPORT = reportFile;
@@ -146,7 +143,7 @@ public class SplitBamByCellTest {
         boolean exceptionThrown = false;
         try {
             bamSplitter = new SplitBamByCell();
-            bamSplitter.INPUT = Arrays.asList(inputBam);
+            bamSplitter.INPUT = Collections.singletonList(inputBam);
             bamSplitter.OUTPUT = new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
             bamSplitter.OUTPUT_LIST = outputBAMList;
             bamSplitter.DELETE_INPUTS = false;
@@ -160,7 +157,7 @@ public class SplitBamByCellTest {
 
         // Now it should overwrite the output BAM files and then delete the input BAM
         bamSplitter = new SplitBamByCell();
-        bamSplitter.INPUT = Arrays.asList(inputBam);
+        bamSplitter.INPUT = Collections.singletonList(inputBam);
         bamSplitter.OUTPUT = new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.REPORT = reportFile;
@@ -204,7 +201,7 @@ public class SplitBamByCellTest {
 
         File mergedOutputBAM = TestUtils.getTempReportFile("SplitBamByCell.", ".sam");
 
-        bamSplitter.INPUT=Arrays.asList(QUERYNAME_SORTED_BAM);
+        bamSplitter.INPUT= Collections.singletonList(QUERYNAME_SORTED_BAM);
         bamSplitter.OUTPUT=new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST= TestUtils.getTempReportFile("SplitBamByCell.", ".list");
         bamSplitter.NUM_OUTPUTS = 3;
@@ -229,7 +226,40 @@ public class SplitBamByCellTest {
         args.add("OUTPUT=" + mergedOutputBAM.getAbsolutePath());
         args.add("USE_JDK_DEFLATER=" + TestUtils.isMacOs());
         args.add("SORT_ORDER=queryname");
-        Assert.assertEquals(fileMerger.instanceMain(args.toArray(new String[args.size()])), 0);
+        Assert.assertEquals(fileMerger.instanceMain(args.toArray(new String[0])), 0);
         TestUtils.assertSamRecordsSame(mergedOutputBAM, QUERYNAME_SORTED_BAM);
+    }
+
+    @Test
+    public void testDeleteInputsAndDefaultOutputs() throws IOException {
+        final File tempDir = Files.createTempDirectory("SplitBamByCellTest.").toFile();
+        tempDir.deleteOnExit();
+        final File inputFile = new File(tempDir, TEST_BAM.getName());
+        inputFile.deleteOnExit(); // Shouldn't be necessary, because DELETE_INPUTS==true
+        IOUtil.copyFile(TEST_BAM, inputFile);
+        final SplitBamByCell bamSplitter = new SplitBamByCell();
+
+        bamSplitter.INPUT= Collections.singletonList(inputFile);
+        final int NUM_OUTPUTS = 3;
+        bamSplitter.NUM_OUTPUTS = NUM_OUTPUTS;
+        bamSplitter.DELETE_INPUTS = true;
+        TestUtils.setInflaterDeflaterIfMacOs();
+        Assert.assertEquals(bamSplitter.doWork(), 0);
+        List<File> outputFiles = Arrays.asList(tempDir.listFiles());
+        outputFiles.forEach(File::deleteOnExit);
+        final Set<String> outputFileNames = outputFiles.stream().map(File::getName).collect(Collectors.toSet());
+
+        String basename = inputFile.getName();
+        basename = basename.substring(0, basename.length() - SplitBamByCell.BAM_EXTENSION.length());
+        final List<String> expectedExtensions = new ArrayList<>(Arrays.asList(SplitBamByCell.BAM_LIST_EXTENSION, SplitBamByCell.BAM_REPORT_EXTENSION));
+        for (int i = 0; i < NUM_OUTPUTS; ++i) {
+            expectedExtensions.add("." + i + SplitBamByCell.BAM_EXTENSION);
+        }
+        // split BAMs + bam_list and report
+        Assert.assertEquals(expectedExtensions.size(), outputFiles.size());
+        for (final String expectedExtension: expectedExtensions) {
+            Assert.assertTrue("Test presence of " + expectedExtension,
+                    outputFileNames.contains(basename + expectedExtension));
+        }
     }
 }

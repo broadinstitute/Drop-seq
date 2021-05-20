@@ -104,9 +104,9 @@ public class SplitBamByCell extends CommandLineProgram {
 
     private SAMFileWriterFactory samWriterFactory = null;
 
-    private final String BAM_EXTENSION = ".bam";
-    private final String BAM_LIST_EXTENSION = ".bam_list";
-    private final String BAM_REPORT_EXTENSION =".split_bam_report";
+    static final String BAM_EXTENSION = ".bam";
+    static final String BAM_LIST_EXTENSION = ".bam_list";
+    static final String BAM_REPORT_EXTENSION =".split_bam_report";
 
     private enum FileSizeSuffix  {
         k(1024L),
