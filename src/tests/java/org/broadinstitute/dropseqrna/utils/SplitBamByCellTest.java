@@ -59,7 +59,7 @@ public class SplitBamByCellTest {
         File mergedMetrics = TestUtils.getTempReportFile("SplitBamByCell.", ".metrics");
 
         bamSplitter.INPUT= Collections.singletonList(TEST_BAM);
-        bamSplitter.OUTPUT=new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
+        bamSplitter.OUTPUT=TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST=outputBAMList;
         bamSplitter.NUM_OUTPUTS = 3;
         bamSplitter.DELETE_INPUTS = false;
@@ -128,7 +128,7 @@ public class SplitBamByCellTest {
 
         bamSplitter = new SplitBamByCell();
         bamSplitter.INPUT = Collections.singletonList(inputBam);
-        bamSplitter.OUTPUT = new File("SplitBamByCell2." + bamSplitter.OUTPUT_SLUG + ".bam");
+        bamSplitter.OUTPUT = TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.REPORT = reportFile;
         bamSplitter.TARGET_BAM_SIZE = "1.5M";
@@ -140,13 +140,14 @@ public class SplitBamByCellTest {
         for (File f : splitBAMFileList) {
             f.deleteOnExit();
         }
+        final File previousOutputTemplate = bamSplitter.OUTPUT;
 
         // It should fail since OVERWRITE_EXISTING is false
         boolean exceptionThrown = false;
         try {
             bamSplitter = new SplitBamByCell();
             bamSplitter.INPUT = Collections.singletonList(inputBam);
-            bamSplitter.OUTPUT = new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
+            bamSplitter.OUTPUT = previousOutputTemplate;
             bamSplitter.OUTPUT_LIST = outputBAMList;
             bamSplitter.DELETE_INPUTS = false;
             bamSplitter.TARGET_BAM_SIZE = "2M";
@@ -160,7 +161,7 @@ public class SplitBamByCellTest {
         // Now it should overwrite the output BAM files and then delete the input BAM
         bamSplitter = new SplitBamByCell();
         bamSplitter.INPUT = Collections.singletonList(inputBam);
-        bamSplitter.OUTPUT = new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
+        bamSplitter.OUTPUT = previousOutputTemplate;
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.REPORT = reportFile;
         bamSplitter.DELETE_INPUTS = false;
@@ -204,7 +205,7 @@ public class SplitBamByCellTest {
         File mergedOutputBAM = TestUtils.getTempReportFile("SplitBamByCell.", ".sam");
 
         bamSplitter.INPUT= Collections.singletonList(QUERYNAME_SORTED_BAM);
-        bamSplitter.OUTPUT=new File("SplitBamByCell." + bamSplitter.OUTPUT_SLUG + ".bam");
+        bamSplitter.OUTPUT=TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST= TestUtils.getTempReportFile("SplitBamByCell.", ".list");
         bamSplitter.NUM_OUTPUTS = 3;
         bamSplitter.DELETE_INPUTS = false;
@@ -254,7 +255,7 @@ public class SplitBamByCellTest {
         bamSplitter.DELETE_INPUTS = true;
         TestUtils.setInflaterDeflaterIfMacOs();
         Assert.assertEquals(bamSplitter.doWork(), 0);
-        List<File> outputFiles = Arrays.asList(tempDir.listFiles());
+        List<File> outputFiles = Arrays.asList(tempDir.listFiles((dir, name) -> !name.startsWith(".nfs")));
         outputFiles.forEach(File::deleteOnExit);
         final Set<String> outputFileNames = outputFiles.stream().map(File::getName).collect(Collectors.toSet());
         Reporter.log(String.format("Files found: %s", StringUtil.join(", ", outputFileNames)), true);
