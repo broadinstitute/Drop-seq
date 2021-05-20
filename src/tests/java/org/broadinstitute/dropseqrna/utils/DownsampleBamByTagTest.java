@@ -40,6 +40,7 @@ public class DownsampleBamByTagTest {
     private static final File TESTDATA_DIR = new File("testdata/org/broadinstitute/dropseq/utils");
     private static final File ALIGNED_UNPAIRED_BAM = new File(TESTDATA_DIR, "N701_small.bam");
     private static final String TAG = "XC";
+    private static final File ALIGNED_PAIRED_BAM = new File(TESTDATA_DIR, "d0GRIA3_A.multi_organism.MOUSE.census.paired.bam");
 
     // TODO: paired test
 
@@ -119,5 +120,18 @@ public class DownsampleBamByTagTest {
             out.println(StringUtil.join("\t", tagValue, desiredCounts.getCountForKey(tagValue)));
         }
         out.close();
+    }
+
+    // Very rudimentary test -- just runs the code and confirms it doesn't crash.
+    @Test
+    public void testPaired() {
+        final DownsampleBamByTag clp = new DownsampleBamByTag();
+        clp.USE_PROBABILISTIC_STRATEGY = true;
+        clp.PAIRED_READS = true;
+        clp.TAG = "RG";
+        clp.NUM_READS = 10;
+        clp.INPUT = ALIGNED_PAIRED_BAM;
+        clp.OUTPUT = TestUtils.getTempReportFile("testPaired.", ".sam");
+        Assert.assertEquals(clp.doWork(), 0);
     }
 }
