@@ -237,9 +237,16 @@ public class SplitBamByCellTest {
         final File inputFile = new File(tempDir, TEST_BAM.getName());
         inputFile.deleteOnExit(); // Shouldn't be necessary, because DELETE_INPUTS==true
         IOUtil.copyFile(TEST_BAM, inputFile);
+        final File symlink1 = new File(tempDir, "symlink1" + SplitBamByCell.BAM_EXTENSION);
+        Files.createSymbolicLink(symlink1.toPath(), inputFile.toPath());
+        symlink1.deleteOnExit();
+        final String symlinkBasename = "symlink";
+        final File inputSymlink = new File(tempDir, symlinkBasename + SplitBamByCell.BAM_EXTENSION);
+        Files.createSymbolicLink(inputSymlink.toPath(), symlink1.toPath());
+        inputSymlink.deleteOnExit();
         final SplitBamByCell bamSplitter = new SplitBamByCell();
 
-        bamSplitter.INPUT= Collections.singletonList(inputFile);
+        bamSplitter.INPUT= Collections.singletonList(inputSymlink);
         final int NUM_OUTPUTS = 3;
         bamSplitter.NUM_OUTPUTS = NUM_OUTPUTS;
         bamSplitter.DELETE_INPUTS = true;
@@ -249,8 +256,6 @@ public class SplitBamByCellTest {
         outputFiles.forEach(File::deleteOnExit);
         final Set<String> outputFileNames = outputFiles.stream().map(File::getName).collect(Collectors.toSet());
 
-        String basename = inputFile.getName();
-        basename = basename.substring(0, basename.length() - SplitBamByCell.BAM_EXTENSION.length());
         final List<String> expectedExtensions = new ArrayList<>(Arrays.asList(SplitBamByCell.BAM_LIST_EXTENSION, SplitBamByCell.BAM_REPORT_EXTENSION));
         for (int i = 0; i < NUM_OUTPUTS; ++i) {
             expectedExtensions.add("." + i + SplitBamByCell.BAM_EXTENSION);
@@ -259,7 +264,7 @@ public class SplitBamByCellTest {
         Assert.assertEquals(expectedExtensions.size(), outputFiles.size());
         for (final String expectedExtension: expectedExtensions) {
             Assert.assertTrue("Test presence of " + expectedExtension,
-                    outputFileNames.contains(basename + expectedExtension));
+                    outputFileNames.contains(symlinkBasename + expectedExtension));
         }
     }
 }
