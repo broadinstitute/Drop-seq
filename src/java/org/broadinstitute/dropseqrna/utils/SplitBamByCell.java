@@ -33,10 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
 import org.apache.commons.math3.stat.StatUtils;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -102,6 +99,9 @@ public class SplitBamByCell extends CommandLineProgram {
     @Argument(optional=true, shortName="D", doc="Delete input BAM(s) after splitting them. Default: delete input BAM(s).")
     public boolean DELETE_INPUTS = true;
 
+    @Argument(optional = true, shortName = "DI", doc="Delete BAM indices corresponding to input BAMs.  Default: DELETE_INPUTS setting.")
+    public Boolean DELETE_INPUT_INDICES;
+
     private SAMFileWriterFactory samWriterFactory = null;
 
     static final String BAM_EXTENSION = ".bam";
@@ -137,10 +137,23 @@ public class SplitBamByCell extends CommandLineProgram {
             setDefaultOutput();
         }
 
+        if (DELETE_INPUT_INDICES == null) {
+            DELETE_INPUT_INDICES = DELETE_INPUTS;
+        }
+
         // Check that input BAM files can be deleted
         if (DELETE_INPUTS) {
             for (File bamFile : INPUT) {
                 IOUtil.assertFileIsWritable(bamFile);
+            }
+        }
+
+        if (DELETE_INPUT_INDICES) {
+            for (File bamFile : INPUT) {
+                final File index = SamFiles.findIndex(bamFile);
+                if (index != null && index.exists()) {
+                    IOUtil.assertFileIsWritable(index);
+                }
             }
         }
 
@@ -160,8 +173,9 @@ public class SplitBamByCell extends CommandLineProgram {
         writeReport(writerInfoList);
 
         if (DELETE_INPUTS) {
-            deleteInputBamFiles();
+            deleteInputBamFiles(DELETE_INPUT_INDICES);
         }
+
 
         return 0;
     }
@@ -354,26 +368,49 @@ public class SplitBamByCell extends CommandLineProgram {
         out.close();
     }
 
-    private void deleteInputBamFiles() {
+    private void maybeDeleteIndex(final Path bam) {
+        if (DELETE_INPUT_INDICES) {
+            final Path index = SamFiles.findIndex(bam);
+            if (index != null && index.toFile().exists()) {
+                try {
+                    Files.delete(index);
+                } catch (IOException e) {
+                    log.error("Index file " + index.toAbsolutePath() + " could not be deleted.");
+                }
+            }
+        }
+    }
+
+    private void maybeDeleteBamFile(final Path bam) {
+        maybeDeleteIndex(bam);
+        if (DELETE_INPUTS) {
+            try {
+                Files.delete(bam);
+            } catch (IOException e) {
+                if (Files.isSymbolicLink(bam)) {
+                    // Delete symlink, but don't fail if there is a problem
+                    log.error(e, "Symbolic link " + bam.toAbsolutePath() + " could not be deleted");
+                } else {
+                    throw new RuntimeException("Error deleting " + bam, e);
+                }
+            }
+        }
+    }
+
+    private void deleteInputBamFiles(final boolean deleteIndices) {
         for (File bamFile : INPUT) {
             Path bamPath = bamFile.toPath();
             try {
                 while (Files.isSymbolicLink(bamPath)) {
                     Path symlinkPath = bamPath;
                     bamPath = Files.readSymbolicLink(bamPath);
-
-                    // Delete symlink, but don't fail if there is a problem
-                    try {
-                        Files.delete(symlinkPath);
-                    } catch (IOException var4) {
-                        log.error("Symbolic link " + symlinkPath.toAbsolutePath() + " could not be deleted");
-                    }
+                    maybeDeleteBamFile(symlinkPath);
                 }
                 if (!bamPath.isAbsolute()) {
                     bamPath = bamFile.toPath().getParent().resolve(bamPath);
                 }
 
-                Files.delete(bamPath);
+                maybeDeleteBamFile(bamPath);
             } catch (IOException ex) {
                 throw new RuntimeException("Error deleting " + bamPath, ex);
             }

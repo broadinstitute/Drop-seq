@@ -29,6 +29,7 @@ import org.apache.commons.io.FileUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.junit.Assert;
 import org.testng.Reporter;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import picard.analysis.CollectAlignmentSummaryMetrics;
 import picard.sam.MergeSamFiles;
@@ -233,30 +234,55 @@ public class SplitBamByCellTest {
         TestUtils.assertSamRecordsSame(mergedOutputBAM, QUERYNAME_SORTED_BAM);
     }
 
-    @Test
-    public void testDeleteInputsAndDefaultOutputs() throws IOException {
+    @Test(dataProvider = "testDeleteInputsAndDefaultOutputsDataProvider")
+    public void testDeleteInputsAndDefaultOutputs(final Boolean DELETE_INPUT_INDICES, final boolean createIndex) throws IOException {
         final File tempDir = Files.createTempDirectory("SplitBamByCellTest.").toFile();
         tempDir.deleteOnExit();
         final File inputFile = new File(tempDir, TEST_BAM.getName());
         inputFile.deleteOnExit(); // Shouldn't be necessary, because DELETE_INPUTS==true
         IOUtil.copyFile(TEST_BAM, inputFile);
+        final File index;
+        if (createIndex) {
+            index = createBamIndexPath(inputFile);
+            index.createNewFile();
+            index.deleteOnExit();
+        } else {
+            index = null;
+        }
         final File symlink1 = new File(tempDir, "symlink1" + SplitBamByCell.BAM_EXTENSION);
         Files.createSymbolicLink(symlink1.toPath(), inputFile.toPath());
         symlink1.deleteOnExit();
+        final File indexSymlink1;
+        if (createIndex) {
+            indexSymlink1 = createBamIndexPath(symlink1);
+            Files.createSymbolicLink(indexSymlink1.toPath(), index.toPath());
+            indexSymlink1.deleteOnExit();
+        } else {
+            indexSymlink1 = null;
+        }
         final String symlinkBasename = "symlink";
         final File inputSymlink = new File(tempDir, symlinkBasename + SplitBamByCell.BAM_EXTENSION);
         Files.createSymbolicLink(inputSymlink.toPath(), symlink1.toPath());
         inputSymlink.deleteOnExit();
-        final SplitBamByCell bamSplitter = new SplitBamByCell();
+        if (createIndex) {
+            final File indexSymlink = createBamIndexPath(inputSymlink);
+            Files.createSymbolicLink(indexSymlink.toPath(), indexSymlink1.toPath());
+            indexSymlink.deleteOnExit();
+        }
 
+        final SplitBamByCell bamSplitter = new SplitBamByCell();
         bamSplitter.INPUT= Collections.singletonList(inputSymlink);
         final int NUM_OUTPUTS = 3;
         bamSplitter.NUM_OUTPUTS = NUM_OUTPUTS;
         bamSplitter.DELETE_INPUTS = true;
+        bamSplitter.DELETE_INPUT_INDICES = DELETE_INPUT_INDICES;
         TestUtils.setInflaterDeflaterIfMacOs();
         Assert.assertEquals(bamSplitter.doWork(), 0);
         List<File> outputFiles = Arrays.asList(tempDir.listFiles((dir, name) -> !name.startsWith(".nfs")));
         outputFiles.forEach(File::deleteOnExit);
+        if (createIndex && DELETE_INPUT_INDICES != null && !DELETE_INPUT_INDICES) {
+            outputFiles = outputFiles.stream().filter(f -> !f.getName().endsWith(".bai")).collect(Collectors.toList());
+        }
         final Set<String> outputFileNames = outputFiles.stream().map(File::getName).collect(Collectors.toSet());
         Reporter.log(String.format("Files found: %s", StringUtil.join(", ", outputFileNames)), true);
 
@@ -270,5 +296,23 @@ public class SplitBamByCellTest {
             Assert.assertTrue("Test presence of " + expectedExtension,
                     outputFileNames.contains(symlinkBasename + expectedExtension));
         }
+    }
+
+    private static File createBamIndexPath(final File bamPath) {
+        String basename = bamPath.getName();
+        basename = basename.substring(0, basename.length() - 1);
+        return new File(bamPath.getParentFile(), basename + "i");
+    }
+
+    @DataProvider(name = "testDeleteInputsAndDefaultOutputsDataProvider")
+    public Object[][] testDeleteInputsAndDefaultOutputsDataProvider() {
+        return new Object[][] {
+                {true, true},
+                {true, false},
+                {false, true},
+                {false, false},
+                {null, true},
+                {null, false},
+        };
     }
 }
