@@ -81,7 +81,7 @@ public class PolyAWithAdapterFinder implements PolyAFinder {
         if (adapterClipPosition == ClippingUtility.NO_MATCH) {
             adapterClipPosition = readString.length();
         } else if (adapterClipPosition == 0) {
-            return new PolyARun(0, 0, 0);
+            return new PolyARun(0, 0, 0, readBases.length);
         }
         final SimplePolyAFinder.PolyARun ret = getPolyARun(readString, adapterClipPosition);
 
@@ -102,10 +102,13 @@ public class PolyAWithAdapterFinder implements PolyAFinder {
     private PolyAFinder.PolyARun getPolyARun(String readBases, int adapterClipPosition) {
         // Note whether there was actually adapter found, as opposed to just starting at the end of the read.
         final int realAdapterClipPosition;
+        final int adapterLength;
         if (adapterClipPosition < readBases.length() - 1) {
             realAdapterClipPosition = adapterClipPosition;
+            adapterLength = readBases.length() - adapterClipPosition;
         } else {
             realAdapterClipPosition = -1;
+            adapterLength = 0;
         }
 
         final int minPolyABases;
@@ -136,9 +139,10 @@ public class PolyAWithAdapterFinder implements PolyAFinder {
             }
         }
         if (bestErrorRate <= maxPolyAErrorRate && adapterClipPosition - bestPolyARunStart >= minPolyABases) {
-            return new SimplePolyAFinder.PolyARun(bestPolyARunStart, adapterClipPosition - bestPolyARunStart, realAdapterClipPosition);
+            return new SimplePolyAFinder.PolyARun(bestPolyARunStart, adapterClipPosition - bestPolyARunStart,
+                    realAdapterClipPosition, adapterLength);
         } else {
-            return new SimplePolyAFinder.PolyARun(SimplePolyAFinder.NO_MATCH, 0, realAdapterClipPosition);
+            return new SimplePolyAFinder.PolyARun(SimplePolyAFinder.NO_MATCH, 0, realAdapterClipPosition, adapterLength);
         }
 
     }

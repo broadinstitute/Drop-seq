@@ -41,15 +41,17 @@ public interface PolyAFinder {
         public final int length;
         /** 0-based start of adapter, or NO_MATCH if none found */
         public final int adapterStartPos;
+        public final int adapterLength;
 
         public PolyARun(int startPos, int length) {
-            this(startPos, length, -1);
+            this(startPos, length, -1, 0);
         }
 
-        public PolyARun(int startPos, int length, int adapterStartPos) {
+        public PolyARun(int startPos, int length, int adapterStartPos, int adapterLength) {
             this.startPos = startPos;
             this.length = length;
             this.adapterStartPos = adapterStartPos;
+            this.adapterLength = adapterLength;
         }
 
         // Inclusive end position
