@@ -34,7 +34,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Arrays;
+import java.util.Collections;
 
 public class PolyATrimmerTest {
     private static final File TESTDATA_DIR = new File("testdata/org/broadinstitute/dropseq/readtrimming");
@@ -53,7 +53,7 @@ public class PolyATrimmerTest {
             clp.OUTPUT.deleteOnExit();
             clp.OUTPUT_SUMMARY = File.createTempFile("PolyATrimmerTest.", ".summary");
             clp.OUTPUT_SUMMARY.deleteOnExit();
-            clp.TMP_DIR = Arrays.asList(tempDir);
+            clp.TMP_DIR = Collections.singletonList(tempDir);
             tempDir.deleteOnExit();
             clp.MISMATCHES = 0;
             clp.NUM_BASES = 6;
