@@ -76,6 +76,14 @@ public class PolyATrimmer extends CommandLineProgram {
 	@Argument(doc = "The tag to set for trimmed reads.  This tags the first base to exclude in the read.  37 would mean to retain the first 36 bases.")
 	public String TRIM_TAG = "ZP";
 
+	@Argument(doc="Tag in which length of polyA is stored.  Not set if polyA length==0.  Default: do not store the tag.",
+			optional = true)
+	public String LENGTH_TAG;
+
+	@Argument(doc="Tag in which length of adapter is stored.  Not set if adapter length==0.  Default: do not store the tag.",
+			optional = true)
+	public String ADAPTER_TAG;
+
 	@Argument(doc = "Symbolic & literal specification of adapter sequence.  This is a combination of fixed bases to match, "
 			+ " and references to SAMRecord tag values.  "
 			+ "E.g. '~XM^XCACGT' means 'RCed value of XM tag' + 'value of XC tag' + 'ACGT'. "
@@ -148,6 +156,13 @@ public class PolyATrimmer extends CommandLineProgram {
 			}
 
 			hardClipPolyAFromRecord(r, polyAStart);
+			// Note that if there wasn't a polyA run found, then adapter match is not recorded
+			if (LENGTH_TAG != null && polyARun.length > 0 && !polyARun.isNoMatch()) {
+				r.setAttribute(LENGTH_TAG, polyARun.length);
+			}
+			if (ADAPTER_TAG != null && polyARun.adapterLength > 0 && !polyARun.isNoMatch()) {
+				r.setAttribute(ADAPTER_TAG, polyARun.adapterLength);
+			}
 			writer.addAlignment(r);
 			progress.record(r);
 		}
