@@ -221,11 +221,11 @@ public class CensusSeq extends CommandLineProgram {
 
 		CommonSNPsData data = new CommonSNPsData(donorNames);
 
-		VCFPileupJointIterator jointIter = new VCFPileupJointIterator(peekablePileUpIter, vcfIterator, sd);
+		VCFPileupJointIterator<SNPGenomicBasePileUp> jointIter = new VCFPileupJointIterator<>(peekablePileUpIter, vcfIterator, sd);
 		int numSNPsSkipped=0;
 		ObjectCounter<Integer> snpReadDepth = new ObjectCounter<>();
 		while (jointIter.hasNext()) {
-			JointResult jr = jointIter.next();
+			VCFPileupJointIterator<SNPGenomicBasePileUp>.JointResult jr = jointIter.next();
 			int snpNumBases = jr.getPileup().getNumBases();
 			// a bit of a hack.  If the SNP pileup has too many reads, discard it. If parameter not set keep it no matter what.
 			if (this.MAX_READS_PER_SNP==null || snpNumBases<=this.MAX_READS_PER_SNP) {

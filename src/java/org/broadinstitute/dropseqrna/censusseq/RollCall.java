@@ -205,10 +205,10 @@ public class RollCall extends CommandLineProgram {
 		List<SNPSampleRecord> allSNPs = new ArrayList<>();
 		Set<String> donorNames = new HashSet<>();
 
-		VCFPileupJointIterator jointIter = new VCFPileupJointIterator(peekablePileUpIter, vcfIterator, sd);
+		VCFPileupJointIterator<SNPGenomicBasePileUp> jointIter = new VCFPileupJointIterator<>(peekablePileUpIter, vcfIterator, sd);
 
 		while (jointIter.hasNext()) {
-			JointResult jr = jointIter.next();
+			VCFPileupJointIterator<SNPGenomicBasePileUp>.JointResult jr = jointIter.next();
 			SNPSampleRecord r = processPileUp(jr.getVc(), jr.getPileup(), true);
 			donorNames.add(r.getDonorName());
 			addToSummary(summaryResult, r);

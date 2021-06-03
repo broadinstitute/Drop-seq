@@ -36,9 +36,10 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.StringUtil;
 
-public abstract class SNPBasePileUp {
+public abstract class SNPBasePileUp implements Locatable,SNPIntervalRecordI {
 
 	private final Interval snpInterval;
 	private List<Byte> bases;
@@ -54,12 +55,16 @@ public abstract class SNPBasePileUp {
 		return this.snpInterval.getName();
 	}
 
-	public String getChromosome() {
+	public String getContig() {
 		return this.snpInterval.getContig();
 	}
 
-	public int getPosition() {
+	public int getStart() {
 		return this.snpInterval.getStart();
+	}
+	
+	public int getEnd () {
+		return this.snpInterval.getEnd();
 	}
 
 	public Interval getSNPInterval () {
@@ -152,7 +157,7 @@ public abstract class SNPBasePileUp {
 				// get the next alignment block
 				AlignmentBlock b = blocks.next();
 				int refStart = b.getReferenceStart();
-				int snpLocalPos=this.getPosition() - refStart +1;
+				int snpLocalPos=this.getStart() - refStart +1;
 				int blockLength=b.getLength();
 
 				// is the local position inside this alignment block?

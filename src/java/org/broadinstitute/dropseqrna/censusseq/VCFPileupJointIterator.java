@@ -23,25 +23,27 @@
  */
 package org.broadinstitute.dropseqrna.censusseq;
 
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPIntervalRecordI;
+import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
+
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.variant.variantcontext.VariantContext;
 
-import org.broadinstitute.dropseqrna.censusseq.JointIteratorCounter;
-
-public class VCFPileupJointIterator {
+public class VCFPileupJointIterator <T extends SNPIntervalRecordI> {
 
 	private static final Log log = Log.getInstance(VCFPileupJointIterator.class);
 
-	private final PeekableIterator<SNPGenomicBasePileUp> peekablePileUpIter;
+	private final PeekableIterator<T> peekablePileUpIter;
 	private final PeekableIterator<VariantContext> vcfIterator;
 	private final JointIteratorCounter counter;
 
 	private final SAMSequenceDictionary sd;
 	private JointResult next=null;
 
-	public VCFPileupJointIterator (final PeekableIterator<SNPGenomicBasePileUp> peekablePileUpIter,
+	public VCFPileupJointIterator (final PeekableIterator<T> peekablePileUpIter,
 			final PeekableIterator<VariantContext> vcfIterator, final SAMSequenceDictionary sd) {
 		this.peekablePileUpIter=peekablePileUpIter;
 		this.vcfIterator=vcfIterator;
@@ -77,15 +79,15 @@ public class VCFPileupJointIterator {
 		// 	log.info("Processed [" + counter.BOTH + "] SNPs in BAM + VCF");
 		
 		while (vcfIterator.hasNext() && peekablePileUpIter.hasNext()) {
-			SNPGenomicBasePileUp pileUp = peekablePileUpIter.peek();
+			T pileUp = peekablePileUpIter.peek();
 			// only have to compare the first record.
-			int cmp = CensusSeqUtils.compareRecords(pileUp, vcfIterator.peek(), sd);
+			int cmp = compareRecords(pileUp, vcfIterator.peek(), sd);
 
 			if (cmp < 0) {
 				peekablePileUpIter.next();
 				counter.SAMPLE_GENE_ITER++;
 				// for debugging...we expect that any SNP pileup should have come with a VCF record...
-				cmp = CensusSeqUtils.compareRecords(pileUp, vcfIterator.peek(), sd);
+				cmp = compareRecords(pileUp, vcfIterator.peek(), sd);
 			} else if (cmp > 0) {
 				vcfIterator.next();
 				counter.VCF_ITER++;
@@ -114,6 +116,14 @@ public class VCFPileupJointIterator {
 		}		
 		
 	}
+	
+	public int compareRecords (final T p, final VariantContext vc, final SAMSequenceDictionary dict) {
+		Interval sgpI = p.getSNPInterval();
+		Interval sgpVC = new Interval (vc.getContig(), vc.getStart(), vc.getEnd());
+		int cmp = IntervalTagComparator.compare(sgpI, sgpVC, dict);
+		return cmp;
+	}
+
 
 	public JointIteratorCounter getCounter() {
 		return counter;
@@ -126,17 +136,17 @@ public class VCFPileupJointIterator {
 
 	public class JointResult {
 
-		private final SNPGenomicBasePileUp pileup;
+		private final T pileup;
 		private final VariantContext vc;
 
-		public JointResult (final SNPGenomicBasePileUp pileup, final VariantContext vc) {
-			if ((pileup.getSNPInterval().getStart()!=vc.getStart()) || !pileup.getChromosome().equals(vc.getContig()))
+		public JointResult (final T pileup, final VariantContext vc) {
+			if ((pileup.getSNPInterval().getStart()!=vc.getStart()) || !pileup.getSNPInterval().getContig().equals(vc.getContig()))
 				log.warn("Pileup and VCF at different positions");
 			this.pileup=pileup;
 			this.vc=vc;
 		}
 
-		public SNPGenomicBasePileUp getPileup() {
+		public T getPileup() {
 			return pileup;
 		}
 
