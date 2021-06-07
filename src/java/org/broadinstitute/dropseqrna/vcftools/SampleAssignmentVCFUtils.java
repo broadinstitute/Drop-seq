@@ -218,6 +218,7 @@ public class SampleAssignmentVCFUtils {
 	/**
 	 * If the set of samples is non-empty, validate how many samples overlap in the VCF file and the set of samples.
 	 * If the intersect set is of size 0, something is very wrong so throw an error.
+	 * If the intersect doesn't find all of the requested samples, something is very wrong so throw an error.
 	 * @param vcfReader The VCF reader
 	 * @param samples A set of strings of sample names expected to be in the VCF.  If this is empty, this operation is a no-op.
 	 */
@@ -230,11 +231,15 @@ public class SampleAssignmentVCFUtils {
 			samplesInVCF = vcfReader.getFileHeader().getSampleNameToOffset().keySet();
 			throw new IllegalArgumentException("Didn't find any of these samples from the VCF:"+samplesInVCF +" in the submitted a list of samples " + samples.toString());
 		}
-
+		
 		if (log!=null) {
 			String msg = "Found " + Integer.toString(samplesInVCF.size()) + " samples in VCF and requested sample list out of " + Integer.toString(samples.size()) + " requested";
 			log.info(msg);
 		}
+				
+		if (samplesInVCF.size()<samples.size())
+			throw new IllegalArgumentException("Did not find all of the requested samples.  Can not continue.");
+
 		List<String> finalSamples = new ArrayList<>();
 		for (String s: samples)
 			if (samplesInVCF.contains(s)) finalSamples.add(s);
