@@ -50,8 +50,7 @@ public class CsiAnalysisTest {
 
 	}
 
-	@Test (enabled=true)
-	//
+	@Test (enabled=true, expectedExceptions= {java.lang.IllegalArgumentException.class})
 	public void testCsiWrongSampleList() throws IOException {
 		CsiAnalysis f = new CsiAnalysis();
 		f.INPUT_BAM = IN_BAM;
