@@ -19,8 +19,6 @@ public class CensusSeqTest {
 	private static final File IN_SAMPLE_LIST = new File("testdata/org/broadinstitute/dropseq/censusseq/10_donors_chr22.selected_sites.donorList.txt");
 	private static final File IN_WRONG_SAMPLE_LIST = new File("testdata/org/broadinstitute/dropseq/censusseq/10_donors_chr22.selected_sites.wrong_donorList.txt");
 
-
-	
 	private static final File OUT_CENSUS = new File("testdata/org/broadinstitute/dropseq/censusseq/10_donors_chr22.selected_sites.census.txt");
 	private static final File OUT_CENSUS_SNP_HISTOGRAM = new File("testdata/org/broadinstitute/dropseq/censusseq/10_donors_chr22.selected_sites.census.snp_histogram.txt");
 	
@@ -74,7 +72,7 @@ public class CensusSeqTest {
 		Assert.assertTrue(ret==0);
 	}
 
-	@Test
+	@Test(expectedExceptions= {java.lang.IllegalArgumentException.class})
 	public void testCensusWrongSampleFile() throws IOException {
 		CensusSeq f = new CensusSeq();
 		f.INPUT_BAM=IN_BAM;
