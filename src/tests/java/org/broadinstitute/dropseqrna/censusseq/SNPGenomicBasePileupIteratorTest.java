@@ -23,23 +23,19 @@
  */
 package org.broadinstitute.dropseqrna.censusseq;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import org.broadinstitute.dropseqrna.censusseq.SNPGenomicBasePileUp;
-import org.broadinstitute.dropseqrna.censusseq.SNPGenomicBasePileupIterator;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class SNPGenomicBasePileupIteratorTest {
 
@@ -51,12 +47,12 @@ public class SNPGenomicBasePileupIteratorTest {
 	 * Read 4 will be unpaired A
 	 * Read 5 will not overlap the SNP.
 	 */
-	private static final List<File> smallBAMFile = new ArrayList<File> (Collections.singletonList(new File(
+	private static final List<File> smallBAMFile = new ArrayList<>(Collections.singletonList(new File(
 			TESTDATA_DIR, "genomic_pileup_test.sam")));
 
-	@Test(enabled=true)
+	@Test
 	public void testAllReadsPileup() {
-		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.smallBAMFile, false, SamReaderFactory.makeDefault());
+		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(smallBAMFile, false, SamReaderFactory.makeDefault());
 		int snpPos=23816120;
 		Interval snpInterval = new Interval("1", snpPos, snpPos, true, "test");
 		IntervalList intervalList = new IntervalList(headerAndIter.header);
@@ -69,29 +65,29 @@ public class SNPGenomicBasePileupIteratorTest {
 		// test bases.
 		List<Character> bases = p.getBasesAsCharacters();
 		List<Character> expectedBases = new ArrayList<>();
-		expectedBases.add(new Character ('T'));
-		expectedBases.add(new Character ('T'));
-		expectedBases.add(new Character ('A'));
+		expectedBases.add('T');
+		expectedBases.add('T');
+		expectedBases.add('A');
 		Assert.assertEquals(bases, expectedBases);
 
 		// test qualities
 		List<Byte> quals = p.getQualities();
 		List<Byte> expectedQuals = new ArrayList<>();
-		expectedQuals.add(new Byte ((byte)30));
-		expectedQuals.add(new Byte ((byte)28));
-		expectedQuals.add(new Byte ((byte)28));
+		expectedQuals.add((byte) 30);
+		expectedQuals.add((byte) 28);
+		expectedQuals.add((byte) 28);
 		Assert.assertEquals(quals, expectedQuals);
 
 		// test checking for next object (there isn't any) then grabbing it and receiving a null return.
 		Assert.assertFalse(snpIter.hasNext());
-		Assert.assertTrue(snpIter.next()==null);
+		Assert.assertNull(snpIter.next());
 
 		snpIter.close();
 	}
 
 	@Test (expectedExceptions=UnsupportedOperationException.class)
 	public void testRemove () {
-		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.smallBAMFile, false, SamReaderFactory.makeDefault());
+		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(smallBAMFile, false, SamReaderFactory.makeDefault());
 		int snpPos=23816120;
 		Interval snpInterval = new Interval("1", snpPos, snpPos, true, "test");
 		IntervalList intervalList = new IntervalList(headerAndIter.header);
@@ -101,12 +97,12 @@ public class SNPGenomicBasePileupIteratorTest {
 		snpIter.remove();
 	}
 
-	private static final List<File> softClipBAMFile = new ArrayList<File> (Collections.singletonList(new File(
+	private static final List<File> softClipBAMFile = new ArrayList<>(Collections.singletonList(new File(
 			TESTDATA_DIR, "softclip_pileup_test.sam")));
 
 	@Test(dataProvider = "testSoftClipPileupDataProvider")
 	public void testSoftClipPileup(final String testCase, final int snpPos, final int expectedNumBases) {
-		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.softClipBAMFile, false, SamReaderFactory.makeDefault());
+		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(softClipBAMFile, false, SamReaderFactory.makeDefault());
 		Interval snpInterval = new Interval("chr1", snpPos, snpPos, true, "test");
 		IntervalList intervalList = new IntervalList(headerAndIter.header);
 		intervalList.add(snpInterval);
@@ -115,6 +111,11 @@ public class SNPGenomicBasePileupIteratorTest {
 		// there's just 1 pileup.
 		SNPGenomicBasePileUp p = snpIter.next();
 		Assert.assertEquals(p.getBases().size(), expectedNumBases);
+
+		// Make sure no surprises lurking
+		Assert.assertFalse(snpIter.hasNext());
+		Assert.assertNull(snpIter.next());
+		snpIter.close();
 
 	}
 
