@@ -33,6 +33,7 @@ import org.broadinstitute.dropseqrna.censusseq.SNPGenomicBasePileupIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.SamReader;
@@ -42,6 +43,7 @@ import htsjdk.samtools.util.IntervalList;
 
 public class SNPGenomicBasePileupIteratorTest {
 
+	private static final File TESTDATA_DIR = new File("testdata/org/broadinstitute/dropseq/censusseq");
 	/**
 	 * Read pair 1 will be mismatched at the SNP with A/T
 	 * Read pair 2 will be matched at the SNP with the best base quality being 30
@@ -49,8 +51,8 @@ public class SNPGenomicBasePileupIteratorTest {
 	 * Read 4 will be unpaired A
 	 * Read 5 will not overlap the SNP.
 	 */
-	private final List<File> smallBAMFile = new ArrayList<File> (Collections.singletonList(new File(
-			"testdata/org/broadinstitute/dropseq/censusseq/genomic_pileup_test.sam")));
+	private static final List<File> smallBAMFile = new ArrayList<File> (Collections.singletonList(new File(
+			TESTDATA_DIR, "genomic_pileup_test.sam")));
 
 	@Test(enabled=true)
 	public void testAllReadsPileup() {
@@ -97,5 +99,30 @@ public class SNPGenomicBasePileupIteratorTest {
 		SNPGenomicBasePileupIterator snpIter = new SNPGenomicBasePileupIterator(headerAndIter, intervalList, "ZS", 10, null, null);
 
 		snpIter.remove();
+	}
+
+	private static final List<File> softClipBAMFile = new ArrayList<File> (Collections.singletonList(new File(
+			TESTDATA_DIR, "softclip_pileup_test.sam")));
+
+	@Test(dataProvider = "testSoftClipPileupDataProvider")
+	public void testSoftClipPileup(final String testCase, final int snpPos, final int expectedNumBases) {
+		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.softClipBAMFile, false, SamReaderFactory.makeDefault());
+		Interval snpInterval = new Interval("chr1", snpPos, snpPos, true, "test");
+		IntervalList intervalList = new IntervalList(headerAndIter.header);
+		intervalList.add(snpInterval);
+		SNPGenomicBasePileupIterator snpIter = new SNPGenomicBasePileupIterator(headerAndIter, intervalList, "ZS", 10, null, null);
+
+		// there's just 1 pileup.
+		SNPGenomicBasePileUp p = snpIter.next();
+		Assert.assertEquals(p.getBases().size(), expectedNumBases);
+
+	}
+
+	@DataProvider(name = "testSoftClipPileupDataProvider")
+	public Object[][] testSoftClipPileupDataProvider() {
+		return new Object[][] {
+				{"shared region", 75205085, 2},
+				{"one read soft-clipped", 75205185, 1}
+		};
 	}
 }
