@@ -1,0 +1,28 @@
+@HD	VN:1.6	SO:coordinate
+@SQ	SN:chr1	LN:210400635	AS:3	M5:e99a39d7d637a7eb25f8450be0c347ac	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr10	LN:132174527	AS:3	M5:4d457ec3e78e9b3b2341869cf95bb938	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr11	LN:130397257	AS:3	M5:6dc84e8a3675a16b4bffa84a181e2bc5	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr12	LN:121768101	AS:3	M5:9a9ea99b735dbb78d2c1c525af02c59c	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr13	LN:117903854	AS:3	M5:db1a25ca7fde10239418f45c4cf8ffdc	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr14	LN:108792865	AS:3	M5:37881b7c1a7416f8a6ec8b29ec8bfdda	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr15	LN:98464013	AS:3	M5:34d69befdb78413dbb3b89e2ed4b5725	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr16	LN:96796970	AS:3	M5:e1240b03ac702c12a15f49b70fed28eb	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr17	LN:74750902	AS:3	M5:65aaa4b4ceea6bd619b6e07ea418517a	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr18	LN:47448759	AS:3	M5:6334da0b949e810fc96a8db3fae16a3f	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr19	LN:49578535	AS:3	M5:2656663e83d1942474608443422c1be1	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr2	LN:204313951	AS:3	M5:ced4715b8dc80fc1ab085b52434ba7b2	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr20	LN:44557958	AS:3	M5:ece6377beb831aa8cac0ba38d9ce76e2	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr21	LN:50472720	AS:3	M5:effb7757b34201c9d1947e726e74597f	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr22	LN:49145316	AS:3	M5:0351f34da1309d7dad924015c41a7448	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr3	LN:190850796	AS:3	M5:885fe9f011b51705c1823c3db2a289dc	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr4	LN:171630274	AS:3	M5:cd2beb20f45ee97b558b9ddfd3d20087	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr5	LN:159171411	AS:3	M5:7eaf2a890abd1309b992a010b10435f4	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr6	LN:158406734	AS:3	M5:b35f9cbc91fb16577b24a89d5b8f9dc3	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr7	LN:155834243	AS:3	M5:9d2252bde712c4f3e70d9ce8a73897e0	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr8	LN:128169293	AS:3	M5:848cc0bb0037aaa90365a6cb0a0338d1	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chr9	LN:124281992	AS:3	M5:f43389e355939a3528fdef258a927741	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chrX	LN:142054208	AS:3	M5:ae53308414a06a68ddbc9015c07e0e77	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@SQ	SN:chrY	LN:2853901	AS:3	M5:430ce94c6cc84abfb45b5be66d98a2b9	UR:/seq/references/Callithrix_jacchus/v0/Callithrix_jacchus.fasta	SP:Callithrix jacchus
+@RG	ID:HCYLH.1	SM:CashewHair	LB:CashewHair	PL:ILLUMINA	PU:HCYLHDRXY210520.1.CGTACTAG	CN:BI	DT:2021-05-20T00:00:00-0400
+clipped	0	chr1	75205085	60	70M80S	*	0	0	CACAAAACACCTCAGGGCTGTGCACCAGAAAACTAGGGGAAGACCATCTGCGCCAAAGCCTGCTGAAATGCTGTCTCTTATACACATCTGACGCTGCCGACGATATGCAGTGTGTAGATCTCGGTGGTCGCCGTATCATTAAAAAGGGGG	FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FFFFFFFFFF:FFFFFFFFFFFFFFFFF,:FFFFFFFFFFFFFFFFFFFFFFFFFFF,::FF::FFF,:,FFFF	MC:Z:80S70M	MD:Z:70	PG:Z:MarkDuplicates	RG:Z:HCYLH.1	NM:i:0	MQ:i:60	UQ:i:0	AS:i:70	XT:i:71	ZS:Z:Genea48_P8_150110
+unclipped	0	chr1	75205085	60	150M	*	0	0	CACAAAACACCTCAGGGCTGTGCACCAGAAAACTAGGGGAAGACCATCTGCGCCAAAGCCTGCTGAAATGCTGTCTCTTATACACATCTGACGCTGCCGACGATATGCAGTGTGTAGATCTCGGTGGTCGCCGTATCATTAAAAAGGGGG	FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FFFFFFFFFF:FFFFFFFFFFFFFFFFF,:FFFFFFFFFFFFFFFFFFFFFFFFFFF,::FF::FFF,:,FFFF	MC:Z:80S70M	MD:Z:70	PG:Z:MarkDuplicates	RG:Z:HCYLH.1	NM:i:0	MQ:i:60	UQ:i:0	AS:i:70	XT:i:71	ZS:Z:Genea48_P8_150110
