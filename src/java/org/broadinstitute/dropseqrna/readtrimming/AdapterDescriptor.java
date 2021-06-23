@@ -31,8 +31,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AdapterDescriptor {
-    /** RCed molecular barcode, RCed cell barcode, plus fixed adapter sequence */
-    public static String DEFAULT_ADAPTER= "~XM~XCACGTACTCTGCGTTGCTACCACTG";
+    /**
+     * RCed molecular barcode, RCed cell barcode.  Note that there is fixed sequence that follows the
+     * indices, but it is different for 10X and Drop-seq chemistries, so using the indices as the adapter
+     * should be sufficient, and is independent of chemistry.
+     */
+    public static String DEFAULT_ADAPTER= "~XM~XC";
 
     interface AdapterElement {
         String getSequence(SAMRecord rec);
