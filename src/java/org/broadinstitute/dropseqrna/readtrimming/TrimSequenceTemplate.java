@@ -125,7 +125,7 @@ public class TrimSequenceTemplate {
             	int idx=i+start;
             	//char base = (char)this.bases[idx];
             	//char readBase = (char) read[i];
-                if (!SequenceUtil.isNoCall(this.bases[i]) && !SequenceUtil.basesEqual(this.bases[idx], read[i]))
+                if (!SequenceUtil.isNoCall(this.bases[idx]) && !SequenceUtil.basesEqual(this.bases[idx], read[i]))
 					if (++mismatches > mismatchesAllowed) continue READ_LOOP;
             }
             // If we got this far without breaking out, then it matches.  Make sure it matches at least the min run of bases to return a result.
