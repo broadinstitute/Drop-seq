@@ -159,7 +159,7 @@ public class TrimStartingSequence extends CommandLineProgram {
 		int firstBaseToKeep = (templateLength - templatePosition);
 		this.numBasesTrimmed.increment(firstBaseToKeep);
 
-		if (templateLength>=readLength) {
+		if (firstBaseToKeep>=readLength) {
 			// attempt a work around for reads that would be 0 length after trimming.
 			// instead of trimming the barcode to a 0 length read, set the base qualities to be low.
 			byte [] value= new byte [readLength];
