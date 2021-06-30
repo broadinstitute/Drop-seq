@@ -23,28 +23,25 @@
  */
 package org.broadinstitute.dropseqrna.readtrimming;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordIterator;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
+import com.google.common.base.Strings;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloserUtil;
+import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 
 public class TrimStartingSequenceTest {
     private static final File INPUT = new File("testdata/org/broadinstitute/dropseq/readtrimming/N701.subset.tagged_filtered.sam");
     @Test
-    public void testTrimStartingSequenceClp() throws IOException {
+    public void testTrimStartingSequenceClp() {
         final TrimStartingSequence clp = new TrimStartingSequence();
         clp.INPUT = INPUT;
-        clp.OUTPUT = File.createTempFile("TrimStartingSequenceTest.", ".sam");
-        clp.OUTPUT.deleteOnExit();
-        clp.OUTPUT_SUMMARY = File.createTempFile("TrimStartingSequenceTest.", ".summary");
-        clp.OUTPUT_SUMMARY.deleteOnExit();
+        clp.OUTPUT = TestUtils.getTempReportFile("TrimStartingSequenceTest.", ".sam");
+        clp.OUTPUT_SUMMARY = TestUtils.getTempReportFile("TrimStartingSequenceTest.", ".summary");
         clp.SEQUENCE = "AAGCAGTGGTATCAACGCAGAGTGAATGGG";
         clp.MISMATCHES=0;
         clp.NUM_BASES=5;
@@ -65,5 +62,70 @@ public class TrimStartingSequenceTest {
         }
         Assert.assertFalse(outputIterator.hasNext());
         CloserUtil.close(Arrays.asList(outputReader, inputReader));
+    }
+
+    /**
+     * @param expectedResult 0: fully trimmed, i.e. bases unchanged but all Q2
+     *                       -1: not trimmed
+     *                       positive: trimmed this amount
+     */
+    @Test(dataProvider = "testTrimStartingSequenceDataProvider")
+    public void testTrimStartingSequence(
+            final String testName,
+            final String read,
+            final String adapter,
+            final int maxMismatches,
+            final int minMatchLength,
+            final int expectedResult) {
+        final TrimStartingSequence clp = new TrimStartingSequence();
+        clp.INPUT = TestUtils.getTempReportFile("testTrimStartingSequence.input.", ".sam");
+        clp.OUTPUT = TestUtils.getTempReportFile("testTrimStartingSequence.trimmed.", ".sam");
+        clp.OUTPUT_SUMMARY = TestUtils.getTempReportFile("testTrimStartingSequence.", ".summary.txt");
+        clp.SEQUENCE = adapter;
+        clp.MISMATCHES = maxMismatches;
+        clp.NUM_BASES = minMatchLength;
+        SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(new SAMFileHeader(), false, clp.INPUT);
+        final SAMRecord rawRec = new SAMRecord(writer.getFileHeader());
+        rawRec.setReadName("trim.test.read");
+        rawRec.setReadString(read);
+        rawRec.setReadUnmappedFlag(true);
+        rawRec.setBaseQualityString(Strings.repeat("H", read.length()));
+        writer.addAlignment(rawRec);
+        writer.close();
+        Assert.assertEquals(clp.doWork(), 0);
+        SamReader samReader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
+        final SAMRecord trimmedRec = samReader.iterator().next();
+        CloserUtil.close(samReader);
+        if (expectedResult == 0) {
+            // Fully trimmed, so instead of trimming, just set all bases to Q3
+            Assert.assertEquals(trimmedRec.getReadLength(), read.length());
+            Assert.assertEquals(trimmedRec.getBaseQualityString(), Strings.repeat("$", read.length()));
+            Assert.assertNull(trimmedRec.getAttribute(clp.TRIM_TAG));
+        } else if (expectedResult == -1) {
+            // Not trimmed
+            Assert.assertEquals(trimmedRec.getReadLength(), read.length());
+            Assert.assertEquals(trimmedRec.getBaseQualityString(), rawRec.getBaseQualityString());
+            Assert.assertNull(trimmedRec.getAttribute(clp.TRIM_TAG));
+        } else {
+            // trimmed
+            Assert.assertEquals(trimmedRec.getReadLength(), read.length() - expectedResult);
+            Assert.assertEquals(trimmedRec.getIntegerAttribute(clp.TRIM_TAG).intValue(), expectedResult);
+        }
+    }
+
+    @DataProvider(name = "testTrimStartingSequenceDataProvider")
+    public Object[][] testTrimStartingSequenceDataProvider() {
+        return new Object[][] {
+                // test name, read, adapter, maxMismatches, minMatchLength, expectedResult
+                {"basic exact match", "ACGTAAAACCCC", "ACGT", 0, 4, 4},
+                {"mismatch no match", "AGGTAAAACCCC", "ACGT", 0, 4, -1},
+                {"mismatch allowed", "AGGTAAAACCC", "ACGT", 1, 3, 4},
+                {"too short no match", "ACGTAAAACCCC", "AAAACGT", 0, 5, -1},
+                {"partial match", "ACGTAAAACCCC", "AAAACGT", 0, 4, 4},
+                {"full trim exact match", "AAAAAGGGACGT", "AAAAAGGGACGT", 0, 4, 0},
+                {"full trim mismatch allowed", "AAAAAGGGACCT", "AAAAAGGGACGT", 1, 4, 0},
+                {"full trim too many mismatches", "AAAAAGGGACCT", "AAAAAGGGACGT", 0, 4, -1},
+                {"exact match with N", "ACGTAAAACCCC", "ACNT", 0, 4, 4},
+        };
     }
 }
