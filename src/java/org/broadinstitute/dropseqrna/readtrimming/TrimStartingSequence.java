@@ -29,18 +29,21 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 @CommandLineProgramProperties(summary = "Trim the given sequence from the beginning of reads",
         oneLineSummary = "Trim the given sequence from the beginning of reads",
         programGroup = DropSeq.class)
 public class TrimStartingSequence extends CommandLineProgram {
+	public static final String DEFAULT_TRIM_TAG = "ZS";
 	private final Log log = Log.getInstance(TrimStartingSequence.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
@@ -55,21 +58,42 @@ public class TrimStartingSequence extends CommandLineProgram {
 	@Argument(doc="The sequence to look for at the start of reads.")
 	public String SEQUENCE;
 
-	@Argument(doc="How many mismatches are acceptable in the sequence.")
-	public Integer MISMATCHES=0;
+	@Argument(doc="How many mismatches are acceptable in the sequence.  " +
+			"If neither MISMATCHES nor MISMATCH_RATE is specified, default behavior is MISMATCHES=0",
+			optional = true, mutex = {"MISMATCH_RATE"})
+	public Integer MISMATCHES;
 
-	@Argument(doc="How many bases at the begining of the sequence must match before trimming occurs.")
+	@Argument(doc="What fraction of bases the matched sequence can mismatch.  Must be >=0 and <1.  " +
+			"In contrast to MISMATCHES, this matcher will match the full sequence even if it is preceded by something " +
+			"else in the read.",
+			optional = true, mutex = {"MISMATCHES", "LEGACY"})
+	public Double MISMATCH_RATE;
+
+	@Argument(doc="Enable the old trim algorithm (release <= 2.4.0), which did not match if bases precede the sequence, " +
+			"and had bugs if sequence was longer than read length.  ", mutex = {"MISMATCH_RATE", "LENGTH_TAG"})
+	public boolean LEGACY = false;
+
+	@Argument(doc="How many bases at the beginning of the sequence must match before trimming occurs.")
 	public Integer NUM_BASES=0;
 
 	@Argument (doc="The tag to set for trimmed reads.  This tags the first base to keep in the read.  6 would mean to trim the first 5 bases.")
-	public String TRIM_TAG="ZS";
+	public String TRIM_TAG= DEFAULT_TRIM_TAG;
+
+	@Argument(doc="Tag containing the length of sequence matched.  If using MISMATCHES algorithm, this will be the " +
+			"same value as stored in TRIM_TAG.  If using MISMATCH_RATE, full-length sequence will match even if " +
+			"something precedes it, so this may be different than TRIM_TAG value.  Not stored if not set.",
+			optional = true, mutex = {"LEGACY"})
+	public String LENGTH_TAG;
 
 	private Integer readsTrimmed=0;
 	private int numReadsTotal=0;
-	private Histogram<Integer> numBasesTrimmed= new Histogram<Integer>();
+	private final Histogram<Integer> numBasesTrimmed= new Histogram<>();
 
 	@Override
 	protected int doWork() {
+		if (MISMATCHES == null && MISMATCH_RATE == null) {
+			MISMATCHES = 0;
+		}
 
 		IOUtil.assertFileIsReadable(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
@@ -80,14 +104,31 @@ public class TrimStartingSequence extends CommandLineProgram {
 		SamHeaderUtil.addPgRecord(header, this);
         SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(header, true, OUTPUT);
 
-        TrimSequenceTemplate t = new TrimSequenceTemplate(this.SEQUENCE);
+        if (LEGACY) {
+			TrimSequenceTemplate t = new TrimSequenceTemplate(this.SEQUENCE);
 
-        for (SAMRecord r: bamReader) {
-        	SAMRecord rr =  hardClipBarcodeFromRecord(r, t, this.NUM_BASES, this.MISMATCHES);
-        	writer.addAlignment(rr);
-        	progress.record(r);
-        	this.numReadsTotal++;
-        }
+			for (SAMRecord r: bamReader) {
+				SAMRecord rr =  hardClipBarcodeFromRecordLegacy(r, t, this.NUM_BASES, this.MISMATCHES);
+				writer.addAlignment(rr);
+				progress.record(r);
+				this.numReadsTotal++;
+			}
+
+		} else {
+			final StartingSequenceTrimmer trimmer;
+			if (MISMATCHES != null) {
+				trimmer = new FixedMismatchStartingSequenceTrimmer(SEQUENCE, NUM_BASES, MISMATCHES);
+			} else {
+				trimmer = new MismatchRateStartingSequenceTrimmer(SEQUENCE, NUM_BASES, MISMATCH_RATE);
+			}
+
+			for (SAMRecord r : bamReader) {
+				SAMRecord rr = hardClipBarcodeFromRecord(r, trimmer);
+				writer.addAlignment(rr);
+				progress.record(r);
+				this.numReadsTotal++;
+			}
+		}
 
         CloserUtil.close(bamReader);
 
@@ -98,16 +139,25 @@ public class TrimStartingSequence extends CommandLineProgram {
 		return 0;
 	}
 
+	@Override
+	protected String[] customCommandLineValidation() {
+		final ArrayList<String> list = new ArrayList<>(1);
+		if (MISMATCH_RATE != null && (MISMATCH_RATE < 0 || MISMATCH_RATE >= 1)) {
+			list.add("MISMATCH_RATE must be >= 0 and < 1");
+		}
+		return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
+	}
+
 	private void writeSummary (final Histogram<Integer> h) {
 
-		MetricsFile<TrimMetric, Integer> mf = new MetricsFile<TrimMetric, Integer>();
+		MetricsFile<TrimMetric, Integer> mf = new MetricsFile<>();
 		mf.addHistogram(h);
 		TrimMetric tm=new TrimMetric(h);
 		mf.addMetric(tm);
 		mf.write(this.OUTPUT_SUMMARY);
 	}
 
-	public class TrimMetric extends MetricBase {
+	public static class TrimMetric extends MetricBase {
 		public Double mean;
 		public Double stdev;
 
@@ -131,10 +181,49 @@ public class TrimStartingSequence extends CommandLineProgram {
 
 
 
-	// get the length of the template. (41)
-	// get the position in the template. (20) (base 0)
-	// bases to trim = 41-20=21  starting base to keep is 21 (base 0)
 	/**
+	 * Hard clip out a sequence from the start of a record.
+	 * Looks for bases at the start of a read that match part of the template, and removes those bases.
+	 * At least <minMatch> bases at the start of a read must match the template to be trimmed
+	 * Mismatches depends on algorithm selected.
+	 * @param r The read to trim
+	 * @param trimmer Trimming implementation
+	 */
+	SAMRecord hardClipBarcodeFromRecord (final SAMRecord r, final StartingSequenceTrimmer trimmer) {
+		final StartingSequenceTrimmer.TrimResult trimResult = trimmer.trim(r.getReadString());
+		// short circuit if the template wasn't found.
+		if (!trimResult.wasTrim())
+			return (r);
+		this.readsTrimmed++;
+
+		this.numBasesTrimmed.increment(trimResult.endPosition);
+
+		if (trimResult.completelyTrimmed) {
+			// attempt a work around for reads that would be 0 length after trimming.
+			// instead of trimming the barcode to a 0 length read, set the base qualities to be low.
+			byte [] value= new byte [r.getReadLength()];
+			Arrays.fill(value, (byte) 3);
+			r.setBaseQualities(value);
+		} else {
+
+			byte[] read = r.getReadBases();
+			read = Arrays.copyOfRange(read, trimResult.endPosition, read.length);
+			r.setReadBases(read);
+
+			byte[] quality = r.getBaseQualities();
+			quality = Arrays.copyOfRange(quality, trimResult.endPosition, quality.length);
+			r.setBaseQualities(quality);
+			r.setAttribute(this.TRIM_TAG, trimResult.endPosition);
+		}
+		// This tag will be set regardless of whether completely or partially trimmed
+		if (this.LENGTH_TAG != null) {
+			r.setAttribute(this.LENGTH_TAG, trimResult.endPosition - trimResult.startPosition);
+		}
+		return (r);
+	}
+
+	/**
+	 * Old implementation for backward compatibility.
 	 * Hard clip out a sequence from the start of a record.
 	 * Looks for bases at the start of a read that match part of the template, and removes those bases.
 	 * At least <minMatch> bases at the start of a read must match the template to be trimmed
@@ -145,7 +234,7 @@ public class TrimStartingSequence extends CommandLineProgram {
 	 * @param mismatchesAllowed
 	 * @return
 	 */
-	SAMRecord hardClipBarcodeFromRecord (final SAMRecord r, final TrimSequenceTemplate t, final int minMatch, final int mismatchesAllowed) {
+	SAMRecord hardClipBarcodeFromRecordLegacy (final SAMRecord r, final TrimSequenceTemplate t, final int minMatch, final int mismatchesAllowed) {
 		int templateLength= t.getSequence().length();
 		int readLength=r.getReadLength();
 
@@ -159,7 +248,7 @@ public class TrimStartingSequence extends CommandLineProgram {
 		int firstBaseToKeep = (templateLength - templatePosition);
 		this.numBasesTrimmed.increment(firstBaseToKeep);
 
-		if (firstBaseToKeep>=readLength) {
+		if (templateLength>=readLength) {
 			// attempt a work around for reads that would be 0 length after trimming.
 			// instead of trimming the barcode to a 0 length read, set the base qualities to be low.
 			byte [] value= new byte [readLength];
@@ -179,6 +268,7 @@ public class TrimStartingSequence extends CommandLineProgram {
 		r.setAttribute(this.TRIM_TAG, firstBaseToKeep);
 		return (r);
 	}
+
 
 	/** Stock main method. */
 	public static void main(final String[] args) {
