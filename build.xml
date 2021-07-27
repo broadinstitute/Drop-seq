@@ -168,6 +168,10 @@
     	<package-command visibility="public" title="DownsampleBamByTag"/>
     	<package-command visibility="public" title="ValidateAlignedSam"/>
     	<package-command visibility="public" title="FilterBamByGeneFunction"/>
+	
+	<package-command visibility="private" title="TagReadWithRabiesBarcodes"/>
+        <package-command visibility="private" title="FilterValidRabiesBarcodes"/>
+        <package-command visibility="private" title="BipartiteRabiesVirusCollapse"/>
     </target>
 
 
