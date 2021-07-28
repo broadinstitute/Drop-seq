@@ -29,7 +29,6 @@ import java.io.PrintStream;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -43,7 +42,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.cmdline.DropNet;
+import org.broadinstitute.dropseqrna.cmdline.Sbarro;
 import org.broadinstitute.dropseqrna.metrics.UmiSharingMetrics;
 import org.broadinstitute.dropseqrna.metrics.umisharing.ParentEditDistanceMatcher;
 import org.broadinstitute.dropseqrna.metrics.umisharing.ParentEditDistanceMatcher.TagValues;
@@ -79,7 +78,6 @@ import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.Log.LogLevel;
 import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.SortingCollection;
@@ -88,7 +86,7 @@ import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(summary = "Collapse rabies viruses where half the barcode matches within some edit distance, within a cell.",
 oneLineSummary = "CollTapse rabies virus barcodes.)",
-programGroup = DropNet.class)
+programGroup = Sbarro.class)
 public class BipartiteRabiesVirusCollapse extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(BipartiteRabiesVirusCollapse.class);

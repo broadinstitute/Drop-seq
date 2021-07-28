@@ -23,22 +23,27 @@
  */
 package org.broadinstitute.dropseqrna.sbarro;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
+import java.io.File;
 
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.cmdline.DropNet;
+import org.broadinstitute.dropseqrna.cmdline.Sbarro;
 import org.broadinstitute.dropseqrna.utils.BaseRange;
 import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
+
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.File;
 
 /**
  * For a BAM file full of rabies virus tags, subset the BAM into reads that either pass or fail the filter set, then write them into the appropriate BAMs.
@@ -48,7 +53,7 @@ import java.io.File;
 @CommandLineProgramProperties(
         summary = "Filters rabies virus tags into pass/fail BAMs",
         oneLineSummary = "Filters rabies virus tags into pass/fail BAMs",
-        programGroup = DropNet.class)
+        programGroup = Sbarro.class)
 public class FilterValidRabiesBarcodes extends CommandLineProgram {
 
 	private final Log log = Log.getInstance(FilterValidRabiesBarcodes.class);

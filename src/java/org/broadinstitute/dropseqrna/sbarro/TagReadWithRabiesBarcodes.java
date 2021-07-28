@@ -23,13 +23,21 @@
  */
 package org.broadinstitute.dropseqrna.sbarro;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.SAMFileHeader.SortOrder;
-import htsjdk.samtools.util.*;
+import java.io.File;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.cmdline.DropNet;
+import org.broadinstitute.dropseqrna.cmdline.Sbarro;
 import org.broadinstitute.dropseqrna.sbarro.utils.ConsensusSequence;
 import org.broadinstitute.dropseqrna.sbarro.utils.ConsensusSequenceFactory;
 import org.broadinstitute.dropseqrna.sbarro.utils.ExtractBarcodeSequences;
@@ -41,20 +49,28 @@ import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 import org.broadinstitute.dropseqrna.utils.editdistance.LevenshteinDistance;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readpairs.ReadPair;
+
+import htsjdk.samtools.ReservedTagConstants;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.samtools.util.ProgressLogger;
+import htsjdk.samtools.util.StringUtil;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
-
-import java.io.File;
-import java.io.PrintStream;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ForkJoinPool;
-import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
         summary = "Tags an unaligned BAM with rabies virus sequences",
         oneLineSummary = "Tags an unaligned BAM with rabies virus sequences and associated metrics.",
-        programGroup = DropNet.class)
+        programGroup = Sbarro.class)
 
 public class TagReadWithRabiesBarcodes extends CommandLineProgram {
 	private final Log log = Log.getInstance(TagReadWithRabiesBarcodes.class);

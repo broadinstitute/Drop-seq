@@ -25,15 +25,15 @@ package org.broadinstitute.dropseqrna.cmdline;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 
-public class DropNet implements CommandLineProgramGroup {
+public class Sbarro implements CommandLineProgramGroup {
 	@Override
 	public String getName() {
-		return "DropNet Tools";
+		return "Sbarro Tools";
 	}
 
 	@Override
 	public String getDescription() {
-		return "Tools for aligning or analyzing DropNet experiments.";
+		return "Tools for aligning or analyzing Sbarro experiments.";
 	}
 }
 
