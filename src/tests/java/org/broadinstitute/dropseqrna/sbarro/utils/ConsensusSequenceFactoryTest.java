@@ -202,10 +202,12 @@ public class ConsensusSequenceFactoryTest {
 		String bq2  = "";
 
 		ConsensusSequence cs = ConsensusSequenceFactory.getInstance().getConsensusSequence(seq1, seq2, true);
+		/*
 		cs.addReadBaseQualities(bq1, bq2);
 		String result = cs.getConsensusSequence();
 		int ed = cs.getLocalAlignmentEditDistance().getEditDistance();
 		Assert.assertEquals(ed, 0);
+		*/
 	}
 
 

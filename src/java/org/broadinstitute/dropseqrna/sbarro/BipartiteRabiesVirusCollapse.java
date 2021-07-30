@@ -148,7 +148,7 @@ public class BipartiteRabiesVirusCollapse extends CommandLineProgram {
 		// Log.setGlobalLogLevel(LogLevel.WARNING);
 		if (this.NUM_THREADS>1) this.forkJoinPool = new ForkJoinPool(this.NUM_THREADS);
 		IOUtil.assertFileIsReadable(this.INPUT);
-		IOUtil.assertFileIsWritable(this.OUTPUT);
+		IOUtil.assertFileIsWritable(this.OUTPUT); 
 
 		PrintStream outMetrics = null;
 		if (this.REPORT!=null) {

@@ -83,6 +83,9 @@ public class TagReadWithRabiesBarcodes extends CommandLineProgram {
 
 	@Argument(doc="A rather verbose report containing the barcode extraction information for each read.", optional=true)
 	public File REPORT;
+	
+	@Argument (doc="Write a histogram of the number of bases in each rabies barcode below the BASE_QUALITY threshold to this file.", optional=true)
+	public File BASE_QUALITY_REPORT=null;
 
 	@Argument(doc="When there are 2 reads that are paired, generate the consensus of the two reads.")
 	public boolean GENERATE_CONSENSUS=false;
@@ -128,23 +131,12 @@ public class TagReadWithRabiesBarcodes extends CommandLineProgram {
 	@Argument (doc="A tag indicating if the fails base quality metrics.")
 	public String TAG_QUALITY="XQ";
 
-	@Argument (doc="Write a histogram of the number of bases in each rabies barcode below the BASE_QUALITY threshold to this file.", optional=true)
-	public File BASE_QUALITY_REPORT=null;
-
-	@Argument(doc="Number of threads to use.  Defaults to 1.")
-	public int NUM_THREADS=1;
-
 	private ObjectCounter<Integer> failedBaseHistogram;
 	// how many reads are processed to report the result.
 	private int BATCH_REPORT_SIZE=100000;
-
-	private ForkJoinPool forkJoinPool=null;
-
+	
 	@Override
 	protected int doWork() {
-		if (this.NUM_THREADS>1) this.forkJoinPool = new ForkJoinPool(this.NUM_THREADS);
-		if (this.NUM_THREADS>1 & this.GENERATE_CONSENSUS) log.warn("Consensus generating process not yet multi-threaded.");
-
 		IOUtil.assertFileIsReadable(this.INPUT);
 		IOUtil.assertFileIsWritable(this.OUTPUT);
 		if (BASE_QUALITY_REPORT!=null) IOUtil.assertFileIsWritable(this.BASE_QUALITY_REPORT);
@@ -177,8 +169,7 @@ public class TagReadWithRabiesBarcodes extends CommandLineProgram {
 		}
 		else {
 			SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(header, true, OUTPUT);
-			processMultiThreaded (reader, writer, extractor, reportOut, this.BASE_QUALITY, this.TAG_QUALITY, this.NUM_BASES_BELOW_QUALITY, this.NUM_THREADS);
-			//
+			processSingleThreaded (reader, writer, extractor, reportOut, this.BASE_QUALITY, this.TAG_QUALITY, this.NUM_BASES_BELOW_QUALITY);
 		}
 
 		if (this.BASE_QUALITY_REPORT!=null) writeBaseQualityReport(this.failedBaseHistogram, this.BASE_QUALITY_REPORT);
@@ -209,6 +200,7 @@ public class TagReadWithRabiesBarcodes extends CommandLineProgram {
 	 * @param baseQualityTagName
 	 * @param numBasesBelowQuality
 	 */
+	/*
 	private void processMultiThreaded (final SamReader reader, final SAMFileWriter writer, final ExtractBarcodeSequences extractor,
 			final PrintStream reportOut, final int baseQualityThreshold, final String baseQualityTagName, final int numBasesBelowQuality, final int numThreads) {
 
@@ -241,7 +233,8 @@ public class TagReadWithRabiesBarcodes extends CommandLineProgram {
 		CloserUtil.close(reportOut);
 
 	}
-
+	
+	
 	private List<SAMRecord> getBatch (final Iterator<SAMRecord> iter, final int batchSize, final ProgressLogger pl) {
 		List<SAMRecord> recs = new ArrayList<>();
 		int count=0;
@@ -254,7 +247,8 @@ public class TagReadWithRabiesBarcodes extends CommandLineProgram {
 		return recs;
 
 	}
-
+	*/
+	
 	private void processSingleThreaded (final SamReader reader, final SAMFileWriter writer, final ExtractBarcodeSequences extractor, final PrintStream reportOut, final int baseQualityThreshold, final String baseQualityTagName, final int numBasesBelowQuality) {
 		PeekableIterator<SAMRecord> iter = new PeekableIterator<>(reader.iterator());
 
@@ -271,7 +265,7 @@ public class TagReadWithRabiesBarcodes extends CommandLineProgram {
 					r2=iter.next();
 					pl.record(r2);
 					r1=processReadPair(r1,r2, extractor, this.BAM_TAG_LIST, reportOut);
-					writer.addAlignment(r1);
+					writer.addAlignment(r1); 
 					writer.addAlignment(r2);
 				}
 				else { // only write out the single read if not paired.
@@ -516,72 +510,6 @@ public class TagReadWithRabiesBarcodes extends CommandLineProgram {
 		return r1;
 	}
 
-	/**
-	 * Remove all the paired flag info from a read.
-	 * @param read
-	 * @return
-	 */
-	/*
-	private SAMRecord makeReadUnpaired (final SAMRecord read) {
-		int flag =read.getFlags();
-		if (read.getMateUnmappedFlag()) flag-=8;
-		if (read.getMateNegativeStrandFlag()) flag-=32;
-		if (read.getReadPairedFlag()) flag-=1;
-		if (read.getFirstOfPairFlag()) flag-=64;
-		if (read.getSecondOfPairFlag()) flag-=128;
-		read.setFlags(flag);
-		return read;
-	}
-
-
-	private class TagResultPaired {
-		private final SAMRecord r1;
-		private final SAMRecord r2;
-		private final ConsensusSequence consensus;
-		private final ExtractedSequenceGroup g;
-
-		public TagResultPaired (final SAMRecord r1, final SAMRecord r2, final ConsensusSequence consensus, final ExtractedSequenceGroup g) {
-			this.r1=r1;
-			this.r2=r2;
-			this.consensus=consensus;
-			this.g= g;
-		}
-
-		public SAMRecord getRead1() {
-			return r1;
-		}
-
-		public SAMRecord getRead2() {
-			return r2;
-		}
-
-		public ConsensusSequence getConsensus() {
-			return consensus;
-		}
-
-		public ExtractedSequenceGroup getExtractedSequenceGroup() {
-			return g;
-		}
-	}
-	/**
-	 * Open up the BAM briefly, test if the first two reads have the same name.
-	 * @param input
-	 * @return
-	 */
-	/*
-	private boolean testReadsPaired (final File input) {
-		SamReader reader = SamReaderFactory.makeDefault().open(INPUT);
-		Iterator<SAMRecord> iter = reader.iterator();
-		String rn1="";
-		String rn2="";
-		if (iter.hasNext())
-			rn1= iter.next().getReadName();
-		if (iter.hasNext())
-			rn2= iter.next().getReadName();
-		CloserUtil.close(rn2);
-		return (rn1.equals(rn2));
-	}
-	*/
 	/** Stock main method. */
 	public static void main(final String[] args) {
 		System.exit(new TagReadWithRabiesBarcodes().instanceMain(args));

@@ -23,13 +23,46 @@
  */
 package org.broadinstitute.dropseqrna.sbarro;
 
+import java.io.File;
+import java.io.IOException;
+
 import org.broadinstitute.dropseqrna.utils.BaseRange;
+import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class FilterValidRabiesBarcodesTest {
 
 
+	private static final File INPUT = new File("testdata/org/broadinstitute/dropseq/sbarro/TagReadWithRabiesBarcodes_output.bam");
+	private static final File EXPECTED_OUTPUT_ACCEPTED = new File("testdata/org/broadinstitute/dropseq/sbarro/FilterValidRabiesBarcodes.output.bam");
+	private static final File EXPECTED_OUTPUT_REJECTED = new File("testdata/org/broadinstitute/dropseq/sbarro/FilterValidRabiesBarcodes.output_rejectedd.bam");
+	
+	
+	@Test
+	public void endToEnd () throws IOException {
+		FilterValidRabiesBarcodes f = new FilterValidRabiesBarcodes();
+		
+		f.INPUT=INPUT;
+		f.OUTPUT_ACCEPTED=File.createTempFile("FilterValidRabiesBarcodesTest", ".accepted.bam");
+		f.OUTPUT_REJECTED=File.createTempFile("FilterValidRabiesBarcodesTest", ".rejected.bam");
+		f.OUTPUT_ACCEPTED.deleteOnExit();
+		f.OUTPUT_REJECTED.deleteOnExit();
+		f.STOP_BARCODE_LENGTH_RANGE="10-10";
+		f.POLYA_BARCODE_LENGTH_RANGE="10-10";
+		f.MAX_GFP_ANCHOR_EDIT_DISTANCE=5;
+		f.MAX_CASSETTE_ANCHOR_EDIT_DISTANCE=5;
+		f.MAX_N_IN_BARCODE=0;
+		
+		int r = f.doWork();
+		Assert.assertEquals(r, 0);
+		
+		TestUtils.assertSamFilesSame(EXPECTED_OUTPUT_ACCEPTED, f.OUTPUT_ACCEPTED);
+		TestUtils.assertSamFilesSame(EXPECTED_OUTPUT_REJECTED, f.OUTPUT_REJECTED);
+		
+		
+	}
+	
 	@Test
 	// test with all fields not-null.
 	public void testSimplePass () {

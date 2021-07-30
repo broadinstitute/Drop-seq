@@ -109,62 +109,6 @@ public class ConsensusSequence {
 	}
 
 	/**
-	 * If base quality isn't available, then calculate consensus by trusting the
-	 * first half of the first read, and the 2nd half of the second read, since
-	 * those are closer to the start of the read where the base qualities are
-	 * higher and the called base more reliable.
-	 *
-	 * @return
-	 */
-
-	/*
-	 * @Deprecated String getConsensusSequenceWithoutBaseQuality() { if
-	 * (this.consensusSequence!=null) return consensusSequence; int size =
-	 * globalAlignment.getLength();
-	 *
-	 * AlignedSequence<DNASequence,NucleotideCompound> alignedSeq1 =
-	 * globalAlignment.getAlignedSequence(1);
-	 * AlignedSequence<DNASequence,NucleotideCompound> alignedSeq2 =
-	 * globalAlignment.getAlignedSequence(2);
-	 *
-	 * char [] seq1 = alignedSeq1.getSequenceAsString().toCharArray(); char []
-	 * seq2 = alignedSeq2.getSequenceAsString().toCharArray();
-	 *
-	 * assert(seq1.length==seq2.length);
-	 *
-	 * char [] result = new char [seq1.length]; // get the halfway point of the
-	 * first read. int seq1Length =
-	 * alignedSeq1.getOriginalSequence().getLength(); int halfWayPoint = (int)
-	 * Math.floor( seq1Length / 2d);
-	 *
-	 * for (int i=1; i<=size; i++) { //Returns the column index within an
-	 * alignment corresponding to the given index in the original Sequence. One
-	 * based. int oIndex1 = alignedSeq1.getSequenceIndexAt(i); // 0 based
-	 * arrays. char r = getBestSequence(seq1[i-1], seq2[i-1], oIndex1,
-	 * halfWayPoint); result[i-1]=r; } String cs = new String (result);
-	 * this.consensusSequence=cs; return cs; }
-	 */
-
-	/**
-	 * Pick the best base at this point in the sequence, based on the position
-	 * in the read. If the sequence index is less than the halfway point, trust
-	 * the first sequence more. If the sequence index is greater than the
-	 * halfway point, trust the second sequence more.
-	 *
-	 * @param o1
-	 * @param o2
-	 * @param seqIndex
-	 * @param halfWayPoint
-	 * @return
-	 */
-	/*
-	 * @Deprecated char getBestSequence (final char o1, final char o2, final int
-	 * seqIndex, final int halfWayPoint) { if (o1==MISSING_BASE) return o2; if
-	 * (o2==MISSING_BASE) return o1; if (seqIndex<halfWayPoint) return o1;
-	 * return o2; }
-	 */
-
-	/**
 	 * Compare bases at a read position. For bases that are missing, accept the
 	 * non-missing base. For bases that disagree, accept the higher base
 	 * quality.
@@ -188,41 +132,6 @@ public class ConsensusSequence {
 		return o2;
 	}
 
-	/**
-	 * In this case, rely on the base quality to dictate how the consensus is
-	 * generated. At each position where there is a base call, if there is no
-	 * disagreement or only one read has the position, accept the base. At a
-	 * position that disagrees, take the higher base quality.
-	 *
-	 * @return
-	 */
-	/*
-	 * String getConsensusSequenceWithBaseQuality() { // getSequenceIndexAt
-	 * returns an index of 1 for positions where there's no base. // those
-	 * positions will be '-' though, so we'll use the other read's info. if
-	 * (this.consensusSequence!=null) return consensusSequence; int size =
-	 * globalAlignment.getLength();
-	 *
-	 * AlignedSequence<DNASequence,NucleotideCompound> alignedSeq1 =
-	 * globalAlignment.getAlignedSequence(1);
-	 * AlignedSequence<DNASequence,NucleotideCompound> alignedSeq2 =
-	 * globalAlignment.getAlignedSequence(2);
-	 *
-	 * char [] seq1 = alignedSeq1.getSequenceAsString().toCharArray(); char []
-	 * seq2 = alignedSeq2.getSequenceAsString().toCharArray();
-	 *
-	 * assert(seq1.length==seq2.length);
-	 *
-	 * char [] result = new char [seq1.length]; for (int i=1; i<=size; i++) {
-	 * //Returns the column index within an alignment corresponding to the given
-	 * index in the original Sequence. One based. int oIndex1 =
-	 * alignedSeq1.getSequenceIndexAt(i); int oIndex2 =
-	 * alignedSeq2.getSequenceIndexAt(i); // regular arrays are 0 based... byte
-	 * bq1 = this.baseQualityReadOne[oIndex1-1]; byte bq2 =
-	 * this.baseQualityReadTwo[oIndex2-1]; // 0 based arrays. char r =
-	 * getBestSequence(seq1[i-1], seq2[i-1], bq1, bq2); result[i-1]=r; } String
-	 * cs = new String (result); this.consensusSequence=cs; return cs; }
-	 */
 
 	/**
 	 * Change to a local alignment strategy.
@@ -259,50 +168,6 @@ public class ConsensusSequence {
 
 		return new String(result);
 	}
-	/*
-	 * // getSequenceIndexAt returns an index of 1 for positions where there's
-	 * no base. // those positions will be '-' though, so we'll use the other
-	 * read's info. if (this.consensusSequence!=null) return consensusSequence;
-	 * int size = localAlignment.getLength();
-	 *
-	 * AlignedSequence<DNASequence,NucleotideCompound> alignedSeq1 =
-	 * localAlignment.getAlignedSequence(1);
-	 * AlignedSequence<DNASequence,NucleotideCompound> alignedSeq2 =
-	 * localAlignment.getAlignedSequence(2);
-	 *
-	 * int queryStart = localAlignment.getIndexInQueryAt(1); int targetStart =
-	 * localAlignment.getIndexInTargetAt(1); int queryEnd =
-	 * localAlignment.getIndexInQueryAt(size); int targetEnd =
-	 * localAlignment.getIndexInTargetAt(size); int len1=
-	 * alignedSeq1.getOriginalSequence().getLength(); int len2
-	 * =alignedSeq2.getOriginalSequence().getLength();
-	 *
-	 *
-	 * // determine which read has the most 5' base. // target has most 5' base.
-	 * if (targetStart > queryStart) {
-	 *
-	 * int basesTargetOnly = targetStart - queryStart; int disagreeBasesStart =
-	 * queryStart-1; int alignedBases = this.localAlignment.getLength(); int
-	 * disagreeBasesEnd = len2 - targetEnd; int basesQueryOnly = len1 - queryEnd
-	 * - disagreeBasesEnd; int totalBases =
-	 * basesTargetOnly+disagreeBasesStart+alignedBases+disagreeBasesEnd+
-	 * basesQueryOnly; } char [] seq1 =
-	 * alignedSeq1.getOriginalSequence().getSequenceAsString().toCharArray();
-	 * char [] seq2 =
-	 * alignedSeq2.getOriginalSequence().getSequenceAsString().toCharArray();
-	 *
-	 * assert(seq1.length==seq2.length);
-	 *
-	 * char [] result = new char [seq1.length]; for (int i=1; i<=size; i++) {
-	 * //Returns the column index within an alignment corresponding to the given
-	 * index in the original Sequence. One based. int oIndex1 =
-	 * alignedSeq1.getSequenceIndexAt(i); int oIndex2 =
-	 * alignedSeq2.getSequenceIndexAt(i); // regular arrays are 0 based... byte
-	 * bq1 = this.baseQualityReadOne[oIndex1-1]; byte bq2 =
-	 * this.baseQualityReadTwo[oIndex2-1]; // 0 based arrays. char r =
-	 * getBestSequence(seq1[i-1], seq2[i-1], bq1, bq2); result[i-1]=r; } String
-	 * cs = new String (result); this.consensusSequence=cs; return cs; }
-	 */
 
 	/**
 	 * If the start or end bound of the sequence overlap a gap in the original

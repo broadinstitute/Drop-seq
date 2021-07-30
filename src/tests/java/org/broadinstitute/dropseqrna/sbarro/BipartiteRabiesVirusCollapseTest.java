@@ -20,13 +20,18 @@ public class BipartiteRabiesVirusCollapseTest {
 	private static final File TEST_BAM = new File("testdata/org/broadinstitute/dropseq/sbarro/10_cells.bam");
 	private static final File EXPECTED_REPORT_ED0 = new File("testdata/org/broadinstitute/dropseq/sbarro/10_cells.report.txt");
 	
+	// made the data smaller to speed up test time.
+	private static final File TEST_BAM_SMALL = new File("testdata/org/broadinstitute/dropseq/sbarro/CTACCCAAGACCTAGG.bam");
+	private static final File EXPECTED_REPORT_SMALL = new File("testdata/org/broadinstitute/dropseq/sbarro/CTACCCAAGACCTAGG.report.txt");
+	
+	
 	@BeforeClass
 	public void beforeSuite() {
 		TestUtils.setInflaterDeflaterIfMacOs();
 	}
 	
 	@Test
-	public void testBipartiteUMICollapse () throws IOException {
+	public void testBipartiteUMISharing () throws IOException {
 		BipartiteRabiesVirusCollapse c = new BipartiteRabiesVirusCollapse();
 		c.OUT_TAG="rz";
 		c.READ_MQ=0;
@@ -45,6 +50,26 @@ public class BipartiteRabiesVirusCollapseTest {
 		
 		
 	}
+	
+	@Test (enabled = true)
+	public void testBipartiteWithoutUMISharing () throws IOException {
+		BipartiteRabiesVirusCollapse c = new BipartiteRabiesVirusCollapse();
+		c.OUT_TAG="rz";
+		c.READ_MQ=0;
+		c.MIN_COUNT=4;
+		c.UMI_SHARING_ONLY_MODE=false;
+		c.INPUT=TEST_BAM_SMALL;
+		c.OUTPUT=File.createTempFile("BipartiteRabiesVirusCollapseTest", ".bam");
+		c.OUTPUT.deleteOnExit();
+		c.REPORT=File.createTempFile("BipartiteRabiesVirusCollapseTest", ".no_sharing.report.txt");
+		c.REPORT.deleteOnExit();
+		c.doWork();
+		
+		Assert.assertTrue (FileUtils.contentEquals(c.REPORT, EXPECTED_REPORT_SMALL));
+		
+		
+	}
+	
 	
 	@Test
 	public void collapseRabiesBarcodesEx1() {

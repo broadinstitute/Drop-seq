@@ -30,6 +30,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
+import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -78,15 +79,9 @@ public class ReduceGtfTest {
 //    	r.OUTPUT=o2;
 //    	int ret2 = r.doWork();
 //    	Assert.assertTrue(ret2==0);
-
-
-    	try {
-			boolean t1 = FileUtils.contentEquals(o, GTF_FILE5_REDUCED);
-			Assert.assertTrue(t1);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
+    	
+		boolean t2 = TestUtils.testFilesSame(o, GTF_FILE5_REDUCED);
+		Assert.assertTrue(t2);
 
     }
 

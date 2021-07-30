@@ -71,6 +71,12 @@ public class ConsensusSequenceFactory {
 		return alignedPair;
 	}
 
+	/**
+	 * These two methods are unused, so are commented out to ensure good code coverage of used methods.  
+	 * They should work if enabled, but would need unit test coverage.
+	 */
+	
+	/*
 	public ConsensusSequence getConsensusSequence (final FastqRecord seq1, final FastqRecord seq2, final boolean assumeRC) {
 		String n1 = SequenceUtil.getSamReadNameFromFastqHeader(seq1.getReadName());
 		String n2 = SequenceUtil.getSamReadNameFromFastqHeader(seq2.getReadName());
@@ -88,42 +94,9 @@ public class ConsensusSequenceFactory {
 		alignedPair.addReadBaseQualities(r1.getBaseQualityString(), r2.getBaseQualityString());
 		return alignedPair;
 	}
-
-	/**
-	 * Performs global alignment to both the default sequence and the reverse compliment of the second sequence, and selects the best result by score.
-	 *
-	 * @param seq1 The first read sequence
-	 * @param seq2 The second read sequence
-	 * @return The parsimonious pair of aligned sequences.
-	 */
-	/*
-	private ConsensusSequence getBestAlignedPair (final String seq1, final String seq2) {
-		PairwiseSequenceAligner <DNASequence,NucleotideCompound>  defaultAlignment = Alignments.getPairwiseAligner(AlignmentUtils.getDNASequenceFromString(seq1),
-				AlignmentUtils.getDNASequenceFromString(seq2), PairwiseSequenceAlignerType.GLOBAL, gapP, matrix);
-
-		PairwiseSequenceAligner <DNASequence,NucleotideCompound> reverseComplimentAlignment = Alignments.getPairwiseAligner(AlignmentUtils.getDNASequenceFromString(seq1),
-				AlignmentUtils.getDNASequenceFromString(SequenceUtil.reverseComplement(seq2)), PairwiseSequenceAlignerType.GLOBAL, gapP, matrix);
-
-		double score1 = defaultAlignment.getScore();
-		double score2 = reverseComplimentAlignment.getScore();
-		// pick the best score and set up the consensus object.
-		ConsensusSequence result = null;
-
-		if (score1 > score2) {
-			PairwiseSequenceAligner <DNASequence,NucleotideCompound>  localAlignment = Alignments.getPairwiseAligner(AlignmentUtils.getDNASequenceFromString(seq1),
-					AlignmentUtils.getDNASequenceFromString(seq2), PairwiseSequenceAlignerType.LOCAL, gapP, matrix);
-			result = new ConsensusSequence(defaultAlignment.getPair(),localAlignment.getPair(), score1, false);
-		}
-		else {
-			PairwiseSequenceAligner <DNASequence,NucleotideCompound>  localAlignment = Alignments.getPairwiseAligner(AlignmentUtils.getDNASequenceFromString(seq1),
-					AlignmentUtils.getDNASequenceFromString(SequenceUtil.reverseComplement(seq2)), PairwiseSequenceAlignerType.LOCAL, gapP, matrix);
-			result = new ConsensusSequence(reverseComplimentAlignment.getPair(), localAlignment.getPair(), score2, true);
-		}
-		return result;
-
-	}
 	*/
-
+	
+	
 	/**
 	 * If assumeRC is true, then the 2nd read will be reverse complimented before consensus is generated.
 	 * Otherwise, the 2nd read sequence and RC will be tested, resulting in 2x as much computational work.
