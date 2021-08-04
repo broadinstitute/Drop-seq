@@ -85,7 +85,7 @@ import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(summary = "Collapse rabies viruses where half the barcode matches within some edit distance, within a cell.",
-oneLineSummary = "CollTapse rabies virus barcodes.)",
+oneLineSummary = "Collapse rabies virus barcodes.)",
 programGroup = Sbarro.class)
 public class BipartiteRabiesVirusCollapse extends CommandLineProgram {
 

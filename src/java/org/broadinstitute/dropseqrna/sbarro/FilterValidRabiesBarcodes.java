@@ -51,7 +51,7 @@ import picard.cmdline.StandardOptionDefinitions;
  *
  */
 @CommandLineProgramProperties(
-        summary = "Filters rabies virus tags into pass/fail BAMs",
+        summary = "Filters rabies virus tags into pass/fail BAMs based on metrics associated with the extracted viral barcodes.",
         oneLineSummary = "Filters rabies virus tags into pass/fail BAMs",
         programGroup = Sbarro.class)
 public class FilterValidRabiesBarcodes extends CommandLineProgram {

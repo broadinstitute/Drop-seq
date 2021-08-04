@@ -68,7 +68,8 @@ import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
-        summary = "Tags an unaligned BAM with rabies virus sequences",
+        summary = "Tags an unaligned BAM with rabies virus barcode sequences and associated metrics. "
+        		+ "Barcode sequences are extracted using invariant sequences which flank the barcode regions.",
         oneLineSummary = "Tags an unaligned BAM with rabies virus sequences and associated metrics.",
         programGroup = Sbarro.class)
 
