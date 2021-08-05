@@ -30,6 +30,7 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Array;
 import java.util.*;
 
+import com.google.common.collect.ImmutableList;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeader;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderCodec;
 import org.broadinstitute.dropseqrna.matrixmarket.MatrixMarketConstants;
@@ -138,6 +139,10 @@ public class SparseDge {
 
     public String getCellBarcode(final int cellIndex) {
         return cellBarcode[cellIndex];
+    }
+
+    public List<String> getCellBarcodes() {
+        return ImmutableList.copyOf(cellBarcode);
     }
 
     public void prefixCellBarcodes(final String prefix) {

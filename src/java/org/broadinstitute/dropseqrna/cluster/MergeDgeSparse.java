@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -121,8 +122,8 @@ public class MergeDgeSparse
         static class DatasetsKeys {
             static final String PATH_KEY = "path";
             static final String CELL_COUNT_KEY = "cell_count";
-            static final String CELL_BARCODE_PATH_KEY = "cell_barcode_path";
             static final String NAME_KEY = "name";
+            static final String CELL_BARCODE_PATH_KEY = "cell_barcode_path";
         }
     }
 
@@ -130,6 +131,16 @@ public class MergeDgeSparse
         static final int MIN_CELLS = 0;
         static final int MIN_GENES = 400;
         static final int MIN_TRANSCRIPTS = 0;
+    }
+
+    private static class DatasetDescr {
+        String name;
+        SparseDge dge;
+
+        public DatasetDescr(String name, SparseDge dge) {
+            this.name = name;
+            this.dge = dge;
+        }
     }
 
     public static void main(final String[] args) {
@@ -326,7 +337,11 @@ public class MergeDgeSparse
     private List<SparseDge> loadDataSets(final List datasets) {
         if (datasets.size() == 0)
             throw new RuntimeException("List of datasets is empty in " + YAML.getAbsolutePath());
-        final ArrayList<SparseDge> dges = new ArrayList<>(datasets.size());
+
+        // There can be the same prefix used multiple times with several DGE files.
+        // In this case, we need to check that after filtering and prefixing any 2 DGEs associated with the same prefix contain non-overlapping prefixed cell barcode sets
+        // We compare the prefixed cell barcode sets, since there can be a situation where one or more datasets for the same prefix do not have cell_barcode_path specified
+        final ArrayList<DatasetDescr> datasetDescrs = new ArrayList<>(datasets.size());
 
         for (final Object dataset : datasets) {
             if (! (dataset instanceof Map))
@@ -365,9 +380,21 @@ public class MergeDgeSparse
                 dge.discardCellsWithFewTranscripts(MIN_TRANSCRIPTS);
                 LOG.info(String.format("Discarded %d cells with fewer than %d transcripts from %s", numCells - dge.getNumCells(), MIN_TRANSCRIPTS, dgePath.getAbsolutePath()));
             }
-            dges.add(dge);
+
+            // Check that this cell barcode set does not overlap any other one associated with the same prefix
+            datasetDescrs.stream().filter(descr -> prefix.equals(descr.name)).collect(Collectors.toList()).forEach(descr -> {
+                List<String> commonCellBarcodes = descr.dge.getCellBarcodes().stream()
+                    .filter(dge.getCellBarcodes()::contains)
+                    .collect(Collectors.toList());
+                if (!commonCellBarcodes.isEmpty()) {
+                    throw new RuntimeException(String.format("DGE files %s and %s both have the prefix %s, and yet they contain %d cell barcodes in common", descr.dge.getFile().getAbsolutePath(), dge.getFile().getAbsolutePath(), prefix, commonCellBarcodes.size()));
+                }
+            });
+
+            datasetDescrs.add(new DatasetDescr(prefix, dge));
         }
-        return dges;
+
+        return datasetDescrs.stream().map(descr -> descr.dge).collect(Collectors.toList());
     }
 
     private Object getRequiredValue(final Map map, final String key) {
