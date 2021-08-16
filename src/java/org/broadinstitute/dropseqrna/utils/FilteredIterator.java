@@ -23,12 +23,17 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IterableOnceIterator;
 import htsjdk.samtools.util.PeekableIterator;
 
 import java.util.Iterator;
 
-public abstract class FilteredIterator<T> extends IterableOnceIterator<T> {
+public abstract class FilteredIterator<T>
+        extends IterableOnceIterator<T>
+        implements CloseableIterator<T>
+{
 
     final PeekableIterator<T> it;
     boolean firstTime = true;
