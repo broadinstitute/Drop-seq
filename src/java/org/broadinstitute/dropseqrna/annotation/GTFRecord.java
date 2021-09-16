@@ -32,10 +32,10 @@ import java.util.Objects;
 public class GTFRecord implements Comparable<GTFRecord> {
 
 	private final Interval interval;
-	private final String geneID;
-	private final String geneName;
-	private final String transcriptName;
-	private final String transcriptID;
+	private String geneID;
+	private String geneName;
+	private String transcriptName;
+	private String transcriptID;
 	private final String transcriptType;
 	private final String featureType;
     private final Integer geneVersion;
@@ -141,7 +141,10 @@ public class GTFRecord implements Comparable<GTFRecord> {
 			return str.hashCode();
     }
 
-    public List<String> validate() {
+	public List<String> validate() {
+		return validate(false);
+	}
+	public List<String> validate(final boolean fixProblems) {
         // Don't allocate unless there are errors
         List<String> ret = null;
         ret = addErrorIfNull(ret, "Missing sequence name", interval.getContig());
@@ -155,6 +158,24 @@ public class GTFRecord implements Comparable<GTFRecord> {
         // check for comma in gene name
         if (geneName != null && geneName.contains(","))
         	ret = addError(ret, "Reserved character ',' in gene name ["+ geneName +"]");
+
+		if (fixProblems) {
+			if (geneID == null && geneName != null) {
+				geneID = geneName;
+				ret.add("Substituting geneName for missing geneID in " + geneName);
+			} else if (geneName == null && geneID != null) {
+				geneName = geneID;
+				ret.add("Substituting geneID for missing geneName in " + geneID);
+			}
+			if (transcriptID == null && transcriptName != null) {
+				transcriptID = transcriptName;
+				ret.add("Substituting transcriptName for missing transcriptID in " + transcriptName);
+			} else if (transcriptName == null && transcriptID != null) {
+				transcriptName = transcriptID;
+				ret.add("Substituting transcriptID for missing transcriptName in " + transcriptID);
+			}
+		}
+
         return ret;
     }
 

@@ -142,7 +142,7 @@ public class ReduceGtf extends CommandLineProgram {
         final Set<String> ignoredFunctionalTypes = new HashSet<>(IGNORE_FUNC_TYPE);
 
         private FilteringGTFParser(final File gtf) {
-            super(new GTFParser(gtf, ValidationStringency.STRICT));
+            super(new GTFParser(gtf, VALIDATION_STRINGENCY));
         }
 
         @Override

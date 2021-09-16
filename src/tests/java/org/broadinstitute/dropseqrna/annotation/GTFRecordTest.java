@@ -2,6 +2,7 @@ package org.broadinstitute.dropseqrna.annotation;
 
 import java.util.List;
 
+import htsjdk.samtools.util.StringUtil;
 import org.testng.annotations.Test;
 
 import junit.framework.Assert;
@@ -89,5 +90,24 @@ public class GTFRecordTest {
 
 	}
 
+	@Test
+	public void testValidate() {
+		// Test no errors
+		List<String> errors = new GTFRecord("1", 1, 10, false, "g1ID", "g1Name", "t1Name", "t1ID", "coding", "exon", 1).validate();
+		Assert.assertNull(errors);
+		// Test null names and IDs
+		errors = new GTFRecord("1", 1, 10, false, null, null, null, null, "coding", "exon", 1).validate();
+		Assert.assertEquals(StringUtil.join("\n", errors),4, errors.size());
+		// Test partially invalid but fixed.
+		GTFRecord r = new GTFRecord("1", 1, 10, false, null, "g1Name", "t1Name", null, "coding", "exon", 1);
+		r.validate(true);
+		Assert.assertEquals(r.getGeneName(), r.getGeneID());
+		Assert.assertEquals(r.getTranscriptName(), r.getTranscriptID());
+		r = new GTFRecord("1", 1, 10, false, "g1ID", null, null, "t1ID", "coding", "exon", 1);
+		r.validate(true);
+		Assert.assertEquals(r.getGeneName(), r.getGeneID());
+		Assert.assertEquals(r.getTranscriptName(), r.getTranscriptID());
+
+	}
 
 }

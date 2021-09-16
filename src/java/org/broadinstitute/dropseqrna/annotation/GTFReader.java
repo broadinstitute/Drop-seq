@@ -79,7 +79,7 @@ public class GTFReader {
     }
 
     public OverlapDetector<GeneFromGTF> load() {
-        final FilteringGTFParser parser = new FilteringGTFParser(gtfFlatFile);
+        final FilteringGTFParser parser = new FilteringGTFParser(gtfFlatFile, validationStringency);
         final GeneFromGTFBuilder geneBuilder = new GeneFromGTFBuilder(parser);
         CloserUtil.close(parser);
         final OverlapDetector<GeneFromGTF> overlapDetector = new OverlapDetector<>(0, 0);
@@ -118,7 +118,11 @@ public class GTFReader {
 
     private class FilteringGTFParser extends FilteredIterator<GTFRecord> {
         private FilteringGTFParser(final File gtf) {
-            super(new GTFParser(gtf, ValidationStringency.STRICT));
+            this(gtf, ValidationStringency.STRICT);
+        }
+
+        private FilteringGTFParser(final File gtf, final ValidationStringency stringency) {
+            super(new GTFParser(gtf, stringency));
         }
 
         @Override
