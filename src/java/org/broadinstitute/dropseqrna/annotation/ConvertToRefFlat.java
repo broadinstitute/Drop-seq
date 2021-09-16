@@ -68,7 +68,8 @@ public class ConvertToRefFlat extends CommandLineProgram {
 		IOUtil.assertFileIsReadable(this.ANNOTATIONS_FILE);
 		IOUtil.assertFileIsWritable(this.OUTPUT);
 		
-		OverlapDetector<Gene> od = GeneAnnotationReader.loadAnnotationsFile(this.ANNOTATIONS_FILE, this.SEQUENCE_DICTIONARY);
+		OverlapDetector<Gene> od = GeneAnnotationReader.loadAnnotationsFile(this.ANNOTATIONS_FILE,
+				this.SEQUENCE_DICTIONARY, this.VALIDATION_STRINGENCY);
 		
 		PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
 		
