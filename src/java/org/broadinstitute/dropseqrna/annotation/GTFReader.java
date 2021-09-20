@@ -131,7 +131,12 @@ public class GTFReader {
                 unrecognizedSequences.add(rec.getChromosome());
                 final String transcriptDescription = rec.getGeneName() + ":" + rec.getTranscriptName();
                 if (skippedChromosomeTranscriptDescription.add(transcriptDescription + "\t" + rec.getChromosome()))
-					LOG.debug("Skipping " + transcriptDescription + " due to unrecognized sequence " + rec.getChromosome());
+                    LOG.debug("Skipping " + transcriptDescription + " due to unrecognized sequence " + rec.getChromosome());
+                return true;
+            } else if (rec.getGeneName() == null || rec.getTranscriptName() == null) {
+                // No need to emit more than debug message, because if strict stringency, exception would be thrown,
+                // and if lenient stringency, message will already have been printed.
+                LOG.debug("Skipping record due to missing gene name or transcript name");
                 return true;
             } else
 				return false;

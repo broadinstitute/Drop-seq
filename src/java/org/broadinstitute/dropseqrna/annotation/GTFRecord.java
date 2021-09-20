@@ -24,6 +24,7 @@
 package org.broadinstitute.dropseqrna.annotation;
 
 import htsjdk.samtools.util.Interval;
+import picard.annotation.AnnotationException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -175,7 +176,6 @@ public class GTFRecord implements Comparable<GTFRecord> {
 				ret.add("Substituting transcriptID for missing transcriptName in " + transcriptID);
 			}
 		}
-
         return ret;
     }
 
