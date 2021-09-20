@@ -205,7 +205,8 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
         }
 
     private Map<String, List<GTFRecord>> gatherByGeneName(final Iterator<GTFRecord> gtfRecords) {
-        return Streams.stream(gtfRecords).collect(Collectors.groupingBy(GTFRecord::getGeneName));
+        // Filter out bad records.  Unless validation stringency is silent, these will have been reported.
+        return Streams.stream(gtfRecords).filter(gtfRecord -> gtfRecord.getGeneName() != null).collect(Collectors.groupingBy(GTFRecord::getGeneName));
     }
 
     private Map<Integer, List<GTFRecord>> gatherByGeneVersion(final Collection<GTFRecord> gtfRecords) {

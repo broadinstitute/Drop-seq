@@ -86,7 +86,8 @@ public class GTFParser extends IterableOnceIterator<GTFRecord> {
                     row.getCurrentLine());
         }
         final GTFRecord ret = parseLine(row);
-        final List<String> errors = ret.validate(validationStringency != ValidationStringency.STRICT);
+        final List<String> errors;
+        errors = ret.validate(validationStringency != ValidationStringency.STRICT);
         if (validationStringency != ValidationStringency.SILENT) {
             if (errors != null && !errors.isEmpty()) {
                 final String message = String.format(
