@@ -382,9 +382,12 @@ public class AnnotationUtils {
 			    continue;
             }
 			String [] z= s.split(" ");
-			String k = z[0];
-			String v = z[1];
-			result.put(k, v);
+			if (z.length >= 2) {
+				// Skip things like: gene_id ""
+				String k = z[0];
+				String v = z[1];
+				result.put(k, v);
+			}
 		}
 		return (result);
 	}
