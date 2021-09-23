@@ -117,7 +117,7 @@ public class GatherGeneGCLength extends CommandLineProgram {
         	throw new IllegalArgumentException("Reference file" + this.REFERENCE_SEQUENCE.getAbsolutePath()+" is missing a dictionary file [.dict].  Please make one!");
         }
 
-        OverlapDetector<Gene> geneOverlapDetector= GeneAnnotationReader.loadAnnotationsFile(ANNOTATIONS_FILE, dict);
+        OverlapDetector<Gene> geneOverlapDetector= GeneAnnotationReader.loadAnnotationsFile(ANNOTATIONS_FILE, dict, VALIDATION_STRINGENCY);
 
         List<SAMSequenceRecord> records = dict.getSequences();
 

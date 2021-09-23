@@ -110,7 +110,8 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
 		SamHeaderUtil.addPgRecord(header, this);
 		SAMSequenceDictionary bamDict = header.getSequenceDictionary();
 
-        final OverlapDetector<Gene> geneOverlapDetector = GeneAnnotationReader.loadAnnotationsFile(ANNOTATIONS_FILE, bamDict);
+        final OverlapDetector<Gene> geneOverlapDetector = GeneAnnotationReader.loadAnnotationsFile(ANNOTATIONS_FILE, bamDict,
+				VALIDATION_STRINGENCY);
         SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(header, true, OUTPUT);
 
         for (SAMRecord r: inputSam) {

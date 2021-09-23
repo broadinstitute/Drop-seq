@@ -251,7 +251,8 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     		this.specificity=specificity;
     		this.rnaFragPct=rnaFragPct;
     		SamReader reader = SamReaderFactory.makeDefault().open(bamFile);
-    		geneOverlapDetector = GeneAnnotationReader.loadAnnotationsFile(annotationsFile, reader.getFileHeader().getSequenceDictionary());
+    		geneOverlapDetector = GeneAnnotationReader.loadAnnotationsFile(annotationsFile,
+					reader.getFileHeader().getSequenceDictionary(), VALIDATION_STRINGENCY);
     		// This is a time-consuming call, so invoke it once here so that it isn't invoke over and over by RnaSeqMetricsCollector
     		genesWithLongEnoughTranscripts = geneOverlapDetector.getAll();
             log.info("Loaded " + genesWithLongEnoughTranscripts.size() + " genes.");
