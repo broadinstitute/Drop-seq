@@ -24,7 +24,6 @@
 package org.broadinstitute.dropseqrna.annotation;
 
 import htsjdk.samtools.util.Interval;
-import picard.annotation.AnnotationException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,10 +42,10 @@ public class GTFRecord implements Comparable<GTFRecord> {
 
 
 	//{chr, startPos, endPos, strand,geneName,geneID,transcriptName, transcriptID,transcriptType,featureType};
-	public GTFRecord(final String chromsome, final int start, final int end, final boolean negativeStrand, final String geneID, final String geneName,
+	public GTFRecord(final String chromosome, final int start, final int end, final boolean negativeStrand, final String geneID, final String geneName,
                      final String transcriptName, final String transcriptID, final String transcriptType, final String featureType,
                      final Integer geneVersion) {
-		this.interval=new Interval(chromsome, start, end, negativeStrand, null);
+		this.interval=new Interval(chromosome, start, end, negativeStrand, null);
 		this.geneID=geneID;
 		this.geneName=geneName;
 		this.transcriptName=transcriptName;
