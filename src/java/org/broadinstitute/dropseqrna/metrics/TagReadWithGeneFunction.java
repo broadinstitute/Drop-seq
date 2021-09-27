@@ -97,6 +97,10 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
 
 	private ReadTaggingMetric metrics = new ReadTaggingMetric();
 
+	public TagReadWithGeneFunction() {
+		VALIDATION_STRINGENCY = ValidationStringency.LENIENT;
+	}
+
 	@Override
 	protected int doWork() {
 		IOUtil.assertFileIsReadable(this.INPUT);

@@ -93,7 +93,11 @@ public class ReduceGtf extends CommandLineProgram {
     private SAMSequenceDictionary dict;
     private boolean initialized = false;
 
-	@Override
+    public ReduceGtf() {
+        VALIDATION_STRINGENCY = ValidationStringency.LENIENT;
+    }
+
+    @Override
     protected int doWork() {
         IOUtil.assertFileIsReadable(SEQUENCE_DICTIONARY);
         IOUtil.assertFileIsReadable(GTF);
