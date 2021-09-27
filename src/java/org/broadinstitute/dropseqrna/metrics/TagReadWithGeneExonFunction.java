@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import htsjdk.samtools.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.annotation.AnnotationUtils;
@@ -39,13 +40,6 @@ import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
@@ -99,6 +93,10 @@ public class TagReadWithGeneExonFunction extends CommandLineProgram {
 
     private ReadTaggingMetric metrics = new ReadTaggingMetric();
     static String RECORD_SEP=",";
+
+    public TagReadWithGeneExonFunction() {
+        VALIDATION_STRINGENCY = ValidationStringency.LENIENT;
+    }
 
     @Override
     protected int doWork() {

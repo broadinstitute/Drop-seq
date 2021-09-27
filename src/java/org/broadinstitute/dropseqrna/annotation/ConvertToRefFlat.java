@@ -23,6 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -62,7 +63,11 @@ public class ConvertToRefFlat extends CommandLineProgram {
 	
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output refFlat file")
 	public File OUTPUT;
-	
+
+	public ConvertToRefFlat() {
+		VALIDATION_STRINGENCY = ValidationStringency.LENIENT;
+	}
+
 	@Override
 	protected int doWork() {
 		IOUtil.assertFileIsReadable(this.ANNOTATIONS_FILE);
