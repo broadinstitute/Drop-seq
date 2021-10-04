@@ -48,7 +48,7 @@ class MergeDgeOutputWriter {
      * @param genes row names.
      * @param cellBarcodes column names.
      */
-    public MergeDgeOutputWriter(final File rawDgeFile, final File scaledDgeFile, final int numNonZeroElements,
+    public MergeDgeOutputWriter(final File rawDgeFile, final File scaledDgeFile, final long numNonZeroElements,
                                 final List<String> genes, final List<String> cellBarcodes) {
         if (rawDgeFile == null && scaledDgeFile == null) {
             throw new IllegalArgumentException("Doesn't make sense to construct with both files null");
