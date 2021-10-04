@@ -106,8 +106,10 @@ public class MergeDgeSparse
     public List<String> FILTERED_GENE_RE;
 
     @Argument(doc="If specified, files containing lists of cell barcodes, one per line.  " +
+    		"This set of cell barcodes should contain prefixes matching those specified in the YAML file [name attribute]. " +
+    		"If you wish to filter with cell barcodes without prefixes, specify these per-experiment in the YAML. " +
             "May be gzipped.  Lines starting with # are ignored.  " +
-            "Only the cells in listed in these file(s) are included in the output.  If no files are specified, all cell" +
+            "Only the cells in listed in these file(s) are included in the output.  If no files are specified, all cell " +
             "barcodes are included, subject to the other filters.")
     public List<File> CELL_BC_FILE;
 
