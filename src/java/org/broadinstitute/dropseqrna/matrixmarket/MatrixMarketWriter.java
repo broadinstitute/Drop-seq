@@ -145,7 +145,7 @@ public class MatrixMarketWriter
      * @param col 0-based
      * @param val value to be written
      */
-    public void writeTriplet(final long row, final long col, final long val) {
+    public void writeTriplet(final long row, final long col, final int val) {
         try {
             assertGoodIndices(row, col);
             writer.write(String.format("%d\t%d\t%d\n", row+1, col+1, val));
