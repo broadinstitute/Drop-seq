@@ -694,13 +694,14 @@ public class DGEMatrix {
         log.info("Found [" + rows + "] genes and [" + cols +"] cells with [" + elements +"] non-zero entries");
         
         // initialize the sparse matrix
+        log.info("Initializing CRSMatrix with [" + (int) elements +"] elements");
         CRSMatrix m = CRSMatrix.zero(rows, cols, (int) elements);
+                
         // Progress logged to track reading.
         ProgressLogger pl = new ProgressLogger(log);
         for(final MatrixMarketReader.Element element : matrixReader){
         	pl.record("0",0);
 			m.set(element.row,element.col,element.realValue());
-			
         }
         
         CloserUtil.close(matrixReader);
