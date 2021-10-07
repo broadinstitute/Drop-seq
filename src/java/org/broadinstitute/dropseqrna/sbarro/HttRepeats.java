@@ -49,7 +49,6 @@ public class HttRepeats extends CommandLineProgram {
     @Argument(shortName = "P", doc = "Print progress after this many reads.", optional = true)
     public long PRINT_READ_PROGRESS = 1000;
 
-    @SuppressWarnings("CommentedOutCode")
     @Override
     protected int doWork() {
         // Automatically debug small numbers of reads.
@@ -68,7 +67,14 @@ public class HttRepeats extends CommandLineProgram {
         final FindSubSequence prefixAligner = new FindSubSequence(cagPrefix);
         final FindSubSequence suffixAligner = new FindSubSequence(cagSuffix);
 
-        final PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
+        final PrintStream scoresOut =
+                new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT));
+        final String lengthQ2sOutName = OUTPUT.getName().replaceAll("\\.[^.]+$", ".q2s.txt");
+        final PrintStream lengthQ2sOut =
+                new ErrorCheckingPrintStream(IOUtil.openFileForWriting(new File(OUTPUT.getParent(), lengthQ2sOutName)));
+        final String glutamineOutName = OUTPUT.getName().replaceAll("\\.[^.]+$", ".glutamine.txt");
+        final PrintStream glutamineOut =
+                new ErrorCheckingPrintStream(IOUtil.openFileForWriting(new File(OUTPUT.getParent(), glutamineOutName)));
 
         long readNumber = 0L;
         while (reader.hasNext() && readNumber < SKIP_READS) {
@@ -86,8 +92,13 @@ public class HttRepeats extends CommandLineProgram {
         final Mean countQ2sAvg = new Mean();
         // Save a queue of the read indicies with the longes Q2 tails.
         final Queue<ReadQ2s> longestReadQ2s = new PriorityQueue<>(readQ2sComparator);
+        // Save a histogram of Q2 tail lengths assuming the max read length is 1000.
+        final int lengthQ2sMax = 1000;
+        final long[] lengthQ2s = new long[lengthQ2sMax + 1];
+        final int glutamineCountsMax = 500;
+        final long[] glutamineCounts = new long[glutamineCountsMax + 1];
 
-        out.println("READ_NUM\tTRIPLET_NUM\tBASES\tBASELINE\tCAG\tCAA\tCCG\tCCA");
+        scoresOut.println("READ_NUM\tTRIPLET_NUM\tBASES\tBASELINE\tCAG\tCAA\tCCG\tCCA");
         while (reader.hasNext() && readNumber < SKIP_READS + COUNT_READS) {
             if (readNumber % PRINT_READ_PROGRESS == 0 && readNumber > 0) {
                 log.info(String.format("Processing read %,d", readNumber));
@@ -100,13 +111,24 @@ public class HttRepeats extends CommandLineProgram {
 //            final String qualities = "3>>ABAAFFFFFGFGGGGGGGGHHFG4GHHHHHHHHHHFHFHFHFHHHHHHHHHHHFFHFFHGHHHHHGGHHHHFHGGGGGHGGGGGGEGGGFGGCGGFGGGGGGEFHHHHHHHBFHHHGHCDFD?GG@DFADAFGGGGFAGFGFFFAFGGGFFFFFFF?CFF=DFFCFFFFFFFAFF;CFFFFDDFDFFCFFFFDFFFFFFFE.FFFD?ED--9.BBFFF--;9A?BFFFFACFFFFFCC;BFFFCFA=";
 //            final byte[] phredScores = htsjdk.samtools.SAMUtils.fastqToPhred(qualities);
 
-            final SubSequenceResultI prefixSubSeq = prefixAligner.findSequenceLocalAlignment(read);
+
+            // Count the number of scores == Q2 on the tail of the read.
+            int countQ2s = 0;
+            for (int baseNumber = read.length() - 1; baseNumber >= 0; baseNumber--) {
+                if (phredScores[baseNumber] != 2) {
+                    break;
+                }
+                countQ2s++;
+            }
+
+            lengthQ2s[Math.min(countQ2s, lengthQ2sMax)]++;
 
             /*
             Skip the read if:
             - Too many mismatches
             - Prefix wasn't found near the start
              */
+            final SubSequenceResultI prefixSubSeq = prefixAligner.findSequenceLocalAlignment(read);
             final int prefixEdits = prefixSubSeq.getEditDistance().getEditDistance();
             final int prefixStart = prefixSubSeq.getStart();
             if (prefixEdits > 1 || prefixStart > 2) {
@@ -126,14 +148,38 @@ public class HttRepeats extends CommandLineProgram {
             final int shift = (suffixSubSeq.getStart() - 1) % 3;
             shiftCounts[shift]++;
 
-            // Count the number of scores == Q2 on the tail of the read.
-            int countQ2s = 0;
-            for (int baseNumber = read.length() - 1; baseNumber >= 0; baseNumber--) {
-                if (phredScores[baseNumber] != 2) {
-                    break;
-                }
-                countQ2s++;
+            // Skip the read if we didn't find the suffix, or if we didn't find a multiple of 3 bases.
+            final int suffixEdits = prefixSubSeq.getEditDistance().getEditDistance();
+            if (shift != 0 || suffixEdits > 1) {
+                skippedReads++;
+                readNumber++;
+                continue;
             }
+
+            // Get a string containing just the supposed repeats.
+            final String readRepeats = readPostPrefix.substring(0, suffixSubSeq.getStart() - 1);
+            final String[] triplets = new String[readRepeats.length() / 3];
+            // Copy the triplets into an array.
+            for (int tripletNumber = 0; tripletNumber < triplets.length; tripletNumber++) {
+                triplets[tripletNumber] = readRepeats.substring(tripletNumber * 3, (tripletNumber + 1) * 3);
+            }
+            // Count how many gultamines we find.
+            int glutamineCount = 0;
+            for (final String triplet : triplets) {
+                if (triplet.equals("CAG") || triplet.equals("CAA")) {
+                    glutamineCount++;
+                }
+            }
+            // If we weren't mostly glutamines then skip this read.
+            if (glutamineCount == 0 || glutamineCount + 1 < triplets.length) {
+                skippedReads++;
+                readNumber++;
+                continue;
+            }
+            // Save a histogram of the number of glutamines discovered.
+            glutamineCounts[glutamineCount]++;
+
+            // Keep track of the longest tail of Q2 scores.
             if (countQ2s > 0) {
                 countQ2sAvg.increment(countQ2s);
 
@@ -165,7 +211,7 @@ public class HttRepeats extends CommandLineProgram {
 
                 final String bases = read.substring(startBase, startBase + 3);
 
-                out.printf(
+                scoresOut.printf(
                         "%d\t%d\t%s\t%f\t%f\t%f\t%f\t%f%n",
                         readNumber,
                         tripletNumber,
@@ -189,8 +235,13 @@ public class HttRepeats extends CommandLineProgram {
             readNumber++;
         }
 
+        Arrays.stream(lengthQ2s).forEach(lengthQ2sOut::println);
+        Arrays.stream(glutamineCounts).forEach(glutamineOut::println);
+
         CloserUtil.close(reader);
-        CloserUtil.close(out);
+        CloserUtil.close(scoresOut);
+        CloserUtil.close(lengthQ2sOut);
+        CloserUtil.close(glutamineOut);
 
         log.info("Done!");
         log.info("Skipped reads: " + skippedReads);

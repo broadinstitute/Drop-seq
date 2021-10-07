@@ -1,6 +1,6 @@
 library(tidyverse)
 
-input_path <- '/Users/kshakir/Downloads/output.tsv'
+input_path <- '/Users/kshakir/Downloads/htt_repeats.tsv'
 
 display_read_nums <- c(
   # Reads with longer Q2 tails
@@ -23,7 +23,7 @@ display_read_nums <- c(
 df <-
   input_path %>%
     read_delim(
-      delim = "\t",
+      delim = '\t',
       col_types = cols(
         READ_NUM = col_number(),
         TRIPLET_NUM = col_number(),
