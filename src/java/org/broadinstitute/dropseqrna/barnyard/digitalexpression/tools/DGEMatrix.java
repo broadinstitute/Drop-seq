@@ -684,17 +684,26 @@ public class DGEMatrix {
                 cellBarcodes.set(i, cellBarcodePrefix + cellBarcodes.get(i));
         int rows = matrixReader.getNumRows();
         int cols = matrixReader.getNumCols();
+        long elements = matrixReader.getNumElements();
+        if (elements > Integer.MAX_VALUE)
+        	throw new IllegalStateException ("This matrix market has > 2^32 non-zero values and can't be processed by the CRSMatrix API");
         if (rows != geneNames.size())
             throw new RuntimeException("Number of rows in matrix does not agree with length of gene list in " + matrixReader.getFilename());
         if (cols != cellBarcodes.size())
             throw new RuntimeException("Number of columns in matrix does not agree with length of cell barcode list in " + matrixReader.getFilename());
-        log.info("Found [" + rows + "] genes and [" + cols +"] cells");
-
+        log.info("Found [" + rows + "] genes and [" + cols +"] cells with [" + elements +"] non-zero entries");
+        
         // initialize the sparse matrix
-        CRSMatrix m = CRSMatrix.zero(rows, cols);
-        for (final MatrixMarketReader.Element element: matrixReader)
-			m.set(element.row, element.col, element.realValue());
-
+        log.info("Initializing CRSMatrix with [" + (int) elements +"] elements");
+        CRSMatrix m = CRSMatrix.zero(rows, cols, (int) elements);
+                
+        // Progress logged to track reading.
+        ProgressLogger pl = new ProgressLogger(log);
+        for(final MatrixMarketReader.Element element : matrixReader){
+        	pl.record("0",0);
+			m.set(element.row,element.col,element.realValue());
+        }
+        
         CloserUtil.close(matrixReader);
 		return (new DGEMatrix(cellBarcodes, geneNames, m));
 

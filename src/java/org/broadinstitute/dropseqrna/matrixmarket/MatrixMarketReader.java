@@ -112,7 +112,7 @@ public class MatrixMarketReader
     private final BufferedReader reader;
     private final int numRows;
     private final int numCols;
-    private final int numElements;
+    private final long numElements;
     private final List<String> rowNames = new ArrayList<>();
     private final List<String> colNames = new ArrayList<>();
     private final MatrixMarketConstants.ElementType elementType;
@@ -187,7 +187,7 @@ public class MatrixMarketReader
             }
             numRows = Integer.parseInt(fields[0]);
             numCols = Integer.parseInt(fields[1]);
-            numElements= Integer.parseInt(fields[2]);
+            numElements= Long.parseLong(fields[2]);          
 
             if (rowNames.size() != 0 && rowNames.size() != numRows) {
                 throw new RuntimeException(String.format("rowNames.size(%d) != numRows(%d)", rowNames.size(), numRows));
@@ -195,7 +195,7 @@ public class MatrixMarketReader
             if (colNames.size() != 0 && colNames.size() != numCols) {
                 throw new RuntimeException(String.format("colNames.size(%d) != numCols(%d)", colNames.size(), numCols));
             }
-            if ((long)numElements > numRows * (long)numCols) {
+            if (numElements > numRows * (long)numCols) {
                 throw new RuntimeException(String.format("numElements(%d) > numRows(%d) * numCols(%d)", numElements, numRows, numCols));
             }
 
@@ -224,7 +224,7 @@ public class MatrixMarketReader
         return numCols;
     }
 
-    public int getNumElements() {
+    public long getNumElements() {
         return numElements;
     }
 

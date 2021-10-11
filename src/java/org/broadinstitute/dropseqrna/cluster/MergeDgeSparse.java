@@ -174,7 +174,7 @@ public class MergeDgeSparse
 
         final GeneFiltererSorter geneFiltererSorter = new GeneFiltererSorter(MIN_CELLS, dges);
 
-        int totalNumElements = 0;
+        long totalNumElements = 0;
         final List<String> cellBarcodes = new ArrayList<>();
         for (final SparseDge dge : dges) {
             totalNumElements += dge.getNumNonZeroEntries();
@@ -240,6 +240,12 @@ public class MergeDgeSparse
     @Override
     protected String[] customCommandLineValidation() {
         String[] superMessages = super.customCommandLineValidation();
+        if (this.CELL_SIZE_OUTPUT_FILE!=null) IOUtil.assertFileIsWritable(this.CELL_SIZE_OUTPUT_FILE);
+        if (this.RAW_DGE_OUTPUT_FILE!=null) IOUtil.assertFileIsWritable(this.RAW_DGE_OUTPUT_FILE);
+        if (this.SCALED_DGE_OUTPUT_FILE!=null) IOUtil.assertFileIsWritable(this.SCALED_DGE_OUTPUT_FILE);
+        if (this.DGE_HEADER_OUTPUT_FILE!=null) IOUtil.assertFileIsWritable(this.DGE_HEADER_OUTPUT_FILE);
+        if (this.DISCARDED_CELLS_FILE!=null) IOUtil.assertFileIsWritable(this.DISCARDED_CELLS_FILE);
+                
         if (RAW_DGE_OUTPUT_FILE == null && SCALED_DGE_OUTPUT_FILE == null)
             return CustomCommandLineValidationHelper.makeValue(superMessages,
                     Collections.singletonList("At least one of RAW_DGE_OUTPUT_FILE and SCALED_DGE_OUTPUT_FILE should be set"));

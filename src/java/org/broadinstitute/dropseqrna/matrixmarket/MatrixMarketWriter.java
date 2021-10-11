@@ -39,10 +39,10 @@ public class MatrixMarketWriter
     private final BufferedWriter writer;
     private final String filename;
     private final MatrixMarketConstants.ElementType elementType;
-    private final int numRows;
-    private final int numCols;
-    private final int numNonZeroElements;
-    private int numElementsWritten;
+    private final long numRows;
+    private final long numCols;
+    private final long numNonZeroElements;
+    private long numElementsWritten;
 
     /**
      *
@@ -57,7 +57,7 @@ public class MatrixMarketWriter
                               final MatrixMarketConstants.ElementType elementType,
                               final int numRows,
                               final int numCols,
-                              final int numNonZeroElements,
+                              final long numNonZeroElements,
                               final List<String> rowNames,
                               final List<String> colNames,
                               final String rowNamesLabel,
@@ -80,7 +80,7 @@ public class MatrixMarketWriter
                               final MatrixMarketConstants.ElementType elementType,
                               final int numRows,
                               final int numCols,
-                              final int numNonZeroElements,
+                              final long numNonZeroElements,
                               final List<String> rowNames,
                               final List<String> colNames,
                               String rowNamesLabel,
@@ -145,7 +145,7 @@ public class MatrixMarketWriter
      * @param col 0-based
      * @param val value to be written
      */
-    public void writeTriplet(final int row, final int col, final int val) {
+    public void writeTriplet(final long row, final long col, final int val) {
         try {
             assertGoodIndices(row, col);
             writer.write(String.format("%d\t%d\t%d\n", row+1, col+1, val));
@@ -159,7 +159,7 @@ public class MatrixMarketWriter
      * @param col 0-based
      * @param val value to be written, with 8 digits of precision.
      */
-    public void writeTriplet(final int row, final int col, final double val) {
+    public void writeTriplet(final long row, final long col, final double val) {
         try {
             if (elementType != MatrixMarketConstants.ElementType.real) {
                 throw new UnsupportedOperationException("Cannot write floating-point value to integer matrix");
@@ -171,7 +171,7 @@ public class MatrixMarketWriter
         }
     }
 
-    private void assertGoodIndices(final int row, final int col) {
+    private void assertGoodIndices(final long row, final long col) {
         if (row >= numRows) {
             throw new IllegalArgumentException(String.format("row(%d) >= numRows(%d)", row, numRows));
         }
