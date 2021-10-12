@@ -23,15 +23,6 @@ read_glutamine_repeats_df <- function(rxns_df, idx_rxn) {
         )
       )
 
-  rxns_df <-
-    rxns_path %>%
-      read_delim(
-        delim = '\t',
-        col_types = cols(
-          ORDER = col_integer()
-        )
-      )
-
   rxn_df <- rxns_df %>%
     filter(
       RXN_IDX_0 == idx_rxn |
