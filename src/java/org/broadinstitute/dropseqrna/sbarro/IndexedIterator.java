@@ -4,18 +4,20 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Iterator;
 
-public class IndexedIterator<TItem, TIterator extends Iterator<TItem> & Iterable<TItem> & Closeable>
+public class IndexedIterator<TItem, TIterable extends Iterable<TItem> & Closeable>
         implements Iterator<IndexedItem<TItem>>, Iterable<IndexedItem<TItem>>, Closeable {
     private long index = 0;
     private final long limit;
-    private final TIterator inner;
+    private final TIterable inner;
+    private final Iterator<TItem> iterator;
 
-    public IndexedIterator(final TIterator inner, final long skip, final long count) {
+    public IndexedIterator(final TIterable inner, final long skip, final long count) {
         this.inner = inner;
+        this.iterator = inner.iterator();
         this.limit = count < 0 ? -1 : skip + count;
 
-        while (this.index < skip && this.inner.hasNext()) {
-            this.inner.next();
+        while (this.index < skip && this.iterator.hasNext()) {
+            this.iterator.next();
             this.index++;
         }
     }
@@ -33,7 +35,7 @@ public class IndexedIterator<TItem, TIterator extends Iterator<TItem> & Iterable
     @Override
     public boolean hasNext() {
         if (this.limit < 0 || this.limit > this.index) {
-            return this.inner.hasNext();
+            return this.iterator.hasNext();
         } else {
             return false;
         }
@@ -41,7 +43,7 @@ public class IndexedIterator<TItem, TIterator extends Iterator<TItem> & Iterable
 
     @Override
     public IndexedItem<TItem> next() {
-        final IndexedItem<TItem> next = new IndexedItem<>(this.index, this.inner.next());
+        final IndexedItem<TItem> next = new IndexedItem<>(this.index, this.iterator.next());
         this.index++;
         return next;
     }
