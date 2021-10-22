@@ -32,6 +32,7 @@ import org.broadinstitute.dropseqrna.utils.*;
 import picard.annotation.LocusFunction;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -42,7 +43,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
     private static final ProgressLogger prog = new ProgressLogger(log);
 
 	private final GroupingIterator<SAMRecord> atoi;
-	private final String geneTag;
+//	private final String geneTagUnused;
 	private final String cellBarcodeTag;
 	private final String molecularBarcodeTag;
     private final StringInterner stringCache = new StringInterner();
@@ -79,7 +80,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	/**
 	 * Construct an object that generates UMI objects from a BAM file
 	 * @param headerAndIterator The BAM records to extract UMIs from
-	 * @param geneTag The geneExon tag on BAM records
+//	 * @param geneTag The geneExon tag on BAM records
 	 * @param cellBarcodeTag The cell barcode tag on BAM records
 	 * @param molecularBarcodeTag The molecular barcode tag on BAM records
 	 * @param geneStrandTag The strand tag on BAM records
@@ -94,7 +95,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	 *                           is not complete until iteration is started.
 	 */
 	public UMIIterator(final SamHeaderAndIterator headerAndIterator,
-					   final String geneTag,
+					   final String geneTagUnused,
                        final String geneStrandTag,
                        final String geneFunctionTag,
                        final StrandStrategy strandStrategy,
@@ -107,23 +108,24 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final boolean cellFirstSort,
 					   final boolean recordCellsInInput) {
 
-        this.geneTag=geneTag;
+//        this.geneTag=geneTag;
         this.cellBarcodeTag=cellBarcodeTag;
         this.molecularBarcodeTag=molecularBarcodeTag;
 
         final StringTagComparator cellBarcodeTagComparator = new StringTagComparator(cellBarcodeTag);
-        final StringTagComparator geneExonTagComparator = new StringTagComparator(geneTag);
-        final MultiComparator<SAMRecord> multiComparator;
-		if (cellFirstSort)
-			multiComparator = new MultiComparator<>(cellBarcodeTagComparator, geneExonTagComparator);
-		else
-			multiComparator = new MultiComparator<>(geneExonTagComparator, cellBarcodeTagComparator);
+//        final StringTagComparator geneExonTagComparator = new StringTagComparator(geneTag);
+        final Comparator<SAMRecord> multiComparator = cellBarcodeTagComparator;
+//		if (cellFirstSort)
+//			multiComparator = new MultiComparator<>(cellBarcodeTagComparator, geneExonTagComparator);
+//		else
+//			multiComparator = new MultiComparator<>(geneExonTagComparator, cellBarcodeTagComparator);
         // Filter records before sorting, to reduce I/O
 		Iterator<SAMRecord> filteringIterator =
-                new MissingTagFilteringIterator(headerAndIterator.iterator, cellBarcodeTag, geneTag, molecularBarcodeTag);
+                new MissingTagFilteringIterator(headerAndIterator.iterator, cellBarcodeTag, molecularBarcodeTag);
+//                new MissingTagFilteringIterator(headerAndIterator.iterator, cellBarcodeTag, geneTag, molecularBarcodeTag);
 
 		// Filter reads on map quality
-		filteringIterator = new MapQualityFilteredIterator(filteringIterator, readMQ, true);
+//		filteringIterator = new MapQualityFilteredIterator(filteringIterator, readMQ, true);
 
 		if (recordCellsInInput) {
 			this.cellBarcodesSeen = new HashSet<>();
@@ -139,11 +141,12 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		}
 
 		// Filter/assign reads based on functional annotations
-		GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator, geneTag,
-				geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
+//		GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator, geneTag,
+//				geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
 
         CloseableIterator<SAMRecord> sortedAlignmentIterator = SamRecordSortingIteratorFactory.create(
-                headerAndIterator.header, gfteratorWrapper, multiComparator, prog);
+                headerAndIterator.header, filteringIterator, multiComparator, prog);
+//                headerAndIterator.header, gfteratorWrapper, multiComparator, prog);
 
         // Not really -- merge sort is ongoing.
         log.info("Sorting finished.");
@@ -165,7 +168,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 
 		// the next record is the first of the "batch"
 		SAMRecord r = recordCollectionIter.peek();
-		String currentGene = r.getStringAttribute(geneTag);
+//		String currentGene = r.getStringAttribute(geneTag);
+		String currentGene = null; // r.getStringAttribute(geneTag);
 		String currentCell = Utils.getCellBC(r, cellBarcodeTag);
 		UMICollection umi = new UMICollection(currentCell, currentGene);
 
