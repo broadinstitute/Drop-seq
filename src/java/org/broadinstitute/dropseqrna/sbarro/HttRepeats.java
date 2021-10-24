@@ -23,10 +23,10 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.ToIntFunction;
@@ -119,19 +119,23 @@ public class HttRepeats extends CommandLineProgram {
         glutamineRepeatsOut.println(
                 "PREFIX_OFFSET\tPREFIX_MISMATCHES\tSUFFIX_MISMATCHES\tGLUTAMINE_COUNT\tQ2_START\tCOUNT\tFIRST"
         );
-        aggregator.glutamineRepeatCounts.forEach(
-                (key, value) ->
-                        glutamineRepeatsOut.printf(
-                                "%d\t%d\t%d\t%d\t%d\t%d\t%d%n",
-                                key.prefixOffset,
-                                key.prefixMismatches,
-                                key.suffixMismatches,
-                                key.glutamineCount,
-                                key.q2Start,
-                                value.count,
-                                value.firstReadNumber
-                        )
-        );
+        aggregator.glutamineRepeatCounts
+                .entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByKey(glutamineRepeatsComparator))
+                .forEachOrdered(
+                        entry ->
+                                glutamineRepeatsOut.printf(
+                                        "%d\t%d\t%d\t%d\t%d\t%d\t%d%n",
+                                        entry.getKey().prefixOffset,
+                                        entry.getKey().prefixMismatches,
+                                        entry.getKey().suffixMismatches,
+                                        entry.getKey().glutamineCount,
+                                        entry.getKey().q2Start,
+                                        entry.getValue().count,
+                                        entry.getValue().firstReadNumber
+                                )
+                );
 
         CloserUtil.close(reader);
         CloserUtil.close(scoresOut);
@@ -433,7 +437,7 @@ public class HttRepeats extends CommandLineProgram {
         private final long[] shiftCounts = new long[3];
 
         private final Map<GlutamineRepeat, GlutamineRepeatCount> glutamineRepeatCounts =
-                new TreeMap<>(glutamineRepeatsComparator);
+                new HashMap<>();
 
         private HttRecordAggregator(final Log log, final long printReadProgress, final PrintStream scoresOut) {
             this.log = log;
