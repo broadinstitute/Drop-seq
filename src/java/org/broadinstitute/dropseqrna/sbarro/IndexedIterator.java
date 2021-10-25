@@ -1,30 +1,21 @@
 package org.broadinstitute.dropseqrna.sbarro;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.Iterator;
 
-public class IndexedIterator<TItem, TIterable extends Iterable<TItem> & Closeable>
-        implements Iterator<IndexedItem<TItem>>, Iterable<IndexedItem<TItem>>, Closeable {
+public class IndexedIterator<TItem, TIterator extends Iterator<TItem>>
+        implements Iterator<IndexedItem<TItem>>, Iterable<IndexedItem<TItem>> {
     private long index = 0;
     private final long limit;
-    private final TIterable inner;
     private final Iterator<TItem> iterator;
 
-    public IndexedIterator(final TIterable inner, final long skip, final long count) {
-        this.inner = inner;
-        this.iterator = inner.iterator();
+    public IndexedIterator(final TIterator inner, final long skip, final long count) {
+        this.iterator = inner;
         this.limit = count < 0 ? -1 : skip + count;
 
         while (this.index < skip && this.iterator.hasNext()) {
             this.iterator.next();
             this.index++;
         }
-    }
-
-    @Override
-    public void close() throws IOException {
-        this.inner.close();
     }
 
     @Override

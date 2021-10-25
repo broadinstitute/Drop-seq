@@ -15,8 +15,10 @@ import org.broadinstitute.dropseqrna.cmdline.Sbarro;
 import org.broadinstitute.dropseqrna.sbarro.utils.FindSubSequence;
 import org.broadinstitute.dropseqrna.sbarro.utils.SubSequenceResultI;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+import org.broadinstitute.dropseqrna.utils.readiterators.CellBarcodeFilteringIterator;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.util.TabbedInputParser;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,6 +29,7 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.ToIntFunction;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 @CommandLineProgramProperties(
@@ -44,6 +47,9 @@ public class HttTableGen extends CommandLineProgram {
 
     @Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Where to write the results.")
     public File OUTPUT = Paths.get("").toFile();
+
+    @Argument(shortName = "A", doc = "Allow gziped list of allowed CBC barcodes", optional = true)
+    public File ALLOWED_CBC = null;
 
     @Argument(shortName = "S", doc = "How many reads to skip.", optional = true)
     public long SKIP_READS = 0L;
@@ -63,6 +69,9 @@ public class HttTableGen extends CommandLineProgram {
     // Sequence that should appear before and after mostly CAG repeats, with possibly a CAA towards the end.
     private static final String cagPrefix = "CCTTCGAGTCCCTCAAGTCCTTC";
     private static final String cagSuffix = "CCGCCACCG";
+
+    private static final String CELL_BARCODE_TAG = "XC";
+    private static final String MOLECULAR_BARCODE_TAG = "XM";
 
     @Override
     protected int doWork() {
@@ -86,8 +95,24 @@ public class HttTableGen extends CommandLineProgram {
 
         final SamReader inputSam = SamReaderFactory.makeDefault().open(INPUT);
 
-        final IndexedIterator<SAMRecord, SamReader> reader =
-                new IndexedIterator<>(inputSam, SKIP_READS, COUNT_READS);
+        final Iterator<SAMRecord> iterator;
+        if (this.ALLOWED_CBC == null) {
+            iterator = inputSam.iterator();
+        } else {
+            log.info("Reading allowed cell barcodes");
+            final TabbedInputParser strings;
+            try {
+                strings = new TabbedInputParser(false, this.ALLOWED_CBC.getCanonicalFile());
+            } catch (IOException ioException) {
+                throw new RuntimeException(ioException);
+            }
+            final Set<String> cellBarcodes = strings.stream().map(tokens -> tokens[0]).collect(Collectors.toSet());
+            log.info("Done reading allowed cell barcodes");
+            iterator = new CellBarcodeFilteringIterator(inputSam.iterator(), CELL_BARCODE_TAG, cellBarcodes);
+        }
+
+        final IndexedIterator<SAMRecord, Iterator<SAMRecord>> reader =
+                new IndexedIterator<>(iterator, SKIP_READS, COUNT_READS);
 
         final PrintStream scoresOut =
                 !OUTPUT_SCORES ? null : new ErrorCheckingPrintStream(
@@ -139,7 +164,7 @@ public class HttTableGen extends CommandLineProgram {
 //                        )
 //        );
 
-        CloserUtil.close(reader);
+        CloserUtil.close(inputSam);
         CloserUtil.close(scoresOut);
         CloserUtil.close(glutamineRepeatsOut);
 
@@ -535,8 +560,8 @@ public class HttTableGen extends CommandLineProgram {
 //                log.debug();
 //            }
 //
-            final String cbc = summary.numberedSAMRecord.getItem().getStringAttribute("XC");
-            final String umi = summary.numberedSAMRecord.getItem().getStringAttribute("XM");
+            final String cbc = summary.numberedSAMRecord.getItem().getStringAttribute(CELL_BARCODE_TAG);
+            final String umi = summary.numberedSAMRecord.getItem().getStringAttribute(MOLECULAR_BARCODE_TAG);
             if (summary.glutamineRepeat != null) {
                 final TreeMap<Integer, Long> counts = new TreeMap<>();
                 counts.put(summary.glutamineRepeat.glutamineCount, 1L);
