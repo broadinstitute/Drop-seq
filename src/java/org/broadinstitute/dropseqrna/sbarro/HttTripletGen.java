@@ -169,10 +169,14 @@ public class HttTripletGen extends CommandLineProgram {
         // Find where the suffix starts, searching after the end of the prefix.
         final char[] readPostPrefix = read.substring(prefixSubSeq.getEnd()).toCharArray();
         final char[] tripletArray = new char[3];
+        // glutamines
         final char[] CAG_ARRAY = "CAG".toCharArray();
         final char[] CAA_ARRAY = "CAA".toCharArray();
+        // prolines
         final char[] CCA_ARRAY = "CCA".toCharArray();
+        final char[] CCC_ARRAY = "CCC".toCharArray();
         final char[] CCG_ARRAY = "CCG".toCharArray();
+        final char[] CCT_ARRAY = "CCT".toCharArray();
         int otherCodeCount = 0;
         int prolineCount = 0;
         int glutamineCount = 0;
@@ -183,7 +187,13 @@ public class HttTripletGen extends CommandLineProgram {
                 // Since we saw a glutamine again, reset the proline count
                 glutamineCount += prolineCount;
                 prolineCount = 0;
-            } else if (Arrays.equals(tripletArray, CCG_ARRAY) || Arrays.equals(tripletArray, CCA_ARRAY)) {
+            } else if (
+                    // In order of expected frequency
+                    Arrays.equals(tripletArray, CCG_ARRAY) ||
+                            Arrays.equals(tripletArray, CCA_ARRAY) ||
+                            Arrays.equals(tripletArray, CCC_ARRAY) ||
+                            Arrays.equals(tripletArray, CCT_ARRAY)
+            ) {
                 prolineCount++;
             } else {
                 otherCodeCount++;
