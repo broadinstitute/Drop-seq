@@ -23,8 +23,8 @@
  */
 package org.broadinstitute.dropseqrna.sbarro.utils;
 
-import org.biojava.nbio.alignment.template.AlignedSequence;
-import org.biojava.nbio.alignment.template.SequencePair;
+import org.biojava.nbio.core.alignment.template.AlignedSequence;
+import org.biojava.nbio.core.alignment.template.SequencePair;
 import org.biojava.nbio.core.sequence.DNASequence;
 import org.biojava.nbio.core.sequence.compound.NucleotideCompound;
 
