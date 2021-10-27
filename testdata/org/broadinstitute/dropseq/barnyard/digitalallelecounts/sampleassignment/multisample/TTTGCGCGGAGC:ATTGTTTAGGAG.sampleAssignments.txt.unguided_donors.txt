@@ -1,0 +1,2 @@
+cell	sampleOneMixtureRatio	sampleOne	sampleOneLikelihood	sampleTwo	sampleTwoLikelihood	mixedSample	mixedSampleLikelihood	num_paired_snps	num_inform_snps	lr_test_stat	sampleOneWrongAlleleCount	sampleTwoWrongAlleleCount	ratio	bestLikelihood	bestSample
+TTTGCGCGGAGC:ATTGTTTAGGAG	0.643	HUES53	-9.80926731658451	NKX	-12.0398723515404	HUES53:NKX	-8.72621729107288	28	18	1.0831	5	6	1.08305002551164	-8.72621729107288	HUES53:NKX
