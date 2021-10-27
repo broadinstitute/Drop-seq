@@ -1,0 +1,3 @@
+chromosome	position	maf_umi
+HUMAN_1	76227022	0.2
+HUMAN_1	150199123	0.9

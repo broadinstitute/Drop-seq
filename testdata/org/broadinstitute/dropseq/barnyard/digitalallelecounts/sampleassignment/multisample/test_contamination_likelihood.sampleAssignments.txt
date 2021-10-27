@@ -1,0 +1,7 @@
+#INPUT_BAM=/downloads/embryonicStemCells/HUES53_NKX/TTTGCGCGGAGC:ATTGTTTAGGAG2.bam
+#INPUT_VCF=/downloads/embryonicStemCells/metadata/siblings_full_filtered.final_fixed.vcf.gz
+#GQ_THRESHOLD=30
+#MISSING_VALUES_ADDED=true
+cell	num_snps	num_umis	ratio	bestLikelihood	bestSample	HUES53	HUES62	HUES63	HUES64	NKX
+TTTGCGCGGAGC:ATTGTTTAGGAG	451	637	1.4777E0	-1.6482E2	HUES53	-1.6482E2	-2.0095E2	-2.1669E2	-2.0862E2	-1.663E2
+fake	451	637	1.4777E0	-1.6482E2	HUES53	-1.6482E2	-2.0095E2	-2.1669E2	-2.0862E2	-1.663E2

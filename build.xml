@@ -172,6 +172,9 @@
 		<package-command visibility="public" title="TagReadWithRabiesBarcodes"/>
         <package-command visibility="public" title="FilterValidRabiesBarcodes"/>
         <package-command visibility="public" title="BipartiteRabiesVirusCollapse"/>
+    	<package-command visibility="public" title="AssignCellsToSamples"/>
+    	<package-command visibility="public" title="DetectDoublets"/>
+    	    	
     </target>
 
 
