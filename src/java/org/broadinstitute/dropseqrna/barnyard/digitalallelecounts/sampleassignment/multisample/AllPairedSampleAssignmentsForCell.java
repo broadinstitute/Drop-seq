@@ -122,7 +122,8 @@ public class AllPairedSampleAssignmentsForCell {
 		// construct a new object and set the mixture to be 0.5
 		SamplePairAssignmentForCell result = new SamplePairAssignmentForCell(best.getCellBarcode(), best.getSampleOne(), best.getSampleTwo(), 
 				best.getSampleOneSingleLikelihood(), best.getSampleTwoSingleLikelihood(), best.getDoubletLikelihood(), -1.0d, best.getImpossibleAllelesSampleOne(), 
-				best.getImpossibleAllelesSampleTwo(), best.getNumInformativeSNPs(), best.getNumSNPs(), best.getNumUMIs(), best.getNumInformativeUMIs());
+				best.getImpossibleAllelesSampleTwo(), best.getNumInformativeSNPs(), best.getNumSNPs(), best.getNumUMIs(), best.getNumInformativeUMIs(), 
+				best.getNumInformativeHomozygousUMIsSampleOne(), best.getNumInformativeHomozygousUMIsSampleTwo());
 		this.best=result;
 		
 	}

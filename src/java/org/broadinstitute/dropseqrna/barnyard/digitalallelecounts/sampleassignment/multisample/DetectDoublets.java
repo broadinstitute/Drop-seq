@@ -425,7 +425,8 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	public static void writeAssignmentColumnNames(final PrintStream out, final boolean outputBestPairPvalue, final boolean writeScaledLikelihoods) {
 		List<String> line = new ArrayList<String>(Arrays.asList("cell", "sampleOneMixtureRatio", "sampleOne", "sampleOneLikelihood", "sampleTwo",
 				"sampleTwoLikelihood", "mixedSample", "mixedSampleLikelihood", "num_paired_snps", "num_inform_snps", "num_umi", "num_inform_umis",
-				"lr_test_stat", "sampleOneWrongAlleleCount", "sampleTwoWrongAlleleCount", "bestLikelihood", "bestSample", "doublet_pval"));
+				"lr_test_stat", "sampleOneWrongAlleleCount", "num_homozygous_inform_umis_s1", 
+				"sampleTwoWrongAlleleCount", "num_homozygous_inform_umis_s2", "bestLikelihood", "bestSample", "doublet_pval"));
 
 		if (outputBestPairPvalue)
 			line.add("best_pair_pvalue");
@@ -452,7 +453,8 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 						Double.toString(assignment.getDoubletLikelihood()), Integer.toString(assignment.getNumSNPs()),
 						Integer.toString(assignment.getNumInformativeSNPs()), Integer.toString(assignment.getNumUMIs()),
 						Integer.toString(assignment.getNumInformativeUMIs()), Double.toString(assignment.getDoubletLikelihoodRatio()),
-						Integer.toString(assignment.getImpossibleAllelesSampleOne()), Integer.toString(assignment.getImpossibleAllelesSampleTwo()),
+						Integer.toString(assignment.getImpossibleAllelesSampleOne()), Integer.toString(assignment.getNumInformativeHomozygousUMIsSampleOne()), 
+						Integer.toString(assignment.getImpossibleAllelesSampleTwo()), Integer.toString(assignment.getNumInformativeHomozygousUMIsSampleTwo()),
 						Double.toString(assignment.getBestLikelihood()), assignment.getBestSample(), Double.toString(assignment.getDoubletPvalue())));
 
 		if (bestPairPvalue != null)
@@ -478,9 +480,12 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		int numInformativeUMIs = row.getIntegerField("num_inform_umis");
 		int impossibleAllelesSampleOne = row.getIntegerField("sampleOneWrongAlleleCount");
 		int impossibleAllelesSampleTwo = row.getIntegerField("sampleTwoWrongAlleleCount");
+		int numInformativeHomozygousUMIsSampleOne = row.getIntegerField("num_homozygous_inform_umis_s1");
+		int numInformativeHomozygousUMIsSampleTwo = row.getIntegerField("num_homozygous_inform_umis_s2");
 
 		return new SamplePairAssignmentForCell(cellBarcode, sampleOne, sampleTwo, sampleOneSingleLikelihood, sampleTwoSingleLikelihood, doubletLikelihood,
-				mixtureRatio, impossibleAllelesSampleOne, impossibleAllelesSampleTwo, numInformativeSNPs, numSNPs, numUMIs, numInformativeUMIs);
+				mixtureRatio, impossibleAllelesSampleOne, impossibleAllelesSampleTwo, numInformativeSNPs, numSNPs, numUMIs, numInformativeUMIs,
+				numInformativeHomozygousUMIsSampleOne, numInformativeHomozygousUMIsSampleTwo);
 	}
 
 	public static List<SamplePairAssignmentForCell> parseAssignmentsFile(File assignmentsFile) {

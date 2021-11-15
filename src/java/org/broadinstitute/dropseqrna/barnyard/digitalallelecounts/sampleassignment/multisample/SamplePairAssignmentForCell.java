@@ -48,6 +48,8 @@ public class SamplePairAssignmentForCell {
 	private final int numInformativeSNPs;
 	private final int numUMIs;
 	private final int numInformativeUMIs;
+	private final int numInformativeHomozygousUMIsSampleOne;
+	private final int numInformativeHomozygousUMIsSampleTwo;
 	
 	// Normalize the likelihoods across many pairs of models for the same cell.
 	// Likelihoods for each model are scaled by this factor.
@@ -69,12 +71,15 @@ public class SamplePairAssignmentForCell {
 		this.numInformativeSNPs=0;
 		this.numUMIs=0;
 		this.numInformativeUMIs=0;
+		this.numInformativeHomozygousUMIsSampleOne=0;
+		this.numInformativeHomozygousUMIsSampleTwo=0;
 		this.scalingFactor=1;
 	}
 
 	public SamplePairAssignmentForCell (final String cellBarcode, final String sampleOne, final String sampleTwo,
 			final double sampleOneSingleLikelihood, final double sampleTwoSingleLikelihood, final double doubletLikelihood, final double mixture,
-			final int impossibleAllelesSampleOne, final int impossibleAllelesSampleTwo, final int numInformativeSNPs, final int numSNPs, final int numUMIs, final int numInformativeUMIs) {
+			final int impossibleAllelesSampleOne, final int impossibleAllelesSampleTwo, final int numInformativeSNPs, final int numSNPs, final int numUMIs, final int numInformativeUMIs,
+			final int numInformativeHomozygousUMIsSampleOne, final int numInformativeHomozygousUMIsSampleTwo) {
 		this.cellBarcode=cellBarcode;
 		this.sampleOne=sampleOne;
 		this.sampleTwo=sampleTwo;
@@ -88,6 +93,8 @@ public class SamplePairAssignmentForCell {
 		this.numSNPs=numSNPs;
 		this.numUMIs=numUMIs;
 		this.numInformativeUMIs=numInformativeUMIs;
+		this.numInformativeHomozygousUMIsSampleOne=numInformativeHomozygousUMIsSampleOne;
+		this.numInformativeHomozygousUMIsSampleTwo=numInformativeHomozygousUMIsSampleTwo;
 		this.scalingFactor=1;
 	}
 	
@@ -141,6 +148,14 @@ public class SamplePairAssignmentForCell {
 
 	public int getImpossibleAllelesSampleTwo() {
 		return impossibleAllelesSampleTwo;
+	}
+	
+	public int getNumInformativeHomozygousUMIsSampleOne() {
+		return numInformativeHomozygousUMIsSampleOne;
+	}
+
+	public int getNumInformativeHomozygousUMIsSampleTwo() {
+		return numInformativeHomozygousUMIsSampleTwo;
 	}
 
 	public int getNumSNPs() {
@@ -297,6 +312,7 @@ public class SamplePairAssignmentForCell {
 		return true;
 	}
 
+	
 	/*
 	public Double getForcedMixture() {
 		return forcedMixture;
