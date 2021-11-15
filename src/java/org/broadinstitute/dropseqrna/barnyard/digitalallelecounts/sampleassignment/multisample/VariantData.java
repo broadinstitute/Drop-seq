@@ -152,7 +152,24 @@ public class VariantData {
 		if (this.getGenotypeOne()==this.getGenotypeTwo()) return false;
 		return true;
 	}
-
+	
+	/**
+	 * Is genotype one different from genotype two, and is neither of the genotypes a no call?
+	 * Additionally, the genotype for the sample should be homozygous. 
+	 * @param genotypeIndex 
+	 * @return True if this 
+	 */
+	public boolean isInformativeHomozygous(final int genotypeIndex) {
+		if (!isInformative()) return false;
+		// Site is informative, is it homozygous?
+		GenotypeType gt = this.genotypes.get(genotypeIndex);
+		switch (gt) {
+		case HOM_REF: return true;
+		case HOM_VAR: return true;
+		default: return false;
+		}
+	}
+	
 	public int getNumImpossibleAllelesGenotypeOne() {
 		return getNumImpossibleAlleles(0);
 	}

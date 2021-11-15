@@ -78,6 +78,7 @@ public class VariantDataCollection implements UnivariateFunction {
 		int numInformativeSNPs=getNumInformativeSNPs();
 		int numUMIs=getNumUMIs();
 		int numInformativeUMIs = getNumInformativeUMIs();
+		
 		double doubletLikelihood=mixtureResult.getValue();
 		double mixture = mixtureResult.getPoint();
 		// because the optimizer doesn't search the exact bounds of 0 and 1, need to correct the results to include those bounds.
@@ -93,11 +94,9 @@ public class VariantDataCollection implements UnivariateFunction {
 			mixture=0;
 		}
 
-
 		SamplePairAssignmentForCell result = new SamplePairAssignmentForCell(this.cell, sampleOne, sampleTwo, likelihoodSampleOne, likelihoodSampleTwo, doubletLikelihood,
-				mixture, getNumImpossibleAlleles(0), getNumImpossibleAlleles(1), numInformativeSNPs, vd.size(), numUMIs, numInformativeUMIs);
-
-		// if (forcedDonorMixture!=null) result.setForcedMixtureResult(forcedDonorMixture, value(forcedDonorMixture));
+				mixture, getNumImpossibleAlleles(0), getNumImpossibleAlleles(1), numInformativeSNPs, vd.size(), numUMIs, numInformativeUMIs, 
+				getNumInformativeHomozygousUMIs(0), getNumInformativeHomozygousUMIs(1));
 
 		return result;
 	}
@@ -128,6 +127,15 @@ public class VariantDataCollection implements UnivariateFunction {
 				count+=v.getNumUMIs();
 		return count;
 	}
+	
+	private int getNumInformativeHomozygousUMIs(final int sampleIndex) {
+		int count=0;
+		for (VariantData v: this.vd)
+			if(v.isInformativeHomozygous(sampleIndex))
+				count+=v.getNumUMIs();
+		return count;
+	}
+	
 
 	private int getNumUMIs() {
 		int count=0;
