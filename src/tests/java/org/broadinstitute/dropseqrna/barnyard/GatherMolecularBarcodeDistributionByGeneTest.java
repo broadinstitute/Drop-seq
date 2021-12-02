@@ -12,7 +12,7 @@ public class GatherMolecularBarcodeDistributionByGeneTest {
 
 	private static final File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.bam");
 	private static final File IN_CELL_BARCODE_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.cellbarcodes.txt");
-	private static final File OUT_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.molBC.txt");
+	private static final File OUT_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.legacy_labels.molBC.txt");
 
 	@Test
 	// Note: This is a very basic test, because the output is basically the same as DGE testing, so we're covering the same ground.
@@ -31,6 +31,7 @@ public class GatherMolecularBarcodeDistributionByGeneTest {
 		g.CELL_BC_FILE=IN_CELL_BARCODE_FILE;
 		g.INPUT=Collections.singletonList(IN_FILE);
 		g.OUTPUT=outFile;
+		g.LEGACY_COLUMN_LABELS = true;
 
 
         int result = g.doWork();

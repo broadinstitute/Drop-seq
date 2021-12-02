@@ -67,13 +67,20 @@ import picard.cmdline.StandardOptionDefinitions;
 )
 public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase {
 
-	private static final Log log = Log.getInstance(GatherMolecularBarcodeDistributionByGene.class);
-
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
 	public List<File> INPUT;
 	
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of with 4 columns: CELL, GENE, MOLECULAR BC, #Observations. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
+
+	@Argument(doc="For backward compatibility, emit old column labels that included some space characters.")
+	public boolean LEGACY_COLUMN_LABELS = false;
+
+	public enum COLUMN_LABEL {CELL_BARCODE, GENE, MOLECULAR_BARCODE, NUM_OBS}
+	public static String CELL_BARCODE_COLUMN = COLUMN_LABEL.CELL_BARCODE.toString();
+	public static String GENE_COLUMN = COLUMN_LABEL.GENE.toString();
+	public static String MOLECULAR_BARCODE_COLUMN = COLUMN_LABEL.MOLECULAR_BARCODE.toString();
+	public static String NUM_OBS_COLUMN = COLUMN_LABEL.NUM_OBS.toString();
 
 	@Override
 	protected int doWork() {
@@ -125,8 +132,14 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	}
 
 
-	public static void writePerTranscriptHeader(final BufferedWriter out) {
-		String [] header = {"Cell Barcode", "Gene", "Molecular_Barcode", "Num_Obs"};
+	private void writePerTranscriptHeader(final BufferedWriter out) {
+		final String [] header;
+		if (LEGACY_COLUMN_LABELS) {
+			header = new String[]{"Cell Barcode", "Gene", "Molecular_Barcode", "Num_Obs"};
+		} else {
+				header = new String[]{COLUMN_LABEL.CELL_BARCODE.toString(), COLUMN_LABEL.GENE.toString(),
+						COLUMN_LABEL.MOLECULAR_BARCODE.toString(), COLUMN_LABEL.NUM_OBS.toString()};
+			}
 		String h = StringUtils.join(header, "\t");
 		OutputWriterUtil.writeResult(h, out);
 	}

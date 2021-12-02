@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.PeekableIterator;
+import org.broadinstitute.dropseqrna.barnyard.GatherMolecularBarcodeDistributionByGene;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
 import picard.util.TabbedTextFileWithHeaderParser;
@@ -147,18 +148,18 @@ public class UMICollection {
 
 		if (parserIter.hasNext()) {
 			TabbedTextFileWithHeaderParser.Row row  =parserIter.peek();
-			String cell = row.getField("Cell Barcode");
-			String gene = row.getField("Gene");
+			String cell = row.getField(GatherMolecularBarcodeDistributionByGene.CELL_BARCODE_COLUMN);
+			String gene = row.getField(GatherMolecularBarcodeDistributionByGene.GENE_COLUMN);
 			currentUMI = new UMICollection(cell, gene);
 		}
 
 		//when a new gene/cell is seen, make a new object and put records into that, and store the old gene/cell.
 		while(parserIter.hasNext()) {
 			TabbedTextFileWithHeaderParser.Row row =parserIter.next();
-			String cell = row.getField("Cell Barcode");
-			String gene = row.getField("Gene");
-			String molBC = row.getField("Molecular_Barcode");
-			int count = Integer.parseInt(row.getField("Num_Obs"));
+			String cell = row.getField(GatherMolecularBarcodeDistributionByGene.CELL_BARCODE_COLUMN);
+			String gene = row.getField(GatherMolecularBarcodeDistributionByGene.GENE_COLUMN);
+			String molBC = row.getField(GatherMolecularBarcodeDistributionByGene.MOLECULAR_BARCODE_COLUMN);
+			int count = Integer.parseInt(row.getField(GatherMolecularBarcodeDistributionByGene.NUM_OBS_COLUMN));
 			// if you're in not in the same cell/gene, add the current UMI to the collection and make a new one.
 			if (!cell.equals(currentUMI.cellBarcode) || !gene.equals(currentUMI.geneName)) {
 				result.add(currentUMI);
