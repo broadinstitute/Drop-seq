@@ -16,7 +16,11 @@ public class FilteredReadsMetric extends MetricBase {
 		this.READS_REJECTED=0;
 	}
 
-	public void accumulate(final FilteredReadsMetric other) {
+	public FilteredReadsMetric copy () {
+		return new FilteredReadsMetric();
+	}
+
+	public void merge(final FilteredReadsMetric other) {
 		this.READS_ACCEPTED += other.READS_ACCEPTED;
 		this.READS_REJECTED += other.READS_REJECTED;
 	}
