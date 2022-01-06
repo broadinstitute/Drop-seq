@@ -93,13 +93,14 @@ public class MergeDgeSparse
     doc="If set, write a list of cell barcodes that have been filtered by any of the filtering mechanisms.")
     public File DISCARDED_CELLS_FILE;
 
-    @Argument(doc="Remove genes with fewer than this many cells.  This filtering is done after all the cell-based filters.")
+    @Argument(doc="Remove genes with fewer than this many cells.  This filtering is done after all the cell-based filters." +
+            "Must be >= 1.")
     public int MIN_CELLS = Defaults.MIN_CELLS;
 
-    @Argument(doc="Remove cells with fewer than this many genes.")
+    @Argument(doc="Remove cells with fewer than this many genes.  Must be >= 1.")
     public int MIN_GENES = Defaults.MIN_GENES;
 
-    @Argument(doc="Remove cells with fewer than this many transcripts.")
+    @Argument(doc="Remove cells with fewer than this many transcripts.  Must be >= 1.")
     public int MIN_TRANSCRIPTS = Defaults.MIN_TRANSCRIPTS;
 
     @Argument(doc="Genes that match one of these regular expressions will be removed.")
@@ -130,9 +131,9 @@ public class MergeDgeSparse
     }
 
     static class Defaults {
-        static final int MIN_CELLS = 0;
+        static final int MIN_CELLS = 1;
         static final int MIN_GENES = 400;
-        static final int MIN_TRANSCRIPTS = 0;
+        static final int MIN_TRANSCRIPTS = 1;
     }
 
     private static class DatasetDescr {
@@ -239,18 +240,27 @@ public class MergeDgeSparse
 
     @Override
     protected String[] customCommandLineValidation() {
-        String[] superMessages = super.customCommandLineValidation();
         if (this.CELL_SIZE_OUTPUT_FILE!=null) IOUtil.assertFileIsWritable(this.CELL_SIZE_OUTPUT_FILE);
         if (this.RAW_DGE_OUTPUT_FILE!=null) IOUtil.assertFileIsWritable(this.RAW_DGE_OUTPUT_FILE);
         if (this.SCALED_DGE_OUTPUT_FILE!=null) IOUtil.assertFileIsWritable(this.SCALED_DGE_OUTPUT_FILE);
         if (this.DGE_HEADER_OUTPUT_FILE!=null) IOUtil.assertFileIsWritable(this.DGE_HEADER_OUTPUT_FILE);
         if (this.DISCARDED_CELLS_FILE!=null) IOUtil.assertFileIsWritable(this.DISCARDED_CELLS_FILE);
-                
-        if (RAW_DGE_OUTPUT_FILE == null && SCALED_DGE_OUTPUT_FILE == null)
-            return CustomCommandLineValidationHelper.makeValue(superMessages,
-                    Collections.singletonList("At least one of RAW_DGE_OUTPUT_FILE and SCALED_DGE_OUTPUT_FILE should be set"));
-        else
-            return superMessages;
+
+        final ArrayList<String> list = new ArrayList<>(1);
+
+        if (RAW_DGE_OUTPUT_FILE == null && SCALED_DGE_OUTPUT_FILE == null) {
+            list.add("At least one of RAW_DGE_OUTPUT_FILE and SCALED_DGE_OUTPUT_FILE should be set");
+        }
+        if (MIN_CELLS < 1) {
+            list.add("MIN_CELLS must be >= 1.");
+        }
+        if (MIN_GENES < 1) {
+            list.add("MIN_GENES must be >= 1.");
+        }
+        if (MIN_TRANSCRIPTS < 1) {
+            list.add("MIN_TRANSCRIPTS must be >= 1.");
+        }
+        return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
     }
 
     private class GeneFiltererSorter {
