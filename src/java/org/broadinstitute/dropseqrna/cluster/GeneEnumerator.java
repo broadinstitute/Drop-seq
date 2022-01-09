@@ -26,7 +26,11 @@ package org.broadinstitute.dropseqrna.cluster;
 import java.util.*;
 import java.util.regex.Pattern;
 
-public class GeneEnumerator {
+/**
+ * Assigns an ordinal number to each gene, excluding those that match gene exclusion regular expressions
+ * (typically MT genes).
+ */
+class GeneEnumerator {
     private final Pattern[] regexps;
 
     private final ArrayList<String> genes = new ArrayList<>();
@@ -39,6 +43,12 @@ public class GeneEnumerator {
         }
     }
 
+    /**
+     * Get the ordinal for the gene
+     * @return if the gene matches one of the exclusion regular expressions, -1.
+     *         if the gene was previously seen, the ordinal already assigned for this gene.
+     *         if the gene is new, the next ordinal.
+     */
     public int getGeneIndex(final String gene) {
         for (final Pattern pattern : regexps) {
             if (pattern.matcher(gene).find()) {
@@ -56,6 +66,10 @@ public class GeneEnumerator {
 
     public List<String> getGenes() {
         return Collections.unmodifiableList(genes);
+    }
+
+    public int getNumGenes() {
+        return genes.size();
     }
 
     public String getGeneName(final int geneIndex) {
