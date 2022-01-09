@@ -30,6 +30,9 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 
+/**
+ * Write tab-separated file of CELL_BARCODE, NUM_TRANSCRIPTS
+ */
 public class CellSizeWriter {
     private static final String CELL_SIZE_HEADER = "CELL_BARCODE\tNUM_TRANSCRIPTS\n";
 
