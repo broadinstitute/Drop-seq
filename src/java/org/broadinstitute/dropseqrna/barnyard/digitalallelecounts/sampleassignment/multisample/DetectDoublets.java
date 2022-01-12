@@ -120,9 +120,10 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	@Argument(doc = "Override NUM_CORE_BARCODES and process reads that have the cell barcodes in this file instead.  The file has 1 column with no header.", optional = false)
 	public File CELL_BC_FILE = null;
 
-	@Argument(doc = "The minimum genotype quality for a variant.")
+	@Argument(doc = "The minimum genotype quality for a variant.  Set this value to 0 to not filter by GQ scores if they are present, or to -1 to completely "
+			+ "ignore GQ values if they are not set in the genotype info field.  If the GQ field is not set in the VCF header, this will be set to -1 by default.")
 	public Integer GQ_THRESHOLD = 30;
-
+	
 	@Argument(doc = "A file with a list of samples in the VCF to consider as samples in the doublets.  This subsets the VCF into a smaller data set containing only the samples listed. The file has 1 column with no header.", optional = false)
 	public File SAMPLE_FILE;
 
@@ -270,6 +271,13 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		vcfIterator.close();
 
 		final IntervalList snpIntervals = new IntervalList(vcfDict);
+		// a requested early exit if there are no SNPs.
+		if (snpIntervals.getIntervals().isEmpty()) {
+			log.error("No SNP intervals detected!  Check to see if your VCF filter thresholds are too restrictive!");
+			return 1;
+		}
+				
+				
 		snpIntervals.addall(genotypeMatrix.getSNPIntervals());
 
 		if (snpIntervals.size() == 0) {

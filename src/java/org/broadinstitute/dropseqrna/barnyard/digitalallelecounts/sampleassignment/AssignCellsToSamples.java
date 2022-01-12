@@ -147,7 +147,8 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 	@Argument(doc = "The map quality of the read to be included.")
 	public Integer READ_MQ = 10;
 
-	@Argument(doc = "The minimum genotype quality for a variant.")
+	@Argument(doc = "The minimum genotype quality for a variant.  Set this value to 0 to not filter by GQ scores if they are present, or to -1 to completely "
+			+ "ignore GQ values if they are not set in the genotype info field.  If the GQ field is not set in the VCF header, this will be set to -1 by default.")
 	public Integer GQ_THRESHOLD = 30;
 
 	@Argument(doc = "Number of cells that you want to extract from the BAM. The program will picks the top <NUM_BARCODES> barcodes by read count.", mutex = {
@@ -252,6 +253,12 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(this.VCF, vcfSamples, this.RETAIN_MONOMORPIC_SNPS, this.GQ_THRESHOLD,
 				this.FRACTION_SAMPLES_PASSING, IGNORED_CHROMOSOMES, log);
 
+		// a requested early exit if there are no SNPs.
+		if (snpIntervals.getIntervals().isEmpty()) {
+			log.error("No SNP intervals detected!  Check to see if your VCF filter thresholds are too restrictive!");
+			return 1;
+		}
+			
 		// this is the same method of filtering used to generate the snpIntervals. Don't ask for a progress logger, we'll use
 		// the JointIteratorCounter below.
 		// final PeekableIterator<VariantContext> vcfIterator = getVCFIterator (vcfReader, vcfSamples,

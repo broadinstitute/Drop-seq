@@ -108,9 +108,10 @@ public class CsiAnalysis extends CommandLineProgram {
 	@Argument(doc = "The minimum minor allele frequency in the general population for a SNP to be considered in the summary.")
 	public Double MINIMUM_MAF = 0.025;
 
-	@Argument(doc = "The minimum genotype quality for a variant.  If VCF file has no genotype quality, this will be set to -1 to disable filtering.")
+	@Argument(doc = "The minimum genotype quality for a variant.  Set this value to 0 to not filter by GQ scores if they are present, or to -1 to completely "
+			+ "ignore GQ values if they are not set in the genotype info field.  If the GQ field is not set in the VCF header, this will be set to -1 by default.")
 	public Integer GQ_THRESHOLD = 30;
-
+	
 	@Argument(doc = "At least <FRACTION_SAMPLES_PASSING> samples must have genotype scores >= GQ_THRESHOLD for the variant in the VCF to be included in the analysis.")
 	public double FRACTION_SAMPLES_PASSING = 0.9;
 
@@ -200,6 +201,13 @@ public class CsiAnalysis extends CommandLineProgram {
 				this.ALLELE_FREQ_TAG, this.MINIMUM_MAF, this.IGNORED_CHROMOSOMES, this.FRACTION_SAMPLES_PASSING);
 
 		IntervalList snpIntervals = fmsdp.getIntervalList();
+
+		// a requested early exit if there are no SNPs.
+		if (snpIntervals.getIntervals().isEmpty()) {
+			log.error("No SNP intervals detected!  Check to see if your VCF filter thresholds are too restrictive!");
+			return 1;
+		}
+
 		File outTempVCF = fmsdp.getMinimalVCFFile();
 		copyTempVCFToOutput(this.VCF_OUTPUT, outTempVCF);
 

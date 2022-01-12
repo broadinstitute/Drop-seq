@@ -70,9 +70,10 @@ public class RollCall extends CommandLineProgram {
 	@Argument (doc="Output a coverage report for the number of reads on each SNP.  Bins SNPs by the number of reads.", optional=true)
 	public File SNP_COVERAGE_HISTOGRAM;
 
-	@Argument(doc= "The minimum genotype quality for a variant.")
-	public Integer GQ_THRESHOLD=30;
-
+	@Argument(doc = "The minimum genotype quality for a variant.  Set this value to 0 to not filter by GQ scores if they are present, or to -1 to completely "
+			+ "ignore GQ values if they are not set in the genotype info field.  If the GQ field is not set in the VCF header, this will be set to -1 by default.")
+	public Integer GQ_THRESHOLD = 30;
+	
 	@Argument (doc="At least <FRACTION_SAMPLES_PASSING> samples must have genotype scores >= GQ_THRESHOLD for the variant in the VCF to be included in the analysis.")
 	public double FRACTION_SAMPLES_PASSING=0.9;
 
@@ -151,10 +152,12 @@ public class RollCall extends CommandLineProgram {
 		// last argument is a bit funky.  If you aren't using the common SNP analysis, you need to preserve the full interval names.
 		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(vcfIterator, sd, log, vcfWriter, true);
 
-		if (snpIntervals.size()==0) {
-			log.error("0 SNPs found.  Something is very wrong!");
+		// a requested early exit if there are no SNPs.
+		if (snpIntervals.getIntervals().isEmpty()) {
+			log.error("No SNP intervals detected!  Check to see if your VCF filter thresholds are too restrictive!");
 			return 1;
 		}
+
 		vcfIterator.close();
 		vcfWriter.close();
 
