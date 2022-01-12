@@ -270,69 +270,63 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		GenotypeMatrix genotypeMatrix = new GenotypeMatrix(vcfIterator, this.GQ_THRESHOLD, allDonorsList);
 		vcfIterator.close();
 
-		final IntervalList snpIntervals = new IntervalList(vcfDict);
+		final IntervalList snpIntervals = new IntervalList(vcfDict);								
+		snpIntervals.addall(genotypeMatrix.getSNPIntervals());
 		// a requested early exit if there are no SNPs.
 		if (snpIntervals.getIntervals().isEmpty()) {
 			log.error("No SNP intervals detected!  Check to see if your VCF filter thresholds are too restrictive!");
 			return 1;
 		}
 				
-				
-		snpIntervals.addall(genotypeMatrix.getSNPIntervals());
+		PeekableIterator<List<SampleGenotypeProbabilities>> sampleGenotypeIterator = prepareIterator(snpIntervals, cellBarcodes);
 
-		if (snpIntervals.size() == 0) {
-			log.warn("No SNPs found for analysis.");
+		int cellCount = 0;
+		int reportInterval = 100;
+		log.info("Calling doublets");
+		if (!sampleGenotypeIterator.hasNext()) {
+			log.warn("No Cells found for analysis.");
 		} else {
 
-			PeekableIterator<List<SampleGenotypeProbabilities>> sampleGenotypeIterator = prepareIterator(snpIntervals, cellBarcodes);
+			while (sampleGenotypeIterator.hasNext()) {
+				cellCount++;
+				if (cellCount % reportInterval == 0)
+					log.info("Tested cell #" + cellCount);
+				List<SampleGenotypeProbabilities> probs = sampleGenotypeIterator.next();
 
-			int cellCount = 0;
-			int reportInterval = 100;
-			log.info("Calling doublets");
-			if (!sampleGenotypeIterator.hasNext()) {
-				log.warn("No Cells found for analysis.");
-			} else {
+				String cell = probs.get(0).getCell();
+				String bestDonor = bestDonorForCell.get(cell);
+				if (bestDonor == null)
+					throw new IllegalStateException("Cell [" + cell + "] has no best donor assignment in file.");
 
-				while (sampleGenotypeIterator.hasNext()) {
-					cellCount++;
-					if (cellCount % reportInterval == 0)
-						log.info("Tested cell #" + cellCount);
-					List<SampleGenotypeProbabilities> probs = sampleGenotypeIterator.next();
+				VariantDataFactory f = null;
+				f = new VariantDataFactory(cell, probs, genotypeMatrix, FIXED_ERROR_RATE, USE_MISSING_DATA, MAX_ERROR_RATE, contaminationMap,
+						variantMinorAlleleFrequency);
 
-					String cell = probs.get(0).getCell();
-					String bestDonor = bestDonorForCell.get(cell);
-					if (bestDonor == null)
-						throw new IllegalStateException("Cell [" + cell + "] has no best donor assignment in file.");
+				FindOptimalDonorMixture fodm = new FindOptimalDonorMixture(f);
 
-					VariantDataFactory f = null;
-					f = new VariantDataFactory(cell, probs, genotypeMatrix, FIXED_ERROR_RATE, USE_MISSING_DATA, MAX_ERROR_RATE, contaminationMap,
-							variantMinorAlleleFrequency);
-
-					FindOptimalDonorMixture fodm = new FindOptimalDonorMixture(f);
-
-					// AllPairedSampleAssignmentsForCell allAssignments = fodm.findBestDonorPair(bestDonor, donorList, FORCED_RATIO);
-					List<String> donorsThisCell = getExpectedSecondDonorsRankedByLikelihood(cell, cslc, pairsToTest, donorList, bestDonor);
-					AllPairedSampleAssignmentsForCell allAssignments = fodm.findBestDonorPair(bestDonor, donorsThisCell, FORCED_RATIO, SCALE_LIKELIHOODS);
-					SamplePairAssignmentForCell best = allAssignments.getBestAssignment();
-					/*
-					 * if (best==null) { log.info("No best pair found for cell "+ cell); continue; }
-					 */
-					double bestPairPvalue = allAssignments.getBestPairPvalue();
-					writeAssignment(best, bestPairPvalue, writer, false);
-					if (OUTPUT_ALL_PAIRS != null) {
-						writeAssignment(allAssignments.getBestAssignment(), null, perDonorWriter, true);
-						// apply ordering to other assignments for stability of outputs. Sort by 2nd donor name.
-						Comparator<SamplePairAssignmentForCell> comparator = java.util.Comparator.comparing(SamplePairAssignmentForCell::getSampleTwo,
-								java.util.Comparator.naturalOrder());
-						List<SamplePairAssignmentForCell> allOther = allAssignments.getOtherAssignments();
-						Collections.sort(allOther, comparator);
-						for (SamplePairAssignmentForCell other : allOther)
-							writeAssignment(other, null, perDonorWriter, true);
-					}
-					reportResultsPerSNP(cell, f, bestDonor, donorList, allAssignments, perSNPWriter);
+				// AllPairedSampleAssignmentsForCell allAssignments = fodm.findBestDonorPair(bestDonor, donorList, FORCED_RATIO);
+				List<String> donorsThisCell = getExpectedSecondDonorsRankedByLikelihood(cell, cslc, pairsToTest, donorList, bestDonor);
+				AllPairedSampleAssignmentsForCell allAssignments = fodm.findBestDonorPair(bestDonor, donorsThisCell, FORCED_RATIO, SCALE_LIKELIHOODS);
+				SamplePairAssignmentForCell best = allAssignments.getBestAssignment();
+				/*
+				 * if (best==null) { log.info("No best pair found for cell "+ cell); continue; }
+				 */
+				double bestPairPvalue = allAssignments.getBestPairPvalue();
+				writeAssignment(best, bestPairPvalue, writer, false);
+				if (OUTPUT_ALL_PAIRS != null) {
+					writeAssignment(allAssignments.getBestAssignment(), null, perDonorWriter, true);
+					// apply ordering to other assignments for stability of outputs. Sort by 2nd donor name.
+					Comparator<SamplePairAssignmentForCell> comparator = java.util.Comparator.comparing(SamplePairAssignmentForCell::getSampleTwo,
+							java.util.Comparator.naturalOrder());
+					List<SamplePairAssignmentForCell> allOther = allAssignments.getOtherAssignments();
+					Collections.sort(allOther, comparator);
+					for (SamplePairAssignmentForCell other : allOther)
+						writeAssignment(other, null, perDonorWriter, true);
 				}
+				reportResultsPerSNP(cell, f, bestDonor, donorList, allAssignments, perSNPWriter);
 			}
 		}
+		
 		if (OUTPUT_PER_SNP != null)
 			perSNPWriter.close();
 		if (OUTPUT_ALL_PAIRS != null)
