@@ -33,6 +33,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
+import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.SpermSeq;
 import org.broadinstitute.dropseqrna.utils.*;
 import org.broadinstitute.dropseqrna.utils.readiterators.MissingTagFilteringIterator;
@@ -59,7 +60,7 @@ public class SpermSeqMarkDuplicates extends CommandLineProgram  {
 
 	private static final Log log = Log.getInstance(SpermSeqMarkDuplicates.class);
 
-	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM files to analyze.  They must all have the same sort order")
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
 	public List<File> INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output SAM or BAM file with the PCRDuplicate flag set on reads.")
@@ -105,14 +106,12 @@ public class SpermSeqMarkDuplicates extends CommandLineProgram  {
 		READ_POSITION,
 		CLUSTER;
 	}
-
+	
+	
 	@Override
 	protected int doWork() {
-		for (File i: INPUT)
-			IOUtil.assertFileIsReadable(i);
-		IOUtil.assertFileIsWritable(OUTPUT);
-		IOUtil.assertFileIsWritable(OUTPUT_STATS);
-
+		
+		
 		// for reporting, what is the aggregate output name
 		globalMetrics.CELL_BARCODE=AGGREGATE_NAME;
 
@@ -345,12 +344,7 @@ public class SpermSeqMarkDuplicates extends CommandLineProgram  {
 	    final GroupingIterator<SAMRecord> groupingIterator = new GroupingIterator<>(sortingIterator, comparator);
 	    return groupingIterator;
 	}
-
-	/** Stock main method. */
-	public static void main(final String[] args) {
-		System.exit(new SpermSeqMarkDuplicates().instanceMain(args));
-	}
-
+	
 	private class ReadMappedFilteredIterator extends FilteredIterator<SAMRecord> {
 		public ReadMappedFilteredIterator(final Iterator<SAMRecord> underlyingIterator) {
 	        super(underlyingIterator);
@@ -360,6 +354,31 @@ public class SpermSeqMarkDuplicates extends CommandLineProgram  {
 	        return r.getReadUnmappedFlag();
 	    }
 	}
+
+	
+	/** Stock main method. */
+	public static void main(final String[] args) {
+		System.exit(new SpermSeqMarkDuplicates().instanceMain(args));
+	}
+	
+	@Override
+	protected String[] customCommandLineValidation() {
+
+		final ArrayList<String> list = new ArrayList<>(1);
+		this.INPUT = FileListParsingUtils.expandFileList(INPUT);
+		
+		for (File i: INPUT)
+			IOUtil.assertFileIsReadable(i);
+		
+		IOUtil.assertFileIsWritable(OUTPUT);
+		IOUtil.assertFileIsWritable(OUTPUT_STATS);
+		if (this.CELL_BC_FILE!=null) 
+			IOUtil.assertFileIsReadable(this.CELL_BC_FILE);
+		
+		return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
+		
+	}
+
 
 
 }
