@@ -1,0 +1,2 @@
+chr	pos	gene	cell	ref_base	alt_base	rA	rC	rG	rT	rN	A	C	G	T	N	num_umi	umi_mean_purity	read_pval	read_ratio	read_ci_low	read_ci_high	umi_pval	umi_ratio	umi_ci_low	umi_ci_high
+chr9	102067292	chr9	ALL_CELLS	C	T	0	4	0	2	0	0	2	0	1	0	3	1.000	6.875E-1	0.667	0.300	0.903	6.25E-1	0.667	0.208	0.939
