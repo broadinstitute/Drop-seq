@@ -1,0 +1,5 @@
+#INPUT=/Users/nemesh/dropseqrna/transcriptome_java/testdata/org/broadinstitute/dropseq/private/barnyard/digitalallelecounts/includeUntaggedReads.bam	TAG=XC	FILTER_PCR_DUPLICATES=false	READ_QUALITY=10
+4	TTGTTTGGTATAGCTC
+2	ATGGATCCATTAGGCT
+1	AAAGGGCCACAGCATT
+1	TTCGCTGTCTCCACTG

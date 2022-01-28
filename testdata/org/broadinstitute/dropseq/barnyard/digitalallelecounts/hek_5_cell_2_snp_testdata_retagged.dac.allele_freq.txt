@@ -1,0 +1,3 @@
+chromosome	position	ref_allele	alt_allele	ref_reads	alt_reads	ref_umi	alt_umi	maf_reads	maf_umi
+HUMAN_1	76227022	A	G	236	182	41	33	0.435	0.446
+HUMAN_1	150199123	G	T	210	67	55	27	0.242	0.329

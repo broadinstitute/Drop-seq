@@ -1,0 +1,3 @@
+chr	pos	gene	cell	ref_base	alt_base	rA	rC	rG	rT	rN	A	C	G	T	N	num_umi	umi_mean_purity	read_pval	read_ratio	read_ci_low	read_ci_high	umi_pval	umi_ratio	umi_ci_low	umi_ci_high
+HUMAN_1	76227022	ACADM	ALL_CELLS	A	G	236	0	182	0	0	41	0	33	0	0	74	1.000	9.4512E-3	0.565	0.517	0.611	4.1599E-1	0.554	0.441	0.662
+HUMAN_1	150199123	ANP32E	ALL_CELLS	G	T	0	0	210	67	0	0	0	55	27	0	82	1.000	2.405E-18	0.758	0.704	0.805	2.6425E-3	0.671	0.563	0.763
