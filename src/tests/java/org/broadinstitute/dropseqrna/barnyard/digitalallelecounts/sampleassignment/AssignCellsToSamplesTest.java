@@ -60,6 +60,9 @@ public class AssignCellsToSamplesTest {
 	private final File EXPECTED_OUTPUT=new File (rootDir+"/small_data.donor_assignment.txt");
 	private final File EXPECTED_VERBOSE_OUTPUT= new File (rootDir+"/small_data.donor_assignment.verbose.txt.gz");
 	
+	private final File ANSWER_KEY=new File (rootDir+"/small_data.donor_assignment.answer_key.txt");
+	private final File EXPECTED_OUTPUT_ANSWER_KEY=new File (rootDir+"/small_data.donor_assignment_with_key.txt");
+	
 	private final File EXPECTED_CONTAM_OUTPUT= new File (rootDir+"/small_data_contam.donor_assignment.txt");
 	private final File EXPECTED_CONTAM_VERBOSE_OUTPUT= new File (rootDir+"/small_data_contam.donor_assignment.verbose.txt.gz");
 	
@@ -74,6 +77,7 @@ public class AssignCellsToSamplesTest {
 		assigner.VCF=this.VCFC;
 		assigner.NUM_BARCODES=10; // more than enough
 		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		assigner.VCF_OUTPUT=File.createTempFile("AssignCellsToSamples", ".vcf");
 		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
 		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
 		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
@@ -84,6 +88,26 @@ public class AssignCellsToSamplesTest {
 		
 	}
 	
+	// 
+	@Test
+	public void testEndToEndAnswerKey() throws IOException {
+		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.GQ_THRESHOLD=30;
+		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
+		assigner.VCF=this.VCFC;
+		assigner.NUM_BARCODES=10; // more than enough
+		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		assigner.ANSWER_KEY_FILE=ANSWER_KEY;
+		
+		int result = assigner.doWork();
+		Assert.assertEquals(result, 0);
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT_ANSWER_KEY, assigner.OUTPUT));	
+		
+		
+	}
 
 	@Test
 	public void testEndToEndMaxLikelihood() throws IOException {

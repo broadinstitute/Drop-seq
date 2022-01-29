@@ -517,7 +517,7 @@ public class DetectBeadSynthesisErrors extends GeneFunctionCommandLineBase {
 		line.add(data.getErrorType(EXTREME_BASE_RATIO, this.detectPrimerTool, this.EDIT_DISTANCE).toString());
 
 
-		BaseDistributionMetricCollection bases = data.getBaseCounts();
+		BaseDistributionMetricCollection bases = data.getBaseCounts(); 
 		List<Integer> pos =bases.getPositions();
 		for (Integer i: pos) {
 			BaseDistributionMetric bdm = bases.getDistributionAtPosition(i);

@@ -1,0 +1,4 @@
+#INPUT_BAM=/Users/nemesh/dropseqrna/transcriptome_java/public/testdata/org/broadinstitute/dropseq/barnyard/digitalallelecounts/sampleassignment/small_data_retagged.sam	INPUT_VCF=/Users/nemesh/dropseqrna/transcriptome_java/public/testdata/org/broadinstitute/dropseq/barnyard/digitalallelecounts/sampleassignment/test_missing_data.vcf.gz	DONOR_FILE=null	CELL_BC_FILE=null	GQ_THRESHOLD=30	FRACTION_SAMPLES_PASSING=0.5	READ_MQ=10	FIXED_ERROR_RATE=NA	MAX_ERROR_RATE=NA	LOCUS_FUNCTION=[CODING, UTR]
+cell	num_snps	num_umis	ratio	pvalue	FDR_pvalue	bestLikelihood	bestSample	median_likelihood	population_average_likelihood	trueSample	BAR	BAR2	FOO	FOO2	MISSING
+TTGCCTTACGCG	2	4	2.7749E-1	3.5056E-1	5.2588E-1	-6.0261E-1	FOO2	-2.7014E0	-8.801E-1	FOO2	-3.3029E0	-2.7014E0	-3.3029E0	-6.0261E-1	-8.801E-1
+ATCAGGGACAGA	2	4	0E0	5.2588E-1	5.2588E-1	-6.7709E-1	BAR	-1.6389E0	-1.6389E0	BAR	-6.7709E-1	-1.09E1	-6.7709E-1	-7.0021E0	-1.6389E0

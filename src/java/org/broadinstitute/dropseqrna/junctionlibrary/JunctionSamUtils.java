@@ -52,7 +52,7 @@ public class JunctionSamUtils {
             readName = readName.substring(0, readName.length()-2);
         }
         return readName;
-    }
+    } 
     
 	/**
 	 * Test that the records are properly paired.
