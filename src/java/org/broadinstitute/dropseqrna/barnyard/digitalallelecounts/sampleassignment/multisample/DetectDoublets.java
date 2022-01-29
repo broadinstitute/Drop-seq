@@ -82,7 +82,7 @@ import picard.util.TabbedTextFileWithHeaderParser.Row;
 		+ "analysis.", oneLineSummary = "Detect Doublets in Dropulation Data", programGroup = DropSeq.class)
 public class DetectDoublets extends GeneFunctionCommandLineBase {
 
-	private static final Log log = Log.getInstance(DetectDoublets.class);
+	private static final Log log = Log.getInstance(DetectDoublets.class); 
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
 	public List<File> INPUT_BAM;
@@ -305,8 +305,8 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 				FindOptimalDonorMixture fodm = new FindOptimalDonorMixture(f);
 
 				// AllPairedSampleAssignmentsForCell allAssignments = fodm.findBestDonorPair(bestDonor, donorList, FORCED_RATIO);
-				List<String> donorsThisCell = getExpectedSecondDonorsRankedByLikelihood(cell, cslc, pairsToTest, donorList, bestDonor);
-				AllPairedSampleAssignmentsForCell allAssignments = fodm.findBestDonorPair(bestDonor, donorsThisCell, FORCED_RATIO, SCALE_LIKELIHOODS);
+				// List<String> donorsThisCell = getExpectedSecondDonorsRankedByLikelihood(cell, cslc, pairsToTest, donorList, bestDonor);
+				AllPairedSampleAssignmentsForCell allAssignments = fodm.findBestDonorPair(bestDonor, donorList, FORCED_RATIO, SCALE_LIKELIHOODS);
 				SamplePairAssignmentForCell best = allAssignments.getBestAssignment();
 				/*
 				 * if (best==null) { log.info("No best pair found for cell "+ cell); continue; }
@@ -344,7 +344,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	 * @param donorList
 	 * @return A submap of the input map where all values are contained in the donor list.
 	 */
-	private Map<String, String> filterDonorMap(Map<String, String> bestDonorForCell, List<String> donorList) {
+	Map<String, String> filterDonorMap(Map<String, String> bestDonorForCell, List<String> donorList) {
 		Set<String> dl = new HashSet<String>(donorList);
 		Map<String, String> result = new HashMap<String, String>();
 
@@ -467,43 +467,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		String h = StringUtils.join(line, "\t");
 		out.println(h);
 	}
-
-	private static SamplePairAssignmentForCell parseAssignment(Row row) {
-		String cellBarcode = row.getField("cell");
-		double mixtureRatio = Double.parseDouble(row.getField("sampleOneMixtureRatio"));
-		String sampleOne = row.getField("sampleOne");
-		double sampleOneSingleLikelihood = Double.parseDouble(row.getField("sampleOneLikelihood"));
-		String sampleTwo = row.getField("sampleTwo");
-		double sampleTwoSingleLikelihood = Double.parseDouble(row.getField("sampleTwoLikelihood"));
-		double doubletLikelihood = Double.parseDouble(row.getField("mixedSampleLikelihood"));
-		int numSNPs = row.getIntegerField("num_paired_snps");
-		int numInformativeSNPs = row.getIntegerField("num_inform_snps");
-		int numUMIs = row.getIntegerField("num_umi");
-		int numInformativeUMIs = row.getIntegerField("num_inform_umis");
-		int impossibleAllelesSampleOne = row.getIntegerField("sampleOneWrongAlleleCount");
-		int impossibleAllelesSampleTwo = row.getIntegerField("sampleTwoWrongAlleleCount");
-		int numInformativeHomozygousUMIsSampleOne = row.getIntegerField("num_homozygous_inform_umis_s1");
-		int numInformativeHomozygousUMIsSampleTwo = row.getIntegerField("num_homozygous_inform_umis_s2");
-
-		return new SamplePairAssignmentForCell(cellBarcode, sampleOne, sampleTwo, sampleOneSingleLikelihood, sampleTwoSingleLikelihood, doubletLikelihood,
-				mixtureRatio, impossibleAllelesSampleOne, impossibleAllelesSampleTwo, numInformativeSNPs, numSNPs, numUMIs, numInformativeUMIs,
-				numInformativeHomozygousUMIsSampleOne, numInformativeHomozygousUMIsSampleTwo);
-	}
-
-	public static List<SamplePairAssignmentForCell> parseAssignmentsFile(File assignmentsFile) {
-		TabbedTextFileWithHeaderParser parser = new TabbedTextFileWithHeaderParser(assignmentsFile);
-		CloseableIterator<TabbedTextFileWithHeaderParser.Row> rowIter = parser.iterator();
-
-		List<SamplePairAssignmentForCell> assignmentsList = new ArrayList<>();
-		while (rowIter.hasNext()) {
-			Row row = rowIter.next();
-			assignmentsList.add(parseAssignment(row));
-		}
-		rowIter.close();
-		parser.close();
-		return assignmentsList;
-	}
-
+	
 	public PeekableIterator<List<SampleGenotypeProbabilities>> prepareIterator(final IntervalList snpIntervals, List<String> cellBarcodes) {
 
 		SamReaderFactory factory = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);
@@ -543,7 +507,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		return (peekableIter);
 	}
 
-	private List<String> getCellBarcodes(File cellBarcodeFile, Map<String, String> bestDonorForCell, boolean testUnexpectedDonors) {
+	List<String> getCellBarcodes(File cellBarcodeFile, Map<String, String> bestDonorForCell, boolean testUnexpectedDonors) {
 		List<String> cellBarcodes = ParseBarcodeFile.readCellBarcodeFile(this.CELL_BC_FILE);
 		int numBarcodes = cellBarcodes.size();
 
@@ -590,35 +554,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 
 	}
 
-	private List<String> getExpectedSecondDonorsRankedByLikelihood(String cellBarcode, CellCollectionSampleLikelihoodCollection cslc, int pairsToTest,
-			List<String> expectedDonors, String bestDonor) {
-		// short circuit if the requested number of donors is the same as the number of expected donors IE the non-optimized
-		// strategy.
-		if (expectedDonors.size() == pairsToTest)
-			return expectedDonors;
-
-		CellSampleLikelihoodCollection c = cslc.getLikelihoodCollection(cellBarcode);
-		if (c == null)
-			throw new IllegalArgumentException("Could not find single donor likelihoods for cell " + cellBarcode);
-		List<String> rankedDonors = c.getDonorsRankedByAssignmentLikelihood();
-		// exclude the best donor from the ranked list. We don't want to select that.
-		rankedDonors.remove(bestDonor);
-
-		Set<String> expected = new HashSet<String>(expectedDonors);
-		// filter ranked donors by expected.
-		List<String> rankedExpectedDonors = rankedDonors.stream().filter(x -> expected.contains(x)).collect(Collectors.toList());
-
-		// if pairs to test is set too high somehow (the sample lists doesn't match up with the input single donor assignments)
-		// then limit the return.
-		if (rankedExpectedDonors.size() < pairsToTest) {
-			pairsToTest = rankedExpectedDonors.size();
-		}
-		// get the top <X> donors.
-		rankedExpectedDonors = rankedExpectedDonors.subList(0, pairsToTest);
-		return rankedExpectedDonors;
-
-	}
-
+		
 	@Override
 	protected String[] customCommandLineValidation() {
 		IOUtil.assertFileIsReadable(this.VCF);
@@ -658,5 +594,37 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	public static void main(final String[] args) {
 		System.exit(new DetectDoublets().instanceMain(args));
 	}
+	
+	/*
+	private List<String> getExpectedSecondDonorsRankedByLikelihood(String cellBarcode, CellCollectionSampleLikelihoodCollection cslc, int pairsToTest,
+			List<String> expectedDonors, String bestDonor) {
+		// short circuit if the requested number of donors is the same as the number of expected donors IE the non-optimized
+		// strategy.
+		if (expectedDonors.size() == pairsToTest)
+			return expectedDonors;
+		
+		CellSampleLikelihoodCollection c = cslc.getLikelihoodCollection(cellBarcode);
+		if (c == null)
+			throw new IllegalArgumentException("Could not find single donor likelihoods for cell " + cellBarcode);
+		List<String> rankedDonors = c.getDonorsRankedByAssignmentLikelihood();
+		// exclude the best donor from the ranked list. We don't want to select that.
+		rankedDonors.remove(bestDonor);
+
+		Set<String> expected = new HashSet<String>(expectedDonors);
+		// filter ranked donors by expected.
+		List<String> rankedExpectedDonors = rankedDonors.stream().filter(x -> expected.contains(x)).collect(Collectors.toList());
+
+		// if pairs to test is set too high somehow (the sample lists doesn't match up with the input single donor assignments)
+		// then limit the return.
+		if (rankedExpectedDonors.size() < pairsToTest) {
+			pairsToTest = rankedExpectedDonors.size();
+		}
+		// get the top <X> donors.
+		rankedExpectedDonors = rankedExpectedDonors.subList(0, pairsToTest);
+		return rankedExpectedDonors;
+
+	}
+	*/
+
 
 }
