@@ -144,6 +144,10 @@ public class CensusSeq extends CommandLineProgram {
 	// @Argument(doc="If convergence doesn't occur, use randomized donor frequency start.")
 	// public Boolean RANDOMIZED_START=false;
 
+	@Argument(doc="EXPERIMENTAL: If true, the adjustment factor for each SNP is scaled by the donor representation at the current iteration.  This"
+			+ "should allow the algorithm to deal with missing donors with low representation more gracefully.")
+	public Boolean SCALE_ADJUSTMENT_DONOR_REP=true;
+	
 	@Override
 	public int doWork() {
 		
@@ -258,13 +262,13 @@ public class CensusSeq extends CommandLineProgram {
 		// initialize random seed
 		final Random random = this.RANDOM_SEED == null ? new Random() : new Random(this.RANDOM_SEED);
 
-		OptimizeSampleRatiosCommonSNPs optim = new OptimizeSampleRatiosCommonSNPs(data, NUM_THREADS, random, false);
+		OptimizeSampleRatiosCommonSNPs optim = new OptimizeSampleRatiosCommonSNPs(data, SCALE_ADJUSTMENT_DONOR_REP, NUM_THREADS, random, false);
 		OptimizeSampleRatiosCommonSNPsResult result = optim.directIteration();
 		int restartCounter=0;
 		while (!result.isConverged() && restartCounter<this.MAX_RESTARTS) {
 			restartCounter++;
 			log.info("Likelihoods did not converge, restarting with randomized start positions, retry ["+ restartCounter+"].");
-			optim = new OptimizeSampleRatiosCommonSNPs(data, NUM_THREADS, random, true);
+			optim = new OptimizeSampleRatiosCommonSNPs(data, SCALE_ADJUSTMENT_DONOR_REP, NUM_THREADS, random, true);
 			OptimizeSampleRatiosCommonSNPsResult resultNew = optim.directIteration();
 			if (resultNew.getBestLikelihood()> result.getBestLikelihood()) {
 				log.info("Restart with random positions found better maximum likelihood [" + resultNew.getBestLikelihood() +"] old result [" + result.getBestLikelihood()+"]");

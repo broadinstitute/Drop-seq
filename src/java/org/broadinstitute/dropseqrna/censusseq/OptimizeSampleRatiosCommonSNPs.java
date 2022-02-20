@@ -49,13 +49,13 @@ public class OptimizeSampleRatiosCommonSNPs {
 	// if likelihood changes less than this amount, data converged.
 	private final double minimumLikelihoodChange=0.1;
 
-	public OptimizeSampleRatiosCommonSNPs(final CommonSNPsData data, final int numThreads, final Random random) {
-		this(data, numThreads, random, false);
+	public OptimizeSampleRatiosCommonSNPs(final CommonSNPsData data, final boolean scaleToDonorRepresentation, final int numThreads, final Random random) {
+		this(data, scaleToDonorRepresentation, numThreads, random, false);
 	}
 
-	public OptimizeSampleRatiosCommonSNPs(final CommonSNPsData data, final int numThreads, final Random random, final boolean randomizedStarts) {
+	public OptimizeSampleRatiosCommonSNPs(final CommonSNPsData data, final boolean scaleToDonorRepresentation, final int numThreads, final Random random, final boolean randomizedStarts) {
 		func = new OptimizeSampleRatiosLikelihoodFunctionCommonSNPs(data, numThreads);
-		gradientFunc = new OptimizeSampleRatiosGradientFunction(data, numThreads);
+		gradientFunc = new OptimizeSampleRatiosGradientFunction(data, scaleToDonorRepresentation, numThreads);
 		this.data=data;
 		this.randomizedStarts=randomizedStarts;
 		this.random=random;
