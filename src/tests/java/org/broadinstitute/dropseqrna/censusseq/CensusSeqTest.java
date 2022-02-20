@@ -42,6 +42,7 @@ public class CensusSeqTest {
 		f.SAMPLE_FILE=IN_SAMPLE_LIST;
 		f.REPORT_ALLELE_COUNTS=true;
 		f.SNP_COVERAGE_HISTOGRAM=File.createTempFile("testCensus.", ".snp_histogram.txt");
+		f.SCALE_ADJUSTMENT_DONOR_REP=false;
 		f.SNP_COVERAGE_HISTOGRAM.deleteOnExit();
 		// f.USE_JDK_DEFLATER=true;
 		String TMP_DIR=f.OUTPUT.getParent();
@@ -68,6 +69,7 @@ public class CensusSeqTest {
 		// f.USE_JDK_DEFLATER=true;
 		String TMP_DIR=f.OUTPUT.getParent();
 		f.TMP_DIR=Arrays.asList(new File (TMP_DIR));
+		f.SCALE_ADJUSTMENT_DONOR_REP=false;
 		int ret = f.doWork();
 		Assert.assertTrue(ret==0);
 	}
@@ -84,6 +86,7 @@ public class CensusSeqTest {
 		f.OUTPUT.deleteOnExit();
 		
 		f.SAMPLE_FILE=IN_WRONG_SAMPLE_LIST;
+		f.SCALE_ADJUSTMENT_DONOR_REP=false;
 		String TMP_DIR=f.OUTPUT.getParent();
 		//TODO: what's the proper way to get the TMP DIR?
 		f.TMP_DIR=Arrays.asList(new File (TMP_DIR));
