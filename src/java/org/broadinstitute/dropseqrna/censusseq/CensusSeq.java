@@ -146,7 +146,7 @@ public class CensusSeq extends CommandLineProgram {
 
 	@Argument(doc="EXPERIMENTAL: If true, the adjustment factor for each SNP is scaled by the donor representation at the current iteration.  This"
 			+ "should allow the algorithm to deal with missing donors with low representation more gracefully.")
-	public Boolean SCALE_ADJUSTMENT_DONOR_REP=true;
+	public Boolean SCALE_ADJUSTMENT_DONOR_REP=false;
 	
 	@Override
 	public int doWork() {
