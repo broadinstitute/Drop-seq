@@ -23,6 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.censusseq;
 
+import java.util.List;
 import java.util.Map;
 
 public class OptimizeSampleRatiosCommonSNPsResult {
@@ -45,6 +46,13 @@ public class OptimizeSampleRatiosCommonSNPsResult {
 
 	public Map<String, Double> getResult() {
 		return result;
+	}
+	
+	public double [] getMixtureArray(List<String> donors) {
+		double [] mixture=new double [donors.size()];
+		for (int i=0; i<donors.size();i++)
+			mixture[i]=result.get(donors.get(i));
+		return mixture;						
 	}
 
 	public boolean isConverged() {
