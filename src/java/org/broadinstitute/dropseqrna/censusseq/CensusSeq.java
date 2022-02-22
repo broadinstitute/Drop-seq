@@ -333,7 +333,7 @@ public class CensusSeq extends CommandLineProgram {
 
 		String [] header={"NUM_POSSIBLE_SNPS="+numPossibleSNPs, "NUM_SNPS_USED="+numSNPsFound, "CONVERGED="+result.isConverged(), "BEST_LIKELIHOOD="+result.getBestLikelihood(), "SECOND_LIKELIHOOD="+result.getSecondBestLikelihood(),
 				"LIKELIHOOD_DELTA=" + result.getLikelihoodDelta(), "NORMALIZED_LIKELIHOOD="+result.getNormalizedLikelihood(), "SHANNON_WEAVER_DIVERSITY="+divFormat.format(diversity), "SHANNON_WEAVER_EQUITABILITY="+divFormat.format(equitability),
-				"KNOWN_DONOR_TAG="+ kdt};
+				"KNOWN_DONOR_TAG="+ kdt, "SCALE_ADJUSTMENT_DONOR_REP="+Boolean.toString(this.SCALE_ADJUSTMENT_DONOR_REP)};
 
 		String h = StringUtils.join(header, "\t");
 
