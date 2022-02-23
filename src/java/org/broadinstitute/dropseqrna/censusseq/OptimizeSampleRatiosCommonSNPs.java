@@ -59,6 +59,12 @@ public class OptimizeSampleRatiosCommonSNPs {
 	public OptimizeSampleRatiosCommonSNPs(final CommonSNPsData data, final boolean scaleToDonorRepresentation, final int numThreads, final Random random, final boolean randomizedStarts) {
 		func = new OptimizeSampleRatiosLikelihoodFunctionCommonSNPs(data, numThreads);
 		gradientFunc = new OptimizeSampleRatiosGradientFunction(data, scaleToDonorRepresentation, numThreads);
+
+		// this retains the old functionality / code path for backwards compatibility.
+		if (scaleToDonorRepresentation)
+			minimumMixture=1e-5;
+		else
+			minimumMixture=1e-12;			
 		this.data=data;
 		this.randomizedStarts=randomizedStarts;
 		this.random=random;
