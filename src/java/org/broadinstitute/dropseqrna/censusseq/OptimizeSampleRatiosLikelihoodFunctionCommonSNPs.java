@@ -34,10 +34,7 @@ public class OptimizeSampleRatiosLikelihoodFunctionCommonSNPs implements Multiva
 
 	private final CommonSNPsData data;
 	private static final Log log = Log.getInstance(OptimizeSampleRatiosLikelihoodFunctionCommonSNPs.class);
-    private final int  numThreads;
-    // private double MIN_MAF;
-    // private double SOME_DUMB_CONSTANT=1e-12;
-    
+    private final int  numThreads;    
 	private Integer MAXIMUM_PENALITY=null;
 
     public OptimizeSampleRatiosLikelihoodFunctionCommonSNPs(final CommonSNPsData data, final int numThreads) {
@@ -63,14 +60,6 @@ public class OptimizeSampleRatiosLikelihoodFunctionCommonSNPs implements Multiva
 		IntToDoubleFunction calculateOne = (index) -> {
 			int [] refAltCounts = this.data.getRefAltCounts(index);
 			double minorAlleleFreq = this.data.getWeighedAlleleFrequenciesOneSNP(normalizedRatios, index);
-			/*
-			if (minorAlleleFreq < this.MIN_MAF) {
-				minorAlleleFreq=MIN_MAF;
-			}
-			if ((1-minorAlleleFreq) > (1-this.MIN_MAF)) {
-				minorAlleleFreq=(1-MIN_MAF);
-			}
-			*/
 			if (Double.isNaN(minorAlleleFreq))
 				log.warn("NaN MAF detected!");
 			double result = evaluateSNPProbability(minorAlleleFreq, refAltCounts);

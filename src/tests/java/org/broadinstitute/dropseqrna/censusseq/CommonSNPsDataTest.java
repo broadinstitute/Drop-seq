@@ -115,7 +115,7 @@ public class CommonSNPsDataTest {
 			Assert.assertEquals(resultEnd[i], expectedEnd[i], 0.001);
 		}
 	}
-
+	
 	@Test
 	public void testGetAllelesFreqsMissingData () {
 		double [] sampleMixtureStart = {0.25, 0.25, 0.25, 0.25};

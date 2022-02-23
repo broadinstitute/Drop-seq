@@ -53,6 +53,7 @@ public class OptimizeGradientAdjustment implements UnivariateFunction {
 	public double value(final double stepSize) {
 		// update the mixture, calculate the likelihood.
 		double [] newMix = updateMixtureWithGradient(gradient, startingMixture, stepSize);
+		// double [] newMix = updateMixtureWithGradient(gradient, startingMixture, stepSize);
 		return func.value(newMix);
 	}
 
@@ -61,13 +62,13 @@ public class OptimizeGradientAdjustment implements UnivariateFunction {
 		//UnivariateOptimizer minimizer = new BrentOptimizer(0.00001, 0.00001);
 		UnivariateOptimizer minimizer = new BrentOptimizer(1e-8, 1e-12);
 		// set the search interval.
+		//TODO: I have no idea what a reasonable initial estimate looks like, but it's probably < 0.5 if the gradient hasn't been normalized.
 		if (initialValue==null) initialValue=0.5;
-		SearchInterval interval = new SearchInterval(0, 1, 0.5);
+		SearchInterval interval = new SearchInterval(0, 1, initialValue);
 		// point is the mixture, value is the likelihood.
 		UnivariatePointValuePair result = minimizer.optimize(new MaxEval(MAX_EVALUTATIONS), GoalType.MAXIMIZE, interval, new UnivariateObjectiveFunction(this));
 		return (result);
 	}
-
 
 
 	double [] updateMixtureWithGradient(final double [] gradient, final double [] mixture, final double fudgeFactor) {
@@ -79,9 +80,9 @@ public class OptimizeGradientAdjustment implements UnivariateFunction {
 			double absVal = Math.abs(normlizedGradient.get(i));
 			absSum+=absVal;
 		}
-		normlizedGradient=normlizedGradient.divide(absSum);
+		normlizedGradient=normlizedGradient.divide(absSum);		
 		normlizedGradient=normlizedGradient.multiply(fudgeFactor);
-
+		
 		Vector finalMixture = Vector.fromArray(mixture);
 		finalMixture=finalMixture.add(normlizedGradient);
 		// normalize mixture to one.
@@ -98,4 +99,31 @@ public class OptimizeGradientAdjustment implements UnivariateFunction {
 		return finalMixture.toDenseVector().toArray();
 	}
 
+	/*
+	double [] updateMixtureWithGradient2(final double [] gradient, final double [] mixture, final double fudgeFactor) {
+		Vector normlizedGradient = Vector.fromArray(gradient);		
+		normlizedGradient=normlizedGradient.multiply(fudgeFactor);
+		
+		// instead of adding the gradient to the mixture, multiply the gradient by the proportions and add that instead.		
+		for (int i=0; i<normlizedGradient.length(); i++) {
+			double v = normlizedGradient.get(i) * mixture[i];
+			normlizedGradient.set(i, v);
+		}				
+		Vector finalMixture = Vector.fromArray(mixture);
+		finalMixture=finalMixture.add(normlizedGradient);
+		// normalize mixture to one.
+		finalMixture= finalMixture.divide(finalMixture.sum());
+		// check for out of bounds and correct.
+		for (int i=0; i<finalMixture.length(); i++) {
+			double val = finalMixture.get(i);
+			if (val<minimumMixture)
+				finalMixture.set(i, this.minimumMixture);
+		}
+		// normalize mixture to one, if values below minimum mixture were generated.
+		finalMixture= finalMixture.divide(finalMixture.sum());
+		// back to double []
+		return finalMixture.toDenseVector().toArray();
+	}
+	*/
+	
 }
