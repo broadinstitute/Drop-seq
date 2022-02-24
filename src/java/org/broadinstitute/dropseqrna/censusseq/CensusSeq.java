@@ -145,8 +145,11 @@ public class CensusSeq extends CommandLineProgram {
 	// public Boolean RANDOMIZED_START=false;
 
 	@Argument(doc="EXPERIMENTAL: If true, the adjustment factor for each SNP is scaled by the donor representation at the current iteration.  This"
-			+ "should allow the algorithm to deal with missing donors with low representation more gracefully.")
-	public Boolean SCALE_ADJUSTMENT_DONOR_REP=false;
+			+ "should allow the algorithm to deal with missing donors with low representation more gracefully.  This feature has been stress tested on"
+			+ "both a large number of in-silico mixing experiments from the manuscript as well as a number of problematic real world data sets, and performs "
+			+ "as well or better in all cases, at the cost of a slightly longer run time to reach convergence.  If set to false, defaults to the publication"
+			+ "algorithm settings.")
+	public Boolean SCALE_ADJUSTMENT_DONOR_REP=true;
 	
 	@Override
 	public int doWork() {

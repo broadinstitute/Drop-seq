@@ -90,7 +90,7 @@ public class OptimizeSampleRatiosLikelihoodFunctionCommonSNPs implements Multiva
 	 * Where a is the count of the ref alleles, b is the count of the alt allelles, Fa is the frequency of the ref allele adjusted for the current
 	 * sample mixture ratios.
 	 * 
-	 * This is undefined when the MAF=0!
+	 * This is undefined when the MAF is not in the range of (0,1) [not inclusive!]
 	 * @param refAlleleFreq the reference allele freq
 	 * @param refAltCounts
 	 * @return
