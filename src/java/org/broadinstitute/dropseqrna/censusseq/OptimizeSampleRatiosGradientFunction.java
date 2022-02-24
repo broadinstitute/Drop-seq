@@ -37,14 +37,16 @@ public class OptimizeSampleRatiosGradientFunction implements MultivariateVectorF
 	private final CommonSNPsData data;
 	private static final Log log = Log.getInstance(OptimizeSampleRatiosLikelihoodFunctionCommonSNPs.class);
 	private final int numThreads;
+	private final boolean scaleToDonorRepresentation;
 
-	public OptimizeSampleRatiosGradientFunction(final CommonSNPsData data) {
-		this(data, 1);
+	public OptimizeSampleRatiosGradientFunction(final CommonSNPsData data, final boolean scaleToDonorRepresentation) {
+		this(data, scaleToDonorRepresentation, 1);
 	}
 
-	public OptimizeSampleRatiosGradientFunction(final CommonSNPsData data, final int numThreads) {
+	public OptimizeSampleRatiosGradientFunction(final CommonSNPsData data, final boolean scaleToDonorRepresentation, final int numThreads) {
 		this.data=data;
 		this.numThreads=numThreads;
+		this.scaleToDonorRepresentation=scaleToDonorRepresentation;
 		System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", Integer.toString(this.numThreads));
 	}
 
@@ -59,7 +61,7 @@ public class OptimizeSampleRatiosGradientFunction implements MultivariateVectorF
 			int [] genotypeStates = this.data.getCountsAltAllele(index);
 			double [] result = new double [ratios.length];
 			for (int j=0; j<result.length; j++)
-				result[j]=gradientOneSNPOneSample(refAltCounts, minorAlleleFreq, genotypeStates[j]);
+				result[j]=gradientOneSNPOneSample(refAltCounts, minorAlleleFreq, genotypeStates[j], normalizedRatios[j]);
 			return result;
 		};
 
@@ -102,15 +104,20 @@ public class OptimizeSampleRatiosGradientFunction implements MultivariateVectorF
 	 *
 	 * Calculate the gradient for the current mixture / genotype states.
 	 * Missing genotype state values (-1) result in a gradient of 0 for that SNP.
-	 *
+	 * 
 	 * @return
 	 */
-	double gradientOneSNPOneSample (final int [] refAltCounts, final double minorAlleleFreq, final int genotypeState) {
+	double gradientOneSNPOneSample (final int [] refAltCounts, final double minorAlleleFreq, final int genotypeState, final double donorCurrentProportion) {
 		if (genotypeState==-1) return 0;
 		double gs = (double) genotypeState/2;  // go from counts of alternate allele to fraction alternate allele.
 		gs=Math.abs(1-gs);  //"FLIP" the 0 and 1 scores so back to the reference genotype is 1.
 		double t1 = (refAltCounts[0]/(1-minorAlleleFreq)) - (refAltCounts[1]/(minorAlleleFreq));
+		//TODO: shouldn't the gradient for the sample be proportional to the amount of the sample there?
+		// Such that donors that have smaller proportions should move less than larger donors?		 
+		// double t2 = (gs - (1-minorAlleleFreq)) * donorCurrentProportion;
 		double t2 = (gs - (1-minorAlleleFreq));
+		if (scaleToDonorRepresentation)
+			t2=t2*donorCurrentProportion;
 		return t1*t2;
 	}
 

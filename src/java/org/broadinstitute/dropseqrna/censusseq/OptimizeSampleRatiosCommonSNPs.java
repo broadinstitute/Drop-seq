@@ -30,6 +30,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.commons.math3.optim.univariate.UnivariatePointValuePair;
 
@@ -43,31 +45,36 @@ public class OptimizeSampleRatiosCommonSNPs {
 	private final OptimizeSampleRatiosGradientFunction gradientFunc;
 	private final CommonSNPsData data;
 	private double convergenceMixtureThreshold=1e-4;
-	private double minimumMixture=1e-12;
+	private double minimumMixture=1e-5;
+	// private double removalMixture=1e-8;
 	private final boolean randomizedStarts;
 	private final Random random;
 	// if likelihood changes less than this amount, data converged.
 	private final double minimumLikelihoodChange=0.1;
 
-	public OptimizeSampleRatiosCommonSNPs(final CommonSNPsData data, final int numThreads, final Random random) {
-		this(data, numThreads, random, false);
+	public OptimizeSampleRatiosCommonSNPs(final CommonSNPsData data, final boolean scaleToDonorRepresentation, final int numThreads, final Random random) {
+		this(data, scaleToDonorRepresentation, numThreads, random, false);
 	}
 
-	public OptimizeSampleRatiosCommonSNPs(final CommonSNPsData data, final int numThreads, final Random random, final boolean randomizedStarts) {
+	public OptimizeSampleRatiosCommonSNPs(final CommonSNPsData data, final boolean scaleToDonorRepresentation, final int numThreads, final Random random, final boolean randomizedStarts) {
 		func = new OptimizeSampleRatiosLikelihoodFunctionCommonSNPs(data, numThreads);
-		gradientFunc = new OptimizeSampleRatiosGradientFunction(data, numThreads);
+		gradientFunc = new OptimizeSampleRatiosGradientFunction(data, scaleToDonorRepresentation, numThreads);
+
+		// this retains the old functionality / code path for backwards compatibility.
+		if (scaleToDonorRepresentation)
+			minimumMixture=1e-5;
+		else
+			minimumMixture=1e-12;			
 		this.data=data;
 		this.randomizedStarts=randomizedStarts;
 		this.random=random;
 	}
 
-	public OptimizeSampleRatiosCommonSNPsResult directIteration () {
-
+	private OptimizeSampleRatiosCommonSNPsResult directIteration (double[] startingMixture) {
 		boolean converged=false;
 		List<double [] > mixtureResults = new ArrayList<>();
 		List<Double> likelihoodResults = new ArrayList<>();
 
-		double[] startingMixture = getStartPoint(data.getSampleNames().size(), 1, this.randomizedStarts);
 		mixtureResults.add(startingMixture);
 		double startLikelihood=func.value(startingMixture);
 		likelihoodResults.add (startLikelihood);
@@ -139,31 +146,174 @@ public class OptimizeSampleRatiosCommonSNPs {
 
 		// now that you know which iteration did the best output the mixture results.
 		double [] maximizedMixture = mixtureResults.get(maxLikelihoodIndex);
+		Map<String, Double> finalRatios=getRatioMap(maximizedMixture);
+		
+		// sort the likelihood results.
+		Collections.sort(likelihoodResults);
+		Collections.reverse(likelihoodResults);
 
-		// can this be reduced further by explicitly minimizing donors?
+		OptimizeSampleRatiosCommonSNPsResult result = new OptimizeSampleRatiosCommonSNPsResult(finalRatios, converged, likelihoodResults.get(0), likelihoodResults.get(1), this.data.getTotalSNPAlleleCounts(), this.randomizedStarts);
 
+		return result;
 
+	}
+	
+	private Map<String,Double> getRatioMap (double [] maximizedMixture) {
 		List<String> donors =  func.getDonorNames();
 
 		Map<String, Double> finalRatios = new HashMap<>();
 		for (int i = 0; i < maximizedMixture.length; i++)
 			finalRatios.put(donors.get(i), maximizedMixture[i]);
-
-		// sort the likelihood results.
-		Collections.sort(likelihoodResults);
-		Collections.reverse(likelihoodResults);
-
-		// TODO what if there was a polishing stage where each donor was reduced to the minimum mixture value and the likelihood calculated?
-		// If there was any donor that was removed that made the data more likely, select the donor removal that improves likelihood score the most
-		// Then iterate until there are no more donors to minimize.
-		// TODO: when we have truly absent donors, are they the donors in the mixture that are fluctuating and thus not converging?
-		// could we check all donors that were not removed for convergence separately?  If all the non-zero donors converge we're good?  (Can test if they had already converged?)
-		// Would we need to run another round of optimization with those donors removed?  This might be more complicated if we have to remake the data object.
-		OptimizeSampleRatiosCommonSNPsResult result = new OptimizeSampleRatiosCommonSNPsResult(finalRatios, converged, likelihoodResults.get(0), likelihoodResults.get(1), this.data.getTotalSNPAlleleCounts(), this.randomizedStarts);
-
-		return result;
+		return (finalRatios);
 	}
+	
+	public OptimizeSampleRatiosCommonSNPsResult directIteration () {
+		double[] startingMixture = getStartPoint(data.getSampleNames().size(), 1, this.randomizedStarts);
+		OptimizeSampleRatiosCommonSNPsResult phaseOneResult = directIteration(startingMixture);
+		return (phaseOneResult);
+		
+		// TODO: the likelihood calculation is undefined when the MAF is 0 or 1 - compromise by setting the donor to a very small fraction.
+		// Need to solve that before this has even a chance of working.
+		/*
+		double [] roundOneMixture = phaseOneResult.getMixtureArray(this.func.getDonorNames());
+		double [] zeroDonorOptimizedMixture =testForAbsentDonors(roundOneMixture);
 
+		// if there were no changes made in the mixture, return the original optimization.
+		if (Arrays.equals(roundOneMixture, zeroDonorOptimizedMixture)) {
+			return (phaseOneResult);
+		}
+		
+		Map<String, Double> finalRatios=getRatioMap(zeroDonorOptimizedMixture);
+		
+		OptimizeSampleRatiosCommonSNPsResult result = new OptimizeSampleRatiosCommonSNPsResult(finalRatios, phaseOneResult.isConverged(), phaseOneResult.getBestLikelihood(), 
+				phaseOneResult.getSecondBestLikelihood(), this.data.getTotalSNPAlleleCounts(), this.randomizedStarts);
+		
+		return (result);
+		*/				
+	}
+	
+	/**
+	 * After optimizing mixture, try to iteratively remove donors from the pool.
+	 * Try to remove each donor and calculate the likelihood of the pool with the donor removed
+	 * Select the donor that when removed best improves the total likelihood.
+	 * If the likelihood does improve, set the donor proportion to 0, and test all non-zero donors
+	 * Continue until there is no donor removal that will improve the pool's total likelihood.
+	 *
+	 * @param startingMixture The proportion of donors in the pool after a first pass optimization
+	 * @return The proportion of donors after trying to remove donors from the pool 
+	 */
+	//TODO: fix likelihood at MAF=0 or MAF=1 to use this.  This is the "right" way to do this analysis.
+	/*
+	private double [] testForAbsentDonors (double [] startingMixture ) {
+		
+		
+		double mixLikelihood=func.value(startingMixture);
+		boolean searchActive=true;
+		
+		// make an explicit copy of the starting mixture.
+		double [] mixture = startingMixture.clone();
+				
+		// while active, try to remove another donor each pass.
+		while (searchActive) {
+			int [] indexesToTest = getNonZeroRepDonorIndex(mixture);
+			IntStream is = Arrays.stream(indexesToTest);
+			// IntStream is = IntStream.range(0, startingMixture.length);
+			//if (this.func.getNumThreads() > 1)
+			//	is = is.parallel();
+			log.info("Searching ["+indexesToTest.length+"] remaining donors (with representation <0.01) to remove donors who are not in pool.");
+			List<Double> likelihoods=is.mapToObj(x-> getLikelihoodDonorRemoved(x,mixture)).collect(Collectors.toList());
+
+			int index = likelihoods.indexOf(Collections.max(likelihoods));
+			double bestLike = likelihoods.get(index);			
+			// if you can't find a likelihood 
+			if (bestLike<=mixLikelihood) {
+				log.info("Unable to find any more donors to remove from pool.");
+				break;
+			}
+				
+			// improvement?
+			if (bestLike>mixLikelihood) {
+				// set the donor that improved things to mixture = 0;
+				// since we're not testing all donors, we need to look up the correct original mixture index!
+				int mixtureIndex=indexesToTest[index];
+				mixture[mixtureIndex]=removalMixture;
+				log.info("Donor at position [" + mixtureIndex+"] mixture set to ~0.  Previous pooled likelihood [" +mixLikelihood + "] new pooled likelihood [" + bestLike+"]");
+				// update the best likelihood
+				mixLikelihood=bestLike;
+				
+			}							
+		}
+		log.info("Finished removing donors from pool.");
+		// the final optimized mixture.
+		return mixture;
+		
+		
+	}
+	*/
+	
+	
+	//TODO: this is a hackier way to do this, but the likelihood calculation is ill defined.
+	/*
+	private double [] testForAbsentDonors2 (double [] startingMixture ) {
+		
+		double mixLikelihood=func.value(startingMixture);
+		log.info("Previous pooled likelihood [" +mixLikelihood + "]");
+		
+		// make an explicit copy of the starting mixture.
+		double [] mixture = startingMixture.clone();
+		
+		int [] indexesToTest = getNonZeroRepDonorIndex(mixture);
+		IntStream is = Arrays.stream(indexesToTest);
+		
+		
+		List<Double> likelihoods=is.mapToObj(x-> getLikelihoodDonorRemoved(x,mixture)).collect(Collectors.toList());
+		
+		// get all indexes where donor removal would improve the results.
+		for (int i=0; i<likelihoods.size(); i++) {
+			double thisLike=likelihoods.get(i);
+			
+			if (likelihoods.get(i)>mixLikelihood) {
+				log.info("Donor at position [" + i+"] mixture set to 0.  Pooled likelihood with this donor removed [" + thisLike+"]");
+				mixture[i]=0;
+			}
+		}
+		return mixture;
+		
+		
+	}
+	*/
+	
+	/**
+	 * To save time, search for nonzero mixtures that are less than 0.01 mixture. 
+	 * High mixture donors are unlikely to be truly absent from pool and reduce search space.
+	 * @param mixture
+	 * @return
+	 */
+	/*
+	private int [] getNonZeroRepDonorIndex (double [] mixture) {
+		List<Integer> result = new ArrayList<>();
+		for (int i=0; i<mixture.length; i++) {
+			if (mixture[i]>this.removalMixture & mixture[i]<0.01) result.add(i);
+		}
+		return result.stream().mapToInt(x->x).toArray();
+	}
+	*/
+	
+	/**
+	 * For a given mixture vector, set the mixture at index to 0 and generate a likelihood.
+	 * @param index The index of the donor to test for removal
+	 * @param mixture The mixture vector
+	 * @return the likelihood of the mixture with the donor removed.
+	 */
+	/*
+	private Double getLikelihoodDonorRemoved (int index, double [] mixture) {
+		// short circuit 
+		if (mixture[index]==0) return Double.MIN_VALUE;
+		double [] test = mixture.clone();
+		test[index]=this.removalMixture;
+		return func.value(test);						
+	}
+	/*
 
 
 	/**

@@ -52,6 +52,8 @@ public class OptimizeSampleRatiosGradientFunctionTest {
 
 	*/
 
+	//TODO: should add some tests for donor scaling factor.  IE: OptimizeSampleRatiosGradientFunction(d, true)
+	//This is tested on multiple large data sets to determine efficacy.
 	@Test
 	public void testGradient () {
 
@@ -67,7 +69,7 @@ public class OptimizeSampleRatiosGradientFunctionTest {
 			d.addSNP(sampleNames, genos, ac[0], ac[1]);
 		}
 
-		OptimizeSampleRatiosGradientFunction f = new OptimizeSampleRatiosGradientFunction(d);
+		OptimizeSampleRatiosGradientFunction f = new OptimizeSampleRatiosGradientFunction(d, false);
 		double [] sampleMixtureStart = {0.25, 0.25, 0.25, 0.25};
 		double [] result = f.value(sampleMixtureStart);
 		double [] expected ={-1.790476, -2.647619,  3.085714,  1.352381};
@@ -98,7 +100,7 @@ public class OptimizeSampleRatiosGradientFunctionTest {
 			d.addSNP(sampleNames, genos, ac[0], ac[1]);
 		}
 
-		OptimizeSampleRatiosGradientFunction f = new OptimizeSampleRatiosGradientFunction(d);
+		OptimizeSampleRatiosGradientFunction f = new OptimizeSampleRatiosGradientFunction(d, false);
 		double [] sampleMixtureStart = {0.25, 0.25, 0.25, 0.25};
 		double [] result = f.value(sampleMixtureStart);
 		double [] expected ={-2.9333333, -0.9333333, 4.8000000, 1.0666667};

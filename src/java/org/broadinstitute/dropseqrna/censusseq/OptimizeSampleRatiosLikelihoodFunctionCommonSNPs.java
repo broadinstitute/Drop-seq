@@ -34,11 +34,12 @@ public class OptimizeSampleRatiosLikelihoodFunctionCommonSNPs implements Multiva
 
 	private final CommonSNPsData data;
 	private static final Log log = Log.getInstance(OptimizeSampleRatiosLikelihoodFunctionCommonSNPs.class);
-    private int numThreads;
-    private Integer MAXIMUM_PENALITY=null;
+    private final int  numThreads;    
+	private Integer MAXIMUM_PENALITY=null;
 
     public OptimizeSampleRatiosLikelihoodFunctionCommonSNPs(final CommonSNPsData data, final int numThreads) {
 		this.data=data;
+		// MIN_MAF = 1d/data.getSampleNames().size() * SOME_DUMB_CONSTANT;
 		this.numThreads=numThreads;
 		System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", Integer.toString(this.numThreads));
 	}
@@ -48,6 +49,10 @@ public class OptimizeSampleRatiosLikelihoodFunctionCommonSNPs implements Multiva
 	}
 
 	@Override
+	/**
+	 * Normally all input SNPs have a MAF > 0 where the value is well defined.
+	 * Testing strategies to get around this.
+	 */
 	public double value(final double[] ratios) {
 		double[] normalizedRatios = normalizeRatiosToOne(ratios);
 		int numVariants = this.data.getNumVariants();
@@ -67,9 +72,6 @@ public class OptimizeSampleRatiosLikelihoodFunctionCommonSNPs implements Multiva
 			is = is.parallel();
 
 		double result=is.mapToDouble(calculateOne).sum();
-
-		//TODO: comment this out as it's pretty verbose.
-		// log.info("score: " + result + " param values " + Arrays.toString(normalizedRatios));
 		return result;
 
 	}
@@ -87,6 +89,8 @@ public class OptimizeSampleRatiosLikelihoodFunctionCommonSNPs implements Multiva
 	 * #a log (Fa) + b log (1-Fa)
 	 * Where a is the count of the ref alleles, b is the count of the alt allelles, Fa is the frequency of the ref allele adjusted for the current
 	 * sample mixture ratios.
+	 * 
+	 * This is undefined when the MAF is not in the range of (0,1) [not inclusive!]
 	 * @param refAlleleFreq the reference allele freq
 	 * @param refAltCounts
 	 * @return
@@ -113,5 +117,10 @@ public class OptimizeSampleRatiosLikelihoodFunctionCommonSNPs implements Multiva
 			result[i] = ratios[i] / sum;
 		return (result);
 	}
+	
+	public int getNumThreads() {
+		return numThreads;
+	}
+
 
 }

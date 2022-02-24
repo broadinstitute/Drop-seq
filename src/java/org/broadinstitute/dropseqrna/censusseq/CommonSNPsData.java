@@ -187,6 +187,8 @@ public class CommonSNPsData {
 		}
 		if (Double.isNaN(result))
 			log.warn("SNP produced NaN allele frequency: ratios [" + ratios.toString() +" ] genotypes [" + this);
+		if (result <0 | result > 1)
+			log.warn("MAF [" + result +"] is out of bounds!");
 		return (result);
 	}
 

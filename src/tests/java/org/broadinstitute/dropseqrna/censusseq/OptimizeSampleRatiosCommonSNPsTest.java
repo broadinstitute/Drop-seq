@@ -54,7 +54,7 @@ public class OptimizeSampleRatiosCommonSNPsTest {
 		CommonSNPsData d = CommonSNPsData.parseFromFiles(snpReadCountFile, genotypeFile);
 		// data was calculated with an iteration factor of 0.05, need to maintain that.
 		// changes to optimized iteration factor ruin this test.
-		OptimizeSampleRatiosCommonSNPs optim = new OptimizeSampleRatiosCommonSNPs(d, 1, null);
+		OptimizeSampleRatiosCommonSNPs optim = new OptimizeSampleRatiosCommonSNPs(d, false, 1, null);
 		Map<String, Double> ratioMap = optim.directIteration().getResult();
 
 		double [] answerDirectIteration=answerKey.get(2);
@@ -74,7 +74,7 @@ public class OptimizeSampleRatiosCommonSNPsTest {
 		File genotypeFile = new File("testdata/org/broadinstitute/dropseq/censusseq/sampleGenotypeStates.txt.gz");
 		CommonSNPsData d = CommonSNPsData.parseFromFiles(snpReadCountFile, genotypeFile);
 		Random random = new Random(1);
-		OptimizeSampleRatiosCommonSNPs optim = new OptimizeSampleRatiosCommonSNPs(d, 1, random);
+		OptimizeSampleRatiosCommonSNPs optim = new OptimizeSampleRatiosCommonSNPs(d, false, 1, random);
 		Map<String, Double> ratioMap = optim.directIteration().getResult();
 
 		// values of the donors after optimization.
