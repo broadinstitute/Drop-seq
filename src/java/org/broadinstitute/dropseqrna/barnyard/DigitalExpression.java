@@ -399,6 +399,15 @@ public class DigitalExpression extends DGECommandLineBase {
         // no-arg ctor for unit tests
         public DESummary() {}
 
+        public void accumulate(final DESummary other) {
+            if (!this.CELL_BARCODE.equals(other.CELL_BARCODE)) {
+                throw new IllegalArgumentException(String.format("Accumulating DESummaries with different CBCs: %s != %s",
+                        this.CELL_BARCODE, other.CELL_BARCODE));
+            }
+            this.NUM_GENES += other.NUM_GENES;
+            this.NUM_GENIC_READS += other.NUM_GENIC_READS;
+            this.NUM_TRANSCRIPTS += other.NUM_TRANSCRIPTS;
+        }
     }
 
     static final Comparator<DESummary> TRANSCRIPT_ORDER_DESCENDING =  new Comparator<DESummary>() {
