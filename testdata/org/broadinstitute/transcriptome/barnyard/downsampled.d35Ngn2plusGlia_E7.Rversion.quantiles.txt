@@ -1,0 +1,14 @@
+quantile	cumulative_num_cells	median_transcripts
+Largest_Cell	1	139
+0.99	65	59.9099999999999
+0.9	641	37
+0.8	1282	28
+0.7	1924	23
+0.6	2564	19
+0.5	3205	15
+0.4	3846	12
+0.3	4487	9
+0.2	5128	7
+0.1	5769	5
+0.01	6346	2
+Smallest_Cell	6410	1
