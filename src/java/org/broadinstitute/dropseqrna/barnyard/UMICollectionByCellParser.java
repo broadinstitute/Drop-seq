@@ -18,9 +18,9 @@ import java.util.List;
  */
 public class UMICollectionByCellParser extends IterableOnceIterator<List<UMICollection>> {
 
-    private PeekableIterator<TabbedTextFileWithHeaderParser.Row> parserIter;
-    private Log log = Log.getInstance(UMICollectionByCellParser.class);
-    private ProgressLogger progress = new ProgressLogger(log, 100, "Processed", "cells");
+    private final PeekableIterator<TabbedTextFileWithHeaderParser.Row> parserIter;
+    private final Log log = Log.getInstance(UMICollectionByCellParser.class);
+    private final ProgressLogger progress = new ProgressLogger(log, 100, "Processed", "cells");
 
     /**
      * Constructor to parse a given molecular barcode file.

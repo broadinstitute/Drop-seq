@@ -189,7 +189,7 @@ public class CreateMetaCells extends CommandLineProgram {
 			for (final String cell : cellsRetained) {
 				donorMap.put(cell, SINGLE_METACELL_LABEL);
 			}
-			donors = Arrays.asList(SINGLE_METACELL_LABEL);
+			donors = Collections.singletonList(SINGLE_METACELL_LABEL);
 		}
 		
 		// build meta cell statistics from donorMap
@@ -345,7 +345,7 @@ public class CreateMetaCells extends CommandLineProgram {
 			if (donor!=null) {
 				List<Double> vals = umiListPerDonor.get(donor); 
 				if (vals==null) {
-					vals=new ArrayList<Double>();
+					vals= new ArrayList<>();
 					umiListPerDonor.put(donor, vals);
 				}
 				vals.add(count);					

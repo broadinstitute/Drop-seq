@@ -99,7 +99,7 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
     public int NUM_THREADS=1;
 
     private Random random;
-    private ObjectCounter<String> transcriptsPerCell = new ObjectCounter<>();
+    private final ObjectCounter<String> transcriptsPerCell = new ObjectCounter<>();
     private Set<String> cellBarcodes;
     private ForkJoinPool pool;
 
