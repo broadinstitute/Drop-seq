@@ -23,6 +23,14 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
+import htsjdk.samtools.metrics.MetricsFile;
+import org.broadinstitute.dropseqrna.barnyard.DigitalExpression;
+import org.broadinstitute.dropseqrna.barnyard.DigitalExpressionTest;
+import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintWriter;
+import org.junit.Assert;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -30,15 +38,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import htsjdk.samtools.metrics.MetricsFile;
-import org.broadinstitute.dropseqrna.barnyard.DigitalExpression;
-import org.broadinstitute.dropseqrna.barnyard.DigitalExpressionTest;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.FilterDge;
-import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintWriter;
-import org.junit.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
 
 public class FilterDgeTest {
 
@@ -55,7 +54,7 @@ public class FilterDgeTest {
 
 
 
-    private static String[] CELLS_TO_RETAIN = {"ATCAGGGACAGA", "TTGCCTTACGCG", "TACAATTAAGGC"};
+    private static final String[] CELLS_TO_RETAIN = {"ATCAGGGACAGA", "TTGCCTTACGCG", "TACAATTAAGGC"};
 
 	@Test(dataProvider = "testFilteringWithHeadersDataProvider")
 	public void testFilteringWithHeaders(final boolean inputHasHeader, final boolean outputHasHeader) throws IOException {
@@ -110,7 +109,7 @@ public class FilterDgeTest {
         Assert.assertEquals(fd.doWork(), 0);
         List<DigitalExpression.DESummary> summaries = MetricsFile.readBeans(fd.OUTPUT_SUMMARY);
         Assert.assertEquals(CELLS_TO_RETAIN.length, summaries.size());
-        final Set<String> cellsToRetain = new HashSet<String>(Arrays.asList(CELLS_TO_RETAIN));
+        final Set<String> cellsToRetain = new HashSet<>(Arrays.asList(CELLS_TO_RETAIN));
         for (final DigitalExpression.DESummary summary : summaries) {
             Assert.assertTrue(cellsToRetain.contains(summary.CELL_BARCODE));
         }

@@ -1,17 +1,12 @@
 package org.broadinstitute.dropseqrna.eqtl;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import org.broadinstitute.dropseqrna.eqtl.CreateMetaCells;
-import org.broadinstitute.dropseqrna.eqtl.DonorMergeStrategy;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 
 public class CreateMetaCellsTest {
 	private final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/eqtl");
@@ -30,7 +25,7 @@ public class CreateMetaCellsTest {
 	
 	
 	
-	@Test (enabled=true)
+	@Test ()
 	public void testMetacellsWithICAClusters() throws IOException {
 		final CreateMetaCells clp = new CreateMetaCells();
 		clp.INPUT = DGE;
@@ -54,7 +49,7 @@ public class CreateMetaCellsTest {
 		List<String> cellBC = clp.getCellBarcodesInClusters("TEST", clusterLabels, CLUSTER_ASSIGNMENT_FILE);
 		Assert.assertEquals(cellBC.size(), 69);
 		
-		Set<String> clusterLabels1 = new HashSet<>(Arrays.asList("Cluster_1"));
+		Set<String> clusterLabels1 = new HashSet<>(Collections.singletonList("Cluster_1"));
 		
 		List<String> cellBC2 = clp.getCellBarcodesInClusters("TEST", clusterLabels1, CLUSTER_ASSIGNMENT_FILE);
 		Assert.assertNotNull(cellBC2);
@@ -62,7 +57,7 @@ public class CreateMetaCellsTest {
 	}
 	
 	@Test 
-	public void testGetPrefixForExperiment() throws IOException {
+	public void testGetPrefixForExperiment() {
 		final CreateMetaCells clp = new CreateMetaCells();
 		String uei = clp.getUEI(this.DGE);
 		String expectedPrefix="TEST";
@@ -76,7 +71,7 @@ public class CreateMetaCellsTest {
 	}
 	
 	@Test 
-	public void testGetUEI() throws IOException {
+	public void testGetUEI() {
 		final CreateMetaCells clp = new CreateMetaCells();
 		String uei = clp.getUEI(this.DGE);
 		String expectedUEI= "d35Ngn2plusGlia_Ngn2gliaD35B_E8_merged";

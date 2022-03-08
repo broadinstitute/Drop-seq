@@ -168,8 +168,6 @@ public class FilterDge extends CommandLineProgram{
 	/**
 	 * Builds one line of output - a single gene with the subset of cells that are retained.
 	 * Can return null if the gene should not be retained.
-	 * @param line
-	 * @return
 	 */
 	private List<String> buildBodyLine (final String [] line, final Set<String> genesRetain,
 										final Set<String> genesRemove, final List<String> cellsRetain,
@@ -216,7 +214,6 @@ public class FilterDge extends CommandLineProgram{
 	 * @param elements The original list of cells
 	 * @param remove A file containing a list of cells to remove, can be null.
 	 * @param retain A file containing a list of cells to retain, can be null.
-	 * @return
 	 */
 	public List<String> getElementsToRetain (final List<String> elements, final File remove, final File retain) {
 

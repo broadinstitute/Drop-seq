@@ -4,8 +4,6 @@ import freemarker.template.utility.StringUtil;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
-import org.broadinstitute.dropseqrna.barnyard.DownsampleTranscriptsAndQuantiles;
-import org.broadinstitute.dropseqrna.barnyard.UMICollectionByCellParser;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.BarcodeSimulator;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
@@ -31,7 +29,7 @@ import static com.google.common.collect.Streams.forEachPair;
 public class DownsampleTranscriptsAndQuantilesTest {
 
     private static final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/transcriptome/barnyard");
-    private File umiCollectionFile = new File(TEST_DATA_DIR,"UMICollectionFile.txt.gz");
+    private final File umiCollectionFile = new File(TEST_DATA_DIR,"UMICollectionFile.txt.gz");
 
     private UMICollection makeUMICollection(String cell, String gene, String[] mbcounts) {
         // Shorthand for making UMICollection objects
@@ -124,7 +122,6 @@ public class DownsampleTranscriptsAndQuantilesTest {
         // Testing the pipes
         DownsampleTranscriptsAndQuantiles c = new DownsampleTranscriptsAndQuantiles();
         String prefix = "DownsampleTranscriptsAndQuantilesTest";
-        String testDir= "testdata/org/broadinstitute/transcriptome/barnyard/";
         c.RANDOM_SEED = 140;
         c.INPUT = TestUtils.getTempReportFile(prefix, ".input.txt.gz");
         writeSyntheticData(c.INPUT);
@@ -148,7 +145,6 @@ public class DownsampleTranscriptsAndQuantilesTest {
         // Testing the pipes
         DownsampleTranscriptsAndQuantiles c = new DownsampleTranscriptsAndQuantiles();
         String prefix = "DownsampleTranscriptsAndQuantilesTest";
-        String testDir= "testdata/org/broadinstitute/transcriptome/barnyard/";
         c.RANDOM_SEED = 140;
         c.NUM_THREADS = 2;
         c.INPUT = TestUtils.getTempReportFile(prefix, ".input.txt.gz");

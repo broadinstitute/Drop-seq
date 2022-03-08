@@ -26,14 +26,13 @@ import picard.util.TabbedInputParser;
  */
 public class MetaCellMetrics {
 
-	private ObjectCounter<String> cellsPerDonor;
-	private Map<String, Double> umisPerDonor;
-	private LinkedHashSet<String> donors;
-	private static String [] header = {"DONOR", "NUM_CELLS", "NUM_UMIS", "AVERAGE_UMIS_PER_CELL"};
+	private final ObjectCounter<String> cellsPerDonor;
+	private final Map<String, Double> umisPerDonor;
+	private final LinkedHashSet<String> donors;
+	private static final String [] header = {"DONOR", "NUM_CELLS", "NUM_UMIS", "AVERAGE_UMIS_PER_CELL"};
 	
 	/**
 	 * Instantiate class with a list of donors that provide ordering for requested outputs.
-	 * @param donors
 	 */
 	public MetaCellMetrics(List<String> donors) {
 		this.donors = new LinkedHashSet<>(donors);
@@ -87,7 +86,7 @@ public class MetaCellMetrics {
 	 * @return A list of donors in the order they were added.
 	 */
 	public List<String> getDonors() {
-		return new ArrayList<String> (this.donors);
+		return new ArrayList<>(this.donors);
 	}
 	
 	/**
@@ -120,7 +119,7 @@ public class MetaCellMetrics {
 	 * @return The number of UMIs / the number of cells.
 	 */
 	public double getAverageUMIsPerCell (String donor) {
-		return (double) getUmiCount(donor) / (double) getCellCount(donor);
+		return getUmiCount(donor) / (double) getCellCount(donor);
 	}
 	
 	public void merge (MetaCellMetrics other) {
@@ -145,12 +144,12 @@ public class MetaCellMetrics {
 			
 		String [] parsedHeader =iter.next();
 		// map header to position in array.
-		Map<String, Integer> position = new HashMap<String, Integer>();
+		Map<String, Integer> position = new HashMap<>();
 		for (int i=0; i<parsedHeader.length; i++) {
 			position.put(parsedHeader[i], i);
 		}
 				
-		MetaCellMetrics result = new MetaCellMetrics(new ArrayList<String>());		
+		MetaCellMetrics result = new MetaCellMetrics(new ArrayList<>());
 		// parse the lines of the file.
 		while (iter.hasNext()) {
 			String [] line = iter.next();
