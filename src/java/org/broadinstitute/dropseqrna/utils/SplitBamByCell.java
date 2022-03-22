@@ -114,9 +114,9 @@ public class SplitBamByCell extends CommandLineProgram {
         g(1024L * 1024L * 1024L),
         t(1024L * 1024L * 1024L * 1024L);
 
-        private long size;
+        private final long size;
 
-        private FileSizeSuffix(long size) {
+        FileSizeSuffix(long size) {
             this.size = size;
         }
 
@@ -173,7 +173,7 @@ public class SplitBamByCell extends CommandLineProgram {
         writeReport(writerInfoList);
 
         if (DELETE_INPUTS) {
-            deleteInputBamFiles(DELETE_INPUT_INDICES);
+            deleteInputBamFiles();
         }
 
 
@@ -244,7 +244,7 @@ public class SplitBamByCell extends CommandLineProgram {
 
         ProgressLogger pl = new ProgressLogger(log);
 
-        Integer writerIdx = -1;
+        int writerIdx = -1;
         String lastReadName = null;
         for (SAMRecord r : new IterableAdapter<>(headerAndIterator.iterator)) {
             pl.record(r);
@@ -321,7 +321,7 @@ public class SplitBamByCell extends CommandLineProgram {
     }
 
     private String getOutputNameRoot() {
-        String outputName = OUTPUT.getName().replaceAll("\\" + BAM_EXTENSION + "$", "");;
+        String outputName = OUTPUT.getName().replaceAll("\\" + BAM_EXTENSION + "$", "");
 
         String outputNameRoot;
         int index = outputName.indexOf(OUTPUT_SLUG);
@@ -397,7 +397,7 @@ public class SplitBamByCell extends CommandLineProgram {
         }
     }
 
-    private void deleteInputBamFiles(final boolean deleteIndices) {
+    private void deleteInputBamFiles() {
         for (File bamFile : INPUT) {
             Path bamPath = bamFile.toPath();
             try {
@@ -406,9 +406,13 @@ public class SplitBamByCell extends CommandLineProgram {
                     bamPath = Files.readSymbolicLink(bamPath);
                     maybeDeleteBamFile(symlinkPath);
                 }
+/*              If input file is in the current directory and does not have a parent, this results in NPE.
+                I can't figure out the context in which the code below makes sense, but leaving it here in
+                case I'm missing something.
                 if (!bamPath.isAbsolute()) {
                     bamPath = bamFile.toPath().getParent().resolve(bamPath);
                 }
+*/
 
                 maybeDeleteBamFile(bamPath);
             } catch (IOException ex) {
@@ -454,8 +458,8 @@ public class SplitBamByCell extends CommandLineProgram {
     }
 
     private static class SAMFileInfo {
-        private File samFile;
-        private SAMFileWriter writer;
+        private final File samFile;
+        private final SAMFileWriter writer;
         int readCount;
 
         private SAMFileInfo(File samFile, SAMFileWriter writer, int readCount) {
