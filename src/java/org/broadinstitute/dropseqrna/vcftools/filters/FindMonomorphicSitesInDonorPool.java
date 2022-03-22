@@ -31,15 +31,12 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
+import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.censusseq.CensusSeqUtils;
 import org.broadinstitute.dropseqrna.utils.VariantContextProgressLoggerIterator;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.PeekableIterator;
-import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFFileReader;
@@ -56,7 +53,7 @@ public class FindMonomorphicSitesInDonorPool {
 	private final List<String> donorsInPool;
 	private final VCFFileReader vcfReader;
 	private final File tmpDir;
-	private int genotypeQuality;
+	private final int genotypeQuality;
 	private final String alleleFrequencyTag;
 	private final Double minimum_MAF;
 	private final List<String> ignoredChromosomes;
@@ -97,11 +94,6 @@ public class FindMonomorphicSitesInDonorPool {
 	/**
 	 * Finds a list of SNP intervals that are homozygous (same direction) in all donors in the pool
 	 * as defined by the sampleFile.
-	 *
-	 *
-	 * @param vcfReader
-	 * @param sampleFile
-	 * @return
 	 */
 	private void getSitesRefInPool () {
 
@@ -110,22 +102,19 @@ public class FindMonomorphicSitesInDonorPool {
 		// set up the variant writer to write to either the output file OR a temp file.
 		// write to a temp directory on the first pass so we can iterate on it
 		// along with the sorted BAM.
-		VariantContextWriter vcfWriter = null;
 
 		try {
 			this.outputVCF = File.createTempFile("tmp_vcf_", ".txt.gz", tmpDir);
 			this.outputVCF.deleteOnExit();
-			log.info("Writing temp VCF to " + outputVCF.getAbsolutePath());
-			vcfWriter = CensusSeqUtils.getVCFWriter(outputVCF, vcfReader, new ArrayList<>(vcfReader.getFileHeader().getSampleNameToOffset().keySet()));
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new RuntimeIOException("Exception creating temp file in " + tmpDir.getAbsolutePath(), e);
 		}
-
-		PeekableIterator<VariantContext> vcfIterator = null;
+		log.info("Writing temp VCF to " + outputVCF.getAbsolutePath());
+		final VariantContextWriter vcfWriter = CensusSeqUtils.getVCFWriter(outputVCF, vcfReader, new ArrayList<>(vcfReader.getFileHeader().getSampleNameToOffset().keySet()));
 
 		log.info("Looking through VCF for SNPs that fit criteria.  Will search for these in BAM.");
 		// find sites in the VCF.
-		vcfIterator = getVCFIterator(vcfReader.iterator(), donorsInPool, alleleFrequencyTag, minimum_MAF, genotypeQuality, ignoredChromosomes, fractionDonorsPassing);
+		final PeekableIterator<VariantContext>  vcfIterator = getVCFIterator(vcfReader.iterator(), donorsInPool, alleleFrequencyTag, minimum_MAF, genotypeQuality, ignoredChromosomes, fractionDonorsPassing);
 
 		// last argument is a bit funky. If you aren't using the common SNP
 		// analysis, you need to preserve the full interval names.
@@ -149,8 +138,7 @@ public class FindMonomorphicSitesInDonorPool {
 	public PeekableIterator<VariantContext> getVCFIterator(final Iterator<VariantContext> iter, final List<String> donorsInPool, final String alleleFreqTag, final Double minMAF, final int genotypeQuality, final List<String> ignoredChromosomes, final double fractionDonorsPassing) {
 
 		Iterator<VariantContext> filteredIter=iter;
-		if (log!=null)
-			filteredIter = new VariantContextProgressLoggerIterator(filteredIter, new ProgressLogger(log));
+		filteredIter = new VariantContextProgressLoggerIterator(filteredIter, new ProgressLogger(log));
 
 		// filter on the variant #alleles, quality, etc.
 		filteredIter = new SimpleDiploidVariantContextFilter(filteredIter, true, true, 2, true);
