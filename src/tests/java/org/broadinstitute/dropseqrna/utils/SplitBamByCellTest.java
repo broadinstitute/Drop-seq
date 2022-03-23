@@ -23,6 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.StringUtil;
 import org.apache.commons.io.FileUtils;
@@ -47,6 +48,7 @@ public class SplitBamByCellTest {
 
     public static final File TEST_BAM = new File("testdata/org/broadinstitute/dropseq/barnyard/DgeStrandFuncTest/DgeStrandFuncTest.bam");
     private static final File EXPECTED_REPORT = new File ("testdata/org/broadinstitute/dropseq/utils/SplitBamByCell.report");
+    private static final File EXPECTED_MANIFEST = new File ("testdata/org/broadinstitute/dropseq/utils/SplitBamByCell.split_bam_manifest");
     private static final File QUERYNAME_SORTED_BAM = new File("testdata/org/broadinstitute/dropseq/metrics/compute_umi_sharing.unmapped.sam");
 
     @Test
@@ -66,6 +68,7 @@ public class SplitBamByCellTest {
         bamSplitter.DELETE_INPUTS = false;
         bamSplitter.OVERWRITE_EXISTING = true;
         bamSplitter.REPORT = report;
+        bamSplitter.OUTPUT_MANIFEST = TestUtils.getTempReportFile("SplitBamByCell.", ".split_bam_manifest");
         TestUtils.setInflaterDeflaterIfMacOs();
 		Assert.assertEquals(bamSplitter.doWork(), 0);
 
@@ -111,10 +114,21 @@ public class SplitBamByCellTest {
             tagsComparator.TAGS = new ArrayList<>(Arrays.asList("XC", "XM"));
             Assert.assertEquals(tagsComparator.doWork(), 0);
 
-			Assert.assertTrue(FileUtils.contentEquals(report, EXPECTED_REPORT));
+            Assert.assertTrue(FileUtils.contentEquals(report, EXPECTED_REPORT));
+
+            // Manifest content will not be identical because of temp file names, so just compare fields expected
+            // to be consistent.
+            final Map<String, Integer> expectedManifest = loadCellBarcodeManifest(EXPECTED_MANIFEST);
+            final Map<String, Integer> actualManifest = loadCellBarcodeManifest(bamSplitter.OUTPUT_MANIFEST);
+            Assert.assertEquals(expectedManifest, actualManifest);
 		} catch (IOException ex) {
 			throw new RuntimeException("Error running the test", ex);
 		}
+    }
+
+    private Map<String, Integer> loadCellBarcodeManifest(final File manifest) {
+        final List<SplitBamByCell.CellBarcodeSplitBamMetric> beans = MetricsFile.readBeans(manifest);
+        return(beans.stream().collect(Collectors.toMap(b -> b.CELL_BARCODE, b -> b.SPLIT_BAM_INDEX)));
     }
 
     @Test
