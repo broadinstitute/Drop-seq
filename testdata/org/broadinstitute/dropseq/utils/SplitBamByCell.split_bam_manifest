@@ -1,0 +1,15 @@
+
+## METRICS CLASS	org.broadinstitute.dropseqrna.utils.SplitBamByCell$CellBarcodeSplitBamMetric
+CELL_BARCODE	SPLIT_BAM_INDEX	BAM
+AACTAAGGGCAA	1	/var/folders/cx/xv2r7qwj50gbq0t5vy1clyr40000gq/T/SplitBamByCell.2181522359739561347.1.bam
+ACTTCTGTTTTC	2	/var/folders/cx/xv2r7qwj50gbq0t5vy1clyr40000gq/T/SplitBamByCell.2181522359739561347.2.bam
+TGGCTGTTCTAT	1	/var/folders/cx/xv2r7qwj50gbq0t5vy1clyr40000gq/T/SplitBamByCell.2181522359739561347.1.bam
+CTACAATCTAAT	1	/var/folders/cx/xv2r7qwj50gbq0t5vy1clyr40000gq/T/SplitBamByCell.2181522359739561347.1.bam
+TATACCAGCCTA	1	/var/folders/cx/xv2r7qwj50gbq0t5vy1clyr40000gq/T/SplitBamByCell.2181522359739561347.1.bam
+GCGGTCCGGCCT	0	/var/folders/cx/xv2r7qwj50gbq0t5vy1clyr40000gq/T/SplitBamByCell.2181522359739561347.0.bam
+CGCACATCAGAA	2	/var/folders/cx/xv2r7qwj50gbq0t5vy1clyr40000gq/T/SplitBamByCell.2181522359739561347.2.bam
+CGTCCCCTCAGC	1	/var/folders/cx/xv2r7qwj50gbq0t5vy1clyr40000gq/T/SplitBamByCell.2181522359739561347.1.bam
+GTCCGACAGATC	0	/var/folders/cx/xv2r7qwj50gbq0t5vy1clyr40000gq/T/SplitBamByCell.2181522359739561347.0.bam
+CAGGTGTCCGTC	2	/var/folders/cx/xv2r7qwj50gbq0t5vy1clyr40000gq/T/SplitBamByCell.2181522359739561347.2.bam
+
+

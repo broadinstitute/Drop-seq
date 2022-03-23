@@ -1,6 +1,11 @@
-BAM_INDEX	NUM_READS
+
+## METRICS CLASS	org.broadinstitute.dropseqrna.utils.SplitBamByCell$SplitBamSummaryMetric
+MEAN	VARIANCE
+21036	90020730
+
+## HISTOGRAM	java.lang.Integer
+SPLIT_INDEX	READ_COUNT
 0	15586
 1	31992
 2	15531
-mean = 21036
-variance = 90020730
+

@@ -23,6 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -34,11 +35,14 @@ import java.util.List;
 import java.util.Map;
 
 import htsjdk.samtools.*;
+import htsjdk.samtools.metrics.MetricBase;
+import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
 import org.apache.commons.math3.stat.StatUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
+import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
@@ -71,7 +75,8 @@ public class SplitBamByCell extends CommandLineProgram {
     @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM files to analyze.  They must all have the same sort order", minElements = 1)
     public List<File> INPUT;
 
-    @Argument(doc="The tag to examine in order to partition reads.")
+    @Argument(doc="The tag to examine in order to partition reads.  Set to null to round-robin read (pairs) to output " +
+            "files, instead of grouping by cell barcode.")
     public String SPLIT_TAG="XC";
 
     @Argument(shortName="N", doc="Number of output files to create", mutex={"TARGET_BAM_SIZE"})
@@ -92,6 +97,9 @@ public class SplitBamByCell extends CommandLineProgram {
 
     @Argument(optional=true, doc="If specified, this file will be created, containing split BAM files' read count distribution stats.")
     public File REPORT;
+
+    @Argument(optional = true, doc="Write a file with the split index of every cell.  Cannot be used if SPLIT_TAG=null.")
+    public File OUTPUT_MANIFEST;
 
     @Argument(optional=true, shortName="W", doc="Overwrite existing files. Default: fail if any files to be created already exist.")
     public boolean OVERWRITE_EXISTING = false;
@@ -123,6 +131,15 @@ public class SplitBamByCell extends CommandLineProgram {
         public long getSize() {
             return size;
         }
+    }
+
+    @Override
+    protected String[] customCommandLineValidation() {
+        final ArrayList<String> list = new ArrayList<>();
+        if (this.SPLIT_TAG == null && this.OUTPUT_MANIFEST != null) {
+            list.add("Cannot produce OUTPUT_MANIFEST if SPLIT_TAG=null.");
+        }
+        return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
     }
 
     @Override
@@ -263,7 +280,7 @@ public class SplitBamByCell extends CommandLineProgram {
         }
     }
 
-    private void splitBAMsByTag(final List<SAMFileInfo> writerInfoList, final SamHeaderAndIterator headerAndIterator) {
+    private Map<String, Integer> splitBAMsByTag(final List<SAMFileInfo> writerInfoList, final SamHeaderAndIterator headerAndIterator) {
         ProgressLogger pl = new ProgressLogger(log);
 
         final Map<String, Integer> cellBarcodeWriterIdxMap = new HashMap<>();
@@ -300,6 +317,7 @@ public class SplitBamByCell extends CommandLineProgram {
             writerInfo.getWriter().addAlignment(r);
             writerInfo.incrementReadCount();
         }
+        return cellBarcodeWriterIdxMap;
     }
 
     private void splitBAMs (final List<SAMFileInfo> writerInfoList) {
@@ -311,7 +329,10 @@ public class SplitBamByCell extends CommandLineProgram {
             // Select writers in a round robin way, keeping read pairs together
             splitBAMsEqually(writerInfoList, headerAndIterator);
         } else {
-            splitBAMsByTag(writerInfoList, headerAndIterator);
+            final Map<String, Integer> cellBarcodeIndexMap = splitBAMsByTag(writerInfoList, headerAndIterator);
+            if (OUTPUT_MANIFEST != null) {
+                writeManifest(OUTPUT_MANIFEST, cellBarcodeIndexMap, writerInfoList);
+            }
         }
 
         CloserUtil.close(headerAndIterator.iterator);
@@ -319,6 +340,40 @@ public class SplitBamByCell extends CommandLineProgram {
             writerInfo.getWriter().close();
         }
     }
+
+    public static class CellBarcodeSplitBamMetric
+            extends MetricBase {
+        public String CELL_BARCODE;
+        public int SPLIT_BAM_INDEX;
+        public File BAM;
+
+        public CellBarcodeSplitBamMetric() {
+        }
+
+        public CellBarcodeSplitBamMetric(String CELL_BARCODE, int SPLIT_BAM_INDEX, File BAM) {
+            this.CELL_BARCODE = CELL_BARCODE;
+            this.SPLIT_BAM_INDEX = SPLIT_BAM_INDEX;
+            this.BAM = BAM;
+        }
+    }
+
+        private void writeManifest(final File manifest,
+                                   final Map<String, Integer> cellBarcodeIndexMap,
+                                   final List<SAMFileInfo> writerInfoList) {
+            MetricsFile<CellBarcodeSplitBamMetric, Integer> metricsFile = getMetricsFile();
+            for (final Map.Entry<String, Integer> entry : cellBarcodeIndexMap.entrySet()) {
+                final Integer fileIndex = entry.getValue();
+                metricsFile.addMetric(new CellBarcodeSplitBamMetric(entry.getKey(), fileIndex,
+                        writerInfoList.get(fileIndex).samFile));
+            }
+            final BufferedWriter writer = IOUtil.openFileForBufferedWriting(manifest);
+            metricsFile.write(writer);
+            try {
+                writer.close();
+            } catch (IOException e) {
+                throw new RuntimeIOException("Exception writing " + manifest.getAbsolutePath(), e);
+            }
+        }
 
     private String getOutputNameRoot() {
         String outputName = OUTPUT.getName().replaceAll("\\" + BAM_EXTENSION + "$", "");
@@ -350,22 +405,36 @@ public class SplitBamByCell extends CommandLineProgram {
         out.close();
     }
 
-    private void writeReport(final List<SAMFileInfo> writerInfoList) {
-        final File reportFile = (REPORT == null)
-            ? new File(OUTPUT.getParent(), getOutputNameRoot() + BAM_REPORT_EXTENSION)
-            : REPORT;
-        final PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(reportFile));
-        out.println("BAM_INDEX" + "\t" + "NUM_READS");
+    public static class SplitBamSummaryMetric
+            extends MetricBase {
+        public long MEAN;
+        public long VARIANCE;
 
+        public SplitBamSummaryMetric(long MEAN, long VARIANCE) {
+            this.MEAN = MEAN;
+            this.VARIANCE = VARIANCE;
+        }
+
+        public SplitBamSummaryMetric() {
+        }
+    }
+
+
+    private void writeReport(final List<SAMFileInfo> writerInfoList) {
+        final MetricsFile<SplitBamSummaryMetric, Integer> metricsFile = new MetricsFile<>();
+
+        Histogram<Integer> readCountHistogram = new Histogram<>("SPLIT_INDEX", "READ_COUNT");
         final double[] readCounts = new double[writerInfoList.size()];
         for (int idx=0; idx<writerInfoList.size(); idx++) {
             readCounts[idx] = writerInfoList.get(idx).getReadCount();
-            out.println(idx + "\t" + (int)readCounts[idx]);
+            readCountHistogram.increment(idx, readCounts[idx]);
         }
-        out.println("mean = " + StrictMath.round(StatUtils.mean(readCounts)));
-        out.println("variance = " + StrictMath.round(StatUtils.variance(readCounts)));
-
-        out.close();
+        metricsFile.addMetric(new SplitBamSummaryMetric(StrictMath.round(StatUtils.mean(readCounts)), StrictMath.round(StatUtils.variance(readCounts))));
+        metricsFile.addHistogram(readCountHistogram);
+        final File reportFile = (REPORT == null)
+                ? new File(OUTPUT.getParent(), getOutputNameRoot() + BAM_REPORT_EXTENSION)
+                : REPORT;
+        metricsFile.write(reportFile);
     }
 
     private void maybeDeleteIndex(final Path bam) {
