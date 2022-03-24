@@ -117,7 +117,8 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 	@Argument(doc = "The input VCF file to analyze.")
 	public File VCF;
 
-	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output file of sample assignments. This supports zipped formats like gz and bz2.")
+	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output file of sample assignments. This supports zipped formats like gz and bz2.",
+	optional = true)
 	public File OUTPUT;
 
 	@Argument(doc = "Verbose output of every cell/SNP result. This supports zipped formats like gz and bz2.", optional = true)
@@ -345,11 +346,12 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 			verboseWriter.close();
 
 		// write out results.
-		ErrorCheckingPrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUTPUT));
-		addMetaDataToHeader(out);
-		writeBestLikelihoods(vcfSamples, likelihoodCollection, answerKey, out, this.EMIT_POPULATION_LIKELIHOOD);
-		out.close();
-
+		if (OUTPUT != null) {
+			ErrorCheckingPrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUTPUT));
+			addMetaDataToHeader(out);
+			writeBestLikelihoods(vcfSamples, likelihoodCollection, answerKey, out, this.EMIT_POPULATION_LIKELIHOOD);
+			out.close();
+		}
 		// filter out the VERBOSE results if required.
 		if (this.VERBOSE_BEST_DONOR_OUTPUT != null) {
 			log.info("Writing Verbose Best Donor Report");
@@ -1093,7 +1095,8 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 
 		IOUtil.assertFileIsReadable(this.VCF);
 		this.INPUT_BAM = FileListParsingUtils.expandFileList(INPUT_BAM);
-		IOUtil.assertFileIsWritable(this.OUTPUT);
+		if (OUTPUT != null)
+			IOUtil.assertFileIsWritable(this.OUTPUT);
 		if (CELL_BC_FILE != null)
 			IOUtil.assertFileIsReadable(this.CELL_BC_FILE);
 		if (this.BAM_OUTPUT != null)
