@@ -23,29 +23,18 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.StringUtil;
+import htsjdk.variant.variantcontext.GenotypeType;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.LikelihoodUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPIntervalRecordI;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileup;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SummarizeUMIBaseQualities;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
-
-import com.google.common.collect.ComparisonChain;
-
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.StringUtil;
-import htsjdk.variant.variantcontext.GenotypeType;
 import picard.annotation.LocusFunction;
+
+import java.util.*;
 
 /**
  * Holds the bases and base qualities at a SNP position for a cell.
@@ -80,7 +69,7 @@ public class SampleGenotypeProbabilities implements SNPIntervalRecordI {
 		if (numBases==0)
 			return; // don't add empty pileups.
 		if (!p.getSNPInterval().equals(this.snpInterval)  || !p.getCell().equals(this.cell))
-			throw new IllegalArgumentException("Can't add pileup " + p.toString() +" to this probabilities collection " + this.toString());
+			throw new IllegalArgumentException("Can't add pileup " + p +" to this probabilities collection " + this);
 		isModified=true;
 		pileups.add(p);
 	}
@@ -106,20 +95,18 @@ public class SampleGenotypeProbabilities implements SNPIntervalRecordI {
 
 	/**
 	 * Get the number of umi observations on each base.
-	 * @return
 	 */
 	public ObjectCounter<Character> getUMIBaseCounts() {
 		List<Byte> bases = getBases();
 		ObjectCounter<Character> result = new ObjectCounter<>();
 		for (Byte b: bases)
-			result.increment(new Character (StringUtil.byteToChar(b)));
+			result.increment(StringUtil.byteToChar(b));
 		return result;
 	}
 
 	/**
 	 * Get the number of read observations on each base.
 	 *
-	 * @return
 	 */
 	public ObjectCounter<Character> getReadBaseCounts() {
 		ObjectCounter<Character> result = new ObjectCounter<>();
@@ -167,7 +154,6 @@ public class SampleGenotypeProbabilities implements SNPIntervalRecordI {
 	 * @param alleleOne The first allele of the SNP for the sample
 	 * @param alleleTwo The second allele of the SNP for the sample
 	 * @param fixedGenotypeErrorRate Instead of using the base qualities to compute likelihoods, used a fixed error rate instead.  Optional (set to null to ignore)
-	 * @param genotypeQuality the genotype quality formatted as a phred score.  Optional (set to null to ignore)
 	 * @param maximumObservationProbability If set, this is the maximum penalty that can be generated for a single observation.  Optional (set to null to ignore)
 	 * @param referenceAllele The reference allele for this variant in the population. (Optional, set null to ignore).   
 	 * @param minorAlleleFrequency The minor allele frequency in the population (Optional, set null to ignore).
@@ -176,7 +162,7 @@ public class SampleGenotypeProbabilities implements SNPIntervalRecordI {
 	 * @return The likelihood of the genotype given the data.
 	 */
 	public double getLogLikelihood (final char alleleOne, final char alleleTwo, final Double fixedGenotypeErrorRate, final Double genotypeProbability, 
-			final Double maximumObservationProbability, final Character referenceAllele, Double minorAlleleFrequency, Double contamination) {		
+			final Double maximumObservationProbability, final Character referenceAllele, Double minorAlleleFrequency, Double contamination) {
 		List<Byte> quals;
 		if (fixedGenotypeErrorRate!=null) {
 			byte phreadScore = LikelihoodUtils.getInstance().errorProbabilityToPhredScore(fixedGenotypeErrorRate);
@@ -186,7 +172,8 @@ public class SampleGenotypeProbabilities implements SNPIntervalRecordI {
 		} else
 			quals=getQualities();
 		//TODO: add in contamination parameters
-		double likelihood = LikelihoodUtils.getInstance().getLogLikelihood(alleleOne, alleleTwo, getBases(), quals, genotypeProbability, maximumObservationProbability, referenceAllele, minorAlleleFrequency, contamination);
+		double likelihood = LikelihoodUtils.getInstance().getLogLikelihood(alleleOne, alleleTwo, getBases(), quals,
+				genotypeProbability, maximumObservationProbability, referenceAllele, minorAlleleFrequency, contamination);
 		return likelihood;
 	}
 			
@@ -291,17 +278,17 @@ public class SampleGenotypeProbabilities implements SNPIntervalRecordI {
 		b.append("snp [" + this.snpInterval.toString() +"] ");
 		b.append("cell [" + this.cell +"] ");
 		b.append(this.getBasesAsCharacters().toString()+ " ");
-		if (this.qualities!=null) b.append(this.qualities.toString());
+		if (this.qualities!=null) b.append(this.qualities);
 		Set<LocusFunction> locusFunctionSet = getLocusFunctions();
 		if (locusFunctionSet!=null && locusFunctionSet.size()>0)
-			b.append("locus function " + locusFunctionSet.toString()+"");
+			b.append("locus function " + locusFunctionSet +"");
 		return b.toString();
 	}
 	
 	/**
 	 * Instead of calculating likelihoods over and over, cache the results for the possible alleles.
 	 * This takes the two alleles, concatenates them into a single string, and stores the result.
-	 * 
+	 *
 	 * Turns out, this is way more expensive than just calculating the likelihoods over and over....caching is premature optimization.
 	 * @author nemesh
 	 *

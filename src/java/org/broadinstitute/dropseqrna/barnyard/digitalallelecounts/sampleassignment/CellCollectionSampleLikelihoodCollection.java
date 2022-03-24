@@ -61,11 +61,11 @@ public class CellCollectionSampleLikelihoodCollection {
 	private final ImmutableMap<String, Integer> sampleIndexMap;
 	private final  Map<String,Double> cellContaminationMap;
 	private final Map<Interval, Double> variantMinorAlleleFrequency;	
-	private static GenotypeType [] genotypeModels = {GenotypeType.HOM_REF, GenotypeType.HET, GenotypeType.HOM_VAR};
+	private static final GenotypeType [] genotypeModels = {GenotypeType.HOM_REF, GenotypeType.HET, GenotypeType.HOM_VAR};
 
 	
 	public CellCollectionSampleLikelihoodCollection(List<String> sampleList) {
-		this((Double)null, (Double) null, sampleList);
+		this(null, (Double) null, sampleList);
 	}
 
 	/**
@@ -90,9 +90,6 @@ public class CellCollectionSampleLikelihoodCollection {
 	
 	/**
 	 * Build a collection that holds one or more cells, and the likelihood of the cell's genotype data having come from one or more donors.
-	 * @param fixedGenotypeErrorRate Instead of using the base qualities to compute likelihoods, used a fixed error rate instead.
-	 * if set to null, ignore this parameter and use the base error rates.
-	 * @param maximumObservationProbability Cap the maximum error penalty at this number.
 	 */
 	public CellCollectionSampleLikelihoodCollection(final Map<String,Double> cellContaminationMap, Map<Interval, Double> variantMinorAlleleFrequency, List<String> sampleList) {
 		map = new HashMap<>();
@@ -154,7 +151,6 @@ public class CellCollectionSampleLikelihoodCollection {
 	
 	/**
 	 * Add a CellSampleLikelihoodCollection to this collection.
-	 * @param data
 	 */
 	void add (final CellSampleLikelihoodCollection data) {
 		this.map.put(data.getCellBarcode(), data);
@@ -168,7 +164,6 @@ public class CellCollectionSampleLikelihoodCollection {
 	/**
 	 * Update the number of SNPs and UMIs observed for the cell captured by the pileup.
 	 * Call this for each cell/snp pairing.
-	 * @param p
 	 */
 	public void updateNumObservations(final SampleGenotypeProbabilities p) {
 		String cellBarcode = p.getCell();
@@ -273,15 +268,12 @@ public class CellCollectionSampleLikelihoodCollection {
 	/**
 	 * Create a blended model of the population of known genotypes to calculate a new genotype probability.
 	 * @param p the pileup of read observations to process.
-	 * @param alleleOne The first allele of the SNP for the sample
-	 * @param alleleTwo The second allele of the SNP for the sample
+	 * @param refAllele The first allele of the SNP for the sample
+	 * @param altAllele The second allele of the SNP for the sample
 	 * @param homRefCount how many homozygous reference donors were observed for this variant
 	 * @param hetCount how many heterozygous donors were observed for this variant
-	 * @param altCount how many homozygous alternate donors were observed for this variant
 	 * @param genotypeProbability The probability of the genotype, between 0 and 1 inclusive.  Can be set to null to ignore.
-	 * @param minorAlleleFrequency The minor allele frequency in the population. Optional. Set null to ignore.
-	 * @param contamination The contamination rate in the population . Optional. Set null to ignore.
-	 * @return The log likelihood of the data for the blended model. 
+	 * @return The log likelihood of the data for the blended model.
 	 */
 	public double getMissingLikelihood(final SampleGenotypeProbabilities p, final char refAllele, final char altAllele, final int homRefCount, final int hetCount, final int homVarCount, 
 			final Double genotypeProbability) {
@@ -289,14 +281,13 @@ public class CellCollectionSampleLikelihoodCollection {
 		Double minorAlleleFrequency = CellAssignmentUtils.getNullableValue(this.variantMinorAlleleFrequency, p.getSNPInterval());
 		Double contamination = CellAssignmentUtils.getNullableValue(this.cellContaminationMap, p.getCell());
 		List<GenotypeType> genotypes  = Arrays.asList(genotypeModels);
-		List<Double> mixture = Arrays.asList(new Double(homRefCount), new Double(hetCount), new Double(homVarCount));				
+		List<Double> mixture = Arrays.asList((double) homRefCount, (double) hetCount, (double) homVarCount);
 		double logLikelihood = p.getLogLikelihoodMissingData(refAllele, altAllele, genotypes, mixture, this.fixedGenotypeErrorRate, genotypeProbability, this.maximumObservationProbability, minorAlleleFrequency, contamination);
 		return logLikelihood;
 	}
 
 	/**
 	 * Get a set of cell barcodes contained in this dataset.
-	 * @return
 	 */
 	public Set<String> getCellBarcodes () {
 		return this.map.keySet();
@@ -307,7 +298,7 @@ public class CellCollectionSampleLikelihoodCollection {
      * @return List of samples
      */
     public List<String> getSamples() {
-        return new ArrayList<String>(this.sampleIndexMap.keySet());
+        return new ArrayList<>(this.sampleIndexMap.keySet());
     }
 
 	public CellSampleLikelihoodCollection getLikelihoodCollection (final String cellBarcode) {
