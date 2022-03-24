@@ -171,7 +171,8 @@ public class SampleGenotypeProbabilities implements SNPIntervalRecordI {
 			quals=Arrays.asList(tempQuals);
 		} else
 			quals=getQualities();
-		System.out.println(String.format("%c %c %f %f %f %c %f %f {%s} {%s}", alleleOne, alleleTwo, fixedGenotypeErrorRate,
+		System.out.println(String.format("%x %c %c %f %f %f %c %f %f {%s} {%s}", System.identityHashCode(this),
+				alleleOne, alleleTwo, fixedGenotypeErrorRate,
 				genotypeProbability, maximumObservationProbability, referenceAllele, minorAlleleFrequency, contamination,
 				StringUtil.join(",", getBases()), StringUtil.join(",", quals)));
 		//TODO: add in contamination parameters
