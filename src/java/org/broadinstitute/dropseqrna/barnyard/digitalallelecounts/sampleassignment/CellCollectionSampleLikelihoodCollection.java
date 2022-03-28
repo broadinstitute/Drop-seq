@@ -185,27 +185,26 @@ public class CellCollectionSampleLikelihoodCollection {
 	 * 
 	 * 
 	 * @param p A pileup of observations at a SNP for a single cell.
-	 * @param sample The sample being updated
+	 * @param samples The samples being updated
 	 * @param alleleOne The first allele of the SNP for the sample
 	 * @param alleleTwo The second allele of the SNP for the sample
 	 * @param genotypeProbability The probability of the genotype.  Can be set to null to not consider.
 	 * @param referenceAllele The reference allele for this variant in the population. (Optional, set null to ignore).
 	 */
-	public void updatelikelihoods (final SampleGenotypeProbabilities p, final String sample, final char alleleOne, final char alleleTwo, final Double genotypeProbability, final Character referenceAllele) {
+	public void updatelikelihoods (final SampleGenotypeProbabilities p, final Collection<String> samples,
+								   final char alleleOne, final char alleleTwo, final Double genotypeProbability, final Character referenceAllele) {
 		Double maf = CellAssignmentUtils.getNullableValue(this.variantMinorAlleleFrequency, p.getSNPInterval());
 		Double contamination = CellAssignmentUtils.getNullableValue(this.cellContaminationMap, p.getCell());
 		double logLikelihood = p.getLogLikelihood(alleleOne, alleleTwo, this.fixedGenotypeErrorRate, genotypeProbability, this.maximumObservationProbability, referenceAllele, maf, contamination);
-		updatelikelihoods(p, sample, logLikelihood);
+		updatelikelihoods(p, samples, logLikelihood);
 	}
 		
-	private void updatelikelihoods(final SampleGenotypeProbabilities p, final String sample, double logLikelihood) {
+	private void updatelikelihoods(final SampleGenotypeProbabilities p, final Collection<String> samples, double logLikelihood) {
 		String cellBarcode = p.getCell();		
-		CellSampleLikelihoodCollection c = this.map.get(cellBarcode);
-		if (c==null) {
-			c=new CellSampleLikelihoodCollection(cellBarcode, 0, 0, 0, this.sampleIndexMap);
-			this.map.put(cellBarcode, c);
-		}
-		c.addLikelihood(sample, logLikelihood);
+		final CellSampleLikelihoodCollection c = this.map.computeIfAbsent(cellBarcode, s ->
+			new CellSampleLikelihoodCollection(cellBarcode, 0, 0, 0, this.sampleIndexMap)
+		);
+		samples.forEach(sample -> c.addLikelihood(sample, logLikelihood));
 	}
 	
 	

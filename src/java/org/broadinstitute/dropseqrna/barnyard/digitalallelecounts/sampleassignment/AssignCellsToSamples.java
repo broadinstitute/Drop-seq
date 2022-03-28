@@ -565,6 +565,13 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		return processSNP(vc, sgpList, sampleNames, likelihoodCollection, addMissingValues);
 	}
 
+	// Return pair of alleles in compact form for Collectors.groupingBy
+	private static int getAllelesToGroupBy(final Genotype g) {
+		byte[] a1Bases = g.getAllele(0).getBases();
+		byte[] a2Bases = g.getAllele(1).getBases();
+		return (((int)a1Bases[0]) << 8) | (int)a2Bases[0];
+	}
+
 	/**
 	 * This updates the likelihood all cells that have one or more UMIs at this variant.
 	 * 
@@ -581,18 +588,20 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		Iterator<Genotype> gi = gc.iterator();
 		GenotypeGQFilter gf = new GenotypeGQFilter(gi, this.GQ_THRESHOLD);
 		char refAlleleBase = StringUtil.byteToChar(vc.getReference().getBases()[0]);
-		// this would be faster if we batch updated all donors that have the same genotype.
-		// map List of <A1,A2> to list of sampleNames.
+
+		// batch update all donors that have the same genotype.
+		// map allele pair to list of Genotype.
 		// then batch update likelihoods on the list of sample names.
 		// this would be a bad plan if we used genotype quality, where each sample could have a different genotype quality
 		// score.
-		for (Genotype g : gf) {
-			// use the cached genotype if available
+		final Map<Integer, List<Genotype>> groupedGenotypes = gf.stream().collect(Collectors.groupingBy(AssignCellsToSamples::getAllelesToGroupBy));
+		for (final List<Genotype> genotypesWithSameAlleles: groupedGenotypes.values()) {
+			final Genotype g = genotypesWithSameAlleles.get(0);
 			byte[] a1Bases = g.getAllele(0).getBases();
 			byte[] a2Bases = g.getAllele(1).getBases();
 			char a1 = StringUtil.byteToChar(a1Bases[0]);
 			char a2 = StringUtil.byteToChar(a2Bases[0]);
-			String sampleName = g.getSampleName();
+			final List<String> sampleNamesForAlleles = genotypesWithSameAlleles.stream().map(Genotype::getSampleName).collect(Collectors.toList());
 			// this isn't fully implemented yet so is disabled.
 			/*
 			 * Double genotypeProbability=null; if (USE_GENOTYPE_QUALITY) { Integer genotypeQuality = g.getGQ();
@@ -600,7 +609,7 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 			 */
 			// for this sample genotype, update all the cells where we have data.
 			for (SampleGenotypeProbabilities p : sgpList) {
-				likelihoodCollection.updatelikelihoods(p, sampleName, a1, a2, null, refAlleleBase);
+				likelihoodCollection.updatelikelihoods(p, sampleNamesForAlleles, a1, a2, null, refAlleleBase);
 			}
 
 		}
