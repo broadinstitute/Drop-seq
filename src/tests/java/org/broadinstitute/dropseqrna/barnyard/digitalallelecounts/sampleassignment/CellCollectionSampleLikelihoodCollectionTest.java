@@ -161,7 +161,7 @@ public class CellCollectionSampleLikelihoodCollectionTest {
 					String sampleName = donors.get(j);
 					char a1 = alleles[random.nextInt(alleles.length)];
 					char a2 = alleles[random.nextInt(alleles.length)];
-					likelihoodCollection.updatelikelihoods(p2, sampleName, a1, a2, null, null);
+					likelihoodCollection.updatelikelihoods(p2, Collections.singletonList(sampleName), a1, a2, null, null);
 				}
 			} 
 			System.gc();
