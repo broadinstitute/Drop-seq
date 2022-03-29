@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import htsjdk.samtools.util.*;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
@@ -74,15 +75,6 @@ import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.PeekableIterator;
-import htsjdk.samtools.util.ProgressLogger;
-import htsjdk.samtools.util.StringUtil;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeType;
 import htsjdk.variant.variantcontext.GenotypesContext;
@@ -563,12 +555,37 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		return processSNP(vc, sgpList, sampleNames, likelihoodCollection, addMissingValues);
 	}
 
+	private static int getCompactBaseRepresentation(byte b) {
+		switch (b) {
+			case SequenceUtil.A:
+				return 0;
+			case SequenceUtil.C:
+				return 1;
+			case SequenceUtil.G:
+				return 2;
+			case SequenceUtil.T:
+				return 3;
+			default:
+				throw new IllegalArgumentException(String.format("Unexpected base %d", b));
+		}
+	}
+
+	private static int getAllelesToGroupBy(final byte a1, final byte a2) {
+		return (getCompactBaseRepresentation(a1) << 2) | getCompactBaseRepresentation(a2);
+	}
+
 	// Return pair of alleles in compact form for Collectors.groupingBy
 	private static int getAllelesToGroupBy(final Genotype g) {
-		byte[] a1Bases = g.getAllele(0).getBases();
-		byte[] a2Bases = g.getAllele(1).getBases();
-		return (((int)a1Bases[0]) << 8) | (int)a2Bases[0];
+		return getAllelesToGroupBy(g.getAllele(0).getBases()[0], g.getAllele(1).getBases()[0]);
 	}
+
+	// We know that T,T is the largest value in the compact rep.
+	private static final int NumCompactAlleleRepresentations =
+			getAllelesToGroupBy(SequenceUtil.T, SequenceUtil.T) + 1;
+
+	// Recycle to avoid GC
+	private final Genotype[] prototypeGenotypeForAllelePair = new Genotype[NumCompactAlleleRepresentations];
+	private final List<String>[] samplesForAllelePair = new List[NumCompactAlleleRepresentations];
 
 	/**
 	 * This updates the likelihood all cells that have one or more UMIs at this variant.
@@ -587,19 +604,36 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		GenotypeGQFilter gf = new GenotypeGQFilter(gi, this.GQ_THRESHOLD);
 		char refAlleleBase = StringUtil.byteToChar(vc.getReference().getBases()[0]);
 
+		Arrays.fill(prototypeGenotypeForAllelePair, null);
+
+		for (final Genotype g: gf) {
+			final int compactAlleleRep = getAllelesToGroupBy(g);
+			if (prototypeGenotypeForAllelePair[compactAlleleRep] == null) {
+				prototypeGenotypeForAllelePair[compactAlleleRep] = g;
+				if (samplesForAllelePair[compactAlleleRep] == null) {
+					samplesForAllelePair[compactAlleleRep] = new ArrayList<>(sampleNames.size());
+				} else {
+					samplesForAllelePair[compactAlleleRep].clear();
+				}
+			}
+			samplesForAllelePair[compactAlleleRep].add(g.getSampleName());
+		}
+
 		// batch update all donors that have the same genotype.
 		// map allele pair to list of Genotype.
 		// then batch update likelihoods on the list of sample names.
 		// this would be a bad plan if we used genotype quality, where each sample could have a different genotype quality
 		// score.
-		final Map<Integer, List<Genotype>> groupedGenotypes = gf.stream().collect(Collectors.groupingBy(AssignCellsToSamples::getAllelesToGroupBy));
-		for (final List<Genotype> genotypesWithSameAlleles: groupedGenotypes.values()) {
-			final Genotype g = genotypesWithSameAlleles.get(0);
+		for (int i = 0; i < NumCompactAlleleRepresentations; ++i) {
+			if (prototypeGenotypeForAllelePair[i] == null) {
+				continue;
+			}
+			final Genotype g = prototypeGenotypeForAllelePair[i];
 			byte[] a1Bases = g.getAllele(0).getBases();
 			byte[] a2Bases = g.getAllele(1).getBases();
 			char a1 = StringUtil.byteToChar(a1Bases[0]);
 			char a2 = StringUtil.byteToChar(a2Bases[0]);
-			final List<String> sampleNamesForAlleles = genotypesWithSameAlleles.stream().map(Genotype::getSampleName).collect(Collectors.toList());
+			final List<String> sampleNamesForAlleles = samplesForAllelePair[i];
 			// this isn't fully implemented yet so is disabled.
 			/*
 			 * Double genotypeProbability=null; if (USE_GENOTYPE_QUALITY) { Integer genotypeQuality = g.getGQ();
