@@ -555,6 +555,10 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		return processSNP(vc, sgpList, sampleNames, likelihoodCollection, addMissingValues);
 	}
 
+	/**
+	 * @param b byte value of A,C, G or T
+	 * @return very compact representation of A, C, G or T (2 bits)
+	 */
 	private static int getCompactBaseRepresentation(byte b) {
 		switch (b) {
 			case SequenceUtil.A:
@@ -570,6 +574,12 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		}
 	}
 
+	/**
+	 *
+	 * @param a1 byte value of A,C, G or T
+	 * @param a2 byte value of A,C, G or T
+	 * @return very compact representation of this ordered pair of alleles (4 bits)
+	 */
 	private static int getAllelesToGroupBy(final byte a1, final byte a2) {
 		return (getCompactBaseRepresentation(a1) << 2) | getCompactBaseRepresentation(a2);
 	}
@@ -584,7 +594,11 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 			getAllelesToGroupBy(SequenceUtil.T, SequenceUtil.T) + 1;
 
 	// Recycle to avoid GC
+	// The index into these arrays is produced by getAllelesToGroupBy()
 	private final Genotype[] prototypeGenotypeForAllelePair = new Genotype[NumCompactAlleleRepresentations];
+	// Once a list is created, it is not destroyed but rather cleared for the next SNP.
+	// However, if prototypeGenotypeForAllelePair[i] is null, then samplesForAllelePair[i] may contain sample names
+	// from a previous iteration that are no longer relevant.
 	private final List<String>[] samplesForAllelePair = new List[NumCompactAlleleRepresentations];
 
 	/**
@@ -604,8 +618,17 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		GenotypeGQFilter gf = new GenotypeGQFilter(gi, this.GQ_THRESHOLD);
 		char refAlleleBase = StringUtil.byteToChar(vc.getReference().getBases()[0]);
 
-		Arrays.fill(prototypeGenotypeForAllelePair, null);
+		// Primitive implementation of grouping together the samples that have the same pair of alleles for this SNP.
+		// This way has many fewer objects created than groupBy.
 
+		// This array holds the first Genotype object encountered for a pair of alleles.  The index into the
+		// array is produced by getAllelesToGroupBy()
+		Arrays.fill(prototypeGenotypeForAllelePair, null);
+		// Don't bother clearing samplesForAllelePair globally.  Just clear the entries for allele pairs
+		// encountered for this SNP.
+
+		// Capture one Genotype object for each distinct pair of alleles, and get the list of
+		// sample names for each distinct pair of alleles.
 		for (final Genotype g: gf) {
 			final int compactAlleleRep = getAllelesToGroupBy(g);
 			if (prototypeGenotypeForAllelePair[compactAlleleRep] == null) {
