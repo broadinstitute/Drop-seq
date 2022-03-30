@@ -23,16 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import htsjdk.samtools.util.StringUtil;
+import htsjdk.variant.variantcontext.GenotypeType;
 import org.apache.commons.math3.stat.StatUtils;
 
-import htsjdk.samtools.util.StringUtil;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeType;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Helper methods for calculating single donor, doublet, and missing data likelihoods and converting to/from Phred scores.
@@ -44,7 +40,7 @@ public class LikelihoodUtils {
 
 	private static LikelihoodUtils instance = null;
 	// holds a list of phred to probability scores, ie: 10->0.9, 20->0.99, 30->0.999, etc.
-	private double [] phredToProbability;
+	private final double [] phredToProbability;
 
 	private LikelihoodUtils() {
 		phredToProbability=new double [128];
@@ -168,14 +164,12 @@ public class LikelihoodUtils {
 	 *
 	 * @param refAllele the reference allele for the variant
 	 * @param altAllele the alternate allele for the variant
-	 * @param The list of genotype states for the observed genotypes for the variant (donors that correctly genotyped)
+	 * @param genotypes The list of genotype states for the observed genotypes for the variant (donors that correctly genotyped)
 	 * @param mixture The list of mixture parameters that these genotypes are mixed by.  This list must be in the same order as the genotype states.
 	 * @param bases The bases observed
-	 * @param quality The phred scores (qualities) of the observed bases
 	 * @param qualities The qualities of the bases observed.  This list must be in the same order as the bases observed.
 	 * @param missingDataPenality a pre-computed likelihood to use instead of computing a likelihood for a genotype.
 	 * @param genotypeProbability The probability of the genotype being correct (as set by the GQ field of the genotype in the VCF).  Can be set null to ignore.
-	 * @param maximumObservationProbability If set, this is the maximum penalty that can be generated for a single observation.  Optional (set to null to ignore) 
 	 * @param minorAlleleFrequency The minor allele frequency in the population. Optional. Set null to ignore.
 	 * @param contamination The contamination rate in the population . Optional. Set null to ignore.
 	 * @return The likelihood of observing this set of UMIs. 
@@ -199,7 +193,7 @@ public class LikelihoodUtils {
 	 *
 	 * @param refAllele the reference allele for the variant
 	 * @param altAllele the alternate allele for the variant
-	 * @param The list of genotype states for the observed genotypes for the variant (donors that correctly genotyped)
+	 * @param genotypes The list of genotype states for the observed genotypes for the variant (donors that correctly genotyped)
 	 * @param mixture The list of mixture parameters that these genotypes are mixed by.  This list must be in the same order as the genotype states.
 	 * @param bases The bases observed
 	 * @param qualities The phred qualities of the bases observed.  This list must be in the same order as the bases observed.
@@ -257,7 +251,7 @@ public class LikelihoodUtils {
 	 * @param likelihoods An array of doubles representing the likelihoods of the genotypes in this mixture
 	 * @param mixture A list of mixture coefficients to weight the genotype likelihoods.
 	 * @return The likelihood of the mixed model.
-	 * @see getLikelihoodManyObservations
+	 * @see LikelihoodUtils#getLikelihoodManyObservations(byte, byte, java.util.List, byte, byte, java.lang.Double, java.lang.Double, java.lang.Double, java.lang.Double, java.lang.Double)
 	 */
 	public double getLikelihoodMixedModel(double [] likelihoods, final List<Double> mixture) {
 		double result=0;
@@ -436,10 +430,9 @@ public class LikelihoodUtils {
 		case HET:
 			likelihood=getLikelihood(ref, alt, base, quality, genotypeProbability, maximumObservationProbability, ref, minorAlleleFrequency, contamination); break;
 		case NO_CALL:
-			likelihood=missingDataPenality; break;
-		case UNAVAILABLE:
-			likelihood=missingDataPenality; break;
-		default:
+			case UNAVAILABLE:
+				likelihood=missingDataPenality; break;
+			default:
 		}
 		return (likelihood);
 	}
@@ -593,7 +586,6 @@ public class LikelihoodUtils {
 	 * @param base The observed base
 	 * @param quality A list of observed phred quality for the base.
 	 * @param genotypeProbability The confidence in the genotype.  If set to null this is ignored.
-	 * @param maximumObservationProbability A cap on the maximum likelihood penalty at any one UMI. If set to null this is ignored.  
 	 * @return The likelihood for one observation
 	 */
 	double getLikelihoodHeterozygoteWithContamination (final byte alleleOne, final byte alleleTwo, final byte base, final byte quality, final Double genotypeProbability, 
