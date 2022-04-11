@@ -44,6 +44,35 @@ public class DetectDoubletsTest {
 	private static final File TESTDATA_DIR = new File("testdata/org/broadinstitute/dropseq/barnyard/digitalallelecounts/sampleassignment/multisample");
 
 	@Test (enabled=true)
+	// This is an edge case where the number of donors in the input SAMPLE_FILE is one and no further donors are detected in the single donor assignment
+	// that are outside the list.
+	// without a fix, SamplePairAssignmentForCell.getMixture() will be null and throw a null pointed exception.
+	public void testSingleDonor () throws IOException {
+		DetectDoublets assigner = new DetectDoublets();
+		File EXPECTED_OUTPUT=new File(TESTDATA_DIR, "TEST_TTTGCGCGGAGC:ATTGTTTAGGAG.sampleAssignments.txt.single_donor.txt");
+
+		// OUTPUT_PER_SNP
+		assigner.INPUT_BAM=Collections.singletonList(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam"));
+		assigner.VCF=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.vcf");
+		assigner.SINGLE_DONOR_LIKELIHOOD_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.sampleAssignments.txt");
+		assigner.CELL_BC_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.cellBarcodes.txt");
+		assigner.SAMPLE_FILE=new File(TESTDATA_DIR, "donors_single_entry.txt");
+		assigner.OUTPUT= File.createTempFile("DetectDoublets", ".txt");
+		assigner.OUTPUT_ALL_PAIRS=File.createTempFile("DetectDoublets", ".pairs.txt");
+		assigner.OUTPUT_PER_SNP=File.createTempFile("DetectDoublets", ".per_snp.txt.gz");
+		// assigner.USE_MISSING_DATA=false;
+		assigner.OUTPUT.deleteOnExit();
+		assigner.OUTPUT_ALL_PAIRS.deleteOnExit();
+		assigner.OUTPUT_PER_SNP.deleteOnExit();
+
+		assigner.FIXED_ERROR_RATE=0.1;
+		assigner.GQ_THRESHOLD=30;
+		int ret = assigner.doWork();
+		Assert.assertTrue(ret==1);
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));
+	}
+	
+	@Test (enabled=true)
 	// I'm not sure why "big" is a much smaller data set than "small", but it is.
 	public void testBig () throws IOException {
 		DetectDoublets assigner = new DetectDoublets();
