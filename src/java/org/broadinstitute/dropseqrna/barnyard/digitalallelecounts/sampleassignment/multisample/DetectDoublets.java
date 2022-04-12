@@ -375,7 +375,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	void writeSingleDonorEdgeCaseOutput(Map<String, String> bestDonorForCell, PrintStream writer) {
 		for (String cell: bestDonorForCell.keySet()) {
 			SamplePairAssignmentForCell best = SamplePairAssignmentForCell.constructEmptyResult(cell, bestDonorForCell.get(cell));
-			writeAssignment(best, 0d, writer, false);
+			writeAssignment(best, 1.0E-101d, writer, false);
 		}
 		writer.close();
 		

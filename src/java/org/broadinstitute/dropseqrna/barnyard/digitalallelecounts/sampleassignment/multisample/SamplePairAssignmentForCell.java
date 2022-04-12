@@ -99,7 +99,7 @@ public class SamplePairAssignmentForCell {
 	}
 	
 	public static SamplePairAssignmentForCell constructEmptyResult (final String cellBarcode, final String sampleOne) {
-		SamplePairAssignmentForCell r= new SamplePairAssignmentForCell(cellBarcode, sampleOne, sampleOne, 0d, -1000, -1000, 1, 0, 0, 0, 0, 0, 0, 0, 0);
+		SamplePairAssignmentForCell r= new SamplePairAssignmentForCell(cellBarcode, sampleOne, sampleOne, 0d, -100, -101, 1, 0, 0, 0, 0, 0, 0, 0, 0);
 		return (r);
 	}
 	
