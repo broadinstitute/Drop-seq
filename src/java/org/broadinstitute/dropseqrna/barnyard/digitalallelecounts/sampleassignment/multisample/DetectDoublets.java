@@ -264,7 +264,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		
 		// If there is only one donor at this point, doublet detection should not continue.  
 		if (allDonorsList.size()<2) {
-			singleDonorGracefulExit(cellBarcodes, bestDonorForCell, writer, perDonorWriter, perSNPWriter);
+			singleDonorGracefulExit(bestDonorForCell, writer, perDonorWriter, perSNPWriter);
 			return (1);
 		}
 		
@@ -355,7 +355,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	 * @param perDonorWriter Closes this file if not null.
 	 * @param perSNPWriter Closes this file if not null.
 	 */
-	void singleDonorGracefulExit(List<String> cellBarcodes, Map<String, String> bestDonorForCell, PrintStream writer, 
+	void singleDonorGracefulExit(Map<String, String> bestDonorForCell, PrintStream writer, 
 			PrintStream perDonorWriter, PrintStream perSNPWriter) {
 		// clean up more detailed file writers. 
 		if (OUTPUT_ALL_PAIRS!=null) perDonorWriter.close();
@@ -363,7 +363,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		// write a default output per cell close results and quit.			
 		log.error("The donor file only contained a single donor, and no additional donors were detected by single donor assignment.  Doublet detection will not continue."
 				+ "A default output will be written to perserve downstream pipeline functionality.");
-		writeSingleDonorEdgeCaseOutput(cellBarcodes, bestDonorForCell, writer);				
+		writeSingleDonorEdgeCaseOutput(bestDonorForCell, writer);				
 	}
 	
 	/**
@@ -372,8 +372,8 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	 * @param bestDonorForCell A map containing cell barcodes and the best donor for each cell.  
 	 * @param writer The file to write to
 	 */
-	void writeSingleDonorEdgeCaseOutput(List<String> cellBarcodes, Map<String, String> bestDonorForCell, PrintStream writer) {
-		for (String cell: cellBarcodes) {
+	void writeSingleDonorEdgeCaseOutput(Map<String, String> bestDonorForCell, PrintStream writer) {
+		for (String cell: bestDonorForCell.keySet()) {
 			SamplePairAssignmentForCell best = SamplePairAssignmentForCell.constructEmptyResult(cell, bestDonorForCell.get(cell));
 			writeAssignment(best, 0d, writer, false);
 		}
