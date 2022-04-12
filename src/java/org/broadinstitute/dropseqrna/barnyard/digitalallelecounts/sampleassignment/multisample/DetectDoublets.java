@@ -361,7 +361,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		if (OUTPUT_ALL_PAIRS!=null) perDonorWriter.close();
 		if (OUTPUT_PER_SNP != null) perSNPWriter.close();
 		// write a default output per cell close results and quit.			
-		log.error("The donor file only contained a single donor, and no additional donors were detected by single donor assignment.  Doublet detection will not continue."
+		log.error("The donor file only contained a single donor, and no additional donors were detected by single donor assignment.  Doublet detection will not continue.  "
 				+ "A default output will be written to perserve downstream pipeline functionality.");
 		writeSingleDonorEdgeCaseOutput(bestDonorForCell, writer);				
 	}
