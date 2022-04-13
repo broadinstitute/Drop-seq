@@ -23,20 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample;
 
-import java.io.File;
-import java.io.PrintStream;
-import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.*;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFFileReader;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -46,7 +38,6 @@ import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePile
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SortOrder;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.CellAssignmentUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.CellCollectionSampleLikelihoodCollection;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.CellSampleLikelihoodCollection;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.SampleGenotypeProbabilities;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.SampleGenotypeProbabilitiesIterator;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
@@ -61,21 +52,13 @@ import org.broadinstitute.dropseqrna.utils.readiterators.PCRDuplicateFilteringIt
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
-
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.PeekableIterator;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFFileReader;
 import picard.cmdline.StandardOptionDefinitions;
-import picard.util.TabbedTextFileWithHeaderParser;
-import picard.util.TabbedTextFileWithHeaderParser.Row;
+
+import java.io.File;
+import java.io.PrintStream;
+import java.text.DecimalFormat;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(summary = "Detect Doublets in Dropulation Data.  Uses the outputs of AssignCellsToSamples to make decisions.  It's highly recommended to use the VCF output from AssignCellsToSamples as input, as"
 		+ "the memory usage of a full VCF may be prohibitive compared to the AssignCellsToSamples VCF, which contains only the variants that were observed in the data.  This also greatly speeds up"
@@ -265,7 +248,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		// If there is only one donor at this point, doublet detection should not continue.  
 		if (allDonorsList.size()<2) {
 			singleDonorGracefulExit(bestDonorForCell, writer, perDonorWriter, perSNPWriter);
-			return (1);
+			return 0;
 		}
 		
 		// Pass a list of all donors requested + best calls if TEST_UNEXPECTED_DONORS is true.
@@ -349,8 +332,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	/**
 	 * In the strange edge case where there is only a single donor to be tested, write out a default output file instead of going through testing.
 	 * This function additionally closes all potentially open writers and runs logging.
-	 * @param cellBarcodes a list of cell barcodes expected in output.
-	 * @param bestDonorForCell A map containing cell barcodes and the best donor for each cell.  
+	 * @param bestDonorForCell A map containing cell barcodes and the best donor for each cell.
 	 * @param writer The file to write to per-cell outputs.	 
 	 * @param perDonorWriter Closes this file if not null.
 	 * @param perSNPWriter Closes this file if not null.
@@ -368,8 +350,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	
 	/**
 	 * In the strange edge case where there is only a single donor to be tested, write out a default output file instead of going through testing.
-	 * @param cellBarcodes a list of cell barcodes expected in output.
-	 * @param bestDonorForCell A map containing cell barcodes and the best donor for each cell.  
+	 * @param bestDonorForCell A map containing cell barcodes and the best donor for each cell.
 	 * @param writer The file to write to
 	 */
 	void writeSingleDonorEdgeCaseOutput(Map<String, String> bestDonorForCell, PrintStream writer) {
