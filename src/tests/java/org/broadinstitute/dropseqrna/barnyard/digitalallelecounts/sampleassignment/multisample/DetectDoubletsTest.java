@@ -67,7 +67,7 @@ public class DetectDoubletsTest {
 		assigner.FIXED_ERROR_RATE=0.1;
 		assigner.GQ_THRESHOLD=30;
 		int ret = assigner.doWork();
-		Assert.assertTrue(ret==1);
+		Assert.assertEquals(ret, 0);
 		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));
 	}
 	
