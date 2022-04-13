@@ -98,6 +98,11 @@ public class SamplePairAssignmentForCell {
 		this.scalingFactor=1;
 	}
 	
+	public static SamplePairAssignmentForCell constructEmptyResult (final String cellBarcode, final String sampleOne) {
+		SamplePairAssignmentForCell r= new SamplePairAssignmentForCell(cellBarcode, sampleOne, sampleOne, 0d, -100, -101, 1, 0, 0, 0, 0, 0, 0, 0, 0);
+		return (r);
+	}
+	
 	public double getSampleOneSingleLikelihood() {
 		return sampleOneSingleLikelihood;
 	}

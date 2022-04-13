@@ -124,7 +124,10 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 			+ "ignore GQ values if they are not set in the genotype info field.  If the GQ field is not set in the VCF header, this will be set to -1 by default.")
 	public Integer GQ_THRESHOLD = 30;
 	
-	@Argument(doc = "A file with a list of samples in the VCF to consider as samples in the doublets.  This subsets the VCF into a smaller data set containing only the samples listed. The file has 1 column with no header.", optional = false)
+	@Argument(doc = "A file with a list of samples in the VCF to consider as samples in the doublets.  This subsets the VCF into a smaller data set containing only the samples listed. "
+			+ "The file has 1 column with no header.  If this list contains only one donor and no contaminating donors were found via single donor assignment, "
+			+ "doublet detection calculations will not take place.  Instead, the program will emit a default output for each cell, and the program "
+			+ "will then quit with an exit status.", optional = false)
 	public File SAMPLE_FILE;
 
 	@Argument(doc = "Instead of useing base qualities to determine error rate, use a fixed error rate instead. This is rounded to the nearest phread score internally.", optional = true)
@@ -209,7 +212,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 			perDonorWriter = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUTPUT_ALL_PAIRS));
 			writeAssignmentHeader(perDonorWriter, pairsToTest, false, true);
 		}
-
+	
 		PrintStream perSNPWriter = null;
 		if (OUTPUT_PER_SNP != null) {
 			IOUtil.assertFileIsWritable(this.OUTPUT_PER_SNP);
@@ -258,8 +261,13 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 
 		// Keep all the barcodes that are in the barcode list AND in the single donor assignments.
 		List<String> cellBarcodes = getCellBarcodes(this.CELL_BC_FILE, bestDonorForCell, this.TEST_UNEXPECTED_DONORS);
-		;
-
+		
+		// If there is only one donor at this point, doublet detection should not continue.  
+		if (allDonorsList.size()<2) {
+			singleDonorGracefulExit(bestDonorForCell, writer, perDonorWriter, perSNPWriter);
+			return (1);
+		}
+		
 		// Pass a list of all donors requested + best calls if TEST_UNEXPECTED_DONORS is true.
 		// set the %passing to be 0, since the snpIntervals will properly filter on the right set of donors, but you want a
 		// super-set of donors available
@@ -335,6 +343,42 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 
 		log.info("Finished!");
 		return 0;
+	}
+	
+	
+	/**
+	 * In the strange edge case where there is only a single donor to be tested, write out a default output file instead of going through testing.
+	 * This function additionally closes all potentially open writers and runs logging.
+	 * @param cellBarcodes a list of cell barcodes expected in output.
+	 * @param bestDonorForCell A map containing cell barcodes and the best donor for each cell.  
+	 * @param writer The file to write to per-cell outputs.	 
+	 * @param perDonorWriter Closes this file if not null.
+	 * @param perSNPWriter Closes this file if not null.
+	 */
+	void singleDonorGracefulExit(Map<String, String> bestDonorForCell, PrintStream writer, 
+			PrintStream perDonorWriter, PrintStream perSNPWriter) {
+		// clean up more detailed file writers. 
+		if (OUTPUT_ALL_PAIRS!=null) perDonorWriter.close();
+		if (OUTPUT_PER_SNP != null) perSNPWriter.close();
+		// write a default output per cell close results and quit.			
+		log.error("The donor file only contained a single donor, and no additional donors were detected by single donor assignment.  Doublet detection will not continue.  "
+				+ "A default output will be written to perserve downstream pipeline functionality.");
+		writeSingleDonorEdgeCaseOutput(bestDonorForCell, writer);				
+	}
+	
+	/**
+	 * In the strange edge case where there is only a single donor to be tested, write out a default output file instead of going through testing.
+	 * @param cellBarcodes a list of cell barcodes expected in output.
+	 * @param bestDonorForCell A map containing cell barcodes and the best donor for each cell.  
+	 * @param writer The file to write to
+	 */
+	void writeSingleDonorEdgeCaseOutput(Map<String, String> bestDonorForCell, PrintStream writer) {
+		for (String cell: bestDonorForCell.keySet()) {
+			SamplePairAssignmentForCell best = SamplePairAssignmentForCell.constructEmptyResult(cell, bestDonorForCell.get(cell));
+			writeAssignment(best, 1.0E-101d, writer, false);
+		}
+		writer.close();
+		
 	}
 
 	/**
