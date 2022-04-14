@@ -285,6 +285,8 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 				List<SampleGenotypeProbabilities> probs = sampleGenotypeIterator.next();
 
 				String cell = probs.get(0).getCell();
+				if (cell.equals("AAGCGAGCATTAAAGG"))
+					log.info("STOP");
 				String bestDonor = bestDonorForCell.get(cell);
 				if (bestDonor == null)
 					throw new IllegalStateException("Cell [" + cell + "] has no best donor assignment in file.");
@@ -299,10 +301,15 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 				// List<String> donorsThisCell = getExpectedSecondDonorsRankedByLikelihood(cell, cslc, pairsToTest, donorList, bestDonor);
 				AllPairedSampleAssignmentsForCell allAssignments = fodm.findBestDonorPair(bestDonor, donorList, FORCED_RATIO, SCALE_LIKELIHOODS);
 				SamplePairAssignmentForCell best = allAssignments.getBestAssignment();
-				/*
-				 * if (best==null) { log.info("No best pair found for cell "+ cell); continue; }
-				 */
-				double bestPairPvalue = allAssignments.getBestPairPvalue();
+
+				// edge case: assignment is null because there's no data for this cell.  This only happens
+				// when a user has a cell selection error or similar and attempts to call cell barcodes that aren't cells.				
+				if (best==null) { 
+					log.warn("No best pair found for cell ["+cell+"] due to no informative UMIs.  Cell selection or similar problem?");
+					best= SamplePairAssignmentForCell.constructEmptyResult(cell, bestDonorForCell.get(cell));
+				}
+				 
+				double bestPairPvalue = allAssignments.getBestPairPvalue();																	
 				writeAssignment(best, bestPairPvalue, writer, false);
 				if (OUTPUT_ALL_PAIRS != null) {
 					writeAssignment(allAssignments.getBestAssignment(), null, perDonorWriter, true);
@@ -467,11 +474,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	}
 
 	public static void writeAssignment(final SamplePairAssignmentForCell assignment, final Double bestPairPvalue, final PrintStream out,
-			final boolean writeScaledLikelihood) {
-		// cell sampleOneMixtureRatio sampleOne sampleOneLikelihood
-		// sampleTwo sampleTwoLikelihood mixedSample mixedSampleLikelihood
-		// num_paired_snps num_inform_snps lr_test_stat sampleOneWrongAlleleCount
-		// sampleTwoWrongAlleleCount ratio bestLikelihood bestSample
+			final boolean writeScaledLikelihood) {				
 		String mixture = mixtureFormat.format(assignment.getMixture());
 
 		List<String> line = new ArrayList<String>(
@@ -486,6 +489,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 
 		if (bestPairPvalue != null)
 			line.add(bestPairPvalue.toString());
+		
 		if (writeScaledLikelihood)
 			line.add(Double.toString(assignment.getScaledBestLikelihood()));
 
