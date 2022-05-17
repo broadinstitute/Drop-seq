@@ -405,6 +405,11 @@ public class CreateMetaCells extends CommandLineProgram {
 		// get final set to remove
 		Set <String> toRemove = getRetainRemoveSet(remove);
 		Set <String> toRetain = getRetainRemoveSet(retain);
+
+		// in the case where the input retain file is not null, but has 0 entries, there is nothing to retain. 
+		if (retain!=null & toRetain.size()==0) 
+			return Collections.emptySet();		
+
 		RetainRemoveList<String> rrl = new RetainRemoveList<>();
 		List<String> t =rrl.getElementsToRetain(elements, toRemove, toRetain);
 		return new HashSet<> (t);
@@ -420,7 +425,11 @@ public class CreateMetaCells extends CommandLineProgram {
 	private void writeHeader (final PrintStream out, final List<String> donors) {
 		out.println("#"+getCommandLine());
 		List<String> lineOut = new ArrayList<>();
-			lineOut.add(this.GENE_HEADER);
+
+		// short-circuit: only write the gene header if there is at least one donor.
+		if (donors.size()==0) return;
+		
+		lineOut.add(this.GENE_HEADER);
 		lineOut.addAll(donors);
 		String b = StringUtils.join(lineOut, "\t");
 		out.println(b);

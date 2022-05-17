@@ -29,6 +29,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -179,7 +180,9 @@ public class FilterDge extends CommandLineProgram{
 		if (!retain) return null;
 		List<String> result = new ArrayList<>();
 		List<Double> values = new ArrayList<>();
-		result.add(gene);
+		// only write the gene 
+		if (cellsRetain.size()>0)
+			result.add(gene);
 		for (String s: cellsRetain) {
 			// get the position in the unfiltered line
 			int pos = headerPositionMap.get(s);
@@ -220,6 +223,11 @@ public class FilterDge extends CommandLineProgram{
 		// get final set to remove
 		Set <String> toRemove = getRetainRemoveSet(remove);
 		Set <String> toRetain = getRetainRemoveSet(retain);
+
+		// in the case where the input retain file is not null, but has 0 entries, there is nothing to retain. 
+		if (retain!=null & toRetain.size()==0) 
+			return Collections.emptyList();		
+
 		RetainRemoveList<String> rrl = new RetainRemoveList<>();
 		return (rrl.getElementsToRetain(elements, toRemove, toRetain));
 	}
@@ -234,6 +242,11 @@ public class FilterDge extends CommandLineProgram{
 
 	private void writeLine (final List<String> line, final PrintStream out, final boolean addGeneHeader) {
 		List<String> lineOut = new ArrayList<>(line);
+
+		// short-circuit: only write the line if there is at least one donor. 		
+		if (line.size()==0) 
+			return;
+		
 		if (addGeneHeader)
 			lineOut.add(0, this.GENE_HEADER);
 		String b = StringUtils.join(lineOut, "\t");
