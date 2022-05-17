@@ -2,6 +2,7 @@ package org.broadinstitute.dropseqrna.metrics;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.annotations.Test;
@@ -17,7 +18,7 @@ public class GatherReadQualityMetricsTest {
 	public void testDoWork() throws IOException {
 		File outFile = File.createTempFile("GatherReadQualityMetricsTest.", ".read_quality_metrics.txt");
 		GatherReadQualityMetrics g = new GatherReadQualityMetrics();
-		g.INPUT=IN_FILE;
+		g.INPUT= Collections.singletonList(IN_FILE);
 		g.MINIMUM_MAPPING_QUALITY=10;
 		g.OUTPUT=outFile;
 		g.OUTPUT.deleteOnExit();
