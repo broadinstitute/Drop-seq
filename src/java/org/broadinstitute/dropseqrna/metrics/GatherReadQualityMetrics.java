@@ -23,27 +23,26 @@
  */
 package org.broadinstitute.dropseqrna.metrics;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.util.Map;
-import java.util.TreeMap;
-
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
+import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 @CommandLineProgramProperties(
         summary = "Calculate the number of reads that are in the BAM, that are mapped, mapped + HQ, mapped + HQ + not PCR duplicated. " +
@@ -55,7 +54,7 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 	private final Log log = Log.getInstance(GatherReadQualityMetrics.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted.")
-	public File INPUT;
+	public List<File> INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The file to write stats to.")
 	public File OUTPUT;
@@ -85,13 +84,13 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 	 */
 	@Override
 	protected int doWork() {
-		IOUtil.assertFileIsReadable(INPUT);
+		INPUT = FileListParsingUtils.expandFileList(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
 		Map<String, ReadQualityMetrics> metricsMap = gatherMetrics(INPUT);
 		MetricsFile<ReadQualityMetrics, Integer> outFile = new MetricsFile<>();
-		outFile.addHistogram(metricsMap.get(this.GLOBAL).getHistogram());
+		outFile.addHistogram(metricsMap.get(GLOBAL).getHistogram());
         // Make sure the GLOBAL metrics is added first
-        outFile.addMetric(metricsMap.remove(this.GLOBAL));
+        outFile.addMetric(metricsMap.remove(GLOBAL));
 		for (ReadQualityMetrics metrics: metricsMap.values())
 			outFile.addMetric(metrics);
 		BufferedWriter w = IOUtil.openFileForBufferedWriting(OUTPUT);
@@ -105,15 +104,16 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 		return 0;
 	}
 
-	public Map<String, ReadQualityMetrics> gatherMetrics(final File inputSamOrBamFile) {
+	public Map<String, ReadQualityMetrics> gatherMetrics(final List<File> inputSamOrBamFile) {
 		ProgressLogger p = new ProgressLogger(this.log);
         Map<String, ReadQualityMetrics> result = new TreeMap<>();
 
-		ReadQualityMetrics globalMetrics = new ReadQualityMetrics(this.MINIMUM_MAPPING_QUALITY, this.GLOBAL, true);
+		ReadQualityMetrics globalMetrics = new ReadQualityMetrics(this.MINIMUM_MAPPING_QUALITY, GLOBAL, true);
 
-		SamReader in = SamReaderFactory.makeDefault().open(INPUT);
+		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(inputSamOrBamFile, false, SamReaderFactory.makeDefault());
+		CloseableIterator<SAMRecord> in = headerAndIter.iterator;
 
-		for (final SAMRecord r : in)
+		for (final SAMRecord r : new IterableAdapter<>(in))
 			if (!r.getReadFailsVendorQualityCheckFlag() || INCLUDE_NON_PF_READS) {
                 p.record(r);
 
@@ -123,7 +123,7 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
             }
 
 		CloserUtil.close(in);
-		result.put(this.GLOBAL, globalMetrics);
+		result.put(GLOBAL, globalMetrics);
 		return (result);
 	}
 
