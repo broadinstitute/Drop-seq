@@ -23,14 +23,19 @@
  */
 package org.broadinstitute.dropseqrna.vcftools.filters;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+
 import htsjdk.samtools.util.Log;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContext.Type;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-
-import java.util.Iterator;
-import java.util.List;
 
 public class SimpleDiploidVariantContextFilter extends FilteredIterator <VariantContext> {
 
@@ -42,7 +47,9 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 	private final boolean retainMonmorphicSNPs;
 	private final Integer maxAlleleLength;
 	private final boolean verbose;
-
+	private final Set<String> canonicalBaseSet= new HashSet<>(Arrays.asList("A", "C", "G", "T"));
+	private final List<byte []> canonicalBaseList;
+	
 	/**
 	 * Filters the base length of alleles to 1 by default.
 	 * @param underlyingIterator
@@ -72,6 +79,9 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 		this.retainMonmorphicSNPs=retainMonmorphicSNPs;
 		this.maxAlleleLength=maxAlleleLength;
 		this.verbose=verbose;
+		// construct the canonical bases as bytes [].
+		canonicalBaseList = canonicalBaseSet.stream().map(x->x.toUpperCase().getBytes()).collect(Collectors.toList());	
+		
 	}
 	public SimpleDiploidVariantContextFilter (final Iterator<VariantContext> underlyingIterator) {
 		this(underlyingIterator, true, true, 2, false);
@@ -97,6 +107,14 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 			return true;
 		}
 
+		// look for non-canonical bases: One of the alleles is "*" or "N".
+		for (Allele a: alleles) {
+			if (!isCanonicalAllele(a)) {
+				if (verbose) log.info("Rejecting variant because allele is non-canonical "+site.toStringWithoutGenotypes());
+				return true;
+			}
+		}
+		
 		// if requested, filter out nonSNP sites.
 		// if the site is a non snp because it's monomorphic and you want to retain those, then return false.
 		if (filterNonSNPs && !site.isSNP()) {
@@ -106,8 +124,16 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 			return true;
 		}
 
-
 		return false;
+	}
+	
+	private boolean isCanonicalAllele (Allele a) {
+		for (byte [] b: canonicalBaseList) {
+			if (a.basesMatch(b))
+				return true;
+		}
+		return false;
+		
 	}
 }
 
