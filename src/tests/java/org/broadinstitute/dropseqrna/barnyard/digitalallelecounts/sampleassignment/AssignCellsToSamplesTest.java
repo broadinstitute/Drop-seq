@@ -54,6 +54,8 @@ public class AssignCellsToSamplesTest {
 
 	private final File VCF = new File (rootDir+"/test_missing_data.vcf");
 	private final File VCFC = new File (rootDir+"/test_missing_data.vcf.gz");
+	private final File VCF_NON_CANONICAL=new File(rootDir+"/test_non_canonical_base.vcf.gz");
+	
 	private final File CONTAMINATION_FILE=new File (rootDir+"/small_data.contamination.txt");
 	private final File MAF_ESIMATE_FILE=new File (rootDir+"/small_data.minor_allele_freq.txt");
 	
@@ -68,6 +70,29 @@ public class AssignCellsToSamplesTest {
 	
 	private final File EXPECTED_MAXLIKE_OUTPUT=new File (rootDir+"/small_data.donor_assignment.maxLike_10.txt");	
 	private final File EXPECTED_MAXLIKE_VERBOSE_OUTPUT= new File (rootDir+"/small_data.donor_assignment.maxLike_10.verbose.gz");
+	
+	
+	@Test 
+	// Two SNPs (rs3,rs4) have non-canonical bases (*,N).  
+	// These SNPs should be filtered out, such that the data appears to be the original VCF.
+	public void testNonCannonicalBase() throws IOException {
+		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.GQ_THRESHOLD=30;
+		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
+		assigner.VCF=this.VCF_NON_CANONICAL;
+		assigner.NUM_BARCODES=10; // more than enough
+		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		assigner.VCF_OUTPUT=File.createTempFile("AssignCellsToSamples", ".vcf");
+		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		int result = assigner.doWork();
+		Assert.assertEquals(result, 0);
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));	
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_VERBOSE_OUTPUT, assigner.VERBOSE_OUTPUT));
+		
+	}
+	
 	
 	@Test
 	public void testEndToEnd() throws IOException {
@@ -87,6 +112,8 @@ public class AssignCellsToSamplesTest {
 		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_VERBOSE_OUTPUT, assigner.VERBOSE_OUTPUT));
 		
 	}
+	
+	
 	
 	// 
 	@Test
