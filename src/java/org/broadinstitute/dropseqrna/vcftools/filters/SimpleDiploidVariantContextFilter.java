@@ -58,7 +58,8 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 	 * @param maxNumAlleles
 	 * @param retainMonmorphicSNPs
 	 */
-	public SimpleDiploidVariantContextFilter (final Iterator<VariantContext> underlyingIterator, final boolean filterNonSNPs, final boolean filterFilterFlagedVariants, final int maxNumAlleles, final boolean retainMonmorphicSNPs) {
+	public SimpleDiploidVariantContextFilter (final Iterator<VariantContext> underlyingIterator, final boolean filterNonSNPs, final boolean filterFilterFlagedVariants, 
+			final int maxNumAlleles, final boolean retainMonmorphicSNPs) {
 		this(underlyingIterator, filterNonSNPs, filterFilterFlagedVariants, maxNumAlleles, retainMonmorphicSNPs, 1, false);
 	}
 
@@ -73,15 +74,16 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 	 * @param maxAlleleLength if set to null, do not filter on allele length.  If set to length one, also checks that the base for 
 	 * each allele is one of the canonical bases - A/C/G/T.  This excludes N and * bases.
 	 */
-	public SimpleDiploidVariantContextFilter (final Iterator<VariantContext> underlyingIterator, final boolean filterNonSNPs, final boolean filterFilterFlagedVariants, final Integer maxNumAlleles, final boolean retainMonmorphicSNPs, final Integer maxAlleleLength, final boolean verbose) {
+	public SimpleDiploidVariantContextFilter (final Iterator<VariantContext> underlyingIterator, final boolean filterNonSNPs, final boolean filterFilterFlagedVariants, 
+			final Integer maxNumAlleles, final boolean retainMonmorphicSNPs, final Integer maxAlleleLength, final boolean verbose) {
 		super(underlyingIterator);
 		this.filterNonSNPs=filterNonSNPs;
 		this.filterFilterFlagedVariants=filterFilterFlagedVariants;
 		
-		if (maxNumAlleles==null) {
+		if (maxAlleleLength==null) {
 			this.maxAlleleLength=-1;
 		} else {
-			this.maxAlleleLength=maxNumAlleles;
+			this.maxAlleleLength=maxAlleleLength;
 		}
 		
 		this.maxNumAlleles=maxNumAlleles;
@@ -157,8 +159,7 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 		if (maxAlleleLength==1) {		
 			byte thisBase = a.getBases()[0];
 			int x = Arrays.binarySearch(canonicalBaseArray, thisBase);
-			
-			return (ArrayUtils.contains(canonicalBaseArray, thisBase));	
+			return (x>=0);	
 		}
 		throw new TranscriptomeException("Canonical Allele filter undefined behavior, please add proper tests here.");
 		
