@@ -168,9 +168,25 @@ public class ObjectCounter<T extends Comparable<T>> {
 			}
 		}
 		return (min);
-
 	}
-
+	
+	/**
+	 * Get the object with the most counts.
+	 * @return
+	 */
+	public T getMax() {
+		T max=null;
+		int maxCount=Integer.MIN_VALUE;
+		for (T key: this.getKeys()) {
+			int count=this.getCountForKey(key);
+			if (count>maxCount) {
+				max = key;
+				maxCount=count;
+			}
+		}
+		return (max);
+	}
+		
 	public List<T> getKeysOrderedByCount (final boolean decreasing) {
 		Map<Integer, List<T>> reversed= this.getReverseMapping();
 		List<Integer> counts = new ArrayList<>(reversed.keySet());

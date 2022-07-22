@@ -1,22 +1,41 @@
 package org.broadinstitute.dropseqrna.annotation;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.*;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.metrics.TagReadWithGeneFunction;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionIteratorWrapper;
-import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
-import picard.annotation.LocusFunction;
-import picard.cmdline.CommandLineProgram;
-import picard.cmdline.StandardOptionDefinitions;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionIteratorWrapper;
+import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionProcessor;
+import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
+
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.ProgressLogger;
+import htsjdk.samtools.util.RuntimeIOException;
+import htsjdk.samtools.util.StringUtil;
+import picard.annotation.LocusFunction;
+import picard.cmdline.CommandLineProgram;
+import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(
         summary = "Test the old vs new versions of TagReadWithGeneFunction by comparing the tags from both for UTR/CODING reads.",
@@ -94,7 +113,7 @@ public class CompareAnnotationFlags extends CommandLineProgram {
 		int counter=0;
 		int totalNumReads=0;
 		LocusFunction [] acceptedLocusFunctions = {LocusFunction.UTR, LocusFunction.CODING};
-		GeneFunctionIteratorWrapper gfiw = new GeneFunctionIteratorWrapper(null, "gn", "gs", "gf", false, StrandStrategy.SENSE, Arrays.asList(acceptedLocusFunctions));
+		GeneFunctionProcessor gfiw = new GeneFunctionProcessor("gn", "gs", "gf", false, StrandStrategy.SENSE, Arrays.asList(acceptedLocusFunctions));
 
 		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, LOCUS_FUNCTION_LIST);
 		ObjectCounter<String> ambiguousGeneCounter = new ObjectCounter<String>();
@@ -201,7 +220,7 @@ public class CompareAnnotationFlags extends CommandLineProgram {
 	 * @param r
 	 * @return
 	 */
-	private boolean testTagsDisagree (final SAMRecord r, final GeneFunctionIteratorWrapper gfiw, final SAMFileWriter splitReadWriter) {
+	private boolean testTagsDisagree (final SAMRecord r, final GeneFunctionProcessor gfiw, final SAMFileWriter splitReadWriter) {
 		// for the old data, if there's expression oldGenes size =1.
 		Set<String> oldGenes = getCodingGenesOld(r);
 		Set<String> newGenes = getCodingGenesNew(r);

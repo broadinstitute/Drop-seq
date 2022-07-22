@@ -120,7 +120,7 @@ public class IgnoreGeneAnnotationTagger extends CountChangingIteratorWrapper<SAM
 		// add tags.
 		// Otherwise, check if the tag on the read is an "accepted" tag. If so, keep it.
 		if (functionList != null) {
-			final LocusFunction[] locusFunctions = (functionList == null ? null : GeneFunctionIteratorWrapper.getLocusFunctionFromRead(functionList));
+			final LocusFunction[] locusFunctions = (functionList == null ? null : GeneFunctionProcessor.getLocusFunctionFromRead(functionList));
 			Set<LocusFunction> locusSet = new HashSet<>(Arrays.asList(locusFunctions));
 			// if the read has locus functions that were requested for use, then rely on
 			// them.
