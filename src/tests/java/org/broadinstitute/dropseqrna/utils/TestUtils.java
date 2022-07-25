@@ -24,6 +24,7 @@
 
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
@@ -89,17 +90,25 @@ public class TestUtils {
 		return metricsA.areMetricsEqual(metricsB) && metricsA.areHistogramsEqual(metricsB);
 	}
 
-	public static void assertSamFilesSame(final File actual, final File expected) {
+	public static void assertSamFilesSame(final File actual, final File expected, boolean testHeader) {
 		final SamReader expectedReader = SamReaderFactory.makeDefault().open(expected);
 		final SamReader actualReader = SamReaderFactory.makeDefault().open(actual);
 		try {
-			Assert.assertEquals(expectedReader.getFileHeader(), actualReader.getFileHeader());
+			SAMFileHeader eh= expectedReader.getFileHeader();
+			SAMFileHeader ah= actualReader.getFileHeader();			
+			if (testHeader) 
+				Assert.assertEquals(eh, ah);
 			assertSamRecordsSame(actual, expected, expectedReader, actualReader);
 		} finally {
 			CloserUtil.close(expectedReader);
 			CloserUtil.close(actualReader);
 		}
 	}
+	
+	public static void assertSamFilesSame(final File actual, final File expected) {
+		assertSamFilesSame(actual, expected, true);
+	}
+	
 	public static void assertSamRecordsSame(File actual, File expected) {
 		final SamReader expectedReader = SamReaderFactory.makeDefault().open(expected);
 		final SamReader actualReader = SamReaderFactory.makeDefault().open(actual);

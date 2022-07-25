@@ -56,7 +56,7 @@ import picard.cmdline.StandardOptionDefinitions;
         summary = "For each gene, count the number of times each molecular barcode is observed [The UMI]" +
 			"Similar to digital expression, reads are filtered on map quality, and must overlap exons as well as genes. "+
 			"This program requires a tag for what gene a read is on, a molecular barcode tag, and a exon tag.  The exon and gene tags may not be present on every read." +
-			"When filtering the data for a set of barcodes to use, the data is filtered by ONE of the following methods (and if multiple params are filled in, the top one takes precidence):\n" +
+			"When filtering the data for a set of barcodes to use, the data is filtered by ONE of the following methods (and if multiple params are filled in, the top one takes precedence):\n" +
 			"1) CELL_BC_FILE, to filter by the some fixed list of cell barcodes" +
 			"2) MIN_NUM_GENES_PER_CELL " +
 			"3) MIN_NUM_TRANSCRIPTS_PER_CELL " +
@@ -67,13 +67,20 @@ import picard.cmdline.StandardOptionDefinitions;
 )
 public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase {
 
-	private static final Log log = Log.getInstance(GatherMolecularBarcodeDistributionByGene.class);
-
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
 	public List<File> INPUT;
 	
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of with 4 columns: CELL, GENE, MOLECULAR BC, #Observations. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
+
+	@Argument(doc="For backward compatibility, emit old column labels that included some space characters.")
+	public boolean LEGACY_COLUMN_LABELS = false;
+
+	public enum COLUMN_LABEL {CELL_BARCODE, GENE, MOLECULAR_BARCODE, NUM_OBS}
+	public static String CELL_BARCODE_COLUMN = COLUMN_LABEL.CELL_BARCODE.toString();
+	public static String GENE_COLUMN = COLUMN_LABEL.GENE.toString();
+	public static String MOLECULAR_BARCODE_COLUMN = COLUMN_LABEL.MOLECULAR_BARCODE.toString();
+	public static String NUM_OBS_COLUMN = COLUMN_LABEL.NUM_OBS.toString();
 
 	@Override
 	protected int doWork() {
@@ -97,7 +104,7 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 		UMICollection batch;
 
 		while ((batch=umiIterator.next())!=null)
-			if (batch.isEmpty()==false) {
+			if (!batch.isEmpty()) {
 				String cellTag = batch.getCellBarcode();
 				if (cellBarcodes.contains(cellTag) || cellBarcodes.isEmpty())
 					writePerTranscriptStats (batch.getGeneName(), batch.getCellBarcode(), batch.getMolecularBarcodeCountsCollapsed(this.EDIT_DISTANCE), out);
@@ -125,8 +132,14 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	}
 
 
-	public static void writePerTranscriptHeader(final BufferedWriter out) {
-		String [] header = {"Cell Barcode", "Gene", "Molecular_Barcode", "Num_Obs"};
+	private void writePerTranscriptHeader(final BufferedWriter out) {
+		final String [] header;
+		if (LEGACY_COLUMN_LABELS) {
+			header = new String[]{"Cell Barcode", "Gene", "Molecular_Barcode", "Num_Obs"};
+		} else {
+				header = new String[]{COLUMN_LABEL.CELL_BARCODE.toString(), COLUMN_LABEL.GENE.toString(),
+						COLUMN_LABEL.MOLECULAR_BARCODE.toString(), COLUMN_LABEL.NUM_OBS.toString()};
+			}
 		String h = StringUtils.join(header, "\t");
 		OutputWriterUtil.writeResult(h, out);
 	}
@@ -138,11 +151,9 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	 * This works on even cells that have a single molecular barcode, meaning that if you're using this to find cells with > 1000 UMis (for example), it could be pretty slow.
 	 * Get the number of transcripts for each cell barcode.
 	 * @param bamFile The input BAM file
-	 * @param cellTag the tag for the cell barcode
+	 * @param cellBarcodeTag the tag for the cell barcode
 	 * @param molecularBarcodeTag the tag for the molecular barcode
-	 * @param geneExonTag
 	 * @param mapQuality The minimum map quality for each read to be considered.
-	 * @param useStrandInfo
 	 * @return
 	 */
 	public ObjectCounter<String> getNumTranscriptsPerCell (final List<File> bamFile, final String cellBarcodeTag, final String molecularBarcodeTag,
@@ -161,7 +172,7 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 
 		UMICollection batch;
 		while ((batch=umiIterator.next())!=null)
-			if (batch.isEmpty()==false) {
+			if (!batch.isEmpty()) {
 				int numTranscripts = batch.getMolecularBarcodeCountsCollapsed(editDistance).getSize();
 				transcriptsPerCell.incrementByCount(batch.getCellBarcode(), numTranscripts);
 			}

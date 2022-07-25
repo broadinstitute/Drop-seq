@@ -56,15 +56,12 @@ public abstract class DGECommandLineBase extends GeneFunctionCommandLineBase {
 	@Argument(doc="The minumum number of transcripts for a cell barcode to be reported.", optional=true)
 	public Integer MIN_NUM_TRANSCRIPTS_PER_CELL=null;
 	
-	@Argument(doc="Number of cells that you think are in the library.  This accomplishes the same goals as the MIN_NUM_READS_CORE argument, but instead of defining barcodes as important based on the number of reads, it picks the top <X> barcodes as core.", optional=true)
+	@Argument(doc="Number of cells that you think are in the library.  The largest <X> barcodes are used.", optional=true)
 	public Integer NUM_CORE_BARCODES=null;
 	
 	@Argument(doc="Override CELL_BARCODE and MIN_NUM_READS_PER_CELL, and process reads that have the cell barcodes in this file instead.  The file has 1 column with no header.", optional=true)
 	public File CELL_BC_FILE=null;
 	
-	@Argument(doc="Is the library stranded?  If so, use the strand info to more precisely place reads on the correct gene, and ignore reads that are on the wrong strand.")
-	public boolean USE_STRAND_INFO=true;
-
 	@Argument (doc="Drop UMIs within a cell/gene pair that occur less than the average number of reads*<FILTER_FREQ> for all UMIs in the cell/gene pair.  " +
 			"For example, if you had on average 1000 reads per UMI and a UMI with 1-10 reads, those small UMIs would be removed when this frequency was set to 0.01." +
 			"This is off by default.  A sensible value might be 0.01.")

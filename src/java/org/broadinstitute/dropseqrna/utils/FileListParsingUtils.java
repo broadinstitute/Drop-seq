@@ -70,10 +70,13 @@ public class FileListParsingUtils {
 	public static Collection<File> expandWildcardFile(final File wildcardFile) {
     	Collection <File> result = new ArrayList<File>(); 
         final String fileName = wildcardFile.getName();
-        if (fileName.contains("*") || fileName.contains("?"))
-            result= FileUtils.listFiles(wildcardFile.getParentFile(), new WildcardFileFilter(wildcardFile.getName()), null);
-        else
-            result= Collections.singleton(wildcardFile);
+        if (fileName.contains("*") || fileName.contains("?")) {
+            File parentFile = wildcardFile.getParentFile();
+            if (parentFile == null) parentFile = new File(".");
+            result = FileUtils.listFiles(parentFile, new WildcardFileFilter(wildcardFile.getName()), null);
+        } else {
+            result = Collections.singleton(wildcardFile);
+        }
         result.stream().forEach(x -> IOUtil.assertFileIsReadable(x));
         return (result);
     }

@@ -45,48 +45,19 @@ import picard.annotation.LocusFunction;
  */
 public class GeneFunctionFilteringIterator extends FilteredIterator<SAMRecord> {
 	
-	private static final String DELIMITER = ",";
-	private final String geneTag;
-	private final String strandTag;
-	private final String functionTag;	
-	private final FunctionalDataProcessor fdp;
+	private final GeneFunctionProcessor p;
 	
 	public GeneFunctionFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String geneTag, final String strandTag, 
 			final String functionTag, final StrandStrategy strandFilterStrategy, final Collection<LocusFunction> acceptedLociFunctions) {
 		
-		super(underlyingIterator);
-		this.geneTag = geneTag;
-		this.strandTag = strandTag;
-		this.functionTag = functionTag;
-		this.fdp = new FunctionalDataProcessor(strandFilterStrategy,
-				acceptedLociFunctions);
+		super(underlyingIterator);		
+		p = new GeneFunctionProcessor(geneTag, strandTag, functionTag, false, strandFilterStrategy, acceptedLociFunctions);
+		
 	}
 
-	
 	@Override
- 	public boolean filterOut(final SAMRecord r) {
-	 	String geneList = r.getStringAttribute(this.geneTag);
-		String strandList = r.getStringAttribute(this.strandTag);
-		String functionList = r.getStringAttribute(this.functionTag);
-
-		// If you're missing the gene, you can't use this read.
-		// If care about strand, and you're missing the strand, you can't use this read.
-		// If care about function, and you're missing the  function, you can't use this read.
-		if ((geneList == null) ||
-				(fdp.getStrandStrategy() != null && strandList == null) ||
-				(!fdp.getFunctions().isEmpty() && functionList == null)){
-			return true;
-		}
-		
-		// there's at least one good copy of the read. Does the read match on
-		// strand/gene, or is it assigned to multiple genes?
-		final String[] genes = geneList.split(DELIMITER);
-		final String[] strands = (strandList == null? null: strandList.split(DELIMITER));
-		final LocusFunction[] locusFunctions = (functionList == null? null: GeneFunctionIteratorWrapper.getLocusFunctionFromRead(functionList));
-
-		List<FunctionalData> fdList = fdp.getFilteredFunctionalData(genes,
-				strands, locusFunctions, r.getReadNegativeStrandFlag());
-
+ 	public boolean filterOut(final SAMRecord r) {	 							
+		List<FunctionalData> fdList = p.getReadFunctions (r);
 		// If there's no functional data that passes the filters, filter the read.
 		if (fdList.size()==0) return true;
 		// Otherwise, accept the read
