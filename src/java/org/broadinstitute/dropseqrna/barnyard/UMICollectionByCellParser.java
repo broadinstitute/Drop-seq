@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * Given a molecular barcodes file
- * (tab-separated compressed text file with header: Cell Barcode, Gene, Molecular_Barcode,  Num_Obs)
+ * (tab-separated compressed text file with header: CELL_BARCODE, GENE, MOLECULAR_BARCODE,  NUM_OBS)
  * Will yield a list of UMICollection objects (One per cell+gene pair) for each cell.
  * @author dmeyer
  */
@@ -21,7 +21,7 @@ public class UMICollectionByCellParser extends IterableOnceIterator<List<UMIColl
     private final PeekableIterator<TabbedTextFileWithHeaderParser.Row> parserIter;
     private final Log log = Log.getInstance(UMICollectionByCellParser.class);
     private final ProgressLogger progress = new ProgressLogger(log, 100, "Processed", "cells");
-
+    
     /**
      * Constructor to parse a given molecular barcode file.
      * @param input molecular barcode file object (ends in .molBC.txt.gz)
@@ -31,8 +31,8 @@ public class UMICollectionByCellParser extends IterableOnceIterator<List<UMIColl
         parserIter = new PeekableIterator<>(
                 new OrderAssertingIterator<>(
                         (new TabbedTextFileWithHeaderParser(input)).iterator(),
-                        Comparator.comparing((TabbedTextFileWithHeaderParser.Row o) -> o.getField("Cell Barcode"))
-                                .thenComparing(o -> o.getField("Gene"))
+                        Comparator.comparing((TabbedTextFileWithHeaderParser.Row o) -> o.getField(GatherMolecularBarcodeDistributionByGene.CELL_BARCODE_COLUMN))
+                                .thenComparing(o -> o.getField(GatherMolecularBarcodeDistributionByGene.GENE_COLUMN))
                 )
         );
     }
@@ -47,16 +47,16 @@ public class UMICollectionByCellParser extends IterableOnceIterator<List<UMIColl
         ArrayList<UMICollection> res = new ArrayList<>();
 
         TabbedTextFileWithHeaderParser.Row row = parserIter.next();
-        UMICollection currentUMI = new UMICollection(row.getField("Cell Barcode"), row.getField("Gene"));
-        currentUMI.incrementMolecularBarcodeCount(row.getField("Molecular_Barcode"),
-                Integer.parseInt(row.getField("Num_Obs")));
+        UMICollection currentUMI = new UMICollection(row.getField(GatherMolecularBarcodeDistributionByGene.CELL_BARCODE_COLUMN), row.getField(GatherMolecularBarcodeDistributionByGene.GENE_COLUMN));
+        currentUMI.incrementMolecularBarcodeCount(row.getField(GatherMolecularBarcodeDistributionByGene.MOLECULAR_BARCODE_COLUMN),
+                Integer.parseInt(row.getField(GatherMolecularBarcodeDistributionByGene.NUM_OBS_COLUMN)));
 
         //when a new gene/cell is seen, make a new object and put records into that, and store the old gene/cell.
         while(parserIter.hasNext()) {
             row = parserIter.peek();
-            String cell = row.getField("Cell Barcode");
-            String gene = row.getField("Gene");
-            String molBc = row.getField("Molecular_Barcode");
+            String cell = row.getField(GatherMolecularBarcodeDistributionByGene.CELL_BARCODE_COLUMN);
+            String gene = row.getField(GatherMolecularBarcodeDistributionByGene.GENE_COLUMN);
+            String molBc = row.getField(GatherMolecularBarcodeDistributionByGene.MOLECULAR_BARCODE_COLUMN);
 
             if (!cell.equals(currentUMI.getCellBarcode())) {
                 res.add(currentUMI);
@@ -67,7 +67,7 @@ public class UMICollectionByCellParser extends IterableOnceIterator<List<UMIColl
                 res.add(currentUMI);
                 currentUMI = new UMICollection(cell, molBc);
             }
-            currentUMI.incrementMolecularBarcodeCount(molBc, Integer.parseInt(row.getField("Num_Obs")));
+            currentUMI.incrementMolecularBarcodeCount(molBc, Integer.parseInt(row.getField(GatherMolecularBarcodeDistributionByGene.NUM_OBS_COLUMN)));
 
             parserIter.next();
         }

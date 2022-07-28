@@ -57,8 +57,8 @@ import static com.google.common.math.Quantiles.percentiles;
         programGroup = DropSeq.class)
 public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
     /* Inputs */
-    @Argument(doc="Compressed tab-separated text file with a header with columns 'Cell Barcode', "+
-            "'Gene', 'Molecular_Barcode', and 'Num_Obs'. Each row represents a unique molecular barcode (UMI)," +
+    @Argument(doc="Compressed tab-separated text file with a header with columns 'CELL_BARCODE', "+
+            "'GENE', 'MOLECULAR_BARCODE', and 'NUM_OBS'. Each row represents a unique molecular barcode (UMI)," +
             "and, respectively, the columns represent the oligonucleotide cell barcode sequence associated with the " +
             "transcript, the gene to which the transcript best aligned, the oligonucleotide molecular barcode " +
             "sequence, and the number of observations of that UMI. File MUST be in ascending alphabetic order " +

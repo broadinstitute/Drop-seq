@@ -77,7 +77,8 @@ public class DownsampleTranscriptsAndQuantilesTest {
 
    private void writeSyntheticData(File file) {
         PrintStream writer = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(file));
-        writer.println(String.join("\t", "Cell Barcode", "Gene", "Molecular_Barcode", "Num_Obs"));
+        writer.println(String.join("\t", GatherMolecularBarcodeDistributionByGene.CELL_BARCODE_COLUMN, GatherMolecularBarcodeDistributionByGene.GENE_COLUMN, 
+        		GatherMolecularBarcodeDistributionByGene.MOLECULAR_BARCODE_COLUMN, GatherMolecularBarcodeDistributionByGene.NUM_OBS_COLUMN));
         int n = 1000;
         long seed = 140L;
         Random rando = new Random(seed);
@@ -167,12 +168,16 @@ public class DownsampleTranscriptsAndQuantilesTest {
     private void downsampleInputFile(File infile, File outfile, double downsampleRate) {
         TabbedTextFileWithHeaderParser parser = new TabbedTextFileWithHeaderParser(infile);
         PrintStream writer = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(outfile));
-        writer.println(String.join("\t", "Cell Barcode", "Gene", "Molecular_Barcode", "Num_Obs"));
+        writer.println(String.join("\t", GatherMolecularBarcodeDistributionByGene.CELL_BARCODE_COLUMN, GatherMolecularBarcodeDistributionByGene.GENE_COLUMN, 
+        		GatherMolecularBarcodeDistributionByGene.MOLECULAR_BARCODE_COLUMN, GatherMolecularBarcodeDistributionByGene.NUM_OBS_COLUMN));
         Random random = new Random(4L);
         for (TabbedTextFileWithHeaderParser.Row row : parser) {
             if (random.nextDouble() < downsampleRate) {
-                writer.println(String.join("\t", row.getField("Cell Barcode"), row.getField("Gene"),
-                        row.getField("Molecular_Barcode"), row.getField("Num_Obs")));
+                writer.println(String.join("\t", 
+                		row.getField(GatherMolecularBarcodeDistributionByGene.CELL_BARCODE_COLUMN), 
+                		row.getField(GatherMolecularBarcodeDistributionByGene.GENE_COLUMN),
+                        row.getField(GatherMolecularBarcodeDistributionByGene.MOLECULAR_BARCODE_COLUMN), 
+                        row.getField(GatherMolecularBarcodeDistributionByGene.NUM_OBS_COLUMN)));
             }
         }
         writer.flush();
