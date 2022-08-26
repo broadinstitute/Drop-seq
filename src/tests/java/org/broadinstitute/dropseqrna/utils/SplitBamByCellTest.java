@@ -26,7 +26,6 @@ package org.broadinstitute.dropseqrna.utils;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.StringUtil;
-import org.apache.commons.io.FileUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.junit.Assert;
 import org.testng.Reporter;
@@ -114,7 +113,7 @@ public class SplitBamByCellTest {
             tagsComparator.TAGS = new ArrayList<>(Arrays.asList("XC", "XM"));
             Assert.assertEquals(tagsComparator.doWork(), 0);
 
-            Assert.assertTrue(FileUtils.contentEquals(report, EXPECTED_REPORT));
+            Assert.assertTrue(TestUtils.testMetricsFilesEqual(report, EXPECTED_REPORT));
 
             // Manifest content will not be identical because of temp file names, so just compare fields expected
             // to be consistent.
@@ -127,7 +126,7 @@ public class SplitBamByCellTest {
     }
 
     private Map<String, Integer> loadCellBarcodeManifest(final File manifest) {
-        final List<SplitBamByCell.CellBarcodeSplitBamMetric> beans = MetricsFile.readBeans(manifest);
+        final List<CellBarcodeSplitBamMetric> beans = MetricsFile.readBeans(manifest);
         return(beans.stream().collect(Collectors.toMap(b -> b.CELL_BARCODE, b -> b.SPLIT_BAM_INDEX)));
     }
 
@@ -258,12 +257,12 @@ public class SplitBamByCellTest {
         final File index;
         if (createIndex) {
             index = createBamIndexPath(inputFile);
-            index.createNewFile();
+            Assert.assertTrue(index.createNewFile());
             index.deleteOnExit();
         } else {
             index = null;
         }
-        final File symlink1 = new File(tempDir, "symlink1" + SplitBamByCell.BAM_EXTENSION);
+        final File symlink1 = new File(tempDir, "symlink1" + AbstractSplitBamClp.BAM_EXTENSION);
         Files.createSymbolicLink(symlink1.toPath(), inputFile.toPath());
         symlink1.deleteOnExit();
         final File indexSymlink1;
@@ -275,7 +274,7 @@ public class SplitBamByCellTest {
             indexSymlink1 = null;
         }
         final String symlinkBasename = "symlink";
-        final File inputSymlink = new File(tempDir, symlinkBasename + SplitBamByCell.BAM_EXTENSION);
+        final File inputSymlink = new File(tempDir, symlinkBasename + AbstractSplitBamClp.BAM_EXTENSION);
         Files.createSymbolicLink(inputSymlink.toPath(), symlink1.toPath());
         inputSymlink.deleteOnExit();
         if (createIndex) {
@@ -300,9 +299,9 @@ public class SplitBamByCellTest {
         final Set<String> outputFileNames = outputFiles.stream().map(File::getName).collect(Collectors.toSet());
         Reporter.log(String.format("Files found: %s", StringUtil.join(", ", outputFileNames)), true);
 
-        final List<String> expectedExtensions = new ArrayList<>(Arrays.asList(SplitBamByCell.BAM_LIST_EXTENSION, SplitBamByCell.BAM_REPORT_EXTENSION));
+        final List<String> expectedExtensions = new ArrayList<>(Arrays.asList(AbstractSplitBamClp.BAM_LIST_EXTENSION, AbstractSplitBamClp.BAM_REPORT_EXTENSION));
         for (int i = 0; i < NUM_OUTPUTS; ++i) {
-            expectedExtensions.add("." + i + SplitBamByCell.BAM_EXTENSION);
+            expectedExtensions.add("." + i + AbstractSplitBamClp.BAM_EXTENSION);
         }
         // split BAMs + bam_list and report
         Assert.assertEquals(expectedExtensions.size(), outputFiles.size());
