@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright 2019 Broad Institute
+ * Copyright 2022 Broad Institute
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,115 +23,32 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import htsjdk.samtools.*;
-import htsjdk.samtools.metrics.MetricBase;
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.*;
-import org.apache.commons.math3.stat.StatUtils;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.IterableAdapter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
-import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
-import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 
-import picard.cmdline.CommandLineProgram;
-import picard.cmdline.StandardOptionDefinitions;
-
-/**
- *
- * @author skashin
- *
- */
+import java.io.File;
+import java.util.ArrayList;
 
 @CommandLineProgramProperties(
         summary = "Splits input BAM file(s) into NUM_OUTPUTS output BAM files, " +
-              "in such a way that all the reads for each cell barcode are in exactly one output BAM file.\n" +
-              "Option NUM_OUTPUTS is either supplied explicitly, or computed by dividing the total input BAM file(s) size by the value of TARGET_BAM_SIZE.\n" +
-              "When submitting this command to UGER:\n" +
-              "* memory: -m 16G should be sufficient.\n" +
-              "* time:   3 minutes/GB of input BAM should be enough.",
+                "in such a way that all the reads for each cell barcode are in exactly one output BAM file.\n" +
+                "Option NUM_OUTPUTS is either supplied explicitly, or computed by dividing the total input BAM file(s) size by the value of TARGET_BAM_SIZE.\n" +
+                "When submitting this command to UGER:\n" +
+                "* memory: -m 16G should be sufficient.\n" +
+                "* time:   3 minutes/GB of input BAM should be enough.",
         oneLineSummary = "Splits input BAM file(s) by cell barcode",
         programGroup = DropSeq.class
 )
-
-public class SplitBamByCell extends CommandLineProgram {
-
-    private static final Log log = Log.getInstance(SplitBamByCell.class);
-
-    @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM files to analyze.  They must all have the same sort order", minElements = 1)
-    public List<File> INPUT;
-
+public class SplitBamByCell
+extends AbstractSplitBamClp {
     @Argument(doc="The tag to examine in order to partition reads.  Set to null to round-robin read (pairs) to output " +
             "files, instead of grouping by cell barcode.")
     public String SPLIT_TAG="XC";
-
-    @Argument(shortName="N", doc="Number of output files to create", mutex={"TARGET_BAM_SIZE"})
-    public Integer NUM_OUTPUTS;
-
-    @Argument(shortName="S", doc="Approximate size of split BAMs to be created. This can be a human-readable number like 500M or 2G", mutex={"NUM_OUTPUTS"})
-    public String TARGET_BAM_SIZE;
-
-    @Argument(optional=true, shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Template for output file names.  If OUTPUT_LIST is specified, and OUTPUT is a relative path," +
-            " output file paths will be relative to the directory of the OUTPUT_LIST.")
-    public File OUTPUT;
-
-    @Argument(optional=true, doc="For each output file, this string in the OUTPUT template will be replaced with an integer.")
-    public String OUTPUT_SLUG="__SPLITNUM__";
-
-    @Argument(optional=true, shortName="L", doc="If specified, this file will be created, with NUM_OUTPUTS lines, containing all the output files created.")
-    public File OUTPUT_LIST;
-
-    @Argument(optional=true, doc="If specified, this file will be created, containing split BAM files' read count distribution stats.")
-    public File REPORT;
-
-    @Argument(optional = true, doc="Write a file with the split index of every cell.  Cannot be used if SPLIT_TAG=null.")
-    public File OUTPUT_MANIFEST;
-
-    @Argument(optional=true, shortName="W", doc="Overwrite existing files. Default: fail if any files to be created already exist.")
-    public boolean OVERWRITE_EXISTING = false;
-
-    @Argument(optional=true, shortName="D", doc="Delete input BAM(s) after splitting them. Default: delete input BAM(s).")
-    public boolean DELETE_INPUTS = true;
-
-    @Argument(optional = true, shortName = "DI", doc="Delete BAM indices corresponding to input BAMs.  Default: DELETE_INPUTS setting.")
-    public Boolean DELETE_INPUT_INDICES;
-
-    private SAMFileWriterFactory samWriterFactory = null;
-
-    static final String BAM_EXTENSION = ".bam";
-    static final String BAM_LIST_EXTENSION = ".bam_list";
-    static final String BAM_REPORT_EXTENSION =".split_bam_report";
-
-    private enum FileSizeSuffix  {
-        k(1024L),
-        m(1024L * 1024L),
-        g(1024L * 1024L * 1024L),
-        t(1024L * 1024L * 1024L * 1024L);
-
-        private final long size;
-
-        FileSizeSuffix(long size) {
-            this.size = size;
-        }
-
-        public long getSize() {
-            return size;
-        }
-    }
 
     @Override
     protected String[] customCommandLineValidation() {
@@ -142,415 +59,71 @@ public class SplitBamByCell extends CommandLineProgram {
         return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
     }
 
-    @Override
-    protected int doWork() {
-        INPUT = FileListParsingUtils.expandFileList(INPUT);
-
-        if (OUTPUT != null && !OUTPUT.getPath().contains(OUTPUT_SLUG)) {
-            throw new IllegalArgumentException(OUTPUT + " does not contain the replacement token " + OUTPUT_SLUG);
-        }
-
-        if (OUTPUT == null) {
-            setDefaultOutput();
-        }
-
-        if (DELETE_INPUT_INDICES == null) {
-            DELETE_INPUT_INDICES = DELETE_INPUTS;
-        }
-
-        // Check that input BAM files can be deleted
-        if (DELETE_INPUTS) {
-            for (File bamFile : INPUT) {
-                IOUtil.assertFileIsWritable(bamFile);
-            }
-        }
-
-        if (DELETE_INPUT_INDICES) {
-            for (File bamFile : INPUT) {
-                final File index = SamFiles.findIndex(bamFile);
-                if (index != null && index.exists()) {
-                    IOUtil.assertFileIsWritable(index);
-                }
-            }
-        }
-
-        if (TARGET_BAM_SIZE != null) {
-            long targetSize = dehumanizeFileSize(TARGET_BAM_SIZE);
-            NUM_OUTPUTS = (int) Math.max(1, Math.round(1.0 * getTotalBamSize(INPUT) / targetSize));
-        }
-
-        checkOutputOverwrites();
-
-        samWriterFactory = new SAMFileWriterFactory().setCreateIndex(CREATE_INDEX);
-
-        final List<SAMFileInfo> writerInfoList = new ArrayList<>();
-        splitBAMs(writerInfoList);
-
-        writeOutputList(writerInfoList);
-        writeReport(writerInfoList);
-
-        if (DELETE_INPUTS) {
-            deleteInputBamFiles();
-        }
-
-
-        return 0;
-    }
-
-    private void setDefaultOutput() {
-        if (INPUT.size() > 1) {
-            throw new IllegalArgumentException("OUTPUT must be specified when INPUT list contains more than one BAM file");
-        }
-
-        File bamFile = INPUT.get(0);
-        if (!bamFile.getName().endsWith(BAM_EXTENSION)) {
-            throw new IllegalArgumentException("Input BAM file " + bamFile.getAbsolutePath() + " does not have the extension " + BAM_EXTENSION);
-        }
-
-        String bamRootName = bamFile.getName().replaceAll("\\" + BAM_EXTENSION + "$", "");
-        OUTPUT = new File(bamFile.getParent(), bamRootName + "." + OUTPUT_SLUG + BAM_EXTENSION);
-    }
-
-    private File getRelativeSplitBamFile(int splitIdx) {
-        final String outputPath = OUTPUT.toString().replace(OUTPUT_SLUG, String.valueOf(splitIdx));
-        return new File(outputPath);
-    }
-
-    private File getActualSplitBamFile(File samFile) {
-        final File actualFileToOpen;
-        if (OUTPUT_LIST == null) {
-            actualFileToOpen = samFile;
+    protected void splitBAMs () {
+        log.info("Splitting BAM files");
+        if (SPLIT_TAG == null) {
+            // Select writers in a round-robin way, keeping read pairs together
+            splitBAMsEqually();
         } else {
-            actualFileToOpen = FileListParsingUtils.resolveFilePath(OUTPUT_LIST.getParentFile(), samFile);
-        }
-
-        return actualFileToOpen;
-    }
-
-    private void checkOutputOverwrites() {
-        for (int splitIdx=0; splitIdx<NUM_OUTPUTS; splitIdx++) {
-            final File splitBamFile = getActualSplitBamFile(getRelativeSplitBamFile(splitIdx));
-            if (splitBamFile.exists()) {
-                // Check that this output BAM is not one of the INPUT BAMs
-                for (File inputBam : INPUT) {
-                    if (splitBamFile.getAbsolutePath().equals(inputBam.getAbsolutePath())) {
-                        throw new IllegalArgumentException("Output BAM file " + splitBamFile.getAbsolutePath() + " is the same as input BAM " + inputBam.getAbsolutePath());
-                    }
-                }
-
-                if (OVERWRITE_EXISTING) {
-                    log.warn("BAM file " + splitBamFile.getAbsolutePath() + " exists and will be overwritten");
-                } else {
-                    throw new IllegalArgumentException("BAM file " + splitBamFile.getAbsolutePath() + " already exists, but OVERWRITE_EXISTING is set to false.");
-                }
-            }
+            splitBAMsByTag();
         }
     }
 
-    private SAMFileInfo createWriterInfo(final SAMFileHeader header, int splitIdx) {
-        final File samFile = getRelativeSplitBamFile(splitIdx);
-        final File actualFileToOpen = getActualSplitBamFile(samFile);
-        final SAMFileWriter samFileWriter = samWriterFactory.makeSAMOrBAMWriter(header, true, actualFileToOpen);
-        return new SAMFileInfo(samFile, samFileWriter, 0);
-    }
-
-    private void splitBAMsEqually(final List<SAMFileInfo> writerInfoList, final SamHeaderAndIterator headerAndIterator) {
+    private void splitBAMsEqually() {
         if (headerAndIterator.header.getSortOrder() != SAMFileHeader.SortOrder.queryname) {
             throw new IllegalArgumentException("The input BAM file(s) should be sorted by queryname");
         }
 
-        ProgressLogger pl = new ProgressLogger(log);
 
         int writerIdx = -1;
         String lastReadName = null;
         for (SAMRecord r : new IterableAdapter<>(headerAndIterator.iterator)) {
-            pl.record(r);
+            progressLogger.record(r);
 
             if (lastReadName == null || !r.getReadName().equals(lastReadName)) {
                 writerIdx = (writerIdx + 1) % NUM_OUTPUTS;
-                if (writerIdx >= writerInfoList.size()) {
-                    writerInfoList.add(createWriterInfo(headerAndIterator.header, writerIdx));
-                }
+                ensureWriter(writerIdx);
             }
             lastReadName = r.getReadName();
-
-            final SAMFileInfo writerInfo = writerInfoList.get(writerIdx);
-            writerInfo.getWriter().addAlignment(r);
-            writerInfo.incrementReadCount();
+            writeRecord(writerIdx, r);
         }
     }
 
-    private Map<String, Integer> splitBAMsByTag(final List<SAMFileInfo> writerInfoList, final SamHeaderAndIterator headerAndIterator) {
-        ProgressLogger pl = new ProgressLogger(log);
-
-        final Map<String, Integer> cellBarcodeWriterIdxMap = new HashMap<>();
+    private void splitBAMsByTag() {
 
         for (SAMRecord r: new IterableAdapter<>(headerAndIterator.iterator)) {
-            pl.record(r);
+            progressLogger.record(r);
 
             final String cellBarcode = r.getStringAttribute(SPLIT_TAG);
             if (cellBarcode == null) {
                 throw new IllegalArgumentException("Read " + r.getReadName() + " does not contain the attribute " + SPLIT_TAG);
             }
-            Integer writerIdx = cellBarcodeWriterIdxMap.get(cellBarcode);
-            if (writerIdx == null) {
-                if (writerInfoList.size() < NUM_OUTPUTS) {
-                    writerIdx = writerInfoList.size();
-                    writerInfoList.add(createWriterInfo(headerAndIterator.header, writerIdx));
-                } else {
-                    Integer minCount = null;
-                    for (int idx=0; idx<writerInfoList.size(); idx++) {
-                        int readCount = writerInfoList.get(idx).getReadCount();
-                        if (minCount == null || readCount < minCount) {
-                            writerIdx = idx;
-                            minCount = readCount;
-                        }
-                    }
-                }
-                cellBarcodeWriterIdxMap.put(cellBarcode, writerIdx);
-            }
-            if (writerIdx == null) {
-                throw new TranscriptomeException("Failed to get a writer for read " + r.getReadName());
-            }
-
-            final SAMFileInfo writerInfo = writerInfoList.get(writerIdx);
-            writerInfo.getWriter().addAlignment(r);
-            writerInfo.incrementReadCount();
-        }
-        return cellBarcodeWriterIdxMap;
-    }
-
-    private void splitBAMs (final List<SAMFileInfo> writerInfoList) {
-        log.info("Splitting BAM files");
-        final SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(INPUT, true);
-        SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
-
-        if (SPLIT_TAG == null) {
-            // Select writers in a round robin way, keeping read pairs together
-            splitBAMsEqually(writerInfoList, headerAndIterator);
-        } else {
-            final Map<String, Integer> cellBarcodeIndexMap = splitBAMsByTag(writerInfoList, headerAndIterator);
-            if (OUTPUT_MANIFEST != null) {
-                writeManifest(OUTPUT_MANIFEST, cellBarcodeIndexMap, writerInfoList);
-            }
-        }
-
-        CloserUtil.close(headerAndIterator.iterator);
-        for (SAMFileInfo writerInfo : writerInfoList) {
-            writerInfo.getWriter().close();
+            int writerIdx = getWriterIdxForCellBarcode(cellBarcode);
+            writeRecord(writerIdx, r);
         }
     }
 
-    public static class CellBarcodeSplitBamMetric
-            extends MetricBase {
-        public String CELL_BARCODE;
-        public int SPLIT_BAM_INDEX;
-        public File BAM;
-
+    // For backward compatibility with old metrics files
+    @SuppressWarnings("unused")
+    static class CellBarcodeSplitBamMetric
+            extends org.broadinstitute.dropseqrna.utils.CellBarcodeSplitBamMetric {
         public CellBarcodeSplitBamMetric() {
         }
 
         public CellBarcodeSplitBamMetric(String CELL_BARCODE, int SPLIT_BAM_INDEX, File BAM) {
-            this.CELL_BARCODE = CELL_BARCODE;
-            this.SPLIT_BAM_INDEX = SPLIT_BAM_INDEX;
-            this.BAM = BAM;
+            super(CELL_BARCODE, SPLIT_BAM_INDEX, BAM);
         }
     }
 
-        private void writeManifest(final File manifest,
-                                   final Map<String, Integer> cellBarcodeIndexMap,
-                                   final List<SAMFileInfo> writerInfoList) {
-            MetricsFile<CellBarcodeSplitBamMetric, Integer> metricsFile = getMetricsFile();
-            for (final Map.Entry<String, Integer> entry : cellBarcodeIndexMap.entrySet()) {
-                final Integer fileIndex = entry.getValue();
-                metricsFile.addMetric(new CellBarcodeSplitBamMetric(entry.getKey(), fileIndex,
-                        writerInfoList.get(fileIndex).samFile));
-            }
-            final BufferedWriter writer = IOUtil.openFileForBufferedWriting(manifest);
-            metricsFile.write(writer);
-            try {
-                writer.close();
-            } catch (IOException e) {
-                throw new RuntimeIOException("Exception writing " + manifest.getAbsolutePath(), e);
-            }
-        }
-
-    private String getOutputNameRoot() {
-        String outputName = OUTPUT.getName().replaceAll("\\" + BAM_EXTENSION + "$", "");
-
-        String outputNameRoot;
-        int index = outputName.indexOf(OUTPUT_SLUG);
-        if (index < 0) {
-            outputNameRoot = outputName;
-        } else if (index == 0) {
-            outputNameRoot = "split";
-        } else {
-            outputNameRoot = outputName.substring(0, index);
-        }
-        outputNameRoot = outputNameRoot.replaceAll("\\.+$", "");
-
-        return outputNameRoot;
-    }
-
-    private void writeOutputList(final List<SAMFileInfo> writerInfoList) {
-        final File listFile = (OUTPUT_LIST == null)
-            ? new File(OUTPUT.getParent(), getOutputNameRoot() + BAM_LIST_EXTENSION)
-            : OUTPUT_LIST;
-        final PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(listFile));
-
-        for (SAMFileInfo writerInfo : writerInfoList) {
-            out.println(writerInfo.getSamFile().toString());
-        }
-
-        out.close();
-    }
-
-    public static class SplitBamSummaryMetric
-            extends MetricBase {
-        public long MEAN;
-        public long VARIANCE;
-
+    // For backward compatibility with old metrics files
+    @SuppressWarnings("unused")
+    static class SplitBamSummaryMetric
+    extends org.broadinstitute.dropseqrna.utils.SplitBamSummaryMetric {
         public SplitBamSummaryMetric(long MEAN, long VARIANCE) {
-            this.MEAN = MEAN;
-            this.VARIANCE = VARIANCE;
+            super(MEAN, VARIANCE);
         }
 
         public SplitBamSummaryMetric() {
-        }
-    }
-
-
-    private void writeReport(final List<SAMFileInfo> writerInfoList) {
-        final MetricsFile<SplitBamSummaryMetric, Integer> metricsFile = new MetricsFile<>();
-
-        Histogram<Integer> readCountHistogram = new Histogram<>("SPLIT_INDEX", "READ_COUNT");
-        final double[] readCounts = new double[writerInfoList.size()];
-        for (int idx=0; idx<writerInfoList.size(); idx++) {
-            readCounts[idx] = writerInfoList.get(idx).getReadCount();
-            readCountHistogram.increment(idx, readCounts[idx]);
-        }
-        metricsFile.addMetric(new SplitBamSummaryMetric(StrictMath.round(StatUtils.mean(readCounts)), StrictMath.round(StatUtils.variance(readCounts))));
-        metricsFile.addHistogram(readCountHistogram);
-        final File reportFile = (REPORT == null)
-                ? new File(OUTPUT.getParent(), getOutputNameRoot() + BAM_REPORT_EXTENSION)
-                : REPORT;
-        metricsFile.write(reportFile);
-    }
-
-    private void maybeDeleteIndex(final Path bam) {
-        if (DELETE_INPUT_INDICES) {
-            final Path index = SamFiles.findIndex(bam);
-            if (index != null && index.toFile().exists()) {
-                try {
-                    Files.delete(index);
-                } catch (IOException e) {
-                    log.error("Index file " + index.toAbsolutePath() + " could not be deleted.");
-                }
-            }
-        }
-    }
-
-    private void maybeDeleteBamFile(final Path bam) {
-        maybeDeleteIndex(bam);
-        if (DELETE_INPUTS) {
-            try {
-                Files.delete(bam);
-            } catch (IOException e) {
-                if (Files.isSymbolicLink(bam)) {
-                    // Delete symlink, but don't fail if there is a problem
-                    log.error(e, "Symbolic link " + bam.toAbsolutePath() + " could not be deleted");
-                } else {
-                    throw new RuntimeException("Error deleting " + bam, e);
-                }
-            }
-        }
-    }
-
-    private void deleteInputBamFiles() {
-        for (File bamFile : INPUT) {
-            Path bamPath = bamFile.toPath();
-            try {
-                while (Files.isSymbolicLink(bamPath)) {
-                    Path symlinkPath = bamPath;
-                    bamPath = Files.readSymbolicLink(bamPath);
-                    maybeDeleteBamFile(symlinkPath);
-                }
-/*              If input file is in the current directory and does not have a parent, this results in NPE.
-                I can't figure out the context in which the code below makes sense, but leaving it here in
-                case I'm missing something.
-                if (!bamPath.isAbsolute()) {
-                    bamPath = bamFile.toPath().getParent().resolve(bamPath);
-                }
-*/
-
-                maybeDeleteBamFile(bamPath);
-            } catch (IOException ex) {
-                throw new RuntimeException("Error deleting " + bamPath, ex);
-            }
-        }
-    }
-
-    private long dehumanizeFileSize(String fileSizeString) {
-        long conversionFactor = 1;
-
-        char suffix = fileSizeString.charAt(fileSizeString.length() - 1);
-        if (Character.isAlphabetic(suffix)) {
-            try {
-                conversionFactor = FileSizeSuffix.valueOf(String.valueOf(suffix).toLowerCase()).getSize();
-                fileSizeString = fileSizeString.substring(0, fileSizeString.length() -1);
-            } catch (IllegalArgumentException ex) {
-                throw new IllegalArgumentException("Error: " + suffix + " is not a valid file size suffix");
-            }
-        }
-
-        double size;
-        try {
-            size = Double.parseDouble(fileSizeString);
-        } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("Error: " + fileSizeString + " is not a valid number");
-        }
-
-        return (long) (conversionFactor * size);
-    }
-
-    private long getTotalBamSize(List<File> inputList) {
-        long size = 0;
-        try {
-            for (File file : inputList) {
-                size += Files.size(file.toPath());
-            }
-        } catch (IOException ex) {
-            throw new RuntimeException("Error computing the total BAM file size", ex);
-        }
-
-        return size;
-    }
-
-    private static class SAMFileInfo {
-        private final File samFile;
-        private final SAMFileWriter writer;
-        int readCount;
-
-        private SAMFileInfo(File samFile, SAMFileWriter writer, int readCount) {
-            this.samFile = samFile;
-            this.writer = writer;
-            this.readCount = readCount;
-        }
-
-        public File getSamFile() {
-            return samFile;
-        }
-
-        public SAMFileWriter getWriter() {
-            return writer;
-        }
-
-        public int getReadCount() {
-            return readCount;
-        }
-
-        public void incrementReadCount() {
-            readCount++;
         }
     }
 }

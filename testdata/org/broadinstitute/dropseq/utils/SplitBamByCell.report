@@ -1,5 +1,5 @@
 
-## METRICS CLASS	org.broadinstitute.dropseqrna.utils.SplitBamByCell$SplitBamSummaryMetric
+## METRICS CLASS	org.broadinstitute.dropseqrna.utils.SplitBamSummaryMetric
 MEAN	VARIANCE
 21036	90020730
 
