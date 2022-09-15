@@ -170,6 +170,7 @@
     	<package-command visibility="public" title="FilterBamByGeneFunction"/>
         <package-command visibility="public" title="FilterDge"/>
         <package-command visibility="public" title="CreateMetaCells"/>
+        <package-command visibility="public" title="SignTest"/>
         <package-command visibility="public" title="DownsampleTranscriptsAndQuantiles"/>
 
         <package-command visibility="public" title="TagReadWithRabiesBarcodes"/>
