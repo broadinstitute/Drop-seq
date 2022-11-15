@@ -285,8 +285,6 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 				List<SampleGenotypeProbabilities> probs = sampleGenotypeIterator.next();
 
 				String cell = probs.get(0).getCell();
-				if (cell.equals("AAGCGAGCATTAAAGG"))
-					log.info("STOP");
 				String bestDonor = bestDonorForCell.get(cell);
 				if (bestDonor == null)
 					throw new IllegalStateException("Cell [" + cell + "] has no best donor assignment in file.");
