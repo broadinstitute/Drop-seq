@@ -49,6 +49,7 @@ public class SplitBamByCellTest {
     private static final File EXPECTED_REPORT = new File ("testdata/org/broadinstitute/dropseq/utils/SplitBamByCell.report");
     private static final File EXPECTED_MANIFEST = new File ("testdata/org/broadinstitute/dropseq/utils/SplitBamByCell.split_bam_manifest");
     private static final File QUERYNAME_SORTED_BAM = new File("testdata/org/broadinstitute/dropseq/metrics/compute_umi_sharing.unmapped.sam");
+    private static final String GENE_FUNCTION_TAG = "gf";
 
     @Test
 	public void testDoWork() {
@@ -245,6 +246,119 @@ public class SplitBamByCellTest {
         args.add("SORT_ORDER=queryname");
         Assert.assertEquals(fileMerger.instanceMain(args.toArray(new String[0])), 0);
         TestUtils.assertSamRecordsSame(mergedOutputBAM, QUERYNAME_SORTED_BAM);
+    }
+
+    @Test
+    public void testSplitGeneThresholdDefault() {
+        final SplitBamByCell bamSplitter = new SplitBamByCell();
+
+        final File mergedOutputBAM = TestUtils.getTempReportFile("SplitBamByCell.merged", ".sam");
+        final File filterTestBAM = TestUtils.getTempReportFile("SplitBamByCell.filtered", ".sam");
+        mergedOutputBAM.deleteOnExit();
+        filterTestBAM.deleteOnExit();
+
+        bamSplitter.INPUT = Collections.singletonList(TEST_BAM);
+        bamSplitter.OUTPUT =
+                TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
+        bamSplitter.OUTPUT_LIST = TestUtils.getTempReportFile("SplitBamByCell.", ".list");
+        bamSplitter.NUM_OUTPUTS = 3;
+        bamSplitter.DELETE_INPUTS = false;
+        bamSplitter.OVERWRITE_EXISTING = true;
+        bamSplitter.REPORT = TestUtils.getTempReportFile("SplitBamByCell.", ".report");
+        bamSplitter.SPLIT_TAG = GENE_FUNCTION_TAG;
+        TestUtils.setInflaterDeflaterIfMacOs();
+        Assert.assertEquals(bamSplitter.doWork(), 0);
+
+        final List<File> splitBAMFileList = FileListParsingUtils.readFileList(bamSplitter.OUTPUT_LIST);
+        for (final File f : splitBAMFileList) {
+            f.deleteOnExit();
+        }
+
+        // Merge the split BAM files
+        final MergeSamFiles fileMerger = new MergeSamFiles();
+        final List<String> fileMergerArgs = new ArrayList<>();
+        for (final File splitBAMFilePath : splitBAMFileList) {
+            fileMergerArgs.add("INPUT=" + splitBAMFilePath.getAbsolutePath());
+        }
+        fileMergerArgs.add("OUTPUT=" + mergedOutputBAM.getAbsolutePath());
+        fileMergerArgs.add("USE_JDK_DEFLATER=" + TestUtils.isMacOs());
+        fileMergerArgs.add("SORT_ORDER=coordinate");
+
+        Assert.assertEquals(fileMerger.instanceMain(fileMergerArgs.toArray(new String[0])), 0);
+
+        // Filter the original BAM file (Uses a little bit of code+cpu here versus checking in megabytes of data to git)
+        final FilterBam fileFilter = new FilterBam();
+        final List<String> fileFilterArgs = new ArrayList<>();
+        fileFilterArgs.add("INPUT=" + TEST_BAM.getAbsolutePath());
+        fileFilterArgs.add("OUTPUT=" + filterTestBAM.getAbsolutePath());
+        fileFilterArgs.add("USE_JDK_DEFLATER=" + TestUtils.isMacOs());
+        fileFilterArgs.add("TAG_RETAIN=" + GENE_FUNCTION_TAG);
+
+        Assert.assertEquals(fileFilter.instanceMain(fileFilterArgs.toArray(new String[0])), 0);
+
+        TestUtils.assertSamRecordsSame(mergedOutputBAM, filterTestBAM);
+    }
+
+    @Test
+    public void testSplitGeneThresholdBadTag() {
+        final SplitBamByCell bamSplitter = new SplitBamByCell();
+
+        final File mergedOutputBAM = TestUtils.getTempReportFile("SplitBamByCell.merged.", ".sam");
+        mergedOutputBAM.deleteOnExit();
+
+        bamSplitter.INPUT = Collections.singletonList(TEST_BAM);
+        bamSplitter.OUTPUT =
+                TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
+        bamSplitter.OUTPUT_LIST = TestUtils.getTempReportFile("SplitBamByCell.", ".list");
+        bamSplitter.NUM_OUTPUTS = 3;
+        bamSplitter.DELETE_INPUTS = false;
+        bamSplitter.OVERWRITE_EXISTING = true;
+        bamSplitter.REPORT = TestUtils.getTempReportFile("SplitBamByCell.", ".report");
+        bamSplitter.SPLIT_TAG = "BD"; // any tag that isn't present in the test BAM
+        TestUtils.setInflaterDeflaterIfMacOs();
+        boolean exceptionThrown = false;
+        try {
+            bamSplitter.doWork();
+        } catch (final IllegalArgumentException e) {
+            exceptionThrown = true;
+        }
+        Assert.assertTrue(exceptionThrown);
+    }
+
+    @Test(dataProvider = "testSplitGeneThresholdFailDataProvider")
+    public void testSplitGeneThresholdFail(final Double passingReadThreshold) {
+        final SplitBamByCell bamSplitter = new SplitBamByCell();
+
+        final File mergedOutputBAM = TestUtils.getTempReportFile("SplitBamByCell.merged.", ".sam");
+        mergedOutputBAM.deleteOnExit();
+
+        bamSplitter.INPUT = Collections.singletonList(TEST_BAM);
+        bamSplitter.OUTPUT =
+                TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
+        bamSplitter.OUTPUT_LIST = TestUtils.getTempReportFile("SplitBamByCell.", ".list");
+        bamSplitter.NUM_OUTPUTS = 3;
+        bamSplitter.DELETE_INPUTS = false;
+        bamSplitter.OVERWRITE_EXISTING = true;
+        bamSplitter.REPORT = TestUtils.getTempReportFile("SplitBamByCell.", ".report");
+        bamSplitter.SPLIT_TAG = GENE_FUNCTION_TAG;
+        bamSplitter.PASSING_READ_THRESHOLD = passingReadThreshold;
+        TestUtils.setInflaterDeflaterIfMacOs();
+        boolean exceptionThrown = false;
+        try {
+            bamSplitter.doWork();
+        } catch (final IllegalArgumentException e) {
+            exceptionThrown = true;
+        }
+        Assert.assertTrue(exceptionThrown);
+    }
+
+    @DataProvider
+    public Object[][] testSplitGeneThresholdFailDataProvider() {
+        return new Object[][] {
+                {-1d},
+                {0.9},
+                {60000d},
+        };
     }
 
     @Test(dataProvider = "testDeleteInputsAndDefaultOutputsDataProvider")

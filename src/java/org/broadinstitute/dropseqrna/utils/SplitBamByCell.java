@@ -50,6 +50,13 @@ extends AbstractSplitBamClp {
             "files, instead of grouping by cell barcode.")
     public String SPLIT_TAG="XC";
 
+    @Argument(doc =
+            "If set to a a value < 1 the program will fail if fewer than this fraction of reads contain SPLIT_TAG." +
+                    " If set to a value >= 1, the program will fail if fewer than this many reads contain SPLIT_TAG." +
+                    " If set to a negative value then every read must contain SPLIT_TAG.",
+            optional = true)
+    public double PASSING_READ_THRESHOLD = 0.1;
+
     @Override
     protected String[] customCommandLineValidation() {
         final ArrayList<String> list = new ArrayList<>();
@@ -90,16 +97,63 @@ extends AbstractSplitBamClp {
     }
 
     private void splitBAMsByTag() {
-
+        long numReads = 0;
+        long numCellBarcodes = 0;
+        final boolean requireCellBarcodes = PASSING_READ_THRESHOLD < 0;
         for (SAMRecord r: new IterableAdapter<>(headerAndIterator.iterator)) {
             progressLogger.record(r);
 
             final String cellBarcode = r.getStringAttribute(SPLIT_TAG);
+            numReads++;
             if (cellBarcode == null) {
-                throw new IllegalArgumentException("Read " + r.getReadName() + " does not contain the attribute " + SPLIT_TAG);
+                if (requireCellBarcodes) {
+                    throw new IllegalArgumentException(
+                            "Read " + r.getReadName() + " does not contain the attribute " + SPLIT_TAG
+                    );
+                }
+            } else {
+                final int writerIdx = getWriterIdxForCellBarcode(cellBarcode);
+                writeRecord(writerIdx, r);
+                numCellBarcodes++;
             }
-            int writerIdx = getWriterIdxForCellBarcode(cellBarcode);
-            writeRecord(writerIdx, r);
+        }
+
+        checkThreshold(numReads, numCellBarcodes);
+    }
+
+    private void checkThreshold(long numReads, long numCellBarcodes) {
+        log.info(
+                String.format(
+                        "Processed %d reads of which %d (%.2g) contained the attribute %s and %d (%.2g) did not",
+                        numReads,
+                        numCellBarcodes,
+                        (double) numCellBarcodes / numReads,
+                        SPLIT_TAG,
+                        numReads - numCellBarcodes,
+                        (double) (numReads - numCellBarcodes) / numReads
+                )
+        );
+        if (0 <= PASSING_READ_THRESHOLD && PASSING_READ_THRESHOLD < 1) {
+            double pctPassingReads = (double) numCellBarcodes / numReads;
+            if (pctPassingReads < PASSING_READ_THRESHOLD) {
+                throw new IllegalArgumentException(
+                        String.format(
+                                "%.2f of reads contained the attribute %s but the threshold is %s",
+                                pctPassingReads,
+                                SPLIT_TAG,
+                                PASSING_READ_THRESHOLD
+                        )
+                );
+            }
+        } else if (numCellBarcodes < PASSING_READ_THRESHOLD) {
+            throw new IllegalArgumentException(
+                    String.format(
+                            "%d reads contained the attribute %s but the threshold is %d",
+                            numCellBarcodes,
+                            SPLIT_TAG,
+                            (long) PASSING_READ_THRESHOLD
+                    )
+            );
         }
     }
 
