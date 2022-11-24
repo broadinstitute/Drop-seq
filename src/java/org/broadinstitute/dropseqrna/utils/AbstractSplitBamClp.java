@@ -55,7 +55,7 @@ import java.util.Map;
 public abstract class AbstractSplitBamClp extends CommandLineProgram {
 
     protected static final Log log = Log.getInstance(AbstractSplitBamClp.class);
-    protected ProgressLogger progressLogger = new ProgressLogger(log);
+    protected ProgressLogger progressLogger = new ProgressLogger(log, 10000000);
 
 
     @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM files to analyze.  They must all have the same sort order", minElements = 1)
