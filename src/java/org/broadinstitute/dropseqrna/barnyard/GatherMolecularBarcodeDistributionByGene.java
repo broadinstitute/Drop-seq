@@ -89,7 +89,7 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 		IOUtil.assertFileIsWritable(OUTPUT);
 		BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT);
 
-		writePerTranscriptHeader(out);
+		writePerTranscriptHeader(out, LEGACY_COLUMN_LABELS);
 
 		Set<String> cellBarcodes=new HashSet<>(new BarcodeListRetrieval().getCellBarcodes(this.INPUT, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
                 this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
@@ -122,7 +122,7 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	}
 
 
-	private void writePerTranscriptStats (final String gene, final String cellBarcode, final ObjectCounter<String> counts, final BufferedWriter out) {
+	public static void writePerTranscriptStats (final String gene, final String cellBarcode, final ObjectCounter<String> counts, final BufferedWriter out) {
 		for (String key: counts.getKeys()) {
 			int value = counts.getCountForKey(key);
 			String [] line ={cellBarcode, gene, key, value+""};
@@ -132,9 +132,9 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	}
 
 
-	private void writePerTranscriptHeader(final BufferedWriter out) {
+	public static void writePerTranscriptHeader(final BufferedWriter out, final boolean legacyColumnLabels) {
 		final String [] header;
-		if (LEGACY_COLUMN_LABELS) {
+		if (legacyColumnLabels) {
 			header = new String[]{"Cell Barcode", "Gene", "Molecular_Barcode", "Num_Obs"};
 		} else {
 				header = new String[]{COLUMN_LABEL.CELL_BARCODE.toString(), COLUMN_LABEL.GENE.toString(),
