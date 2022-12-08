@@ -127,9 +127,9 @@ public class FunctionalDataProcessor {
     		for (FunctionalData fd: data) {
     			List<FunctionalData> l = map.get(fd.getGene());
     			if (l==null) {
-    				l = new ArrayList<FunctionalData>();
-    				l.add(fd);
+    				l = new ArrayList<FunctionalData>();    				
     			}
+    			l.add(fd);
     			map.put(fd.getGene(), l);
     		}
 
@@ -205,7 +205,7 @@ public class FunctionalDataProcessor {
     			if (fd==null) {
     				fd = new ArrayList<FunctionalData>();
     				originalDataByGene.put(sf.getGene(), fd);
-    			}
+    			}    			
     			fd.add(sf);
     		}
 			// test by gene

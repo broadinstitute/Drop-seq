@@ -230,7 +230,66 @@ public class FunctionalDataProcessorTest {
 
 	}
 
+	// Demonstrate interaction of a coding and intronic gene on the same read, with coding+intronic interpretation.
+	@Test
+	public void testExample1() {
+		LocusFunction [] acceptedFunctions = {LocusFunction.CODING, LocusFunction.UTR, LocusFunction.INTRONIC};
+		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		String [] genes = {"A", "A", "B", "C"};
+		String [] strands = {"+", "+", "+", "-"};
+		LocusFunction [] locusFunctions = {LocusFunction.CODING, LocusFunction.INTRONIC, LocusFunction.INTRONIC, LocusFunction.INTRONIC};
 
+		// Read on the + strand.
+		List<FunctionalData> fdList = fdp.getFilteredFunctionalData(genes, strands, locusFunctions, false);
+		Assert.assertEquals(fdList.size(), 2);
 
+		// once you filter to the preferred annotations, only the coding gene is retained.
+		
+		fdList = fdp.filterToPreferredAnnotations(fdList);
+		Assert.assertEquals(fdList.size(), 1);
+
+	}
+
+	// Demonstrate interaction of a coding and intronic gene on the same read, with intronic interpretation.
+	@Test
+	public void testExample2() {
+		
+		LocusFunction [] acceptedFunctions = {LocusFunction.INTRONIC};
+		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		String [] genes = {"A", "A", "B", "C"};
+		String [] strands = {"+", "+", "+", "-"};
+		LocusFunction [] locusFunctions = {LocusFunction.CODING, LocusFunction.INTRONIC, LocusFunction.INTRONIC, LocusFunction.INTRONIC};
+
+		// Read on the + strand.
+		// Because the read overlaps Gene A on both the intronic and exonic portions, the gene annotation is discarded.
+		List<FunctionalData> fdList = fdp.getFilteredFunctionalData(genes, strands, locusFunctions, false);
+		Assert.assertEquals(fdList.size(), 1);
+
+		// once you filter to the preferred annotations, only the coding gene is retained.		
+		fdList = fdp.filterToPreferredAnnotations(fdList);
+		Assert.assertEquals(fdList.size(), 1);
+
+	}
+
+	// Demonstrate interaction of a coding and intronic gene on the same read, with coding interpretation.
+	@Test
+	public void testExample3() {
+		
+		LocusFunction [] acceptedFunctions = {LocusFunction.CODING, LocusFunction.UTR};
+		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		String [] genes = {"A", "A", "B", "C"};
+		String [] strands = {"+", "+", "+", "-"};
+		LocusFunction [] locusFunctions = {LocusFunction.CODING, LocusFunction.INTRONIC, LocusFunction.INTRONIC, LocusFunction.INTRONIC};
+
+		// Read on the + strand.
+		// Because the read overlaps Gene A on both the intronic and exonic portions, the gene annotation is discarded.
+		List<FunctionalData> fdList = fdp.getFilteredFunctionalData(genes, strands, locusFunctions, false);
+		Assert.assertEquals(fdList.size(), 0);
+
+		// once you filter to the preferred annotations, only the coding gene is retained.		
+		fdList = fdp.filterToPreferredAnnotations(fdList);
+		Assert.assertEquals(fdList.size(), 0);
+
+	}
 
 }
