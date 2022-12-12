@@ -178,6 +178,7 @@
         <package-command visibility="public" title="BipartiteRabiesVirusCollapse"/>
     	<package-command visibility="public" title="AssignCellsToSamples"/>
     	<package-command visibility="public" title="DetectDoublets"/>
+    	<package-command visibility="public" title="Convert10xToSnapTools"/>
     	    	
     </target>
 
