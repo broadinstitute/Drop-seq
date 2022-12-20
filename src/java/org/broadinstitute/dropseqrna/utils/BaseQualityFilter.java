@@ -67,7 +67,7 @@ public class BaseQualityFilter {
 		return this.baseQualityThrehsold;
 	}
 
-	public class FailedBaseMetric {
+	public static class FailedBaseMetric {
 		List<Integer> data = null;
 
 		public FailedBaseMetric (final Integer length){
@@ -77,9 +77,19 @@ public class BaseQualityFilter {
 		}
 
 		public void addFailedBase(final int numBasesFailed) {
-			Integer i = data.get(numBasesFailed);
-			i++;
-			data.set(numBasesFailed, i);
+			addMultipleFailedBase(numBasesFailed, 1);
+		}
+
+		/**
+		 * Increment numReads for the given number of failed bases by an arbitrary number
+		 * @param numBasesFailed
+		 * @param numReads
+		 */
+		public void addMultipleFailedBase(final int numBasesFailed, final int numReads) {
+			while (getLength() <= numBasesFailed) {
+				data.add(0);
+			}
+			data.set(numBasesFailed, data.get(numBasesFailed) + numReads);
 		}
 
 		public int getNumFailedBases(final int position) {
@@ -88,6 +98,15 @@ public class BaseQualityFilter {
 
 		public int getLength() {
 			return (data.size());
+		}
+
+		public void merge(final FailedBaseMetric other) {
+			while (getLength() < other.getLength()) {
+				data.add(0);
+			}
+			for (int i = 0; i < other.getLength(); ++i) {
+				addMultipleFailedBase(i, other.getNumFailedBases(i));
+			}
 		}
 
 	}

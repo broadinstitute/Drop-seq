@@ -45,6 +45,9 @@ import java.util.List;
         programGroup = DropSeq.class)
 public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 
+	public static final String NUM_FAILED_BASES_COLUMN = "num_failed_bases";
+	public static final String NUM_BARCODES_COLUMN = "num_barcodes";
+
 	private final Log log = Log.getInstance(TagBamWithReadSequenceExtended.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
@@ -246,9 +249,9 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 	}
 
 
-	private void writeOutput (final FailedBaseMetric result, final File output) {
+	public static void writeOutput (final FailedBaseMetric result, final File output) {
 		BufferedWriter writer = OutputWriterUtil.getWriter(output);
-		String [] header = {"num_failed_bases", "num_barcodes"};
+		String [] header = {NUM_FAILED_BASES_COLUMN, NUM_BARCODES_COLUMN};
 		String h = StringUtils.join(header, "\t");
 		OutputWriterUtil.writeResult(h, writer);
 		for (int i=0; i<result.getLength(); i++) {

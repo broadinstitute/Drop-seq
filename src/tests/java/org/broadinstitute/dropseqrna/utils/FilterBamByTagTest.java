@@ -40,7 +40,7 @@ public class FilterBamByTagTest {
 	private static final int PAIRED_READS_REJECTED = 8;
 	private static final int UNPAIRED_READS_ACCEPTED = 6;
 	private static final int UNPAIRED_READS_REJECTED = 4;
-	private static final File PAIRED_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged.bam");
+	static final File PAIRED_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged.bam");
 	private static final File UNPAIRED_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged.bam");
 	private static final File PAIRED_INPUT_FILE_FILTERED=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged_filtered.bam");
 	private static final File UNPAIRED_INPUT_FILE_FILTERED=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged_filtered.bam");

@@ -37,6 +37,7 @@ import java.util.Map;
 
 public class TagBamWithReadSequenceExtendedTest {
 
+    private static File EXPECTED_SUMMARY = new File("testdata/org/broadinstitute/dropseq/utils/paired_reads.tagged_Cellular.bam_summary.txt");
 	@Test
 	public void testHardClip () {
 		SAMRecord r = new SAMRecord(null);
@@ -298,5 +299,18 @@ public class TagBamWithReadSequenceExtendedTest {
             }
         }
         return ret.toArray(new Object[ret.size()][]);
+    }
+
+    @Test
+    public void testSummary() {
+        final TagBamWithReadSequenceExtended clp = new TagBamWithReadSequenceExtended();
+        clp.INPUT = FilterBamByTagTest.PAIRED_INPUT_FILE;
+        clp.OUTPUT = TestUtils.getTempReportFile("tagged.", ".sam");
+        clp.SUMMARY = TestUtils.getTempReportFile("TagBamWithReadSequenceExtended.", ".tag_summary.txt");
+        clp.BASE_RANGE = "1-12";
+        clp.BARCODED_READ=1;
+        clp.TAG_NAME = "XC";
+        Assert.assertEquals(clp.doWork(), 0);
+        Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_SUMMARY, clp.SUMMARY));
     }
 }
