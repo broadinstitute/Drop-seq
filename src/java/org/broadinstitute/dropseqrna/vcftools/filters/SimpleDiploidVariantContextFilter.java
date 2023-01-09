@@ -103,6 +103,11 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 
 	@Override
 	public boolean filterOut(final VariantContext site) {
+		// Remove variants with symbolic alleles.
+		// These would not pass the isCanonicalAllele test later.
+		if (site.hasSymbolicAlleles()) {
+			return true;
+		}
 		// if requested, filter out any "filtered" site.
 		if (filterFilterFlagedVariants && site.isFiltered()) {
 			if (verbose) log.info("Rejecting variant site filtered "+site.toStringWithoutGenotypes());
