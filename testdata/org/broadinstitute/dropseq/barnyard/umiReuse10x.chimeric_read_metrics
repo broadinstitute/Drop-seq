@@ -1,0 +1,6 @@
+
+## METRICS CLASS	org.broadinstitute.dropseqrna.priv.barnyard.MarkChimericReads$MarkChimericReadMetrics
+NUM_UMIS	NUM_MARKED_UMIS	NUM_T_RICH_UMIS	NUM_REUSED_UMIS
+164	1	0	1	
+
+

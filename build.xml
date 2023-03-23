@@ -139,6 +139,7 @@
         <package-command visibility="public" title="BaseDistributionAtReadPosition"/>
         <package-command visibility="public" title="TagReadWithInterval"/>
         <package-command visibility="public" title="DigitalExpression"/>
+    	<package-command visibility="public" title="MarkChimericReads"/>
         <package-command visibility="public" title="GatherMolecularBarcodeDistributionByGene"/>
         <package-command visibility="public" title="SingleCellRnaSeqMetricsCollector"/>
         <package-command visibility="public" title="PolyATrimmer"/>
