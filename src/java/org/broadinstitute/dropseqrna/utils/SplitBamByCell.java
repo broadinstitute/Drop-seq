@@ -37,7 +37,9 @@ import java.util.ArrayList;
 @CommandLineProgramProperties(
         summary = "Splits input BAM file(s) into NUM_OUTPUTS output BAM files, " +
                 "in such a way that all the reads for each cell barcode are in exactly one output BAM file.\n" +
-                "Option NUM_OUTPUTS is either supplied explicitly, or computed by dividing the total input BAM file(s) size by the value of TARGET_BAM_SIZE.\n" +
+                "Option NUM_OUTPUTS is either supplied explicitly, or computed by dividing the total input BAM file(s) size by the value of TARGET_BAM_SIZE.\n\n" +
+                "A typical invocation would look like:\n" +
+                "SplitBamByCell I=input.bam OUTPUT=output.__SPLITNUM__.bam OUTPUT_LIST=output.bam_list REPORT=output.split_report.txt NUM_OUTPUTS=25\n\n" +
                 "When submitting this command to UGER:\n" +
                 "* memory: -m 16G should be sufficient.\n" +
                 "* time:   3 minutes/GB of input BAM should be enough.",

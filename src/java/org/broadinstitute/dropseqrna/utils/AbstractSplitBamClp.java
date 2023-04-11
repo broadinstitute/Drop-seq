@@ -86,8 +86,8 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
     @Argument(optional=true, shortName="W", doc="Overwrite existing files. Default: fail if any files to be created already exist.")
     public boolean OVERWRITE_EXISTING = false;
 
-    @Argument(optional=true, shortName="D", doc="Delete input BAM(s) after splitting them. Default: delete input BAM(s).")
-    public boolean DELETE_INPUTS = true;
+    @Argument(optional=true, shortName="D", doc="Delete input BAM(s) after splitting them. Default: do not delete input BAM(s).")
+    public boolean DELETE_INPUTS = false;
 
     @Argument(optional = true, shortName = "DI", doc="Delete BAM indices corresponding to input BAMs.  Default: DELETE_INPUTS setting.")
     public Boolean DELETE_INPUT_INDICES;
