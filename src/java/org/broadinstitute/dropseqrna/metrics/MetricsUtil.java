@@ -27,6 +27,6 @@ import htsjdk.samtools.metrics.StringHeader;
 
 public class MetricsUtil {
  public static final StringHeader PCT_COMMENT =
-         new StringHeader("Note that PCT_ columns are written as fractions, so multiply by 100 to get the " +
+         new StringHeader("Note that PCT_ columns are written as fractions, so multiply by 100 to get " +
                  "percentages.");
 }
