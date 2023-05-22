@@ -142,6 +142,7 @@ public class CountUnmatchedSampleIndices
 
         // Create metrics beans for the most frequent sample indices, and write to file.
         MetricsFile<UnmatchedSampleIndexMetrics, Integer> outFile = getMetricsFile();
+        outFile.addHeader(MetricsUtil.PCT_COMMENT);
         for (final IndexAndCount indexAndCount: indexAndCounts.descendingSet()) {
             outFile.addMetric(new UnmatchedSampleIndexMetrics(indexAndCount.index, indexAndCount.count,
                     indexAndCount.count/(double)totalUnmatchedReads,
