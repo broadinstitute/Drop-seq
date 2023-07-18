@@ -120,6 +120,8 @@ public class SampleGenotypeProbabilitiesIterator implements CloseableIterator<Sa
 	 * Generates a SampleGenotypeProbabilities for a single SNP/cell.
 	 * If there are multiple genes, this picks the gene that has the most pileup objects(molecular barcodes)
 	 * This reduces a list of pileup objects to a single probabilities object.
+	 * This solves the problem where reads could be assigned to multiple genes and the reads were cloned/split from the compound assignment of A/B to two reads with 1 gene each
+	 * by selecting the gene with the most support, which gets rid of the "double counting" of reads issue that would otherwise arise, and aggregating results across UMIs of the "best" gene.
 	 * @return
 	 */
 	SampleGenotypeProbabilities nextPickBestGene() {
