@@ -92,7 +92,7 @@ public class SNPInfoCollection {
 	}
 
 	/**
-	 * For a given VCF iterator, extract the interval list, average genotype quality (GQ), reference and alternatee alleles
+	 * For a given VCF iterator, extract the interval list, average genotype quality (GQ), reference and alternate alleles
 	 * @param vcfIterator The iterator to extract VCF records from
 	 * @param sd The sequence dictionary to use for the interval list
 	 * @param log Write logging to this object if requested.  Set to null to disable logging.
