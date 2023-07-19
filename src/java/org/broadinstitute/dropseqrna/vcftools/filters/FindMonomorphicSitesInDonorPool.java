@@ -32,6 +32,8 @@ import java.util.Iterator;
 import java.util.List;
 
 import htsjdk.samtools.util.*;
+
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
 import org.broadinstitute.dropseqrna.censusseq.CensusSeqUtils;
 import org.broadinstitute.dropseqrna.utils.VariantContextProgressLoggerIterator;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
@@ -95,9 +97,7 @@ public class FindMonomorphicSitesInDonorPool {
 	 * Finds a list of SNP intervals that are homozygous (same direction) in all donors in the pool
 	 * as defined by the sampleFile.
 	 */
-	private void getSitesRefInPool () {
-
-		SAMSequenceDictionary sd = vcfReader.getFileHeader().getSequenceDictionary();
+	private void getSitesRefInPool () { 
 
 		// set up the variant writer to write to either the output file OR a temp file.
 		// write to a temp directory on the first pass so we can iterate on it
@@ -118,10 +118,10 @@ public class FindMonomorphicSitesInDonorPool {
 
 		// last argument is a bit funky. If you aren't using the common SNP
 		// analysis, you need to preserve the full interval names.
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(vcfIterator, sd, log, vcfWriter, true);
+		final SNPInfoCollection snpIntervals = new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), true, vcfWriter, log);				
 		vcfIterator.close();
 		vcfWriter.close();
-		this.snpIntervals=snpIntervals;
+		this.snpIntervals=snpIntervals.getIntervalList();
 	}
 
 	/**

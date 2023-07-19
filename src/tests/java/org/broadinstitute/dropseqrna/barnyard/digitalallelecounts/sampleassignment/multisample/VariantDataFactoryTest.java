@@ -29,6 +29,7 @@ import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
 
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.AssignCellsToSamples;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.SampleGenotypeProbabilities;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.AllPairedSampleAssignmentsForCell;
@@ -57,8 +58,8 @@ public class VariantDataFactoryTest {
 	private static final Log log = Log.getInstance(VariantDataFactoryTest.class);
 
 
-	@Test(enabled=true)
-	public void bigTest() {
+	@Test(enabled=true) 
+	public void bigTest() {  
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
 		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
@@ -69,7 +70,7 @@ public class VariantDataFactoryTest {
 		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);
 		List<String> vcfSamples =SampleAssignmentVCFUtils.getVCFSamples(vcfReader, null);
 
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(this.VCF, vcfSamples, false, assigner.GQ_THRESHOLD, 0, null, null);
+		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(this.VCF, vcfSamples, false, assigner.GQ_THRESHOLD, 0, null, null, false, null);
 		final PeekableIterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, false, assigner.GQ_THRESHOLD, 0.5, null, null);
 		List<String> cellBarcodes = assigner.getCellBarcodes();
 		PeekableIterator<List<SampleGenotypeProbabilities>> sampleGenotypeIterator = assigner.prepareIterator(snpIntervals, cellBarcodes);
@@ -85,9 +86,9 @@ public class VariantDataFactoryTest {
 
 		AllPairedSampleAssignmentsForCell result = fodm.findBestDonorPair("HUES53", vcfSamples, false);
 		SamplePairAssignmentForCell best = result.getBestAssignment();
-		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.80926731658451, 0.01);
-		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-12.0398723515404, 0.01);
-		Assert.assertEquals(best.getDoubletLikelihood(),-8.72621729107288, 0.01);
+		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.50823732092053, 0.01);
+		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-11.738842355876386, 0.01);
+		Assert.assertEquals(best.getDoubletLikelihood(),-8.425187288261675, 0.01);
 		Assert.assertEquals(best.getMixture(), 0.643, 0.01);
 	}
 
@@ -103,7 +104,7 @@ public class VariantDataFactoryTest {
 		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);
 		List<String> vcfSamples =SampleAssignmentVCFUtils.getVCFSamples(vcfReader, null);
 
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(this.VCF, vcfSamples, false, assigner.GQ_THRESHOLD, 0, null, null);
+		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(this.VCF, vcfSamples, false, assigner.GQ_THRESHOLD, 0, null, null, false, null);
 		final PeekableIterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, false, assigner.GQ_THRESHOLD, 0.5, null, null);
 		List<String> cellBarcodes = assigner.getCellBarcodes();
 		PeekableIterator<List<SampleGenotypeProbabilities>> sampleGenotypeIterator = assigner.prepareIterator(snpIntervals, cellBarcodes);
@@ -119,9 +120,9 @@ public class VariantDataFactoryTest {
 
 		AllPairedSampleAssignmentsForCell result = fodm.findBestDonorPair("HUES53", vcfSamples, false);
 		SamplePairAssignmentForCell best = result.getBestAssignment();
-		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.80926731658451, 0.01);
-		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-12.0398723515404, 0.01);
-		Assert.assertEquals(best.getDoubletLikelihood(),-8.72621729107288, 0.01);
+		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.50823732092053, 0.01);
+		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-11.738842355876386, 0.01);
+		Assert.assertEquals(best.getDoubletLikelihood(),-8.425187288261675, 0.01);
 		Assert.assertEquals(best.getMixture(), 0.643, 0.01);
 	}
 

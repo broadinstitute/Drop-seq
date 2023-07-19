@@ -509,7 +509,7 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 		if (this.HET_SNPS_ONLY)
 			vcfIterator = new HetSNPFilter(vcfIterator);
 
-		SNPInfoCollection result = new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), this.log);
+		SNPInfoCollection result = new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), false, null, log);
 		return (result);
 	}
 

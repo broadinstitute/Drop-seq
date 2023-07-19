@@ -15,6 +15,7 @@ import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.StringUtil;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 
 /**
  * Given a VCF Iterator, gather both the interval for each SNP, as well as the reference and alternate allele, and the average genotype quality of the donors.
@@ -90,15 +91,21 @@ public class SNPInfoCollection {
 	public Map<Interval, Double> getAverageGQ() {
 		return averageGQ;
 	}
+	
+	public boolean isEmpty() {
+		return this.intervalList.getIntervals().isEmpty();
+	}
 
 	/**
 	 * For a given VCF iterator, extract the interval list, average genotype quality (GQ), reference and alternate alleles
 	 * @param vcfIterator The iterator to extract VCF records from
 	 * @param sd The sequence dictionary to use for the interval list
+	 * @param preserveIntervalNames Set to true to use the genotype site ID (via site.getID) as the interval name
+	 * @param vcfWriter (Optional) write the VCF records from the iterator to this file.  Set to null to ignore.
 	 * @param log Write logging to this object if requested.  Set to null to disable logging.
 	 */
-	public SNPInfoCollection (final Iterator<VariantContext> vcfIterator, final SAMSequenceDictionary sd, final Log log) {
-		refAllele=new HashMap<>();
+	public SNPInfoCollection (final Iterator<VariantContext> vcfIterator, final SAMSequenceDictionary sd, boolean preserveIntervalNames, final VariantContextWriter vcfWriter, final Log log) {
+		refAllele=new HashMap<>(); 
 		altAllele=new HashMap<>();
 		averageGQ = new HashMap<>();
 		
@@ -112,7 +119,12 @@ public class SNPInfoCollection {
 		
 		while (vcfIterator.hasNext()) {
 			VariantContext site = vcfIterator.next();
-			Interval variant = new Interval(site.getContig(), site.getStart(),site.getEnd(), false, site.getID());
+			
+			Interval variant;
+			if (preserveIntervalNames)
+				variant = new Interval(site.getContig(), site.getStart(),site.getEnd(), true, site.getID());
+			else
+				variant = new Interval(site.getContig(), site.getStart(),site.getEnd());
 			result.add(variant);
 			
 			String ref = alleleCache.intern(site.getReference().getBaseString());			
@@ -123,6 +135,11 @@ public class SNPInfoCollection {
 			
 			double gqAverage = site.getGenotypes().stream().mapToInt(x -> x.getGQ()).average().orElse(-1);
 			averageGQ.put(variant, gqAverage);
+			
+			// optionally write the VCF record to the writer
+			if (vcfWriter!=null)
+				vcfWriter.add(site);
+			
 		}
 		if (log!=null) log.info("Found [" + result.getIntervals().size() +"] potential SNP sites to query.");
 		this.intervalList=result;

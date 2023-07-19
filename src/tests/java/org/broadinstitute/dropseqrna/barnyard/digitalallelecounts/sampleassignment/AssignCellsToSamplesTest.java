@@ -30,6 +30,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
 
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.AssignCellsToSamples;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.CellCollectionSampleLikelihoodCollection;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.CellSampleLikelihoodCollection;
@@ -210,7 +211,7 @@ public class AssignCellsToSamplesTest {
 	// don't add missing values.
 	public void testprocessSNP () {
 
-		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		AssignCellsToSamples assigner = new AssignCellsToSamples();  
 		assigner.GQ_THRESHOLD=30;
 		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
 		assigner.VCF=this.VCF;
@@ -218,7 +219,7 @@ public class AssignCellsToSamplesTest {
 
 		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);
 		List<String> vcfSamples =assigner.getVCFSamples(vcfReader);
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(this.VCF, vcfSamples, false, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null);
+		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(this.VCF, vcfSamples, false, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null, false, null);
 
 		final PeekableIterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, assigner.RETAIN_MONOMORPIC_SNPS, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null);		
 		List<String> cellBarcodes= assigner.getCellBarcodes();
@@ -275,7 +276,7 @@ public class AssignCellsToSamplesTest {
 
 		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);
 		List<String> vcfSamples =assigner.getVCFSamples(vcfReader);
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(this.VCF, vcfSamples, false, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null);
+		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(this.VCF, vcfSamples, false, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null, false, null);
 		final PeekableIterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, assigner.RETAIN_MONOMORPIC_SNPS, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null);
 		List<String> cellBarcodes= assigner.getCellBarcodes();
 		

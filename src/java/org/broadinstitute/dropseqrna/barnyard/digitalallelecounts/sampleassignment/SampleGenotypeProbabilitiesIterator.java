@@ -73,7 +73,7 @@ public class SampleGenotypeProbabilitiesIterator implements CloseableIterator<Sa
 		// assert that the SNPUMIBasePileupIterator must be sorted in cell before gene order.
 		if (iter.getSortOrder()!=order)
 			throw new IllegalStateException("When constructing this object, the backing iterator must be sorted in the same order.");
-		this.editDistance=editDistance;
+		this.editDistance=editDistance; 
 
 		// group up all cells under a SNP.
 		GroupingIterator<SNPUMIBasePileup> groupingIterator=null;

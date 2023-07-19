@@ -44,7 +44,7 @@ import htsjdk.samtools.util.IterableOnceIterator;
 public abstract class CountChangingIteratorWrapper<T> extends IterableOnceIterator<T> implements CloseableIterator<T>{
 
     private final Iterator<T> underlyingIterator;
-    private final Queue<T> outputQueue = new LinkedList<>();
+    private final Queue<T> outputQueue = new LinkedList<>();  
 
     protected CountChangingIteratorWrapper(final Iterator<T> underlyingIterator) {
         this.underlyingIterator = underlyingIterator;

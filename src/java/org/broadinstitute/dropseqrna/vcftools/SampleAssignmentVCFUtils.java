@@ -32,6 +32,9 @@ import java.util.List;
 import java.util.Set;
 
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.GatherDigitalAlleleCounts;
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.AssignCellsToSamples;
 import org.broadinstitute.dropseqrna.utils.TransformingIterator;
 import org.broadinstitute.dropseqrna.utils.VariantContextProgressLoggerIterator;
 import org.broadinstitute.dropseqrna.vcftools.filters.CallRateVariantContextFilter;
@@ -59,8 +62,8 @@ import htsjdk.variant.vcf.VCFFileReader;
  *
  */
 public class SampleAssignmentVCFUtils {
-
-
+	
+	
 	/**
 	 * Since we iterate through the VCF once to establish an interval list of sites to query, and then once to look at genotypes,
 	 * have a 1 stop shop to set up the filtered iterator that handles all processing of VariantContext data.
@@ -72,7 +75,7 @@ public class SampleAssignmentVCFUtils {
      *
 	 */
 	public static PeekableIterator<VariantContext> getVCFIterator (final VCFFileReader vcfReader, final List<String> samples, final boolean retainMonomorphicSNPs, final int genotypeGCThreshold, final double fractionPassing,  final List<String> ignoredChromosomes, final Log log) {
-		Iterator<VariantContext> filteredIter=vcfReader.iterator();
+		Iterator<VariantContext> filteredIter=vcfReader.iterator(); 
 		List<String> finalSamples = samples;
 		if (samples.size()>0) {
 			finalSamples = validateSampleNamesInVCF(vcfReader, samples, log);
@@ -129,15 +132,21 @@ public class SampleAssignmentVCFUtils {
 	 * This is useful as it enforces how the BAM chromosomes are later sorted when the SampleGenotypeProbabilitiesIterator is created.
 	 * @param VCFFile The VCF File to parse
 	 * @param bamFile The BAM file to get a sequence dictionary for the IntervalList from.
+	 * @param preserveIntervalNames Set to true to use the genotype site ID (via site.getID) as the interval name
+	 * @param vcfWriter (Optional) write the VCF records from the iterator to this file.  Set to null to ignore.
 	 * @return An intervalList of variant locations to examine in the BAM file.
 	 */
-	public static IntervalList getSNPIntervals (final File vcfFile, final List<String> samples, final boolean retainMonomorphicSNPs, final int genotypeGCThreshold, final double fractionPassing, final List<String> ignoredChromosomes, final Log log) {
+	public static SNPInfoCollection getSNPInfoCollection (final File vcfFile, final List<String> samples, final boolean retainMonomorphicSNPs, final int genotypeGCThreshold, 
+			final double fractionPassing, final List<String> ignoredChromosomes, final VariantContextWriter vcfWriter, final boolean preserveIntervalNames, final Log log) {
+		
 		final VCFFileReader vcfReader = new VCFFileReader(vcfFile, false);
 		// List<String> finalSamples=validateSampleNamesInVCF(vcfReader, samples, log);
 		
 		PeekableIterator<VariantContext> vcfIterator = getVCFIterator(vcfReader, samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing, ignoredChromosomes, log);
-		SAMSequenceDictionary sd = vcfReader.getFileHeader().getSequenceDictionary();
-		return getSNPIntervals(vcfIterator, sd, log);
+				
+		// Begin optional work to remove duplicates		
+		SNPInfoCollection result = new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), preserveIntervalNames, vcfWriter, log);				
+		return result;
 	}
 
 	/**
@@ -148,6 +157,7 @@ public class SampleAssignmentVCFUtils {
 	 * @param log An optional log file to log to.  Can be null.
 	 * @return An intervalList of variant locations from the vcfIterator
 	 */
+	/*
 	public static IntervalList getSNPIntervals  (final Iterator<VariantContext> vcfIterator, final SAMSequenceDictionary sd, final Log log) {
 		SAMFileHeader h = new SAMFileHeader();
 		h.setSequenceDictionary(sd);
@@ -161,7 +171,7 @@ public class SampleAssignmentVCFUtils {
 		if (log!=null) log.info("Found [" + result.getIntervals().size() +"] potential SNP sites to query.");
 		return (result);
 	}
-
+	*/
 	/**
 	 * Also writes the sites that pass variouts filters in the vcfIterator to be written to a VCF Writer.
 	 * @param vcfIterator
@@ -170,7 +180,9 @@ public class SampleAssignmentVCFUtils {
 	 * @param vcfWriter
 	 * @return
 	 */
-	public static IntervalList getSNPIntervals  (final Iterator<VariantContext> vcfIterator, final SAMSequenceDictionary sd, final Log log, final VariantContextWriter vcfWriter, final boolean preserveIntervalNames) {
+	/*
+	public static IntervalList getSNPIntervals  (final Iterator<VariantContext> vcfIterator, final SAMSequenceDictionary sd, final Log log, 
+												 final VariantContextWriter vcfWriter, final boolean preserveIntervalNames) {
 		SAMFileHeader h = new SAMFileHeader();
 		h.setSequenceDictionary(sd);
 		IntervalList result = new IntervalList(h);
@@ -189,7 +201,8 @@ public class SampleAssignmentVCFUtils {
 		if (log!=null) log.info("Found [" + result.getIntervals().size() +"] potential SNP sites to query.");
 		return (result);
 	}
-		
+	*/
+	
 	/*
 	public static IntervalAndFrequencyResult getIntervalAndFrequency (final Iterator<VariantContext> vcfIterator, final SAMSequenceDictionary sd, final Log log, final VariantContextWriter vcfWriter, final boolean preserveIntervalNames) {
 		IntervalAndFrequencyResult fullResult = new IntervalAndFrequencyResult();

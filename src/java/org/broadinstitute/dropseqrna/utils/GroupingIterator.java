@@ -45,7 +45,7 @@ public class GroupingIterator<T>  extends IterableOnceIterator<List<T>> {
     public GroupingIterator(Iterator<T> underlyingIterator, Comparator<T> comparator) {
         this.underlyingIterator = new PeekableIterator<>(underlyingIterator);
         this.comparator = comparator;
-    }
+    } 
 
     @Override
     public boolean hasNext() {

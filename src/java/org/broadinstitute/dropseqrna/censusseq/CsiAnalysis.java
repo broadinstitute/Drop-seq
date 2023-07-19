@@ -215,8 +215,9 @@ public class CsiAnalysis extends CommandLineProgram {
 
 		// build the BAM iterator.
 		log.info("Finding SNPs in BAM.");		
+		// TODO: does not yet support selecting the best SNP for a read that sees multiple SNPs.
 		SNPGenomicBasePileupIterator pileUpIter = new SNPGenomicBasePileupIterator(headerAndIter, snpIntervals, SNP_TAG,
-				READ_MQ, this.IGNORED_CHROMOSOMES, KNOWN_DONOR_TAG, this.MIN_BASE_QUALITY);
+				READ_MQ, this.IGNORED_CHROMOSOMES, KNOWN_DONOR_TAG, null, this.MIN_BASE_QUALITY); 
 
 		// reset the iterator for use in the full data set. Use the cleaned up
 		// set of variants, which should be smaller and faster.

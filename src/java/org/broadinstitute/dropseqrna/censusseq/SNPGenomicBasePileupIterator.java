@@ -23,10 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.censusseq;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.broadinstitute.dropseqrna.barnyard.Utils;
@@ -71,12 +73,15 @@ public class SNPGenomicBasePileupIterator implements CloseableIterator<SNPGenomi
 	
 	// private final OverlapDetector<Interval> snpOverlapDetector;
 	public SNPGenomicBasePileupIterator(SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String snpTag,
-            final int readMQ, final Collection<String> contigsToFilter, final String knownDonorTag) {
-		this(headerAndIter, snpIntervals, snpTag, readMQ, contigsToFilter, knownDonorTag, null);
+            final int readMQ, final Collection<String> contigsToFilter, final String knownDonorTag, final Map<Interval, Double> meanGenotypeQuality) {
+		this(headerAndIter, snpIntervals, snpTag, readMQ, contigsToFilter, knownDonorTag, meanGenotypeQuality, null);
 	}
 	
+	// if meanGenotypeQuality is provided, reads that touch multiple SNPs will be filtered to the highest quality SNP per read.
 	public SNPGenomicBasePileupIterator(final SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String snpTag,
-            final int readMQ, final Collection<String> contigsToFilter, final String knownDonorTag, final Integer minBaseQuality) {
+            final int readMQ, final Collection<String> contigsToFilter, final String knownDonorTag, 
+            final Map<Interval, Double> meanGenotypeQuality, final Integer minBaseQuality) {
+		
 		final ProgressLogger logger = new ProgressLogger(log);
 		ProgressLoggingIterator loggingIterator = new ProgressLoggingIterator (headerAndIter.iterator, logger);
 		OverlapDetector<Interval> snpOverlapDetector = new OverlapDetector<>(0, 0);
@@ -85,11 +90,11 @@ public class SNPGenomicBasePileupIterator implements CloseableIterator<SNPGenomi
 		this.knownDonorTag = knownDonorTag;
 		
 		if (minBaseQuality==null)
-			this.minBaseQuality=null;
+			this.minBaseQuality=null; 
 		else
 			this.minBaseQuality=(byte) minBaseQuality.intValue();
 		
-		Iterator<SAMRecord> filteringIterator = new MapQualityFilteredIterator(loggingIterator, readMQ, true);
+		Iterator<SAMRecord> filteringIterator = new MapQualityFilteredIterator(loggingIterator, readMQ, true); 
 		filteringIterator = new PCRDuplicateFilteringIterator(filteringIterator);
 		// add chromosome filter.
 		Collection<String> contigsToInclude = getContigs(snpIntervals);
@@ -98,7 +103,7 @@ public class SNPGenomicBasePileupIterator implements CloseableIterator<SNPGenomi
 		// count the tags on the records flowing through.
 		countingIter = new BamTagCountingIterator(filteringIterator, knownDonorTag);
 
-		SNPTaggingIterator snpTaggingIterator = new SNPTaggingIterator(countingIter, snpOverlapDetector, snpTag);
+		SNPTaggingIterator snpTaggingIterator = new SNPTaggingIterator(countingIter, snpOverlapDetector, snpTag, meanGenotypeQuality);
 
 		SAMSequenceDictionary sd = snpIntervals.getHeader().getSequenceDictionary();
 
@@ -187,35 +192,73 @@ public class SNPGenomicBasePileupIterator implements CloseableIterator<SNPGenomi
 
 		private OverlapDetector<Interval> snpOverlapDetector;
 		private final String snpTag;
-
-		protected SNPTaggingIterator(final Iterator<SAMRecord> underlyingIterator, final OverlapDetector<Interval> snpOverlapDetector, final String snpTag) {
+		private final Map<Interval, Double> meanGenotypeQuality;
+		
+		protected SNPTaggingIterator(final Iterator<SAMRecord> underlyingIterator, final OverlapDetector<Interval> snpOverlapDetector, 
+				final String snpTag, final Map<Interval, Double> meanGenotypeQuality) {
 			super(underlyingIterator);
 			this.snpOverlapDetector=snpOverlapDetector;
 			this.snpTag = snpTag;
+			this.meanGenotypeQuality=meanGenotypeQuality;
 		}
 
 		@Override
-		protected void processRecord(final SAMRecord rec) {
-			List<AlignmentBlock> blocks = rec.getAlignmentBlocks();
+		// TODO: Refactor?  This is now a copy of SNPUMICellReadIteratorWrapper, but without the additional UMI features.
+		protected void processRecord(final SAMRecord r) { 
+			List<AlignmentBlock> blocks = r.getAlignmentBlocks();
 
-			Collection<String> snps = new HashSet<>();
-
+			Collection<Interval> snpIntervals = new HashSet<>();
+			
 			for (AlignmentBlock b: blocks) {
 				int start = b.getReferenceStart();
 				int end = start + b.getLength() -1;
 
-				Interval i = new Interval(rec.getReferenceName(), start, end);
+				Interval i = new Interval(r.getReferenceName(), start, end);
 				Collection<Interval> overlaps = this.snpOverlapDetector.getOverlaps(i);
 				for (Interval o: overlaps)
-					snps.add(IntervalTagComparator.toString(o));
+					snpIntervals.addAll(overlaps);
+					// snps.add(IntervalTagComparator.toString(o));
 			}
-
-			// 1 read per SNP.
-			for (String snp:snps) {
-				SAMRecord rr = Utils.getClone(rec);
-				rr.setAttribute(this.snpTag, snp);
+			
+			// exit early if no SNPs found.
+			if (snpIntervals.size()==0) return;
+									
+			// exit without cloning if not needed.
+			if (snpIntervals.size()==1) {
+				r.setAttribute(this.snpTag, IntervalTagComparator.toString(snpIntervals.iterator().next()));
+				queueRecordForOutput(r);
+				return;
+			}
+			
+			if (this.meanGenotypeQuality!=null) {
+				Interval bestSNP=getBestSNP(snpIntervals);				
+				r.setAttribute(this.snpTag, IntervalTagComparator.toString(bestSNP));
+				queueRecordForOutput(r);
+				return;
+			}
+			
+			// 1 read per SNP.  This is the old behavior where a read touching multiple SNPs treated each SNP observation as being independent.
+			for (Interval snp:snpIntervals) {
+				SAMRecord rr = Utils.getClone(r);
+				rr.setAttribute(this.snpTag, IntervalTagComparator.toString(snp));
 				queueRecordForOutput(rr);
 			}
+			
+		}
+		
+		private Interval getBestSNP (Collection<Interval> snpIntervals) {
+			// set the worse score to be worse than the missing value of -1.
+			double maxGQ=-2d;
+			Interval best=null;
+			
+			for (Interval i: snpIntervals) {
+				double gq = this.meanGenotypeQuality.get(i);
+				if (gq>maxGQ) {
+					maxGQ=gq;
+					best=i;
+				}
+			}
+			return (best);
 		}
 
 	}

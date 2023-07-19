@@ -25,10 +25,12 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
@@ -81,14 +83,14 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	 * @param useStrandInfo should the gene and read strand match for the read to be accepted
 	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.  Only reads with these values will be used.  If set to null, all cell barcodes are used.
 	 * @param A map from SNP Intervals to the mean genotype quality.  This is an optional parameter.  If supplied, in cases where a read has 
-	 * multiple SNPs, the SNP with the highest average genotype quality will be selected to avoid read "double counting".
+	 * multiple SNPs, the SNP with the highest average genotype quality will be selected to avoid read "double counting". 
 	 */
 	public SNPUMIBasePileupIterator (final SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String geneTag, final String geneStrandTag, final String geneFunctionTag,
 			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, final String cellBarcodeTag,
             final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
             final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final Map<Interval, Double> meanGenotypeQuality, final SortOrder order) {
 		
-		this.geneTag=geneTag;
+		this.geneTag=geneTag; 
 		this.cellBarcodeTag=cellBarcodeTag;
 		this.molecularBarcodeTag=molecularBarcodeTag;
 		this.snpTag = snpTag;
@@ -114,9 +116,27 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
         
      	// Filter/assign reads based on functional annotations
      	GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator2, geneTag, geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
-
-        SNPUMICellReadIteratorWrapper snpumiCellReadIterator = new SNPUMICellReadIteratorWrapper(gfteratorWrapper, snpIntervals, cellBarcodeTag, cellBarcodes, geneTag, snpTag, readMQ, meanGenotypeQuality);
-
+     	
+     	//TODO: EXPERIMENTAL - can I sort twice?
+     	/*
+     	MultiComparator<SAMRecord> cellGeneMolBcComparator=new MultiComparator<>(
+     			new StringTagComparator(cellBarcodeTag),
+                new StringTagComparator(geneTag),
+                new StringTagComparator(molecularBarcodeTag));
+     	
+     	final CloseableIterator<SAMRecord> sortingIterator1 =
+                SamRecordSortingIteratorFactory.create(headerAndIter.header, gfteratorWrapper, cellGeneMolBcComparator, logger);
+     	
+     	GroupingIterator<SAMRecord> cellGeneMolBCGroupingIter= new GroupingIterator<>(sortingIterator1, cellGeneMolBcComparator);
+     	SNPUMICellReadIteratorWrapper2 snpumiCellReadIterator2 = new SNPUMICellReadIteratorWrapper2(cellGeneMolBCGroupingIter, snpIntervals, cellBarcodeTag, cellBarcodes, geneTag, snpTag, readMQ, meanGenotypeQuality);
+     	     	
+     	// Is this a legit flattened iterator?  Can I feed this into the next sorting collection ?
+     	Iterator<SAMRecord> flattenedIter = StreamSupport.stream(snpumiCellReadIterator2.spliterator(), false).flatMap(x->x.stream()).iterator();     	          	
+     	// Then proceed to sort again.
+     	*/
+     	
+        SNPUMICellReadIteratorWrapper snpumiCellReadIterator = new SNPUMICellReadIteratorWrapper(gfteratorWrapper, snpIntervals, cellBarcodeTag, cellBarcodes, geneTag, snpTag, readMQ, meanGenotypeQuality);                
+        
         // create comparators in the order the data should be sorted
         SAMSequenceDictionary sd = snpIntervals.getHeader().getSequenceDictionary();
         @SuppressWarnings("unchecked")
