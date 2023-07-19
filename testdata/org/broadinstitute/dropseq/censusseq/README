@@ -1,0 +1,3 @@
+"OLD" files refer to results before the new analysis where reads that touch multiple SNPs only count the SNP with the highest genotype quality.
+
+
