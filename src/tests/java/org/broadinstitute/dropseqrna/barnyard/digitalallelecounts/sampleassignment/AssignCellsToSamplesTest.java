@@ -75,7 +75,7 @@ public class AssignCellsToSamplesTest {
 	
 	/**********
 	 * TESTS FOR SNPS THAT OCCUR ON MULTIPLE READS/UMIS
-	 */
+	 **********/
 	
 	
 	private final File ONE_READ_TWO_SNPS_BAM = new File(rootDir+"/read_multiple_snps.bam");
