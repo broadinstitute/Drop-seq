@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.utils.CountChangingIteratorWrapper;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
@@ -133,19 +134,23 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
 		}
 		
 		if (this.meanGenotypeQuality!=null) {
-			snpIntervals=Arrays.asList(getBestSNP(snpIntervals));
-			r.setAttribute(this.snpTag, IntervalTagComparator.toString(snpIntervals.iterator().next()));
+			Interval bestSNP=getBestSNP(snpIntervals);				
+			r.setAttribute(this.snpTag, IntervalTagComparator.toString(bestSNP));
 			queueRecordForOutput(r);
 			return;
 		}
 		
-		// 1 read per SNP.  
+		// TODO: Remove all code after this note after testing?
+		throw new NotImplementedException("You should never get here.");
+		
+		// 1 read per SNP.
+		/*
 		for (Interval snp:snpIntervals) {
 			SAMRecord rr = Utils.getClone(r);
 			rr.setAttribute(this.snpTag, IntervalTagComparator.toString(snp));
 			queueRecordForOutput(rr);
 		}
-		
+		*/
 		
 	}
 	
