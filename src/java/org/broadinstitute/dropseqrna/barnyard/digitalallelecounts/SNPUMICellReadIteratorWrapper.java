@@ -88,6 +88,8 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
 		OverlapDetector<Interval> od = new OverlapDetector<>(0, 0);
 		od.addAll(snpIntervals.getIntervals(), snpIntervals.getIntervals());
 		this.snpIntervals=od;
+		
+		//TODO: enforce meanGenotypeQuality is not null!
 	}
 
     @Override
@@ -142,7 +144,7 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
 		
 		// TODO: Remove all code after this note after testing?
 		throw new NotImplementedException("You should never get here.");
-		
+		 
 		// 1 read per SNP.
 		/*
 		for (Interval snp:snpIntervals) {
