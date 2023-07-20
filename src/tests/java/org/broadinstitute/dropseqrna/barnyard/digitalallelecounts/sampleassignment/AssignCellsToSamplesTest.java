@@ -73,6 +73,66 @@ public class AssignCellsToSamplesTest {
 	private final File EXPECTED_MAXLIKE_VERBOSE_OUTPUT= new File (rootDir+"/small_data.donor_assignment.maxLike_10.verbose.gz");
 	
 	
+	/**********
+	 * TESTS FOR SNPS THAT OCCUR ON MULTIPLE READS/UMIS
+	 */
+	
+	
+	private final File ONE_READ_TWO_SNPS_BAM = new File(rootDir+"/read_multiple_snps.bam");
+	private final File ONE_UMI_TWO_SNPS_BAM = new File(rootDir+"/umi_multiple_snps.bam");
+	private final File MULTI_SNP_TEST_VCF = new File (rootDir+"/multiple_snp_tests_small.vcf.gz");
+	
+	@Test
+	/**
+	 * The goal of this test is to see if the number of informative SNPs is one for a single read with two SNPs.
+	 * @throws IOException
+	 */
+	public void testTwoSNPsOnRead() throws IOException {
+		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.GQ_THRESHOLD=30;
+		assigner.INPUT_BAM=Collections.singletonList(this.ONE_READ_TWO_SNPS_BAM);
+		assigner.VCF=this.MULTI_SNP_TEST_VCF;
+		assigner.NUM_BARCODES=10; // more than enough
+		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		int result = assigner.doWork();
+		Assert.assertEquals(result, 0);
+		
+		CellCollectionSampleLikelihoodCollection cslc = CellCollectionSampleLikelihoodCollection.parseFile(assigner.OUTPUT);
+		CellSampleLikelihoodCollection r = cslc.getLikelihoodCollection("ATCGTAGGTCCCACGA");
+		// this cell should have a single SNP/UMI
+		Assert.assertEquals(r.getNumSNPs(), 1);
+		Assert.assertEquals(r.getNumUMIs(), 1);											
+	}
+	
+	@Test
+	/**
+	 * The goal of this test is to see if the number of informative SNPs is one for a single read with two SNPs.
+	 * @throws IOException
+	 */
+	public void testTwoSNPsOnUMI() throws IOException {
+		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.GQ_THRESHOLD=30;
+		assigner.INPUT_BAM=Collections.singletonList(this.ONE_UMI_TWO_SNPS_BAM);
+		assigner.VCF=this.MULTI_SNP_TEST_VCF;
+		assigner.NUM_BARCODES=10; // more than enough
+		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		int result = assigner.doWork();
+		Assert.assertEquals(result, 0);
+		
+		CellCollectionSampleLikelihoodCollection cslc = CellCollectionSampleLikelihoodCollection.parseFile(assigner.OUTPUT);
+		CellSampleLikelihoodCollection r = cslc.getLikelihoodCollection("ATCGTAGGTCCCACGA");
+		// this cell should have a single SNP/UMI.
+		// The "trick" is that there is one SNP per read, but the two reads are from the same UMI.
+		Assert.assertEquals(r.getNumSNPs(), 1);
+		Assert.assertEquals(r.getNumUMIs(), 1);											
+	}
+	
+
+	
+	/***********************
+	 * Other Tests
+	 ***********************/
+	
 	@Test 
 	// Two SNPs (rs3,rs4) have non-canonical bases (*,N).  
 	// These SNPs should be filtered out, such that the data appears to be the original VCF.
