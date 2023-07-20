@@ -89,9 +89,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, final String cellBarcodeTag,
             final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
             final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final Map<Interval, Double> meanGenotypeQuality, final SortOrder order) {
-		
-		//TODO: enforce meanGenotypeQuality is not null!
-		
+				
 		this.geneTag=geneTag; 
 		this.cellBarcodeTag=cellBarcodeTag;
 		this.molecularBarcodeTag=molecularBarcodeTag;
