@@ -172,6 +172,7 @@ import java.util.*;
             try {
                 ErrorCheckingPrintStream writer = new ErrorCheckingPrintStream(OUTPUT);
                 writer.print(gson.toJson(messages));
+                writer.close();
             } catch (IOException e) {
                 throw new RuntimeException("Exception writing " + OUTPUT.getAbsolutePath(), e);
             }
