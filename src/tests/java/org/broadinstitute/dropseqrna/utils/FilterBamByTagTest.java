@@ -23,16 +23,25 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordSetBuilder;
-import htsjdk.samtools.metrics.MetricsFile;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordSetBuilder;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.Histogram;
+import htsjdk.samtools.util.IOUtil;
 
 public class FilterBamByTagTest {
 
@@ -47,18 +56,24 @@ public class FilterBamByTagTest {
 	private static final File PAIRED_INPUT_CELL_BARCODES=new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged.cell_barcodes.txt");
 
 	private static final File UNPAIRED_INPUT_FILE_FILTERED_AAAGTAGAGTGG=new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged_filtered_AAAGTAGAGTGG.bam");
-
+	
+	private static final File UNPAIRED_INPUT_FILE_HISTOGRAMS = new File ("testdata/org/broadinstitute/dropseq/utils/unpaired_reads_tagged.histograms.txt");
+	private static final File PAIRED_INPUT_FILE_HISTOGRAMS = new File ("testdata/org/broadinstitute/dropseq/utils/paired_reads_tagged.histograms.txt");
+	
 	/**
 	 * Runs the CLP, in the given mode, and asserts success
 	 * @param successThreshold If non-null, passed to PASSING_READ_THRESHOLD CLP argument
 	 * @return the CLP object after doWork() called.
 	 */
-	private FilterBamByTag runClp(final boolean pairedMode, final Double successThreshold) throws IOException {
+	private FilterBamByTag runClp(final boolean pairedMode, final Double successThreshold, final File tagsCountFile) throws IOException {
 		FilterBamByTag f = new FilterBamByTag();
+		
+		f.TAG_COUNTS_FILE=tagsCountFile;		
 		final String prefix;
 		if (pairedMode) {
 			f.INPUT=Collections.singletonList(PAIRED_INPUT_FILE);
 			f.TAG_VALUES_FILE=PAIRED_INPUT_CELL_BARCODES;
+			
 			prefix = "paired_input";
 		} else {
 			f.INPUT=Collections.singletonList(UNPAIRED_INPUT_FILE);
@@ -79,7 +94,7 @@ public class FilterBamByTagTest {
 
 	@Test
 	public void testDoWorkPaired () throws IOException {
-		final FilterBamByTag f = runClp(true, null);
+		final FilterBamByTag f = runClp(true, null, null);
 		//samtools view -c paired_reads_tagged_filtered.bam
 		// 12
 		// samtools view -c paired_reads_tagged.bam
@@ -102,7 +117,7 @@ public class FilterBamByTagTest {
 
 	@Test
 	public void testDoWorkUnPaired () throws IOException {
-		FilterBamByTag f = runClp(false, null);
+		FilterBamByTag f = runClp(false, null, null);
 
 		// samtools view -c unpaired_reads_tagged_filtered.bam
 		// 6
@@ -142,6 +157,81 @@ public class FilterBamByTagTest {
 
 	}
 	
+	@Test
+	// additionally tests the optional tag value counts
+	public void testDoWorkUnPairedWithTagValueCounts () throws IOException {
+		
+		File tagValueCounts=File.createTempFile("tagValueCounts", ".txt");
+		tagValueCounts.deleteOnExit();
+		
+		FilterBamByTag f = runClp(false, null, tagValueCounts);
+
+		// samtools view -c unpaired_reads_tagged_filtered.bam
+		// 6
+		// samtools view -c unpaired_reads_tagged.bam 
+		// 10
+				
+		List<FilteredReadsMetric> metrics = MetricsFile.readBeans(f.SUMMARY);
+		Assert.assertEquals(UNPAIRED_READS_ACCEPTED, metrics.get(0).READS_ACCEPTED);
+		Assert.assertEquals(UNPAIRED_READS_REJECTED, metrics.get(0).READS_REJECTED);
+		
+		MetricsFile<FilteredReadsMetric, String> result = new MetricsFile<FilteredReadsMetric, String>();
+		result.read(IOUtil.openFileForBufferedReading(tagValueCounts));
+		List<Histogram<String>> hist= result.getAllHistograms();
+		
+		Histogram<String> accept= hist.get(0);
+		Assert.assertEquals(accept.getValueLabel(), "READS_ACCEPTED");
+		Assert.assertEquals((int) accept.getSumOfValues(), metrics.get(0).READS_ACCEPTED);
+		
+		Histogram<String> reject= hist.get(1);
+		Assert.assertEquals(reject.getValueLabel(), "READS_REJECTED");
+		Assert.assertEquals((int) reject.getSumOfValues(), metrics.get(0).READS_REJECTED);
+		
+		
+		MetricsFile<FilteredReadsMetric, String> expectedResult = new MetricsFile<FilteredReadsMetric, String>();
+		expectedResult.read(IOUtil.openFileForBufferedReading(UNPAIRED_INPUT_FILE_HISTOGRAMS));
+		Assert.assertTrue(expectedResult.areHistogramsEqual(result));
+		
+
+	}
+	
+	@Test
+	public void testDoWorkPairedithTagValueCounts () throws IOException {
+		File tagValueCounts=File.createTempFile("tagValueCounts", ".txt");
+		tagValueCounts.deleteOnExit();
+		
+		
+		final FilterBamByTag f = runClp(true, null, tagValueCounts);
+		//samtools view -c paired_reads_tagged_filtered.bam
+		// 12
+		// samtools view -c paired_reads_tagged.bam
+		// 20
+
+		List<FilteredReadsMetric> metrics = MetricsFile.readBeans(f.SUMMARY);
+		Assert.assertEquals(PAIRED_READS_ACCEPTED, metrics.get(0).READS_ACCEPTED);
+		Assert.assertEquals(PAIRED_READS_REJECTED, metrics.get(0).READS_REJECTED);
+								
+		MetricsFile<FilteredReadsMetric, String> result = new MetricsFile<FilteredReadsMetric, String>();
+		result.read(IOUtil.openFileForBufferedReading(tagValueCounts));
+		List<Histogram<String>> hist= result.getAllHistograms();
+		
+		// only 1 read of the pair is tagged!
+		Histogram<String> accept= hist.get(0);
+		Assert.assertEquals(accept.getValueLabel(), "READS_ACCEPTED");
+		Assert.assertEquals((int) accept.getSumOfValues(), (int) (metrics.get(0).READS_ACCEPTED/2));
+		
+		Histogram<String> reject= hist.get(1);
+		Assert.assertEquals(reject.getValueLabel(), "READS_REJECTED");
+		Assert.assertEquals((int) reject.getSumOfValues(), (int) (metrics.get(0).READS_REJECTED/2));
+		
+		// because only 1 read of the pair is tagged, the results are the same as the unpaired test.
+		MetricsFile<FilteredReadsMetric, String> expectedResult = new MetricsFile<FilteredReadsMetric, String>();
+		expectedResult.read(IOUtil.openFileForBufferedReading(UNPAIRED_INPUT_FILE_HISTOGRAMS));
+		Assert.assertTrue(expectedResult.areHistogramsEqual(result));
+	
+		
+	}
+	
 	
 	private double makePassingReadThreshold(final boolean pairedMode, final boolean fractionalThreshold, final boolean passing) {
 		final int addend = passing? -1: 1;
@@ -162,12 +252,12 @@ public class FilterBamByTagTest {
 
 	@Test(dataProvider = "thresholdTestDataProvider")
 	public void testPassingThreshold(final boolean pairedMode, final boolean fractionalThreshold) throws IOException {
-		runClp(pairedMode, makePassingReadThreshold(pairedMode, fractionalThreshold, true));
+		runClp(pairedMode, makePassingReadThreshold(pairedMode, fractionalThreshold, true), null);
 	}
 
 	@Test(dataProvider = "thresholdTestDataProvider", expectedExceptions = {RuntimeException.class})
 	public void testFailingThreshold(final boolean pairedMode, final boolean fractionalThreshold) throws IOException {
-		runClp(pairedMode, makePassingReadThreshold(pairedMode, fractionalThreshold, false));
+		runClp(pairedMode, makePassingReadThreshold(pairedMode, fractionalThreshold, false), null);
 	}
 
 	@DataProvider(name="thresholdTestDataProvider")
