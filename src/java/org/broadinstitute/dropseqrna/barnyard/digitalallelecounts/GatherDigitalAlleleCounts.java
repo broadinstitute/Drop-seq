@@ -287,6 +287,7 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 			headerAndIter = new SamHeaderAndIterator(headerAndIter.header, pcrDuplicateFilteringIterator);
 		}
 
+		//TODO: should this be assignReadsToAllGenes be set to false to mirror DigitalExpression and donor assignment code?
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(headerAndIter, snpInfo.getIntervalList(), GENE_NAME_TAG, GENE_STRAND_TAG,
 				GENE_FUNCTION_TAG, LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, null, this.READ_MQ,
 				true, cellBarcodes, genotypeQuality, SortOrder.SNP_GENE);

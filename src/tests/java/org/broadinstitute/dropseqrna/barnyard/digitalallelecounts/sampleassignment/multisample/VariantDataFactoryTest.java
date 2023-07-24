@@ -23,29 +23,22 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample;
 
-import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.PeekableIterator;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFFileReader;
-
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.AssignCellsToSamples;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.SampleGenotypeProbabilities;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.AllPairedSampleAssignmentsForCell;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.FindOptimalDonorMixture;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.GenotypeMatrix;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.SamplePairAssignmentForCell;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.VariantDataFactory;
-import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
-import org.testng.Assert;
-import org.testng.annotations.Test;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.AssignCellsToSamples;
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.SampleGenotypeProbabilities;
+import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFFileReader;
 
 public class VariantDataFactoryTest {
 
@@ -54,9 +47,7 @@ public class VariantDataFactoryTest {
 	private final File INPUT_BAM = new File(rootDir+"/TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam");
 
 	private final File VCF = new File (rootDir+"/TTTGCGCGGAGC:ATTGTTTAGGAG.vcf");
-
-	private static final Log log = Log.getInstance(VariantDataFactoryTest.class);
-
+	
 
 	@Test(enabled=true) 
 	public void bigTest() {  
@@ -86,10 +77,10 @@ public class VariantDataFactoryTest {
 
 		AllPairedSampleAssignmentsForCell result = fodm.findBestDonorPair("HUES53", vcfSamples, false);
 		SamplePairAssignmentForCell best = result.getBestAssignment();
-		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.50823732092053, 0.01);
-		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-11.738842355876386, 0.01);
-		Assert.assertEquals(best.getDoubletLikelihood(),-8.425187288261675, 0.01);
-		Assert.assertEquals(best.getMixture(), 0.643, 0.01);
+		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.416, 0.01);
+		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-11.136, 0.01);
+		Assert.assertEquals(best.getDoubletLikelihood(),-8.174, 0.01);
+		Assert.assertEquals(best.getMixture(), 0.6034, 0.01);
 	}
 
 	@Test(enabled=true)
@@ -120,10 +111,10 @@ public class VariantDataFactoryTest {
 
 		AllPairedSampleAssignmentsForCell result = fodm.findBestDonorPair("HUES53", vcfSamples, false);
 		SamplePairAssignmentForCell best = result.getBestAssignment();
-		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.50823732092053, 0.01);
-		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-11.738842355876386, 0.01);
-		Assert.assertEquals(best.getDoubletLikelihood(),-8.425187288261675, 0.01);
-		Assert.assertEquals(best.getMixture(), 0.643, 0.01);
+		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.416, 0.01);
+		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-11.136, 0.01);
+		Assert.assertEquals(best.getDoubletLikelihood(),-8.174, 0.01);
+		Assert.assertEquals(best.getMixture(), 0.6034, 0.01);
 	}
 
 

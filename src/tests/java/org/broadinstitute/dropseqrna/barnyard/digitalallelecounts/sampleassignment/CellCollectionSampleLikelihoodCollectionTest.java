@@ -24,6 +24,7 @@
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import junit.framework.Assert;
 import org.apache.commons.lang.RandomStringUtils;
@@ -194,12 +195,16 @@ public class CellCollectionSampleLikelihoodCollectionTest {
 	private SampleGenotypeProbabilitiesIterator prepIterFromFile (final List<String> barcodes, final int editDistance) {
 		IntervalList snpIntervals = IntervalList.fromFile(snpIntervalsFile);
 		
+		// set all genotype qualities to missing.
+		Map<Interval,Double>meanGenotypeQuality =new HashMap<>();
+		for (Interval i: snpIntervals.getIntervals())
+			meanGenotypeQuality.put(i,-1d);
 		
 		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 				new SamHeaderAndIterator(this.INPUT_BAM), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
-				molBCTag, snpTag, "XF", readMQ, true, barcodes, null, SortOrder.SNP_CELL);
+				molBCTag, snpTag, "XF", readMQ, true, barcodes, meanGenotypeQuality, SortOrder.SNP_CELL);
 
 		boolean flag = sbpi.hasNext();
 		final SAMSequenceDictionary dict = snpIntervals.getHeader().getSequenceDictionary();

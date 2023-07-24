@@ -228,7 +228,7 @@ public class DetectDoubletsTest {
 	
 	@Test (enabled=true)
 	public void testSmallScaledLikes () throws IOException {
-		File EXPECTED_OUTPUT=new File(TESTDATA_DIR, "TEST_TTTGCGCGGAGC:ATTGTTTAGGAG2.sampleAssignments.txt.unguided_donors.txt");
+		File EXPECTED_OUTPUT=new File(TESTDATA_DIR, "TEST_TTTGCGCGGAGC:ATTGTTTAGGAG2.sampleAssignments.txt.scaledlikes.unguided_donors.txt");
 		File EXPECTED_PAIR_OUTPUT=new File(TESTDATA_DIR, "TEST_TTTGCGCGGAGC:ATTGTTTAGGAG2.sampleAssignments.unguided.scaledlikes.perDonor.txt");
 
 		DetectDoublets assigner = new DetectDoublets();

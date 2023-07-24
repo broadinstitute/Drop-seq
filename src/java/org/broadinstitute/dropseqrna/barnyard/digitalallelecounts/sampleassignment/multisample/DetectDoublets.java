@@ -23,12 +23,20 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.util.*;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFFileReader;
+import java.io.File;
+import java.io.PrintStream;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -52,13 +60,19 @@ import org.broadinstitute.dropseqrna.utils.readiterators.PCRDuplicateFilteringIt
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
-import picard.cmdline.StandardOptionDefinitions;
 
-import java.io.File;
-import java.io.PrintStream;
-import java.text.DecimalFormat;
-import java.util.*;
-import java.util.stream.Collectors;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFFileReader;
+import picard.cmdline.StandardOptionDefinitions;
 
 @CommandLineProgramProperties(summary = "Detect Doublets in Dropulation Data.  Uses the outputs of AssignCellsToSamples to make decisions.  It's highly recommended to use the VCF output from AssignCellsToSamples as input, as"
 		+ "the memory usage of a full VCF may be prohibitive compared to the AssignCellsToSamples VCF, which contains only the variants that were observed in the data.  This also greatly speeds up"
@@ -258,9 +272,12 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		// matrix.
 		PeekableIterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, allDonorsList, false, this.GQ_THRESHOLD,
 				this.FRACTION_SAMPLES_PASSING, IGNORED_CHROMOSOMES, log);
+		
 		GenotypeMatrix genotypeMatrix = new GenotypeMatrix(vcfIterator, this.GQ_THRESHOLD, allDonorsList);
 		vcfIterator.close();
 
+		Map<Interval, Double> genotypeQuality = genotypeMatrix.getAverageGenotypeQuality();
+		
 		final IntervalList snpIntervals = new IntervalList(vcfDict);								
 		snpIntervals.addall(genotypeMatrix.getSNPIntervals());
 		// a requested early exit if there are no SNPs.
@@ -269,7 +286,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 			return 1;
 		}
 				
-		PeekableIterator<List<SampleGenotypeProbabilities>> sampleGenotypeIterator = prepareIterator(snpIntervals, cellBarcodes);
+		PeekableIterator<List<SampleGenotypeProbabilities>> sampleGenotypeIterator = prepareIterator(snpIntervals, cellBarcodes, genotypeQuality);
 
 		int cellCount = 0;
 		int reportInterval = 100;
@@ -495,7 +512,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		out.println(h);
 	}
 	
-	public PeekableIterator<List<SampleGenotypeProbabilities>> prepareIterator(final IntervalList snpIntervals, List<String> cellBarcodes) {
+	public PeekableIterator<List<SampleGenotypeProbabilities>> prepareIterator(final IntervalList snpIntervals, List<String> cellBarcodes, Map<Interval, Double> genotypeQuality) {
 
 		SamReaderFactory factory = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);
 		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputs(this.INPUT_BAM, false, factory);
@@ -511,10 +528,10 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 			final PCRDuplicateFilteringIterator pcrDuplicateFilteringIterator = new PCRDuplicateFilteringIterator(headerAndIter.iterator);
 			headerAndIter = new SamHeaderAndIterator(headerAndIter.header, pcrDuplicateFilteringIterator);
 		}
-
+		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(headerAndIter, snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG,
-				GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG, this.READ_MQ, true, cellBarcodes, null, SortOrder.CELL_SNP);
+				GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG, this.READ_MQ, false, cellBarcodes, genotypeQuality, SortOrder.CELL_SNP);
 
 		final SAMSequenceDictionary dict = snpIntervals.getHeader().getSequenceDictionary();
 

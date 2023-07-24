@@ -48,6 +48,7 @@ import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
 import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileup;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileupIterator;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SortOrder;
 import org.broadinstitute.dropseqrna.censusseq.JointIteratorCounter;
@@ -805,7 +806,13 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 
 			line.add(p.getSNPInterval().getContig());
 			line.add(Integer.toString(p.getSNPInterval().getStart()));
-
+			
+			/*
+			for (SNPUMIBasePileup pileup: p.getBackingPileups()) {
+				log.info(pileup);
+			}
+			*/
+			
 			String gene = p.getBackingPileups().iterator().next().getGene();
 			line.add(gene);
 
@@ -900,7 +907,7 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		// this explicitly filters to the best SNP seen on a read if there are multiple SNPs touched by a read
 		Map<Interval, Double> genotypeQuality = snpIntervals.getAverageGQ();		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(headerAndIter, snpIntervals.getIntervalList(), GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
-				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, this.FUNCTION_TAG, this.READ_MQ, true,
+				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, this.FUNCTION_TAG, this.READ_MQ, false,
 				barcodes, genotypeQuality, SortOrder.SNP_CELL);
 
 		if (this.BAM_OUTPUT != null) {

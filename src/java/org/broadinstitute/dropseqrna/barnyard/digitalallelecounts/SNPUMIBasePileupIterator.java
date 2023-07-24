@@ -117,8 +117,19 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
      	// Filter/assign reads based on functional annotations
      	GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator2, geneTag, geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
      	
-     	//TODO: EXPERIMENTAL - can I sort twice?
-     	/*
+     	/**
+     	 * In this section, data is sorted into the standard cell / gene / umi order and grouped so that all reads for a single UMI can be evaluated at once.
+     	 * After evaluation by SNPUMICellReadIteratorWrapper2, the groups of reads (List<SAMRECORD>) are flattened back to an iterator of SAMRecords,
+     	 * which is then pushed into the next sorting collection.
+     	 * 
+     	 * An alternative to this process would be to gather all reads that are within a 10kb window, and adjudicate which reads should be tagged with SNPs such 
+     	 * that each UMI only sees a single SNP.  This would happen with a sliding window where as each SNP fell "out" of the window it would be written.  Each SNP
+     	 * would memorize the cell/gene/umi of the reads, and look for conflicts with new incoming data.  
+     	 * That would prevent having to write records to disk to sort them, but would be far more complex to code.  Edge cases where there were long introns 
+     	 * would likely prevent all SNPs from being filtered, but might be a faster approach. 
+     	 */
+     	
+     	
      	MultiComparator<SAMRecord> cellGeneMolBcComparator=new MultiComparator<>(
      			new StringTagComparator(cellBarcodeTag),
                 new StringTagComparator(geneTag),
@@ -128,15 +139,17 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
                 SamRecordSortingIteratorFactory.create(headerAndIter.header, gfteratorWrapper, cellGeneMolBcComparator, logger);
      	
      	GroupingIterator<SAMRecord> cellGeneMolBCGroupingIter= new GroupingIterator<>(sortingIterator1, cellGeneMolBcComparator);
-     	SNPUMICellReadIteratorWrapper2 snpumiCellReadIterator2 = new SNPUMICellReadIteratorWrapper2(cellGeneMolBCGroupingIter, snpIntervals, cellBarcodeTag, cellBarcodes, geneTag, snpTag, readMQ, meanGenotypeQuality);
+     	SNPUMICellReadIteratorWrapper2 snpumiCellReadIterator = new SNPUMICellReadIteratorWrapper2(cellGeneMolBCGroupingIter, snpIntervals, cellBarcodeTag, cellBarcodes, geneTag, snpTag, readMQ, meanGenotypeQuality);
      	     	
-     	// Is this a legit flattened iterator?  Can I feed this into the next sorting collection ?
-     	Iterator<SAMRecord> flattenedIter = StreamSupport.stream(snpumiCellReadIterator2.spliterator(), false).flatMap(x->x.stream()).iterator();     	          	
-     	// Then proceed to sort again.
-     	*/
+     	Iterator<SAMRecord> flattenedIterator = StreamSupport.stream(snpumiCellReadIterator.spliterator(), false).flatMap(x->x.stream()).iterator();     	          	
+     	     	
+     	/**
+     	 * Return to the usual sorting by SNP/etc to generate pileups.
+     	 */
+     	     	
+        // If you comment out the block above and change the sorting iterator below to use this iter, you can swap back to the "old" code.
+     	// SNPUMICellReadIteratorWrapper snpumiCellReadIterator = new SNPUMICellReadIteratorWrapper(gfteratorWrapper, snpIntervals, cellBarcodeTag, cellBarcodes, geneTag, snpTag, readMQ, meanGenotypeQuality);
      	
-        SNPUMICellReadIteratorWrapper snpumiCellReadIterator = new SNPUMICellReadIteratorWrapper(gfteratorWrapper, snpIntervals, cellBarcodeTag, cellBarcodes, geneTag, snpTag, readMQ, meanGenotypeQuality);                
-        
         // create comparators in the order the data should be sorted
         SAMSequenceDictionary sd = snpIntervals.getHeader().getSequenceDictionary();
         @SuppressWarnings("unchecked")
@@ -166,7 +179,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 			throw new IllegalArgumentException("Sort order " + order +" unsupported");
 		}
 		final CloseableIterator<SAMRecord> sortingIterator =
-		                SamRecordSortingIteratorFactory.create(headerAndIter.header, snpumiCellReadIterator, multiComparator, logger);
+		                SamRecordSortingIteratorFactory.create(headerAndIter.header, flattenedIterator, multiComparator, logger);
 
 		this.atoi = new GroupingIterator<>(sortingIterator, multiComparator);
 	}

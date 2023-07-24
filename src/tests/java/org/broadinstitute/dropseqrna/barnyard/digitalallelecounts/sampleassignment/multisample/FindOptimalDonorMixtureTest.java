@@ -255,10 +255,10 @@ public class FindOptimalDonorMixtureTest {
 
 		AllPairedSampleAssignmentsForCell result = fodm.findBestDonorPair("HUES53", vcfSamples, false);
 		SamplePairAssignmentForCell best = result.getBestAssignment();
-		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.50823732092053, 0.01);
-		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-11.738842355876386, 0.01);
-		Assert.assertEquals(best.getDoubletLikelihood(),-8.425187288261675, 0.01);
-		Assert.assertEquals(best.getMixture(), 0.643, 0.01);
+		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.41672233979918, 0.01);
+		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-11.136782364548424, 0.01);
+		Assert.assertEquals(best.getDoubletLikelihood(),-8.174511498564232, 0.01);
+		Assert.assertEquals(best.getMixture(), 0.603, 0.01);
 
 	}
 
@@ -275,7 +275,7 @@ public class FindOptimalDonorMixtureTest {
 		
 		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(this.VCF, vcfSamples, true, 30, 0, null,null, false, null);
 		final PeekableIterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, true, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, log);
-		PeekableIterator<List<SampleGenotypeProbabilities>> sampleGenotypeIterator = assigner.prepareIterator(snpIntervals.getIntervalList(), cellBarcodes);
+		PeekableIterator<List<SampleGenotypeProbabilities>> sampleGenotypeIterator = assigner.prepareIterator(snpIntervals.getIntervalList(), cellBarcodes, snpIntervals.getAverageGQ());
 
 		List<SampleGenotypeProbabilities> allProbs = sampleGenotypeIterator.next();
 
@@ -285,10 +285,10 @@ public class FindOptimalDonorMixtureTest {
 
 		AllPairedSampleAssignmentsForCell result = fodm.findBestDonorPair("HUES53", vcfSamples, false);
 		SamplePairAssignmentForCell best = result.getBestAssignment();
-		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.80926731658451, 0.01);
-		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-12.0398723515404, 0.01);
-		Assert.assertEquals(best.getDoubletLikelihood(),-8.72621729107288, 0.01);
-		Assert.assertEquals(best.getMixture(), 0.643, 0.01);
+		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.416, 0.01);
+		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-11.13, 0.01);
+		Assert.assertEquals(best.getDoubletLikelihood(),-8.174, 0.01);
+		Assert.assertEquals(best.getMixture(), 0.603, 0.01);
 
 
 	}
@@ -333,10 +333,10 @@ public class FindOptimalDonorMixtureTest {
 		SamplePairAssignmentForCell best = result.getBestAssignment();
 		// giving the optimizer a little bit of wiggle room because it seems instable between command line, running in eclipse, etc.
 		// Wiggle room needed to be increased when moving to Java 8
-		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-145.64069867982204, 1.5);
-		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-150.10190874973378, 1);
-		Assert.assertEquals(best.getDoubletLikelihood(),-119.96098316288239, 1);
-		Assert.assertEquals(best.getMixture(), 0.51, 0.01);
+		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-136.567186376513, 1.5);
+		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-143.69058144182128, 1);
+		Assert.assertEquals(best.getDoubletLikelihood(),-113.6789932134311, 1);
+		Assert.assertEquals(best.getMixture(), 0.53, 0.01);
 
 	}
 	

@@ -66,11 +66,17 @@ public class SNPUMIBasePileupIteratorTest {
 	public void testPileups() {
 		List<String> cellBarcodes = ParseBarcodeFile.readCellBarcodeFile(cellBCFile);
 		IntervalList snpIntervals = IntervalList.fromFile(snpIntervalsFile);
-
+		
+		// all SNPs equal quality.  No SNPs overlap on UMIs so all pileups are seen.
+		Map<Interval, Double> meanGenotypeQuality = new HashMap<Interval, Double>();		
+		for (Interval i: snpIntervals) {
+			meanGenotypeQuality.put(i, 30d);
+		}
+		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 				new SamHeaderAndIterator(smallBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
-				molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, null, SortOrder.SNP_GENE);
+				molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, meanGenotypeQuality, SortOrder.SNP_GENE);
 
 		int expectedPileups=8;
 		int count=0;
@@ -92,12 +98,11 @@ public class SNPUMIBasePileupIteratorTest {
 		// add an interval one base later.  This intersects a subset of reads.  
 		snpIntervals.add(new Interval("HUMAN_1", 76227021, 76227021, false, "reject"));
 		
-		// with the additional SNP, there are 16 total pileups, using both names, so names are untested.
-		testSNPQualities (snpIntervals, cellBarcodes, null, 16, null);
-						
-		// if we mark the 3nd snp as lower quality we're back to 8 pileups, with the snp named HUMAN_1:76227022
+		
+		// if we mark the 3nd snp as lower quality we have 8 pileups, with the snp named HUMAN_1:76227022
 		Map<Interval, Double> genotypeQuality = new HashMap<>();
-		genotypeQuality.put(snpIntervals.getIntervals().get(0), 100d);		
+		genotypeQuality.put(snpIntervals.getIntervals().get(0), 100d);
+		genotypeQuality.put(snpIntervals.getIntervals().get(1), 50d);
 		genotypeQuality.put(snpIntervals.getIntervals().get(2), 10d);
 		testSNPQualities (snpIntervals, cellBarcodes, genotypeQuality, 8, "HUMAN_1:76227022");
 		

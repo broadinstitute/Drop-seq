@@ -26,8 +26,7 @@ public class VariantContextSingletonFilterTest {
 
 	  final List<Allele> allelesHet = new ArrayList<>(Arrays.asList(a1,a2));
 	  final List<Allele> allelesRef = new ArrayList<>(Arrays.asList(a1,a1));
-	  final List<Allele> allelesAlt = new ArrayList<>(Arrays.asList(a2,a2));
-
+	  
 	  // this has a het singleton.
 	  Collection<Genotype> genotypes = new ArrayList<>();
 	  genotypes.add(GenotypeBuilder.create("donor1", allelesRef));
@@ -42,6 +41,7 @@ public class VariantContextSingletonFilterTest {
 	  VariantContextSingletonFilter f = new VariantContextSingletonFilter(underlyingIterator, true);
 	  boolean t1 = f.filterOut(vc);
 	  Assert.assertFalse(t1);
+	  f.close();
 
   }
 
@@ -53,7 +53,7 @@ public class VariantContextSingletonFilterTest {
 
 	  final List<Allele> allelesHet = new ArrayList<>(Arrays.asList(a1,a2));
 	  final List<Allele> allelesRef = new ArrayList<>(Arrays.asList(a1,a1));
-	  final List<Allele> allelesAlt = new ArrayList<>(Arrays.asList(a2,a2));
+	  
 
 	  // this does not have a het singleton.
 	  Collection<Genotype> genotypes = new ArrayList<>();
@@ -69,7 +69,8 @@ public class VariantContextSingletonFilterTest {
 	  VariantContextSingletonFilter f = new VariantContextSingletonFilter(underlyingIterator, true);
 	  boolean t1 = f.filterOut(vc);
 	  Assert.assertTrue(t1);
-
+	  f.close();
+	  
   }
 
   @Test
@@ -96,6 +97,7 @@ public class VariantContextSingletonFilterTest {
 	  VariantContextSingletonFilter f = new VariantContextSingletonFilter(underlyingIterator, true);
 	  boolean t1 = f.filterOut(vc);
 	  Assert.assertTrue(t1);
+	  f.close();
 
   }
 

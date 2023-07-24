@@ -78,6 +78,10 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
                                          final int readMQ,
                                          final Map<Interval, Double> meanGenotypeQuality) {
         super(underlyingIterator); 
+        
+		if (meanGenotypeQuality==null)
+			log.warn("No Mean Genotype Quality supplied, will not filter multiple variants on the same read");
+
 		this.cellBarcodeTag = cellBarcodeTag;
 		this.cellBarcodeList = new HashSet<String>(cellBarcodeList);
 		this.geneTag=geneTag;
@@ -141,18 +145,13 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
 			queueRecordForOutput(r);
 			return;
 		}
-		
-		// TODO: Remove all code after this note after testing?
-		throw new NotImplementedException("You should never get here.");
-		 
+				 
 		// 1 read per SNP.
-		/*
 		for (Interval snp:snpIntervals) {
 			SAMRecord rr = Utils.getClone(r);
 			rr.setAttribute(this.snpTag, IntervalTagComparator.toString(snp));
 			queueRecordForOutput(rr);
 		}
-		*/
 		
 	}
 	
