@@ -24,7 +24,6 @@
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,7 +34,6 @@ import java.util.Set;
 
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.utils.CountChangingIteratorWrapper;
-import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
 
 import htsjdk.samtools.AlignmentBlock;
@@ -62,14 +60,14 @@ public class SNPUMICellReadIteratorWrapper2 extends CountChangingIteratorWrapper
 	 * Filters reads based on read map quality, removing reads below that quality
 	 * Optionally filters reads where the annotated gene and the strand of the read don't match, or can clone a read and return it multiple times
 	 * if the read maps to more than one gene and <assignReadsToAllGenes> is true.
-	 * @param underlyingIterator Source of reads
+	 * @param underlyingIterator Source of reads.  These reads are sorted by cell/gene/umi then grouped, such that each List contains all the reads for a "UMI".
 	 * @param cellBarcodeTag The cell barcode BAM tag
 	 * @param cellBarcodeList A list of cell barcodes, or null to ignore.  If populated, reads where the cellBarcodeTag matches one of these Strings will be retained
 	 * @param geneTag The gene/exon tag.
 	 * @param strandTag The strand tag
 	 * @param readMQ The minimum map quality of a read to be retained.
-	 * @param A map from SNP Intervals to the mean genotype quality.  This is an optional parameter.  If supplied, in cases where a read has 
-	 * multiple SNPs, the SNP with the highest average genotype quality will be selected to avoid read "double counting".
+	 * @param A map from SNP Intervals to the mean genotype quality.  In cases where a read has 
+	 * multiple SNPs, the SNP with the highest average genotype quality will be selected to avoid read "double counting".  
 	 */
 	public SNPUMICellReadIteratorWrapper2(final Iterator<List<SAMRecord>> underlyingIterator,
                                          final IntervalList snpIntervals,
@@ -80,7 +78,11 @@ public class SNPUMICellReadIteratorWrapper2 extends CountChangingIteratorWrapper
                                          final int readMQ,
                                          final Map<Interval, Double> meanGenotypeQuality) {
         
-		super(underlyingIterator); 
+		super(underlyingIterator);
+		
+		if (meanGenotypeQuality==null)
+			log.warn("No Mean Genotype Quality supplied, will not filter multiple variants on the same UMI");
+		
 		this.cellBarcodeTag = cellBarcodeTag;
 		this.cellBarcodeList = new HashSet<String>(cellBarcodeList);
 		this.geneTag=geneTag;
@@ -161,6 +163,21 @@ public class SNPUMICellReadIteratorWrapper2 extends CountChangingIteratorWrapper
 			queueRecordForOutput(result);
 			return;
 		}
+		
+		// Return one copy of each read for each SNP that touches it.
+		List<SAMRecord> result = new ArrayList<>(); 
+		for (Interval snp:snpIntervalToReadMap.keySet()) {
+			Collection<SAMRecord> recs = snpIntervalToReadMap.get(snp);
+			for (SAMRecord r: recs) {
+				SAMRecord rr = Utils.getClone(r);
+				rr.setAttribute(this.snpTag, IntervalTagComparator.toString(snp));
+				result.add(rr);
+			}									
+		}
+		queueRecordForOutput(result);
+		
+		
+		
 						
 	}
 	
