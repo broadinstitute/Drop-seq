@@ -66,6 +66,9 @@ public class FilterBamByTag extends CommandLineProgram {
 	
 	@Argument(doc="A file containing a summary of the number of reads accepted and rejected.", optional=true)
 	public File SUMMARY;
+	
+	@Argument(doc="Output a file containing the number of reads accepted and rejected for each tag.", optional=true)
+	public File TAG_COUNTS_FILE;	
 
 	@Argument(doc = "The BAM tag to filter on.")
 	public String TAG;
@@ -101,9 +104,10 @@ public class FilterBamByTag extends CommandLineProgram {
 		}
 
 		this.INPUT = FileListParsingUtils.expandFileList(INPUT);
-		
+
 		IOUtil.assertFileIsWritable(OUTPUT);
 		if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(this.SUMMARY);
+		if (this.TAG_COUNTS_FILE!=null) IOUtil.assertFileIsWritable(this.TAG_COUNTS_FILE);
 		Set<String> values;
 
 		if (this.TAG_VALUES_FILE != null) {
@@ -119,9 +123,9 @@ public class FilterBamByTag extends CommandLineProgram {
 		SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(headerAndIter.header, true, OUTPUT);
 
 		if (!this.PAIRED_MODE)
-			processUnpairedMode(headerAndIter, out, values, this.SUMMARY, MINIMUM_MAPPING_QUALITY, ALLOW_PARTIAL_MATCH);
+			processUnpairedMode(headerAndIter, out, values, this.SUMMARY, this.TAG_COUNTS_FILE, MINIMUM_MAPPING_QUALITY, ALLOW_PARTIAL_MATCH);
 		else
-			processPairedMode(headerAndIter, out, values, this.SUMMARY, MINIMUM_MAPPING_QUALITY, ALLOW_PARTIAL_MATCH);
+			processPairedMode(headerAndIter, out, values, this.SUMMARY, this.TAG_COUNTS_FILE, MINIMUM_MAPPING_QUALITY, ALLOW_PARTIAL_MATCH);
 
 		return 0;
 	}
@@ -131,7 +135,7 @@ public class FilterBamByTag extends CommandLineProgram {
 	 * @param in
 	 * @param out
 	 */
-	void processUnpairedMode (final SamHeaderAndIterator headerAndIter, final SAMFileWriter out, final Set<String> values, final File summaryFile, Integer mapQuality ,boolean allowPartial) {
+	void processUnpairedMode (final SamHeaderAndIterator headerAndIter, final SAMFileWriter out, final Set<String> values, final File summaryFile, final File tagCountsFile, Integer mapQuality ,boolean allowPartial) {
 		FilteredReadsMetric m = new FilteredReadsMetric();
 		ProgressLogger progLog = new ProgressLogger(log);
 		Iterator<SAMRecord> in = headerAndIter.iterator;
@@ -142,12 +146,15 @@ public class FilterBamByTag extends CommandLineProgram {
 			if (!filterFlag) { 
 				out.addAlignment(r);
 				m.READS_ACCEPTED++;
+				m.incrementTagAccepted(getTagValue(r.getAttribute(this.TAG)));				
 			}
 			else {
 				m.READS_REJECTED++;
+				m.incrementTagRejected(getTagValue(r.getAttribute(this.TAG)));
 			}
 		}
 		writeSummary(summaryFile, m);
+		writeTagCounts(tagCountsFile, m);
 		CloserUtil.close(in);
 		out.close();
 		reportAndCheckFilterResults(m);
@@ -165,6 +172,15 @@ public class FilterBamByTag extends CommandLineProgram {
 			outSummary.write(summaryOutputFile);		
 		}
 	}
+	
+	private void writeTagCounts (File outFile, FilteredReadsMetric metrics) {
+		if (outFile!=null) {
+			MetricsFile<FilteredReadsMetric, String> outTagsCount = getMetricsFile();
+			outTagsCount.addHistogram(metrics.getHistogramTagsAccepted());
+			outTagsCount.addHistogram(metrics.getHistogramTagsRejected());
+			outTagsCount.write(outFile);		
+		}
+	}
 
 	/**
 	 *
@@ -172,7 +188,7 @@ public class FilterBamByTag extends CommandLineProgram {
 	 * @param out
 	 * @param values
 	 */
-	void processPairedMode (final SamHeaderAndIterator headerAndIter, final SAMFileWriter out, final Set<String> values, final File summaryFile, Integer mapQuality, boolean allowPartial) {
+	void processPairedMode (final SamHeaderAndIterator headerAndIter, final SAMFileWriter out, final Set<String> values, final File summaryFile, final File tagCountsFile, Integer mapQuality, boolean allowPartial) {
 		ProgressLogger progLog = new ProgressLogger(log);
 		FilteredReadsMetric m = new FilteredReadsMetric();
 		
@@ -196,16 +212,24 @@ public class FilterBamByTag extends CommandLineProgram {
 					out.addAlignment(r1);
 					out.addAlignment(r2);
 					m.READS_ACCEPTED+=2;
-				} else 
+					m.incrementTagAccepted(getTagValue(r1.getAttribute(this.TAG)));
+					m.incrementTagAccepted(getTagValue(r2.getAttribute(this.TAG)));
+				} else { 
 					m.READS_REJECTED+=2;
+					m.incrementTagRejected(getTagValue(r1.getAttribute(this.TAG)));
+					m.incrementTagRejected(getTagValue(r2.getAttribute(this.TAG)));
+				}
 			} else if (!filterFlag1) {
 				out.addAlignment(r1);
 				m.READS_ACCEPTED++;
+				m.incrementTagAccepted(getTagValue(r1.getAttribute(this.TAG)));
 			} else {
 				m.READS_REJECTED++;
+				m.incrementTagRejected(getTagValue(r1.getAttribute(this.TAG)));
 			}
 		}		
 		writeSummary(summaryFile, m);
+		writeTagCounts(tagCountsFile, m);
 		out.close();
 		reportAndCheckFilterResults(m);
 	}
@@ -267,7 +291,10 @@ public class FilterBamByTag extends CommandLineProgram {
 	
 	private String getTagValue (Object v) {
 		String vv = null;
-
+		// short circuit if tag not set.
+		if (v==null)
+			return null;
+		
 		if (v instanceof Integer) {
 			Integer o = (Integer) v;
 			vv = Integer.toString(o);
