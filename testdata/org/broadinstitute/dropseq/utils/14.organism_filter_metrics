@@ -1,0 +1,10 @@
+## htsjdk.samtools.metrics.StringHeader
+# FilterBam INPUT=/broad/mccarroll_genneuro_stemcells/data/libraries/2023-06-26_Tegtmeyer_GenNeuro_10X_Neurons_baseline_f/GRCh38_GRCm38.isa.exonic+intronic/alignment/Tegtmeyer_GenNeuro_10X_Neurons_baseline_f.14.bqsr.bam OUTPUT=/broad/mccarroll_genneuro_stemcells/data/libraries/2023-06-26_Tegtmeyer_GenNeuro_10X_Neurons_baseline_f/GRCh38_GRCm38.isa.exonic+intronic/alignment/Tegtmeyer_GenNeuro_10X_Neurons_baseline_f.14.bam SUMMARY=/broad/mccarroll_genneuro_stemcells/data/libraries/2023-06-26_Tegtmeyer_GenNeuro_10X_Neurons_baseline_f/GRCh38_GRCm38.isa.exonic+intronic/alignment/Tegtmeyer_GenNeuro_10X_Neurons_baseline_f.14.organism_filter_metrics REF_SOFT_MATCHED_REJECTED=[MOUSE] DROP_REJECTED_REF=false TMP_DIR=[/broad/hptmp/dropseq/Tegtmeyer_GenNeuro_10X_Neurons_baseline_f, /broad/hptmp/dropseq/Tegtmeyer_GenNeuro_10X_Neurons_baseline_f] VALIDATION_STRINGENCY=SILENT CREATE_INDEX=true    FILTER_PCR_DUPES=false RETAIN_ONLY_PRIMARY_READS=false VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_MD5_FILE=false GA4GH_CLIENT_SECRETS=client_secrets.json USE_JDK_DEFLATER=false USE_JDK_INFLATER=false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: Thu Jul 13 11:11:50 EDT 2023
+
+## METRICS CLASS	org.broadinstitute.dropseqrna.utils.FilteredReadsMetric
+READS_REJECTED	READS_ACCEPTED
+1364288	37369275
+
+
