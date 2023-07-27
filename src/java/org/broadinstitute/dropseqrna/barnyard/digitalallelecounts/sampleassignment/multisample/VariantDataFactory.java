@@ -125,7 +125,8 @@ public class VariantDataFactory {
 		double sum = new Sum().evaluate(genotypeFreqs);
 		//TODO: is this a mistake?  Maybe should include these so that all pairs of donors have the same number of variants.  This is different from the number of informative SNPs.
 		// need at least one ref/het/var call in this variant to continue.
-		if (sum==0) return (null);
+		if (sum==0) 
+			return (null);
 		GenotypeType s1 = genotypeMatrix.getGenotype(i, sampleOne);
 		GenotypeType s2 = genotypeMatrix.getGenotype(i, sampleTwo);
 
