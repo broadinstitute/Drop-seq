@@ -206,6 +206,12 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 	@Argument(doc="Logging interval for SNP sequence pileup processing")
 	public Integer SNP_LOG_RATE=1000;
 	
+	@Argument(doc="(Optional)  If set to a value, this program will quit early with an exception if this number of UMIs are observed without encountering a transcribed SNP - "
+			+ "that is, a variant from the VCF file that is will be informative during donor assignment.  A value of -1 disables this test.  As some fraction of UMIs may not"
+			+ "contain transcribed SNPs, the value for this should probably be set to a fairly large number, like 10% of the total UMIs in your experiment.  Mostly useful for debugging / or "
+			+ "testing new data sets.")
+	public Integer TRANSCRIBED_SNP_FAIL_FAST_THRESHOLD=-1;
+	
 	// This isn't fully implemented yet so is disabled.
 	// @Argument(doc = "on a per-genotype basis, use the GQ score to weigh how much we believe the data given genotype.
 	// Weights the likelihood (D|G) by the GQ score, which is converted from phred quality to a probability [0-1].")
@@ -232,7 +238,6 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		// subsetting the VCF by samples isn't generally needed for the standard way to run AssignCellsToSamples, but is super
 		// expensive to run. We need to get around this.
 		List<String> vcfSamples = SampleAssignmentVCFUtils.getVCFSamples(vcfReader, this.SAMPLE_FILE);
-		SampleAssignmentVCFUtils.validateSampleNamesInVCF(vcfReader, vcfSamples, log);
 
 		// set up the VCF writer if needed.
 		VariantContextWriter vcfWriter = getVcfWriter(vcfReader, vcfSamples);
@@ -908,8 +913,9 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		Map<Interval, Double> genotypeQuality = snpIntervals.getAverageGQ();		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(headerAndIter, snpIntervals.getIntervalList(), GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, this.FUNCTION_TAG, this.READ_MQ, false,
-				barcodes, genotypeQuality, SortOrder.SNP_CELL);
-
+				barcodes, genotypeQuality, SortOrder.SNP_CELL, this.TRANSCRIBED_SNP_FAIL_FAST_THRESHOLD);
+		
+		
 		if (this.BAM_OUTPUT != null) {
 			SAMFileHeader header = headerAndIter.header;
 			SamHeaderUtil.addPgRecord(header, this);

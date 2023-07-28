@@ -229,6 +229,10 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
                 } else
 					return true;
             }
+
+			@Override
+			public void logFilterResults() {				
+			}
         };
 
         ProgressLogger p = new ProgressLogger(log, 1000000, "Preparing reads in core barcodes");

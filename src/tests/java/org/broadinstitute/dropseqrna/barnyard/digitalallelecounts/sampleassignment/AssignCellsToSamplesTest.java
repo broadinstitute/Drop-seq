@@ -56,6 +56,7 @@ public class AssignCellsToSamplesTest {
 	private final File VCF = new File (rootDir+"/test_missing_data.vcf");
 	private final File VCFC = new File (rootDir+"/test_missing_data.vcf.gz");
 	private final File VCF_NON_CANONICAL=new File(rootDir+"/test_non_canonical_base.vcf.gz");
+	private final File VCF_FAIL_FAST = new File (rootDir+"/test_fail_fast_umi_threshold.vcf.gz");
 	
 	private final File CONTAMINATION_FILE=new File (rootDir+"/small_data.contamination.txt");
 	private final File MAF_ESIMATE_FILE=new File (rootDir+"/small_data.minor_allele_freq.txt");
@@ -72,6 +73,8 @@ public class AssignCellsToSamplesTest {
 	private final File EXPECTED_MAXLIKE_OUTPUT=new File (rootDir+"/small_data.donor_assignment.maxLike_10.txt");	
 	private final File EXPECTED_MAXLIKE_VERBOSE_OUTPUT= new File (rootDir+"/small_data.donor_assignment.maxLike_10.verbose.gz");
 	
+	private final File WRONG_SAMPLE_LIST=new File(rootDir+"/wrong_sample_list.txt");
+	private final File DUPLICATE_SAMPLE_LIST=new File(rootDir+"/duplicate_sample_list.txt");
 	
 	/**********
 	 * TESTS FOR SNPS THAT OCCUR ON MULTIPLE READS/UMIS
@@ -167,6 +170,7 @@ public class AssignCellsToSamplesTest {
 		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
 		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
 		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);
 		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));	
@@ -174,7 +178,69 @@ public class AssignCellsToSamplesTest {
 		
 	}
 	
+	/**
+	 * Uses a sample list that has entries not in the VCF.
+	 * @throws IOException
+	 */
+	@Test(expectedExceptions = { IllegalArgumentException.class } )
+	public void testEndToEndWrongSampleList() throws IOException {
+		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.GQ_THRESHOLD=30;
+		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
+		assigner.VCF=this.VCFC;
+		assigner.SAMPLE_FILE=WRONG_SAMPLE_LIST;
+		assigner.NUM_BARCODES=10; // more than enough
+		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		assigner.VCF_OUTPUT=File.createTempFile("AssignCellsToSamples", ".vcf");
+		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		int result = assigner.doWork();
+		Assert.assertEquals(result, 0);		
+	}	
 	
+	/**
+	 * Uses a sample list that has duplicate entries of those in the VCF
+	 * @throws IOException
+	 */
+	@Test(expectedExceptions = { IllegalArgumentException.class } )
+	public void testEndToEndDuplicatesInSampleList() throws IOException {
+		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.GQ_THRESHOLD=30;
+		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
+		assigner.VCF=this.VCFC;
+		assigner.SAMPLE_FILE=DUPLICATE_SAMPLE_LIST;
+		assigner.NUM_BARCODES=10; // more than enough
+		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		assigner.VCF_OUTPUT=File.createTempFile("AssignCellsToSamples", ".vcf");
+		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		int result = assigner.doWork();
+		Assert.assertEquals(result, 0);		
+	}
+	
+	/**
+	 * The BAM contains variants on contig HUMAN_1 and the VCF only contains variants on HUMAN_2, though 
+	 * the data sets both contain the proper contigs in the sequence dictionary.
+	 * @throws IOException
+	 */
+	@Test(expectedExceptions = { IllegalStateException.class } )
+	public void testFailFastUMIThreshold() throws IOException {
+		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.GQ_THRESHOLD=30;
+		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
+		assigner.VCF=this.VCF_FAIL_FAST;
+		assigner.TRANSCRIBED_SNP_FAIL_FAST_THRESHOLD=5;		
+		assigner.NUM_BARCODES=10; // more than enough
+		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		assigner.VCF_OUTPUT=File.createTempFile("AssignCellsToSamples", ".vcf");
+		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		int result = assigner.doWork();
+		Assert.assertEquals(result, 0);		
+	}
 	
 	// 
 	@Test

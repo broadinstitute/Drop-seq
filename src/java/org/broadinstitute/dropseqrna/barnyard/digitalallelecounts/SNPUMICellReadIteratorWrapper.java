@@ -23,7 +23,6 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -31,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.utils.CountChangingIteratorWrapper;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;

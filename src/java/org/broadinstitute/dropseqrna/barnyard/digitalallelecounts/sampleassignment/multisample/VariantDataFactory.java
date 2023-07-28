@@ -23,16 +23,22 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample;
 
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.StringUtil;
-import htsjdk.variant.variantcontext.GenotypeType;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.apache.commons.math3.stat.descriptive.summary.Sum;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.LikelihoodUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.CellAssignmentUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.SampleGenotypeProbabilities;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.StringUtil;
+import htsjdk.variant.variantcontext.GenotypeType;
 
 public class VariantDataFactory {
 
@@ -123,8 +129,8 @@ public class VariantDataFactory {
 		
 		double [] genotypeFreqs = genotypeMatrix.getGenotypeFrequencies(i);
 		double sum = new Sum().evaluate(genotypeFreqs);
-		//TODO: is this a mistake?  Maybe should include these so that all pairs of donors have the same number of variants.  This is different from the number of informative SNPs.
 		// need at least one ref/het/var call in this variant to continue.
+		// in practice the variants are never 
 		if (sum==0) 
 			return (null);
 		GenotypeType s1 = genotypeMatrix.getGenotype(i, sampleOne);

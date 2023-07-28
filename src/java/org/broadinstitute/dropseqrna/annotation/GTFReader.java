@@ -141,5 +141,9 @@ public class GTFReader {
             } else
 				return false;
         }
+
+		@Override
+		public void logFilterResults() {						
+		}
     }
 }

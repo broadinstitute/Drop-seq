@@ -170,6 +170,12 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 		
 				
 	}
+
+	@Override
+	public void logFilterResults() {
+		String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);		
+	}
 	
 }
 

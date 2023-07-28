@@ -69,7 +69,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	private final String functionTag;
 	private SamWriterSink sink;
 	
-		
+	
 	/**
 	 * Construct an object that generates SNPUMIBasePileup objects from a BAM file.
 	 * Each of these objects constructs a pileup of the bases and qualities
@@ -82,13 +82,16 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	 * @param assignReadsToAllGenes Should records tagged with multiple genes be double counted, once for each gene?
 	 * @param useStrandInfo should the gene and read strand match for the read to be accepted
 	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.  Only reads with these values will be used.  If set to null, all cell barcodes are used.
-	 * @param A map from SNP Intervals to the mean genotype quality.  This is an optional parameter.  If supplied, in cases where a read has 
-	 * multiple SNPs, the SNP with the highest average genotype quality will be selected to avoid read "double counting". 
+	 * @param meanGenotypeQuality A map from SNP Intervals to the mean genotype quality.  This is an optional parameter.  If supplied, in cases where a read has 
+	 * multiple SNPs, the SNP with the highest average genotype quality will be selected to avoid read "double counting".
+	 * @param order How the reads groups will be ordered by this iterator
+	 * @param failFastThreshold If the iterator sees at least this many UMIs without encountering a transcribed SNP the iterator will fail.  Set to -1 to disable
 	 */
 	public SNPUMIBasePileupIterator (final SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String geneTag, final String geneStrandTag, final String geneFunctionTag,
 			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, final String cellBarcodeTag,
             final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
-            final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final Map<Interval, Double> meanGenotypeQuality, final SortOrder order) {
+            final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final Map<Interval, Double> meanGenotypeQuality, final SortOrder order,
+            int failFastThreshold) {
 				
 		this.geneTag=geneTag; 
 		this.cellBarcodeTag=cellBarcodeTag;
@@ -139,8 +142,10 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
                 SamRecordSortingIteratorFactory.create(headerAndIter.header, gfteratorWrapper, cellGeneMolBcComparator, logger);
      	
      	GroupingIterator<SAMRecord> cellGeneMolBCGroupingIter= new GroupingIterator<>(sortingIterator1, cellGeneMolBcComparator);
+     	// retaining the reference to this to modify the fail fast threshold.
      	SNPUMICellReadIteratorWrapper2 snpumiCellReadIterator = new SNPUMICellReadIteratorWrapper2(cellGeneMolBCGroupingIter, snpIntervals, cellBarcodeTag, cellBarcodes, geneTag, snpTag, readMQ, meanGenotypeQuality);
-     	     	
+     	snpumiCellReadIterator.setFailFastThreshold(failFastThreshold);
+     	
      	Iterator<SAMRecord> flattenedIterator = StreamSupport.stream(snpumiCellReadIterator.spliterator(), false).flatMap(x->x.stream()).iterator();     	          	
      	     	
      	/**
@@ -183,6 +188,17 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 
 		this.atoi = new GroupingIterator<>(sortingIterator, multiComparator);
 	}
+	
+	public SNPUMIBasePileupIterator (final SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String geneTag, final String geneStrandTag, final String geneFunctionTag,
+			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, final String cellBarcodeTag,
+           final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
+           final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final Map<Interval, Double> meanGenotypeQuality, final SortOrder order) {
+		
+		this(headerAndIter, snpIntervals, geneTag, geneStrandTag, geneFunctionTag, acceptedLociFunctions, strandStrategy, cellBarcodeTag, molecularBarcodeTag, snpTag, functionTag, readMQ, 
+				assignReadsToAllGenes, cellBarcodes, meanGenotypeQuality, order, -1);
+	}
+	
+	
 	
 	public void addReadSink (SamWriterSink sink) {
 		this.sink=sink;

@@ -23,16 +23,20 @@
  */
 package org.broadinstitute.dropseqrna.vcftools.filters;
 
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-
 import java.util.Iterator;
 import java.util.List;
 
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+
+import htsjdk.samtools.util.Log;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.VariantContext;
+
 public class CommonVariantContextFilter extends FilteredIterator<VariantContext>{
 
+	private static final Log log = Log.getInstance(CommonVariantContextFilter.class);
+	
 	private final List<String> vcfSamples;
 	private final int numVariantSamples;
 
@@ -60,5 +64,11 @@ public class CommonVariantContextFilter extends FilteredIterator<VariantContext>
 		else
 			sum = c.getCountForKey(1)+c.getCountForKey(0);
 		return (sum<this.numVariantSamples);
+	}
+
+	@Override
+	public void logFilterResults() {
+		String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);										
 	}
 }

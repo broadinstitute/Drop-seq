@@ -24,11 +24,13 @@
 
 package org.broadinstitute.dropseqrna.vcftools.filters;
 
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.VariantContext;
+import java.util.Iterator;
+
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
-import java.util.Iterator;
+import htsjdk.samtools.util.Log;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
 
 /**
  * Filter out variants that have the potential to be flipped by a strand-flip bug.
@@ -38,6 +40,8 @@ import java.util.Iterator;
  */
 public class FlipSNPFilter extends FilteredIterator <VariantContext> {
 
+	private static final Log log = Log.getInstance(FlipSNPFilter.class);
+	
 	public FlipSNPFilter(final Iterator<VariantContext> underlyingIterator) {
 		super(underlyingIterator);
 	}
@@ -53,6 +57,12 @@ public class FlipSNPFilter extends FilteredIterator <VariantContext> {
 		if (ref.equals("C") && alt.equals("G")) return true;
 		if (ref.equals("G") && alt.equals("C")) return true;
 		return false;
+	}
+
+	@Override
+	public void logFilterResults() {
+		String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);										
 	}
 
 }

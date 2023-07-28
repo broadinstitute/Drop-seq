@@ -35,6 +35,7 @@ import java.util.Set;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.utils.CountChangingIteratorWrapper;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
+import org.broadinstitute.dropseqrna.utils.PassFailTrackingIteratorI;
 
 import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.SAMRecord;
@@ -52,7 +53,13 @@ public class SNPUMICellReadIteratorWrapper2 extends CountChangingIteratorWrapper
 	private final String snpTag;
 	private final OverlapDetector<Interval> snpIntervals;
 	private final Map<Interval, Double> meanGenotypeQuality;
-
+	
+	private int recordsPass=0;
+	private int recordsTotal=0;
+	private boolean isLogged=false;
+	private int failFastThreshold=-1;
+	
+	
 	/**
 	 * Filters and copies reads for generating SNPCellUMIBasePileups.
 	 * Filters out reads in which the read cell barcode does not match a barcode in the list (if list is not null)
@@ -94,6 +101,12 @@ public class SNPUMICellReadIteratorWrapper2 extends CountChangingIteratorWrapper
 		od.addAll(snpIntervals.getIntervals(), snpIntervals.getIntervals());
 		this.snpIntervals=od;
 	}
+	
+	public void setFailFastThreshold (int count) {
+		this.failFastThreshold=count;
+	}
+	
+	
 
     @Override
     protected void processRecord(final List<SAMRecord> recList) {    	
@@ -116,7 +129,10 @@ public class SNPUMICellReadIteratorWrapper2 extends CountChangingIteratorWrapper
 	 * Simplified since data goes through GeneFunctionIteratorWrapper to take care of how reads/genes interact.
 	 */
 	private void processSNP (final List<SAMRecord> recList) {
-										
+		checkFastFail();
+		
+		recordsTotal++;
+		
 		Map<Interval, Set<SAMRecord>> snpIntervalToReadMap = new HashMap<>();
 		// find all 
 		for (SAMRecord r : recList) {
@@ -139,7 +155,9 @@ public class SNPUMICellReadIteratorWrapper2 extends CountChangingIteratorWrapper
 		}	
 
 		// exit early if no SNPs found.
-		if (snpIntervalToReadMap.size()==0) return;
+		if (snpIntervalToReadMap.size()==0) {
+			return;
+		}
 								
 		// exit without selecting a SNP if there's only a single SNP.
 		if (snpIntervalToReadMap.size()==1) {
@@ -148,6 +166,7 @@ public class SNPUMICellReadIteratorWrapper2 extends CountChangingIteratorWrapper
 				r.setAttribute(this.snpTag, intervalString);					
 			}
 			queueRecordForOutput(recList);
+			this.recordsPass++;
 			return;
 		}
 		
@@ -161,6 +180,7 @@ public class SNPUMICellReadIteratorWrapper2 extends CountChangingIteratorWrapper
 				r.setAttribute(this.snpTag, intervalString);	
 			}			
 			queueRecordForOutput(result);
+			this.recordsPass++;
 			return;
 		}
 		
@@ -174,11 +194,8 @@ public class SNPUMICellReadIteratorWrapper2 extends CountChangingIteratorWrapper
 				result.add(rr);
 			}									
 		}
-		queueRecordForOutput(result);
-		
-		
-		
-						
+		queueRecordForOutput(result);						
+		this.recordsPass++;
 	}
 	
 	private Interval getBestSNP (Collection<Interval> snpIntervals) {
@@ -225,6 +242,28 @@ public class SNPUMICellReadIteratorWrapper2 extends CountChangingIteratorWrapper
 		}
 		processSNP(result);
 		
+	}
+
+		
+	@Override
+    public boolean hasNext() {
+		// checkFastFail();
+        boolean hasNext = super.hasNext();
+        if (!hasNext & !isLogged) {
+        	String msg = String.format("UMIs that with at least one SNP [%d] of total UMIs [%d] ",this.recordsPass, this.recordsTotal);  
+    		log.info(msg);    		
+    		//TODO: why does hasNext get called after it returns null?
+    		isLogged=true;
+        }
+        return hasNext;
+    }
+	
+	private void checkFastFail () {
+		if (this.failFastThreshold!=-1 && this.recordsTotal>= this.failFastThreshold & this.recordsPass==0) {
+			String msg = String.format("Did not encounter any transcribed SNPs after testing [%d] UMIs", this.failFastThreshold);   
+			log.error(msg);
+			throw new IllegalStateException();
+		}
 	}
 
 }

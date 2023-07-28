@@ -23,16 +23,19 @@
  */
 package org.broadinstitute.dropseqrna.vcftools.filters;
 
-import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+
+import htsjdk.samtools.util.Log;
+import htsjdk.variant.variantcontext.VariantContext;
+
 public class ChromosomeVariantFilter extends FilteredIterator<VariantContext>{
 
+	private static final Log log = Log.getInstance(ChromosomeVariantFilter.class);
 	private final Set<String> contigsToFilter;
 
 	public ChromosomeVariantFilter(final Iterator<VariantContext> underlyingIterator, final Collection<String> contigsToFilter) {
@@ -48,6 +51,12 @@ public class ChromosomeVariantFilter extends FilteredIterator<VariantContext>{
 		// short circuit if there are no contigs to filter.
 		if (this.contigsToFilter==null) return false;
 		return this.contigsToFilter.contains(rec.getContig());
+	}
+
+	@Override
+	public void logFilterResults() {
+		String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);										
 	}
 
 }

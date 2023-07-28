@@ -23,13 +23,17 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-
 import java.util.Iterator;
 
-public class PCRDuplicateFilteringIterator extends FilteredIterator<SAMRecord> {
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.Log;
+
+public class PCRDuplicateFilteringIterator extends FilteredIterator<SAMRecord> {
+	
+	private static final Log log = Log.getInstance(PCRDuplicateFilteringIterator.class);
+	
 	public PCRDuplicateFilteringIterator(final Iterator<SAMRecord> underlyingIterator) {
 		super(underlyingIterator);
 
@@ -39,6 +43,12 @@ public class PCRDuplicateFilteringIterator extends FilteredIterator<SAMRecord> {
 	public boolean filterOut(final SAMRecord rec) {
 		return rec.getDuplicateReadFlag();
 
+	}
+
+	@Override
+	public void logFilterResults() {
+		String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);		
 	}
 
 }

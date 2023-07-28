@@ -26,6 +26,10 @@ package org.broadinstitute.dropseqrna.utils;
 import java.util.Iterator;
 import java.util.function.Predicate;
 
+import org.broadinstitute.dropseqrna.utils.readiterators.TagValueFilteringIterator;
+
+import htsjdk.samtools.util.Log;
+
 /**
  * FilteredIterator using java.util.function.Predicate
  * Record is included if predicate.test() == true
@@ -33,7 +37,8 @@ import java.util.function.Predicate;
 public class PredicateFilteredIterator<T>
         extends FilteredIterator<T> {
     private final Predicate<T> predicate;
-
+    
+	
     /**
      *
      * @param underlyingIterator records to be iterated over
@@ -46,6 +51,16 @@ public class PredicateFilteredIterator<T>
 
     @Override
     public boolean filterOut(T rec) {
-        return !predicate.test(rec);
+    	return !predicate.test(rec);        
     }
+
+	@Override
+	public void logFilterResults() {
+		Class<? extends PredicateFilteredIterator> subclass = this.getClass();
+		Log log = Log.getInstance(subclass);
+		String msg = String.format("Records pass [%d] records fail [%d] ", this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);		
+	}
+
+
 }

@@ -503,7 +503,6 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 		// if the vcfSamples isn't set, use the sample filee
 		if (vcfSamples == null || vcfSamples.size() == 0)
 			vcfSamples = SampleAssignmentVCFUtils.getVCFSamples(vcfReader, this.SAMPLE_FILE);
-		SampleAssignmentVCFUtils.validateSampleNamesInVCF(vcfReader, vcfSamples, log);
 
 		Iterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, !POLYMORPHIC_SNPS_ONLY, GQ_THRESHOLD,
 				this.FRACTION_SAMPLES_PASSING, this.IGNORED_CHROMOSOMES, log);

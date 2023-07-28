@@ -32,9 +32,8 @@ import java.util.List;
 import java.util.Set;
 
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.GatherDigitalAlleleCounts;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.AssignCellsToSamples;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.TransformingIterator;
 import org.broadinstitute.dropseqrna.utils.VariantContextProgressLoggerIterator;
 import org.broadinstitute.dropseqrna.vcftools.filters.CallRateVariantContextFilter;
@@ -42,11 +41,9 @@ import org.broadinstitute.dropseqrna.vcftools.filters.ChromosomeVariantFilter;
 import org.broadinstitute.dropseqrna.vcftools.filters.FlipSNPFilter;
 import org.broadinstitute.dropseqrna.vcftools.filters.SimpleDiploidVariantContextFilter;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMSequenceDictionary;
+import com.google.common.collect.Sets;
+
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.samtools.util.ProgressLogger;
@@ -63,7 +60,7 @@ import htsjdk.variant.vcf.VCFFileReader;
  */
 public class SampleAssignmentVCFUtils {
 	
-	
+	private static final Log log = Log.getInstance(SampleAssignmentVCFUtils.class);
 	/**
 	 * Since we iterate through the VCF once to establish an interval list of sites to query, and then once to look at genotypes,
 	 * have a 1 stop shop to set up the filtered iterator that handles all processing of VariantContext data.
@@ -250,8 +247,13 @@ public class SampleAssignmentVCFUtils {
 			log.info(msg);
 		}
 				
-		if (samplesInVCF.size()<samples.size())
-			throw new IllegalArgumentException("Did not find all of the requested samples.  Can not continue.");
+		if (samplesInVCF.size()<samples.size()) {
+			//TODO log the donors that were not found
+			Set<String> missingSamplesInVCF=Sets.difference(new HashSet<String>(samples),samplesInVCF);
+			String msg = String.format("Did not find all of the requested samples.  Missing samples %s. Can not continue.", missingSamplesInVCF.toString());
+			log.error(msg);			                			
+			throw new IllegalArgumentException(msg);
+		}
 
 		List<String> finalSamples = new ArrayList<>();
 		for (String s: samples)
@@ -292,6 +294,18 @@ public class SampleAssignmentVCFUtils {
 			samples=ParseBarcodeFile.readCellBarcodeFile(vcfSampleFile);
 		} else
 			samples=vcfReader.getFileHeader().getSampleNamesInOrder();
+		
+		// test for duplicate sample IDs.
+		ObjectCounter<String> o = new ObjectCounter<>();		
+		samples.stream().forEach(x-> o.increment(x));
+		o.filterByMinCount(2);
+		Set<String> duplicateDonors= new HashSet<String> (o.getKeys());
+		if (duplicateDonors.size()>0) {
+			String msg=String.format("Duplicate Samples in Sample List %s.  Can not continue.", duplicateDonors.toString());
+			log.error(msg);
+			throw new IllegalArgumentException(msg);
+		}
+				
 		return samples;
 	}
 

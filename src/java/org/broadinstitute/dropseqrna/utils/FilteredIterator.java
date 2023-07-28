@@ -23,21 +23,24 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.SAMRecord;
+import java.util.Iterator;
+
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IterableOnceIterator;
 import htsjdk.samtools.util.PeekableIterator;
 
-import java.util.Iterator;
-
 public abstract class FilteredIterator<T>
         extends IterableOnceIterator<T>
-        implements CloseableIterator<T>
+        implements CloseableIterator<T>,
+        PassFailTrackingIteratorI
 {
 
     final PeekableIterator<T> it;
     boolean firstTime = true;
     private final ObjectSink<T> sink;
+    private int recordsPass=0;
+	private int recordsFail=0;
+	
         
     /**
      * If instantiating your FilteredIterator with an ObjectSink, reads that fail the filter will be put in the sink.
@@ -57,6 +60,11 @@ public abstract class FilteredIterator<T>
      * @return true if record should be skipped
      */
     public abstract boolean filterOut(final T rec);
+    
+    /**
+     * After the iterator is finished, the subclass logs the number of pass/fail records.  Can be implemented as a NO-OP to not log.
+     */
+    public abstract void logFilterResults();
 
     // if there's a sink, then filtered reads are added to the sink.
     // 
@@ -64,7 +72,12 @@ public abstract class FilteredIterator<T>
         while (it.hasNext()) {
         	T rec = it.peek();
         	boolean filter = filterOut(rec);
-        	if (!filter) return; // break out of skipping records.
+        	if (filter) 
+        		this.recordsFail++;
+        	if (!filter) {
+        		this.recordsPass++;
+        		return; // break out of skipping records.
+        	}
         	// you're filtered, sink if needed.
         	if (this.sink!=null) 
         		sink.add(rec);        	
@@ -88,6 +101,9 @@ public abstract class FilteredIterator<T>
     @Override
     public boolean hasNext() {
         maybeSkipFirstTime();
+        boolean hasNext=it.hasNext();
+        if (!hasNext) 
+        	logFilterResults();
         return it.hasNext();
     }
 
@@ -111,4 +127,14 @@ public abstract class FilteredIterator<T>
     public ObjectSink<T> getFilteredReadSink () {
     	return this.sink;
     }
+    
+    @Override
+	public int getRecordsPassed() {
+		return this.recordsPass;		
+	}
+
+	@Override
+	public int getRecordsFailed() {
+		return this.recordsFail;
+	}
 }

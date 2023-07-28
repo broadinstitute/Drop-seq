@@ -87,4 +87,10 @@ public class MinorAlleleFreqVariantContextFilter extends FilteredIterator <Varia
 		return calculateMinorAlleleFrequency(site, gqThreshold, site.getSampleNames());
 	}
 
+	@Override
+	public void logFilterResults() {
+		String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);								
+	}
+
 }

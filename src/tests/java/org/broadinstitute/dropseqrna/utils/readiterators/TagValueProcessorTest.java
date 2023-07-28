@@ -51,6 +51,10 @@ public class TagValueProcessorTest {
           public boolean filterOut(final SAMRecord rec) {
               return !values.contains(rec.getAttribute("ZC"));
           }
+
+		@Override
+		public void logFilterResults() {
+		}
       };
 	  int counter=0;
 
@@ -79,6 +83,10 @@ public class TagValueProcessorTest {
           @Override
           public boolean filterOut(final SAMRecord rec) {
               return values.contains(rec.getAttribute("ZC"));
+          }
+
+          @Override
+          public void logFilterResults() {			
           }
       };
 	  int counter=0;

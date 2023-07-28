@@ -91,7 +91,6 @@ public class CensusSeqUtils {
 		// filter monomorphic SNPs.
 		vcfIterator = new PeekableIterator<>(new MonomorphicVariantContextFilter(vcfIterator, vcfSamples));
 		// filter problematic chromosomes as defined by the user, usually the sex chromosomes.
-		vcfIterator = new PeekableIterator<>(new ChromosomeVariantFilter(vcfIterator, ignoredChromosones));
 		vcfIterator = new PeekableIterator<>(new CommonVariantContextFilter(vcfIterator, vcfSamples, minVariantSamples));
 		// add a filter for SNPs that are singletons if you're in private SNP mode.
 		if (filterToHetSNPs)

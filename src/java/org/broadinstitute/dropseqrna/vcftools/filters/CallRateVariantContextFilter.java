@@ -71,5 +71,12 @@ public class CallRateVariantContextFilter extends FilteredIterator <VariantConte
 		return false;
 	}
 
+	@Override
+	public void logFilterResults() {
+		String msg = String.format("GQ threshold [%d] fraction donors passing [%f] records pass [%d] records fail [%d] ",this.genotypeThreshold, this.fractionPassing, this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);
+		
+	}
+
 
 }

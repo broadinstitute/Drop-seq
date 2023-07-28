@@ -28,6 +28,7 @@ import java.util.Iterator;
 
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
+import htsjdk.samtools.util.Log;
 import htsjdk.variant.variantcontext.Genotype;
 
 /**
@@ -38,6 +39,8 @@ import htsjdk.variant.variantcontext.Genotype;
  */
 public class GenotypeGQFilter extends FilteredIterator <Genotype> {
 
+	// private static final Log log = Log.getInstance(GenotypeGQFilter.class);
+	
 	private final int GQThreshold;
 	private boolean filterUncalled;
 
@@ -56,5 +59,13 @@ public class GenotypeGQFilter extends FilteredIterator <Genotype> {
 		if (!rec.isCalled() & filterUncalled) return true;
 		boolean flag = (rec.getGQ()<GQThreshold);
 		return flag;
+	}
+
+	@Override
+	public void logFilterResults() {
+		// This is disabled as it is far too verbose - it's typically used per site.
+		// String msg = String.format("GQ Threshold [%d] filter uncalled [%B] records pass [%d] records fail [%d] ",this.GQThreshold, this.filterUncalled, this.getRecordsPassed(), this.getRecordsFailed());  
+		// log.info(msg);								
+		
 	}
 }

@@ -353,6 +353,9 @@ public class SpermSeqMarkDuplicates extends CommandLineProgram  {
 	    public boolean filterOut(final SAMRecord r) {
 	        return r.getReadUnmappedFlag();
 	    }
+		@Override
+		public void logFilterResults() {			
+		}
 	}
 
 	
