@@ -56,9 +56,4 @@ public class BamTagCountingIterator extends FilteredIterator<SAMRecord> {
 		return this.counter;
 	}
 
-	@Override
-	public void logFilterResults() {
-	}
-
-
 }

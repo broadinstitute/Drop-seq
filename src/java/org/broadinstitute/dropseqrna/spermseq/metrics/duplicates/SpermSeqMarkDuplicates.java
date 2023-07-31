@@ -23,11 +23,14 @@
  */
 package org.broadinstitute.dropseqrna.spermseq.metrics.duplicates;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.DuplicateScoringStrategy.ScoringStrategy;
-import htsjdk.samtools.metrics.MetricBase;
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.*;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.commons.math3.util.Precision;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -35,17 +38,34 @@ import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.SpermSeq;
-import org.broadinstitute.dropseqrna.utils.*;
+import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+import org.broadinstitute.dropseqrna.utils.GroupingIterator;
+import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
+import org.broadinstitute.dropseqrna.utils.MultiComparator;
+import org.broadinstitute.dropseqrna.utils.StringTagComparator;
 import org.broadinstitute.dropseqrna.utils.readiterators.MissingTagFilteringIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
+
+import htsjdk.samtools.DuplicateScoringStrategy;
+import htsjdk.samtools.DuplicateScoringStrategy.ScoringStrategy;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.metrics.MetricBase;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 import picard.sam.DuplicationMetrics;
-
-import java.io.File;
-import java.util.*;
 
 @CommandLineProgramProperties(
         summary = "For each cell/UMI, collect the set of reads." +
@@ -352,10 +372,7 @@ public class SpermSeqMarkDuplicates extends CommandLineProgram  {
 	    @Override
 	    public boolean filterOut(final SAMRecord r) {
 	        return r.getReadUnmappedFlag();
-	    }
-		@Override
-		public void logFilterResults() {			
-		}
+	    }		
 	}
 
 	

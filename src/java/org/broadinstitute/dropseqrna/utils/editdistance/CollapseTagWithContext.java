@@ -614,10 +614,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 			// filter out read if either test fails.
 			return (! mapQualityPredicate.test(rec) || !requiredTagPredicate.test(rec));
 		}
-
-		@Override
-		public void logFilterResults() {
-		} 									    	
+										    
     }
     
 

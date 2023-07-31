@@ -60,12 +60,5 @@ public class GenotypeGQFilter extends FilteredIterator <Genotype> {
 		boolean flag = (rec.getGQ()<GQThreshold);
 		return flag;
 	}
-
-	@Override
-	public void logFilterResults() {
-		// This is disabled as it is far too verbose - it's typically used per site.
-		// String msg = String.format("GQ Threshold [%d] filter uncalled [%B] records pass [%d] records fail [%d] ",this.GQThreshold, this.filterUncalled, this.getRecordsPassed(), this.getRecordsFailed());  
-		// log.info(msg);								
-		
-	}
+	
 }

@@ -250,11 +250,6 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
         @Override
         public boolean filterOut(final GTFRecord rec) {
             return GTFParser.GTFFeature.gene.name().equals(rec.getFeatureType());
-        }
-
-		@Override
-		public void logFilterResults() {			
-			
-		}
+        }		
     }
 }

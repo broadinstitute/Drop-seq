@@ -62,9 +62,12 @@ public abstract class FilteredIterator<T>
     public abstract boolean filterOut(final T rec);
     
     /**
-     * After the iterator is finished, the subclass logs the number of pass/fail records.  Can be implemented as a NO-OP to not log.
+     * After the iterator is finished, the subclass logs the number of pass/fail records.  
+     * Can be implemented to emit logging messages, but does not log by default
      */
-    public abstract void logFilterResults();
+    public void logFilterResults() {
+    	// This is a NO-OP unless implemented by the subclass
+    }
 
     // if there's a sink, then filtered reads are added to the sink.
     // 
