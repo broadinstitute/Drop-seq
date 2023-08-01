@@ -23,16 +23,20 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.util.Log;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 
 import java.util.Iterator;
 
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.DetectDoublets;
+
 public class VariantContextSingletonFilter extends FilteredIterator<VariantContext>{
 
 	private final boolean hetVarOnly;
-
+	private static final Log log = Log.getInstance(VariantContextSingletonFilter.class);
+	
 	/**
 	 * Filters out sites that have > 1 sample with an alternate allele
 	 * @param underlyingIterator
@@ -69,6 +73,12 @@ public class VariantContextSingletonFilter extends FilteredIterator<VariantConte
 		}
 		if (count==1) return false;
 		return true;
+	}
+	
+	@Override
+	public void logFilterResults() {		
+		String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);
 	}
 
 }

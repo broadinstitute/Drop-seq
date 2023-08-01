@@ -29,6 +29,7 @@ import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.Log;
 
 /**
  * Filters reads where the read strand and gene strand disagree.
@@ -37,6 +38,7 @@ import htsjdk.samtools.SAMRecord;
  */
 public class GeneStrandFilteringIterator extends FilteredIterator<SAMRecord>{
 
+	private static final Log log = Log.getInstance(GeneStrandFilteringIterator.class);
 	private final String strandTag;
 
 	protected GeneStrandFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String strandTag) {
@@ -60,6 +62,12 @@ public class GeneStrandFilteringIterator extends FilteredIterator<SAMRecord>{
 		for (String s: strands)
 			if (!s.equals(readStrandString)) return true;
 		return false;
+	}
+
+	@Override
+	public void logFilterResults() {
+		String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);										
 	}
 
 

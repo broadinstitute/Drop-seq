@@ -24,13 +24,17 @@
 
 package org.broadinstitute.dropseqrna.vcftools.filters;
 
-import htsjdk.variant.variantcontext.VariantContext;
+import java.util.Iterator;
+
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
-import java.util.Iterator;
+import htsjdk.samtools.util.Log;
+import htsjdk.variant.variantcontext.VariantContext;
 
 public class AlleleFrequencyTagFilter extends FilteredIterator<VariantContext> {
 
+	private final Log log = Log.getInstance(AlleleFrequencyTagFilter.class);
+	
 	private final String alleleFreqTag;
 	private final double MISSING_VALUE=-1d;
 	private final double minimumMinorAlleleFreq;
@@ -48,6 +52,13 @@ public class AlleleFrequencyTagFilter extends FilteredIterator<VariantContext> {
 		// discard SNPs where the AF is below the limit.
 		if (minorAlleleFreq < this.minimumMinorAlleleFreq) return true;
 		return false;
+	}
+
+	@Override
+	public void logFilterResults() {
+		String msg = String.format("Minor allele freqeuncy threshold [%f] records pass [%d] records fail [%d] ",this.minimumMinorAlleleFreq, this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);
+		
 	}
 
 }

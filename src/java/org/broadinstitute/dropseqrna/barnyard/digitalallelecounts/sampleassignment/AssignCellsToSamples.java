@@ -47,6 +47,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
 import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileup;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileupIterator;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SortOrder;
 import org.broadinstitute.dropseqrna.censusseq.JointIteratorCounter;
@@ -157,7 +159,7 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 	@Argument(doc = "This file provides an answer key for the input BAM and VCF.  This does not change any of the likelihood analysis results, but appends an additional column to the output that contains the known sample assignment for a cell."
 			+ "This is useful when assessing how well the method works, but is completely optional.  The format of the file is 2 tab seperated columns with a header [cell 	sample].  The first column contains the cell barcodes from the BAM, "
 			+ "the second the sample assignments from the VCF.", optional = true)
-	public File ANSWER_KEY_FILE = null;
+	public File ANSWER_KEY_FILE = null; 
 
 	@Argument(doc = "A file that contains an estimate of how much ambient RNA is in each cell.  This is a fractional estimate between 0 and 1.  File is tab seperated, with 2 columns:"
 			+ "cell_barcode and frac_contamination.  When supplied along side the ALLELE_FREQUENCY_ESTIMATE_FILE, this modifies the likelihood error rates to take into account how often"
@@ -204,6 +206,12 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 	@Argument(doc="Logging interval for SNP sequence pileup processing")
 	public Integer SNP_LOG_RATE=1000;
 	
+	@Argument(doc="(Optional)  If set to a value, this program will quit early with an exception if this number of UMIs are observed without encountering a transcribed SNP - "
+			+ "that is, a variant from the VCF file that is will be informative during donor assignment.  A value of -1 disables this test.  As some fraction of UMIs may not"
+			+ "contain transcribed SNPs, the value for this should probably be set to a fairly large number, like 10% of the total UMIs in your experiment.  Mostly useful for debugging / or "
+			+ "testing new data sets.")
+	public Integer TRANSCRIBED_SNP_FAIL_FAST_THRESHOLD=-1;
+	
 	// This isn't fully implemented yet so is disabled.
 	// @Argument(doc = "on a per-genotype basis, use the GQ score to weigh how much we believe the data given genotype.
 	// Weights the likelihood (D|G) by the GQ score, which is converted from phred quality to a probability [0-1].")
@@ -230,7 +238,6 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		// subsetting the VCF by samples isn't generally needed for the standard way to run AssignCellsToSamples, but is super
 		// expensive to run. We need to get around this.
 		List<String> vcfSamples = SampleAssignmentVCFUtils.getVCFSamples(vcfReader, this.SAMPLE_FILE);
-		SampleAssignmentVCFUtils.validateSampleNamesInVCF(vcfReader, vcfSamples, log);
 
 		// set up the VCF writer if needed.
 		VariantContextWriter vcfWriter = getVcfWriter(vcfReader, vcfSamples);
@@ -242,11 +249,11 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		writeVerboseOutputHeader(vcfSamples, answerKey, this.CELL_CONTAMINATION_ESTIMATE_FILE, this.ALLELE_FREQUENCY_ESTIMATE_FILE, verboseWriter);
 
 		// get from the VCF!
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(this.VCF, vcfSamples, this.RETAIN_MONOMORPIC_SNPS, this.GQ_THRESHOLD,
-				this.FRACTION_SAMPLES_PASSING, IGNORED_CHROMOSOMES, log);
+		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(this.VCF, vcfSamples, this.RETAIN_MONOMORPIC_SNPS, this.GQ_THRESHOLD,
+				this.FRACTION_SAMPLES_PASSING, IGNORED_CHROMOSOMES, null, false, log);
 
 		// a requested early exit if there are no SNPs.
-		if (snpIntervals.getIntervals().isEmpty()) {
+		if (snpIntervals.isEmpty()) {
 			log.error("No SNP intervals detected!  Check to see if your VCF filter thresholds are too restrictive!");
 			return 1;
 		}
@@ -276,7 +283,7 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		JointIteratorCounter counter = new JointIteratorCounter();
 
 		// We need the sequence dictionary in the interval list for all sorting of chromosomes.
-		SAMSequenceDictionary dict = snpIntervals.getHeader().getSequenceDictionary();
+		SAMSequenceDictionary dict = snpIntervals.getIntervalList().getHeader().getSequenceDictionary();
 
 		// TODO: should be able to plug VCFPileupJointIterator <T extends SNPIntervalRecordI>
 		// Would have to wrap SampleGenotypeProbabilities in a collection that extends SNPIntervalRecordI for this to work,
@@ -804,7 +811,13 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 
 			line.add(p.getSNPInterval().getContig());
 			line.add(Integer.toString(p.getSNPInterval().getStart()));
-
+			
+			/*
+			for (SNPUMIBasePileup pileup: p.getBackingPileups()) {
+				log.info(pileup);
+			}
+			*/
+			
 			String gene = p.getBackingPileups().iterator().next().getGene();
 			line.add(gene);
 
@@ -879,7 +892,7 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 	}
 
 	// done before, pretty well tested elsewhere boilerplate.
-	public PeekableIterator<List<SampleGenotypeProbabilities>> prepareIterator(final IntervalList snpIntervals, List<String> barcodes) {
+	public PeekableIterator<List<SampleGenotypeProbabilities>> prepareIterator(final SNPInfoCollection snpIntervals, List<String> barcodes) {
 		// generate the reader with the desired options so we can enable EAGERLY_DECODE.
 		SamReaderFactory factory = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);
 		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputs(this.INPUT_BAM, false, factory);
@@ -895,11 +908,14 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 			final PCRDuplicateFilteringIterator pcrDuplicateFilteringIterator = new PCRDuplicateFilteringIterator(headerAndIter.iterator);
 			headerAndIter = new SamHeaderAndIterator(headerAndIter.header, pcrDuplicateFilteringIterator);
 		}
-
-		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(headerAndIter, snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
-				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, this.FUNCTION_TAG, this.READ_MQ, true,
-				barcodes, null, SortOrder.SNP_CELL);
-
+		
+		// this explicitly filters to the best SNP seen on a read if there are multiple SNPs touched by a read
+		Map<Interval, Double> genotypeQuality = snpIntervals.getAverageGQ();		
+		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(headerAndIter, snpIntervals.getIntervalList(), GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, this.FUNCTION_TAG, this.READ_MQ, false,
+				barcodes, genotypeQuality, SortOrder.SNP_CELL, this.TRANSCRIBED_SNP_FAIL_FAST_THRESHOLD);
+		
+		
 		if (this.BAM_OUTPUT != null) {
 			SAMFileHeader header = headerAndIter.header;
 			SamHeaderUtil.addPgRecord(header, this);
@@ -909,7 +925,7 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 			sbpi.addReadSink(informativeRecSink);
 		}
 
-		final SAMSequenceDictionary dict = snpIntervals.getHeader().getSequenceDictionary();
+		final SAMSequenceDictionary dict = snpIntervals.getIntervalList().getHeader().getSequenceDictionary();
 
 		// gets a SampleGenotypeProbabilities for each cell.
 		SampleGenotypeProbabilitiesIterator result = new SampleGenotypeProbabilitiesIterator(sbpi, dict, this.EDIT_DISTANCE, SortOrder.SNP_CELL);

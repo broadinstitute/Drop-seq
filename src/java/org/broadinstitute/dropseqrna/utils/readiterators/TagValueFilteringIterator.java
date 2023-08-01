@@ -2,7 +2,10 @@ package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMTagUtil;
+import htsjdk.samtools.util.Log;
+
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+import org.broadinstitute.dropseqrna.utils.VariantContextSingletonFilter;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -18,7 +21,8 @@ import java.util.Set;
 public class TagValueFilteringIterator<T> extends FilteredIterator<SAMRecord> {
 	final short requiredTag;
 	final Set<T> expectedValues;
-
+	private static final Log log = Log.getInstance(TagValueFilteringIterator.class);
+	
     public TagValueFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String requiredTag, final Collection<T> expectedValues) {
         super(underlyingIterator);
         this.requiredTag = SAMTagUtil.getSingleton().makeBinaryTag(requiredTag);
@@ -36,6 +40,12 @@ public class TagValueFilteringIterator<T> extends FilteredIterator<SAMRecord> {
     	if (this.expectedValues.contains(value)) return false;
         return true;
     }
+
+	@Override
+	public void logFilterResults() {
+		String msg = String.format("Required Tag [%s] Records pass [%d] records fail [%d] ",this.requiredTag, this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);		
+	}
 }
 
 

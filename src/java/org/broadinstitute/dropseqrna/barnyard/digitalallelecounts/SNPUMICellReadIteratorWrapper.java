@@ -23,7 +23,6 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -76,7 +75,11 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
                                          final String snpTag,
                                          final int readMQ,
                                          final Map<Interval, Double> meanGenotypeQuality) {
-        super(underlyingIterator);
+        super(underlyingIterator); 
+        
+		if (meanGenotypeQuality==null)
+			log.warn("No Mean Genotype Quality supplied, will not filter multiple variants on the same read");
+
 		this.cellBarcodeTag = cellBarcodeTag;
 		this.cellBarcodeList = new HashSet<String>(cellBarcodeList);
 		this.geneTag=geneTag;
@@ -87,6 +90,8 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
 		OverlapDetector<Interval> od = new OverlapDetector<>(0, 0);
 		od.addAll(snpIntervals.getIntervals(), snpIntervals.getIntervals());
 		this.snpIntervals=od;
+		
+		//TODO: enforce meanGenotypeQuality is not null!
 	}
 
     @Override
@@ -109,9 +114,7 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
 	 * Simplified since data goes through GeneFunctionIteratorWrapper to take care of how reads/genes interact.
 	 */
 	private void processSNP (final SAMRecord r) {
-		List<AlignmentBlock> blocks = r.getAlignmentBlocks();
-		if (r.getReadName().equals("HKKV3DMXX_JuneNova8:2:2324:28854:20870"))
-			log.info("Stop");
+		List<AlignmentBlock> blocks = r.getAlignmentBlocks();		
 		
 		Collection<Interval> snpIntervals = new HashSet<>();
 		
@@ -135,19 +138,18 @@ public class SNPUMICellReadIteratorWrapper extends CountChangingIteratorWrapper<
 		}
 		
 		if (this.meanGenotypeQuality!=null) {
-			snpIntervals=Arrays.asList(getBestSNP(snpIntervals));
-			r.setAttribute(this.snpTag, IntervalTagComparator.toString(snpIntervals.iterator().next()));
+			Interval bestSNP=getBestSNP(snpIntervals);				
+			r.setAttribute(this.snpTag, IntervalTagComparator.toString(bestSNP));
 			queueRecordForOutput(r);
 			return;
 		}
-		
+				 
 		// 1 read per SNP.
 		for (Interval snp:snpIntervals) {
 			SAMRecord rr = Utils.getClone(r);
 			rr.setAttribute(this.snpTag, IntervalTagComparator.toString(snp));
 			queueRecordForOutput(rr);
 		}
-		
 		
 	}
 	

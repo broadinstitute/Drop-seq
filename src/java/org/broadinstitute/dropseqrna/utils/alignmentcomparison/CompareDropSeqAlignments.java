@@ -17,7 +17,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +43,6 @@ import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIterato
 import htsjdk.samtools.SAMFileHeader.SortOrder;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordQueryNameComparator;
-import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
@@ -389,6 +387,8 @@ public class CompareDropSeqAlignments  extends CommandLineProgram {
      *
      */
     public class UnmappedReadFilter extends FilteredIterator<SAMRecord> {
+    	private final Log log = Log.getInstance(UnmappedReadFilter.class);
+    	
     	public UnmappedReadFilter(final Iterator<SAMRecord> underlyingIterator) {
             super(underlyingIterator);
     	}
@@ -396,6 +396,11 @@ public class CompareDropSeqAlignments  extends CommandLineProgram {
         public boolean filterOut(final SAMRecord r) {
         	return r.getReadUnmappedFlag();
         }
+		@Override
+		public void logFilterResults() {
+			String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());  
+			log.info(msg);											
+		}
     }
 
 

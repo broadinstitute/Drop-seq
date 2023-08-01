@@ -23,12 +23,11 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample;
 
-import htsjdk.samtools.util.Interval;
-import htsjdk.variant.variantcontext.GenotypeType;
-
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.VariantData;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import htsjdk.samtools.util.Interval;
+import htsjdk.variant.variantcontext.GenotypeType;
 
 public class VariantDataTest {
 
@@ -68,16 +67,6 @@ public class VariantDataTest {
 		double zero = vd.getLogLikelihood(0);
 		Assert.assertEquals(zero, -1.109244, 0.01);
 	}
-
-	//TODO: DO this!
-	public void testMissingData() {
-		//1:43167815-43167815	-	rs41303421 Ref [C] Alt [A] Genotype1 [HOM_REF] Genotype2 [NO_CALL] Bases [C] Quals [10]
-		// what's the missing data likelihood, is it right?
-		char [] bases = {'C'};
-		int [] qualities = {10};
-
-	}
-
 
 	@Test
 	public void testImpossibleTwo () {

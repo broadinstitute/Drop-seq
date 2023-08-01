@@ -41,11 +41,11 @@ import htsjdk.samtools.util.IterableOnceIterator;
  *
  * Note that the decision about what to emit can only be based on the current record passed to processRecord.
  */
-public abstract class CountChangingIteratorWrapper<T> extends IterableOnceIterator<T> implements CloseableIterator<T>{
+public abstract class CountChangingIteratorWrapper<T> extends IterableOnceIterator<T> implements CloseableIterator<T> {
 
     private final Iterator<T> underlyingIterator;
-    private final Queue<T> outputQueue = new LinkedList<>();
-
+    private final Queue<T> outputQueue = new LinkedList<>();  
+	
     protected CountChangingIteratorWrapper(final Iterator<T> underlyingIterator) {
         this.underlyingIterator = underlyingIterator;
         // Cannot call populateOutputQueue here, because derived object has not be constructed yet.
@@ -88,4 +88,5 @@ public abstract class CountChangingIteratorWrapper<T> extends IterableOnceIterat
 			throw new TranscriptomeException(e.getMessage(), e.getCause());
 		}
     }
+       
 }

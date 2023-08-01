@@ -23,10 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.vcftools.filters;
 
+import htsjdk.samtools.util.Log;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.readiterators.PCRDuplicateFilteringIterator;
 
 import java.util.Iterator;
 import java.util.List;
@@ -41,6 +43,8 @@ import java.util.List;
  */
 public class MonomorphicVariantContextFilter extends FilteredIterator <VariantContext> {
 
+	private static final Log log = Log.getInstance(MonomorphicVariantContextFilter.class);
+	
 	final List<String> vcfSamples;
 	public MonomorphicVariantContextFilter(final Iterator<VariantContext> underlyingIterator, final List<String> vcfSamples) {
 		super(underlyingIterator);
@@ -60,6 +64,12 @@ public class MonomorphicVariantContextFilter extends FilteredIterator <VariantCo
 		}
 		boolean filter = c.getSize()<2;
 		return (filter);
+	}
+
+	@Override
+	public void logFilterResults() {
+		String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);				
 	}
 
 }

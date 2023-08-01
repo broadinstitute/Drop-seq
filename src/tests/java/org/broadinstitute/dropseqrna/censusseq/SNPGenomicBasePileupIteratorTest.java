@@ -51,13 +51,13 @@ public class SNPGenomicBasePileupIteratorTest {
 			TESTDATA_DIR, "genomic_pileup_test.sam")));
 
 	@Test
-	public void testAllReadsPileup() {
+	public void testAllReadsPileup() { 
 		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(smallBAMFile, false, SamReaderFactory.makeDefault());
 		int snpPos=23816120;
 		Interval snpInterval = new Interval("1", snpPos, snpPos, true, "test");
 		IntervalList intervalList = new IntervalList(headerAndIter.header);
 		intervalList.add(snpInterval);
-		SNPGenomicBasePileupIterator snpIter = new SNPGenomicBasePileupIterator(headerAndIter, intervalList, "ZS", 10, null, null);
+		SNPGenomicBasePileupIterator snpIter = new SNPGenomicBasePileupIterator(headerAndIter, intervalList, "ZS", 10, null, null, null);
 
 		// there's just 1 pileup.
 		SNPGenomicBasePileUp p = snpIter.next();
@@ -92,7 +92,7 @@ public class SNPGenomicBasePileupIteratorTest {
 		Interval snpInterval = new Interval("1", snpPos, snpPos, true, "test");
 		IntervalList intervalList = new IntervalList(headerAndIter.header);
 		intervalList.add(snpInterval);
-		SNPGenomicBasePileupIterator snpIter = new SNPGenomicBasePileupIterator(headerAndIter, intervalList, "ZS", 10, null, null);
+		SNPGenomicBasePileupIterator snpIter = new SNPGenomicBasePileupIterator(headerAndIter, intervalList, "ZS", 10, null, null, null);
 
 		snpIter.remove();
 	}
@@ -106,7 +106,7 @@ public class SNPGenomicBasePileupIteratorTest {
 		Interval snpInterval = new Interval("chr1", snpPos, snpPos, true, "test");
 		IntervalList intervalList = new IntervalList(headerAndIter.header);
 		intervalList.add(snpInterval);
-		SNPGenomicBasePileupIterator snpIter = new SNPGenomicBasePileupIterator(headerAndIter, intervalList, "ZS", 10, null, null);
+		SNPGenomicBasePileupIterator snpIter = new SNPGenomicBasePileupIterator(headerAndIter, intervalList, "ZS", 10, null, null, null);
 
 		// there's just 1 pileup.
 		SNPGenomicBasePileUp p = snpIter.next();

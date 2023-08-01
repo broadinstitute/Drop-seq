@@ -27,7 +27,7 @@ public class CensusSeqTest {
 		TestUtils.setInflaterDeflaterIfMacOs();
 	}
 	
-	@Test (enabled=true)
+	@Test (enabled=true) 
 	// Tests full path and result files.  Barebones but useful.
 	// the math is checked more stringently in other unit tests.
 	public void testCensusCorrectSampleFile() throws IOException {
@@ -38,7 +38,6 @@ public class CensusSeqTest {
 		f.MIN_BASE_QUALITY=null;
 		f.OUTPUT=File.createTempFile("testCensus.", ".census.txt");
 		f.OUTPUT.deleteOnExit();
-		
 		f.SAMPLE_FILE=IN_SAMPLE_LIST;
 		f.REPORT_ALLELE_COUNTS=true;
 		f.SNP_COVERAGE_HISTOGRAM=File.createTempFile("testCensus.", ".snp_histogram.txt");
@@ -46,7 +45,6 @@ public class CensusSeqTest {
 		f.SNP_COVERAGE_HISTOGRAM.deleteOnExit();
 		// f.USE_JDK_DEFLATER=true;
 		String TMP_DIR=f.OUTPUT.getParent();
-		//TODO: what's the proper way to get the TMP DIR?
 		f.TMP_DIR=Arrays.asList(new File (TMP_DIR));
 		int ret = f.doWork();
 		Assert.assertTrue(ret==0);

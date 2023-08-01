@@ -3,7 +3,9 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
@@ -15,6 +17,7 @@ import org.junit.Assert;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import picard.annotation.LocusFunction;
 
@@ -45,11 +48,17 @@ public class DigitalAlleleCountsBestGeneIteratorTest {
 			IntervalList snpIntervals = IntervalList.fromFile(snpIntervalsFile);
 			int baseQualityThreshold=10;
 			
+			// set all genotype qualities to missing.
+			Map <Interval,Double>meanGenotypeQuality =new HashMap<>();
+			for (Interval i: snpIntervals.getIntervals())
+				meanGenotypeQuality.put(i,-1d);
+			
+			
 			SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 					new SamHeaderAndIterator(smallBAMFile2), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 					LOCUS_FUNCTION_LIST,STRAND_STRATEGY, cellBarcodeTag, molBCTag, snpTag,
 					GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG, readMQ, assignReadsToAllGenes,
-					cellBarcodes, null, SortOrder.SNP_GENE);
+					cellBarcodes, meanGenotypeQuality, SortOrder.SNP_GENE);
 
 			DigitalAlleleCountsBestGeneIterator daci = new DigitalAlleleCountsBestGeneIterator(sbpi, baseQualityThreshold, null, null);
 			int counter=0;

@@ -287,6 +287,7 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 			headerAndIter = new SamHeaderAndIterator(headerAndIter.header, pcrDuplicateFilteringIterator);
 		}
 
+		//TODO: should this be assignReadsToAllGenes be set to false to mirror DigitalExpression and donor assignment code?
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(headerAndIter, snpInfo.getIntervalList(), GENE_NAME_TAG, GENE_STRAND_TAG,
 				GENE_FUNCTION_TAG, LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, null, this.READ_MQ,
 				true, cellBarcodes, genotypeQuality, SortOrder.SNP_GENE);
@@ -502,14 +503,13 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 		// if the vcfSamples isn't set, use the sample filee
 		if (vcfSamples == null || vcfSamples.size() == 0)
 			vcfSamples = SampleAssignmentVCFUtils.getVCFSamples(vcfReader, this.SAMPLE_FILE);
-		SampleAssignmentVCFUtils.validateSampleNamesInVCF(vcfReader, vcfSamples, log);
 
 		Iterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, !POLYMORPHIC_SNPS_ONLY, GQ_THRESHOLD,
 				this.FRACTION_SAMPLES_PASSING, this.IGNORED_CHROMOSOMES, log);
 		if (this.HET_SNPS_ONLY)
 			vcfIterator = new HetSNPFilter(vcfIterator);
 
-		SNPInfoCollection result = new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), this.log);
+		SNPInfoCollection result = new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), false, null, log);
 		return (result);
 	}
 

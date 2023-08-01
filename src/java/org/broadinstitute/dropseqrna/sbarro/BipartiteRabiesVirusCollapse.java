@@ -579,7 +579,7 @@ public class BipartiteRabiesVirusCollapse extends CommandLineProgram {
 		public boolean filterOut(SAMRecord rec) {			
 			// filter out read if either test fails.
 			return (! mapQualityPredicate.test(rec) || !requiredTagPredicate.test(rec));
-		} 									    	
+		}
     }
 
 	/** Stock main method. */

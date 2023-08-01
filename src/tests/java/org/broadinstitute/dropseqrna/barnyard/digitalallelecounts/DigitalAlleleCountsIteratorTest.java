@@ -26,7 +26,9 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
@@ -36,6 +38,7 @@ import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
+import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import picard.annotation.LocusFunction;
 
@@ -63,17 +66,28 @@ public class DigitalAlleleCountsIteratorTest {
 	private final int readMQ = 10;
 	private final boolean assignReadsToAllGenes = true;
 
+	
+	// An adapter now that meanGenotypeQuality is required.
+	private Map<Interval, Double> getAverageGQ (IntervalList snpIntervals) {
+		// set all genotype qualities to missing.
+		Map<Interval,Double>meanGenotypeQuality =new HashMap<>();
+		for (Interval i: snpIntervals.getIntervals())
+			meanGenotypeQuality.put(i,-1d);
+		return meanGenotypeQuality;
+	}
+	
 	@Test
 	public void testGatherDACs() {
 		List<String> cellBarcodes = ParseBarcodeFile.readCellBarcodeFile(cellBCFile);
 		IntervalList snpIntervals = IntervalList.fromFile(snpIntervalsFile);
 		int baseQualityThreshold=10;
-
+		Map<Interval, Double> meanGQ= getAverageGQ(snpIntervals);
+		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 				new SamHeaderAndIterator(smallBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 				LOCUS_FUNCTION_LIST,STRAND_STRATEGY, cellBarcodeTag, molBCTag, snpTag,
 				GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG, readMQ, assignReadsToAllGenes,
-				cellBarcodes, null, SortOrder.SNP_GENE);
+				cellBarcodes, meanGQ, SortOrder.SNP_GENE);
 
 		DigitalAlleleCountsIterator daci = new DigitalAlleleCountsIterator(sbpi, baseQualityThreshold);
 		int counter=0;
@@ -86,18 +100,22 @@ public class DigitalAlleleCountsIteratorTest {
 		Assert.assertEquals(2, counter);
 	}
 	
+	
+	
 	@Test
 	// this has additional reads on a new gene called "FAKE"
 	public void testGatherDACs2() {
 		List<String> cellBarcodes = ParseBarcodeFile.readCellBarcodeFile(cellBCFile);
 		IntervalList snpIntervals = IntervalList.fromFile(snpIntervalsFile);
 		int baseQualityThreshold=10;
-
+		
+		Map<Interval, Double> meanGQ= getAverageGQ(snpIntervals);
+		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 				new SamHeaderAndIterator(smallBAMFile2), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 				LOCUS_FUNCTION_LIST,STRAND_STRATEGY, cellBarcodeTag, molBCTag, snpTag,
 				GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG, readMQ, assignReadsToAllGenes,
-				cellBarcodes, null, SortOrder.SNP_GENE);
+				cellBarcodes, meanGQ, SortOrder.SNP_GENE);
 
 		DigitalAlleleCountsIterator daci = new DigitalAlleleCountsIterator(sbpi, baseQualityThreshold);
 		int counter=0;

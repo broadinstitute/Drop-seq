@@ -32,6 +32,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
 
 import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.AssignCellsToSamples;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.SampleGenotypeProbabilities;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.AllPairedSampleAssignmentsForCell;
@@ -66,7 +67,7 @@ public class FindOptimalDonorMixtureTest {
 
 	private static final Log log = Log.getInstance(FindOptimalDonorMixtureTest.class);
 
-	private String [] allDonors = {"NKX", "HUES53", "HUES62", "HUES63", "HUES64"};
+	private String [] allDonors = {"NKX", "HUES53", "HUES62", "HUES63", "HUES64"}; 
 	private String [] donors = {"HUES53", "NKX"};
 
 
@@ -225,7 +226,7 @@ public class FindOptimalDonorMixtureTest {
 	 *
 	 */
 	@Test(enabled=true)
-	public void bigTest() {
+	public void bigTest() { 
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
 		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
@@ -236,7 +237,7 @@ public class FindOptimalDonorMixtureTest {
 		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);
 		List<String> vcfSamples =Arrays.asList(donors);
 
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(this.VCF, vcfSamples, assigner.RETAIN_MONOMORPIC_SNPS, 30, 0, null, null);
+		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(this.VCF, vcfSamples, assigner.RETAIN_MONOMORPIC_SNPS, 30, 0, null, null, false, null);
 		final PeekableIterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, assigner.RETAIN_MONOMORPIC_SNPS, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null);
 		List<String> cellBarcodes = assigner.getCellBarcodes();
 		PeekableIterator<List<SampleGenotypeProbabilities>> sampleGenotypeIterator = assigner.prepareIterator(snpIntervals, cellBarcodes);
@@ -254,10 +255,10 @@ public class FindOptimalDonorMixtureTest {
 
 		AllPairedSampleAssignmentsForCell result = fodm.findBestDonorPair("HUES53", vcfSamples, false);
 		SamplePairAssignmentForCell best = result.getBestAssignment();
-		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.80926731658451, 0.01);
-		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-12.0398723515404, 0.01);
-		Assert.assertEquals(best.getDoubletLikelihood(),-8.72621729107288, 0.01);
-		Assert.assertEquals(best.getMixture(), 0.643, 0.01);
+		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.41672233979918, 0.01);
+		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-11.136782364548424, 0.01);
+		Assert.assertEquals(best.getDoubletLikelihood(),-8.174511498564232, 0.01);
+		Assert.assertEquals(best.getMixture(), 0.603, 0.01);
 
 	}
 
@@ -272,9 +273,9 @@ public class FindOptimalDonorMixtureTest {
 		List<String> vcfSamples =Arrays.asList(donors);
 		List<String> cellBarcodes=new BarcodeListRetrieval().getListCellBarcodesByReadCount(Collections.singletonList(this.INPUT_BAM), "XC", 10, null, 100000000);
 		
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(this.VCF, vcfSamples, true, 30, 0, null,null);
+		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(this.VCF, vcfSamples, true, 30, 0, null,null, false, null);
 		final PeekableIterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, true, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, log);
-		PeekableIterator<List<SampleGenotypeProbabilities>> sampleGenotypeIterator = assigner.prepareIterator(snpIntervals, cellBarcodes);
+		PeekableIterator<List<SampleGenotypeProbabilities>> sampleGenotypeIterator = assigner.prepareIterator(snpIntervals.getIntervalList(), cellBarcodes, snpIntervals.getAverageGQ());
 
 		List<SampleGenotypeProbabilities> allProbs = sampleGenotypeIterator.next();
 
@@ -284,10 +285,10 @@ public class FindOptimalDonorMixtureTest {
 
 		AllPairedSampleAssignmentsForCell result = fodm.findBestDonorPair("HUES53", vcfSamples, false);
 		SamplePairAssignmentForCell best = result.getBestAssignment();
-		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.80926731658451, 0.01);
-		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-12.0398723515404, 0.01);
-		Assert.assertEquals(best.getDoubletLikelihood(),-8.72621729107288, 0.01);
-		Assert.assertEquals(best.getMixture(), 0.643, 0.01);
+		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-9.416, 0.01);
+		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-11.13, 0.01);
+		Assert.assertEquals(best.getDoubletLikelihood(),-8.174, 0.01);
+		Assert.assertEquals(best.getMixture(), 0.603, 0.01);
 
 
 	}
@@ -315,7 +316,7 @@ public class FindOptimalDonorMixtureTest {
 		final VCFFileReader vcfReader = new VCFFileReader(vcf, false);
 		List<String> vcfSamples =Arrays.asList(donors);
 
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(vcf, vcfSamples, assigner.RETAIN_MONOMORPIC_SNPS, 30, 0, null, null);
+		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(vcf, vcfSamples, assigner.RETAIN_MONOMORPIC_SNPS, 30, 0, null, null, false, null);
 		final PeekableIterator<VariantContext> vcfIterator = org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, assigner.RETAIN_MONOMORPIC_SNPS, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null);
 		List<String> cellBarcodes = assigner.getCellBarcodes();
 		PeekableIterator<List<SampleGenotypeProbabilities>> sampleGenotypeIterator = assigner.prepareIterator(snpIntervals, cellBarcodes);
@@ -332,10 +333,10 @@ public class FindOptimalDonorMixtureTest {
 		SamplePairAssignmentForCell best = result.getBestAssignment();
 		// giving the optimizer a little bit of wiggle room because it seems instable between command line, running in eclipse, etc.
 		// Wiggle room needed to be increased when moving to Java 8
-		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-153.49930093670145, 1.5);
-		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-156.37414600381172, 1);
-		Assert.assertEquals(best.getDoubletLikelihood(),-125.81105469209152, 1);
-		Assert.assertEquals(best.getMixture(), 0.51, 0.01);
+		Assert.assertEquals(best.getSampleOneSingleLikelihood(),-136.567186376513, 1.5);
+		Assert.assertEquals(best.getSampleTwoSingleLikelihood(),-143.69058144182128, 1);
+		Assert.assertEquals(best.getDoubletLikelihood(),-113.6789932134311, 1);
+		Assert.assertEquals(best.getMixture(), 0.53, 0.01);
 
 	}
 	

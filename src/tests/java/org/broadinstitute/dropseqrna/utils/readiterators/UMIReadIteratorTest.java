@@ -17,7 +17,7 @@ public class UMIReadIteratorTest {
 
 	@Test
 	public void testIterate() {
-		SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false);
+		SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(Collections.singletonList(INPUT), false);
 		List<String> cellBarcodes = ParseBarcodeFile.readCellBarcodeFile(IN_CELL_BARCODE_FILE);
 
 		UMIReadIterator i = new UMIReadIterator(headerAndIterator, "GE", "XC", "XM", "GS", true, 10, true, cellBarcodes);

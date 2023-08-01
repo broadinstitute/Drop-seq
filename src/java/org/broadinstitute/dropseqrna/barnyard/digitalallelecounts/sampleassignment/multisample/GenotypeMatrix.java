@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
 import org.broadinstitute.dropseqrna.censusseq.GenotypeDataBitSetListBacked;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.vcftools.filters.GenotypeGQFilter;
@@ -63,7 +64,9 @@ public class GenotypeMatrix {
 	private Map<Interval, double []> genotypeAlleleFractionMap;
 	private final List<Byte> refAllelles;
 	private final List<Byte> altAllelles;
-
+	// this is similar to the SNPInfoCollection.
+	private Map<Interval, Double> averageGQ;
+	
 	public GenotypeMatrix(final GenotypeDataBitSetListBacked matrix, final Map<Interval, Integer> rows, final Map<String, Integer> columns, final List<Byte> refAllelles, final List<Byte> altAllelles) {
 		this.matrix=matrix;
 		this.rows=rows;
@@ -71,6 +74,7 @@ public class GenotypeMatrix {
 		this.refAllelles=refAllelles;
 		this.altAllelles=altAllelles;
 		this.genotypeAlleleFractionMap=new HashMap<>();
+		this.averageGQ = new HashMap<>();
 		// cache genotype frequencies.
 		rows.keySet().forEach(x -> getGenotypeFrequencies(x));
 	}
@@ -89,6 +93,7 @@ public class GenotypeMatrix {
 		// Map<Integer, Map<Integer, GenotypeType>> tempMatrix = new HashMap<>();
 		this.matrix = new GenotypeDataBitSetListBacked(donors.size());
 		this.genotypeAlleleFractionMap=new HashMap<>();
+		this.averageGQ = new HashMap<>();
 		
 		this.refAllelles = new ArrayList<>();
 		this.altAllelles = new ArrayList<>();
@@ -97,11 +102,17 @@ public class GenotypeMatrix {
 
 		log.info("Adding VCF genotypes to Genotype Matrix in memory");
 		while (iter.hasNext()) {
+			
 			count++;
 			if (count%100000==0) log.info("Added " + count + " variant records");
 			VariantContext vc = iter.next();
-			GenotypeGQFilter gf = new GenotypeGQFilter(vc.getGenotypes().iterator(), genotypeQuality);
 			Interval i = new Interval(vc.getContig(), vc.getStart(), vc.getEnd());
+			
+			// calculate and store the average site genotype quality for later variant filtering.
+			double gqAverage = vc.getGenotypes().stream().mapToInt(x -> x.getGQ()).average().orElse(-1);
+			this.averageGQ.put(i, gqAverage);
+			
+			GenotypeGQFilter gf = new GenotypeGQFilter(vc.getGenotypes().iterator(), genotypeQuality);			
 			List<String> samples = vc.getSampleNamesOrderedByName();
 			byte refBase = vc.getReference().getBases()[0];
 			byte altBase = getAltBase(vc);
@@ -150,6 +161,9 @@ public class GenotypeMatrix {
 						
 	}
 
+	
+	
+	
 	public Set<Interval> getSNPIntervals () {
 		return rows.keySet();
 	}
@@ -251,6 +265,10 @@ public class GenotypeMatrix {
 	 */
 	public Set<Interval> getIntervals () {
 		return this.rows.keySet();
+	}
+	
+	public Map<Interval, Double> getAverageGenotypeQuality () {
+		return this.averageGQ;
 	}
 
 }

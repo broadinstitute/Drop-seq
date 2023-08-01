@@ -28,6 +28,7 @@ import java.util.Iterator;
 
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
+import htsjdk.samtools.util.Log;
 import htsjdk.variant.variantcontext.Genotype;
 
 /**
@@ -38,6 +39,8 @@ import htsjdk.variant.variantcontext.Genotype;
  */
 public class GenotypeGQFilter extends FilteredIterator <Genotype> {
 
+	// private static final Log log = Log.getInstance(GenotypeGQFilter.class);
+	
 	private final int GQThreshold;
 	private boolean filterUncalled;
 
@@ -57,4 +60,5 @@ public class GenotypeGQFilter extends FilteredIterator <Genotype> {
 		boolean flag = (rec.getGQ()<GQThreshold);
 		return flag;
 	}
+	
 }

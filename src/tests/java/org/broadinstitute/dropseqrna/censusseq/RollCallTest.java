@@ -45,7 +45,7 @@ public class RollCallTest {
 		f.TMP_DIR=Arrays.asList(new File (TMP_DIR));
 		int ret = f.doWork();
 		Assert.assertTrue(ret==0);
-		Assert.assertTrue(TestUtils.testFilesSame(OUT_ROLL_CALL, f.OUTPUT));
+		Assert.assertTrue(TestUtils.testFilesSame(OUT_ROLL_CALL, f.OUTPUT)); 
 		Assert.assertTrue(TestUtils.testFilesSame(OUT_ROLL_CALL_VERBOSE, f.OUTPUT_VERBOSE));
 
 	}

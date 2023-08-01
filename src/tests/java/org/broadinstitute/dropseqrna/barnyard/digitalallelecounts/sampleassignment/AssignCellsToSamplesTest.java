@@ -30,6 +30,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
 
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.AssignCellsToSamples;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.CellCollectionSampleLikelihoodCollection;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.CellSampleLikelihoodCollection;
@@ -55,6 +56,7 @@ public class AssignCellsToSamplesTest {
 	private final File VCF = new File (rootDir+"/test_missing_data.vcf");
 	private final File VCFC = new File (rootDir+"/test_missing_data.vcf.gz");
 	private final File VCF_NON_CANONICAL=new File(rootDir+"/test_non_canonical_base.vcf.gz");
+	private final File VCF_FAIL_FAST = new File (rootDir+"/test_fail_fast_umi_threshold.vcf.gz");
 	
 	private final File CONTAMINATION_FILE=new File (rootDir+"/small_data.contamination.txt");
 	private final File MAF_ESIMATE_FILE=new File (rootDir+"/small_data.minor_allele_freq.txt");
@@ -71,6 +73,68 @@ public class AssignCellsToSamplesTest {
 	private final File EXPECTED_MAXLIKE_OUTPUT=new File (rootDir+"/small_data.donor_assignment.maxLike_10.txt");	
 	private final File EXPECTED_MAXLIKE_VERBOSE_OUTPUT= new File (rootDir+"/small_data.donor_assignment.maxLike_10.verbose.gz");
 	
+	private final File WRONG_SAMPLE_LIST=new File(rootDir+"/wrong_sample_list.txt");
+	private final File DUPLICATE_SAMPLE_LIST=new File(rootDir+"/duplicate_sample_list.txt");
+	
+	/**********
+	 * TESTS FOR SNPS THAT OCCUR ON MULTIPLE READS/UMIS
+	 **********/
+	
+	
+	private final File ONE_READ_TWO_SNPS_BAM = new File(rootDir+"/read_multiple_snps.bam");
+	private final File ONE_UMI_TWO_SNPS_BAM = new File(rootDir+"/umi_multiple_snps.bam");
+	private final File MULTI_SNP_TEST_VCF = new File (rootDir+"/multiple_snp_tests_small.vcf.gz");
+	
+	@Test
+	/**
+	 * The goal of this test is to see if the number of informative SNPs is one for a single read with two SNPs.
+	 * @throws IOException
+	 */
+	public void testTwoSNPsOnRead() throws IOException {
+		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.GQ_THRESHOLD=30;
+		assigner.INPUT_BAM=Collections.singletonList(this.ONE_READ_TWO_SNPS_BAM);
+		assigner.VCF=this.MULTI_SNP_TEST_VCF;
+		assigner.NUM_BARCODES=10; // more than enough
+		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		int result = assigner.doWork();
+		Assert.assertEquals(result, 0);
+		
+		CellCollectionSampleLikelihoodCollection cslc = CellCollectionSampleLikelihoodCollection.parseFile(assigner.OUTPUT);
+		CellSampleLikelihoodCollection r = cslc.getLikelihoodCollection("ATCGTAGGTCCCACGA");
+		// this cell should have a single SNP/UMI
+		Assert.assertEquals(r.getNumSNPs(), 1);
+		Assert.assertEquals(r.getNumUMIs(), 1);											
+	}
+	
+	@Test
+	/**
+	 * The goal of this test is to see if the number of informative SNPs is one for a single read with two SNPs.
+	 * @throws IOException
+	 */
+	public void testTwoSNPsOnUMI() throws IOException {
+		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.GQ_THRESHOLD=30;
+		assigner.INPUT_BAM=Collections.singletonList(this.ONE_UMI_TWO_SNPS_BAM);
+		assigner.VCF=this.MULTI_SNP_TEST_VCF;
+		assigner.NUM_BARCODES=10; // more than enough
+		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		int result = assigner.doWork();
+		Assert.assertEquals(result, 0);
+		
+		CellCollectionSampleLikelihoodCollection cslc = CellCollectionSampleLikelihoodCollection.parseFile(assigner.OUTPUT);
+		CellSampleLikelihoodCollection r = cslc.getLikelihoodCollection("ATCGTAGGTCCCACGA");
+		// this cell should have a single SNP/UMI.
+		// The "trick" is that there is one SNP per read, but the two reads are from the same UMI.
+		Assert.assertEquals(r.getNumSNPs(), 1);
+		Assert.assertEquals(r.getNumUMIs(), 1);											
+	}
+	
+
+	
+	/***********************
+	 * Other Tests
+	 ***********************/
 	
 	@Test 
 	// Two SNPs (rs3,rs4) have non-canonical bases (*,N).  
@@ -106,6 +170,7 @@ public class AssignCellsToSamplesTest {
 		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
 		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
 		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);
 		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));	
@@ -113,7 +178,69 @@ public class AssignCellsToSamplesTest {
 		
 	}
 	
+	/**
+	 * Uses a sample list that has entries not in the VCF.
+	 * @throws IOException
+	 */
+	@Test(expectedExceptions = { IllegalArgumentException.class } )
+	public void testEndToEndWrongSampleList() throws IOException {
+		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.GQ_THRESHOLD=30;
+		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
+		assigner.VCF=this.VCFC;
+		assigner.SAMPLE_FILE=WRONG_SAMPLE_LIST;
+		assigner.NUM_BARCODES=10; // more than enough
+		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		assigner.VCF_OUTPUT=File.createTempFile("AssignCellsToSamples", ".vcf");
+		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		int result = assigner.doWork();
+		Assert.assertEquals(result, 0);		
+	}	
 	
+	/**
+	 * Uses a sample list that has duplicate entries of those in the VCF
+	 * @throws IOException
+	 */
+	@Test(expectedExceptions = { IllegalArgumentException.class } )
+	public void testEndToEndDuplicatesInSampleList() throws IOException {
+		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.GQ_THRESHOLD=30;
+		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
+		assigner.VCF=this.VCFC;
+		assigner.SAMPLE_FILE=DUPLICATE_SAMPLE_LIST;
+		assigner.NUM_BARCODES=10; // more than enough
+		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		assigner.VCF_OUTPUT=File.createTempFile("AssignCellsToSamples", ".vcf");
+		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		int result = assigner.doWork();
+		Assert.assertEquals(result, 0);		
+	}
+	
+	/**
+	 * The BAM contains variants on contig HUMAN_1 and the VCF only contains variants on HUMAN_2, though 
+	 * the data sets both contain the proper contigs in the sequence dictionary.
+	 * @throws IOException
+	 */
+	@Test(expectedExceptions = { IllegalStateException.class } )
+	public void testFailFastUMIThreshold() throws IOException {
+		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.GQ_THRESHOLD=30;
+		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
+		assigner.VCF=this.VCF_FAIL_FAST;
+		assigner.TRANSCRIBED_SNP_FAIL_FAST_THRESHOLD=5;		
+		assigner.NUM_BARCODES=10; // more than enough
+		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		assigner.VCF_OUTPUT=File.createTempFile("AssignCellsToSamples", ".vcf");
+		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		int result = assigner.doWork();
+		Assert.assertEquals(result, 0);		
+	}
 	
 	// 
 	@Test
@@ -210,7 +337,7 @@ public class AssignCellsToSamplesTest {
 	// don't add missing values.
 	public void testprocessSNP () {
 
-		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		AssignCellsToSamples assigner = new AssignCellsToSamples();  
 		assigner.GQ_THRESHOLD=30;
 		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
 		assigner.VCF=this.VCF;
@@ -218,7 +345,7 @@ public class AssignCellsToSamplesTest {
 
 		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);
 		List<String> vcfSamples =assigner.getVCFSamples(vcfReader);
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(this.VCF, vcfSamples, false, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null);
+		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(this.VCF, vcfSamples, false, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null, false, null);
 
 		final PeekableIterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, assigner.RETAIN_MONOMORPIC_SNPS, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null);		
 		List<String> cellBarcodes= assigner.getCellBarcodes();
@@ -275,7 +402,7 @@ public class AssignCellsToSamplesTest {
 
 		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);
 		List<String> vcfSamples =assigner.getVCFSamples(vcfReader);
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(this.VCF, vcfSamples, false, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null);
+		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(this.VCF, vcfSamples, false, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null, false, null);
 		final PeekableIterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, assigner.RETAIN_MONOMORPIC_SNPS, assigner.GQ_THRESHOLD, assigner.FRACTION_SAMPLES_PASSING, null, null);
 		List<String> cellBarcodes= assigner.getCellBarcodes();
 		

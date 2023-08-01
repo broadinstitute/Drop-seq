@@ -41,4 +41,5 @@ public class VariantContextProgressLoggerIterator extends FilteredIterator<Varia
 		this.progressLogger.record(rec.getContig(), rec.getStart());
 		return false;
 	}
+	
 }

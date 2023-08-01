@@ -155,6 +155,13 @@ public class ReduceGtf extends CommandLineProgram {
                     !featureTypes.contains(rec.getFeatureType()) ||
                     dict.getSequence(rec.getChromosome()) == null;
         }
+
+		@Override
+		public void logFilterResults() {
+			String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());  
+			log.info(msg);		
+			
+		}
     }
 
 

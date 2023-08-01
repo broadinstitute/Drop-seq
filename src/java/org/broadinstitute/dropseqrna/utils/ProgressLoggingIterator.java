@@ -48,9 +48,5 @@ public class ProgressLoggingIterator extends FilteredIterator<SAMRecord> {
 		return false;
 	}
 
-
-
-
-
-
+	
 }

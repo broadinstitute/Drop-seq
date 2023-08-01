@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
 import org.broadinstitute.dropseqrna.censusseq.VCFPileupJointIterator.JointResult;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.AssertSequenceDictionaryIntersection;
@@ -106,7 +107,7 @@ public class RollCall extends CommandLineProgram {
 	private Integer MIN_NUM_VARIANT_SAMPLES=-1;
 	
 	@Override
-	public int doWork() {
+	public int doWork() { 
 		
 		this.INPUT_BAM = FileListParsingUtils.expandFileList(INPUT_BAM);
 		IOUtil.assertFileIsReadable(INPUT_VCF);
@@ -150,10 +151,11 @@ public class RollCall extends CommandLineProgram {
 				this.FRACTION_SAMPLES_PASSING, this.IGNORED_CHROMOSOMES, log, true);
 		
 		// last argument is a bit funky.  If you aren't using the common SNP analysis, you need to preserve the full interval names.
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(vcfIterator, sd, log, vcfWriter, true);
+		// final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(vcfIterator, sd, log, vcfWriter, true);
+		final SNPInfoCollection snpIntervals = new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), true, vcfWriter, log);
 
 		// a requested early exit if there are no SNPs.
-		if (snpIntervals.getIntervals().isEmpty()) {
+		if (snpIntervals.isEmpty()) {
 			log.error("No SNP intervals detected!  Check to see if your VCF filter thresholds are too restrictive!");
 			return 1;
 		}
@@ -170,8 +172,10 @@ public class RollCall extends CommandLineProgram {
 		}
 
 		// build the BAM iterator.
-		log.info("Finding SNPs in BAM.");		
-		SNPGenomicBasePileupIterator pileUpIter = new SNPGenomicBasePileupIterator(headerAndIter, snpIntervals, SNP_TAG, READ_MQ, this.IGNORED_CHROMOSOMES, KNOWN_DONOR_TAG, this.MIN_BASE_QUALITY);
+		log.info("Finding SNPs in BAM.");
+		// this explicitly filters to the best SNP seen on a read if there are multiple SNPs touched by a read
+		Map<Interval, Double> genotypeQuality = snpIntervals.getAverageGQ();						
+		SNPGenomicBasePileupIterator pileUpIter = new SNPGenomicBasePileupIterator(headerAndIter, snpIntervals.getIntervalList(), SNP_TAG, READ_MQ, this.IGNORED_CHROMOSOMES, KNOWN_DONOR_TAG, genotypeQuality, this.MIN_BASE_QUALITY);
 
 		// reset the iterator for use in the full data set.  Use the cleaned up set of variants, which should be smaller and faster.
 		vcfIterator = CensusSeqUtils.getVCFIterator (outTempVCF, vcfSamples, this.MIN_NUM_VARIANT_SAMPLES, this.GQ_THRESHOLD, 
@@ -183,7 +187,7 @@ public class RollCall extends CommandLineProgram {
 		// run the analysis using only private SNPs.
 		int runResult=0;
 		
-		runResult=findDonorsInBulkRatioPrivateSNPs(vcfSamples, vcfIterator, pileUpIter, snpIntervals.size(), vcfWriter, sd, outVerbose, outSummary);
+		runResult=findDonorsInBulkRatioPrivateSNPs(vcfSamples, vcfIterator, pileUpIter, snpIntervals.getIntervalList().size(), vcfWriter, sd, outVerbose, outSummary);
 
 		vcfReader.close();
 		return runResult;

@@ -242,6 +242,7 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
     }
 
     private static class GeneAnnotationFilter extends FilteredIterator<GTFRecord> {
+    	
         private GeneAnnotationFilter(final Iterator<GTFRecord> underlyingIterator) {
             super(underlyingIterator);
         }
@@ -249,6 +250,6 @@ public class GeneFromGTFBuilder implements Iterator<GeneFromGTF> {
         @Override
         public boolean filterOut(final GTFRecord rec) {
             return GTFParser.GTFFeature.gene.name().equals(rec.getFeatureType());
-        }
+        }		
     }
 }

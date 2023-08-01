@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
 import org.broadinstitute.dropseqrna.censusseq.VCFPileupJointIterator.JointResult;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.AssertSequenceDictionaryIntersection;
@@ -98,7 +99,7 @@ public class CensusSeq extends CommandLineProgram {
 
 	@Argument(doc = "The minimum genotype quality for a variant.  Set this value to 0 to not filter by GQ scores if they are present, or to -1 to completely "
 			+ "ignore GQ values if they are not set in the genotype info field.  If the GQ field is not set in the VCF header, this will be set to -1 by default.")
-	public Integer GQ_THRESHOLD = 30;
+	public Integer GQ_THRESHOLD = 30; 
 	
 	@Argument (doc="At least <FRACTION_SAMPLES_PASSING> samples must have genotype scores >= GQ_THRESHOLD for the variant in the VCF to be included in the analysis.")
 	public double FRACTION_SAMPLES_PASSING=0.9;
@@ -187,10 +188,10 @@ public class CensusSeq extends CommandLineProgram {
 				this.FRACTION_SAMPLES_PASSING, this.IGNORED_CHROMOSOMES, log, false);
 		
 		// last argument is a bit funky.  If you aren't using the common SNP analysis, you need to preserve the full interval names.
-		final IntervalList snpIntervals = SampleAssignmentVCFUtils.getSNPIntervals(vcfIterator, sd, log, vcfWriter, false);
-				
+		final SNPInfoCollection snpIntervals = new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), false, vcfWriter, log);
+		
 		// a requested early exit if there are no SNPs.
-		if (snpIntervals.getIntervals().isEmpty()) {
+		if (snpIntervals.isEmpty()) {
 			log.error("No SNP intervals detected!  Check to see if your VCF filter thresholds are too restrictive!");
 			return 1;
 		}
@@ -207,8 +208,11 @@ public class CensusSeq extends CommandLineProgram {
 		}
 
 		// build the BAM iterator.
-		log.info("Finding SNPs in BAM.");		
-		SNPGenomicBasePileupIterator pileUpIter = new SNPGenomicBasePileupIterator(headerAndIter, snpIntervals, SNP_TAG, READ_MQ, this.IGNORED_CHROMOSOMES, KNOWN_DONOR_TAG, this.MIN_BASE_QUALITY);
+		log.info("Finding SNPs in BAM.");
+		
+		// this explicitly filters to the best SNP seen on a read if there are multiple SNPs touched by a read
+		Map<Interval, Double> genotypeQuality = snpIntervals.getAverageGQ();						
+		SNPGenomicBasePileupIterator pileUpIter = new SNPGenomicBasePileupIterator(headerAndIter, snpIntervals.getIntervalList(), SNP_TAG, READ_MQ, this.IGNORED_CHROMOSOMES, KNOWN_DONOR_TAG, genotypeQuality, this.MIN_BASE_QUALITY);
 
 		// reset the iterator for use in the full data set.  Use the cleaned up set of variants, which should be smaller and faster.
 		vcfIterator = CensusSeqUtils.getVCFIterator (outTempVCF, vcfSamples, this.MIN_NUM_VARIANT_SAMPLES, this.GQ_THRESHOLD, 
@@ -217,7 +221,7 @@ public class CensusSeq extends CommandLineProgram {
 		// set up the VCF writer for the final pass, if the VCF_OUTPUT is not null.
 		vcfWriter = CensusSeqUtils.getVCFWriter (this.VCF_OUTPUT, vcfReader, vcfSamples);
 		
-		int runResult=runCensusSeq(vcfSamples, vcfIterator, pileUpIter, snpIntervals.size(), vcfWriter, sd, outSummary, SNP_COVERAGE_HISTOGRAM);		
+		int runResult=runCensusSeq(vcfSamples, vcfIterator, pileUpIter, snpIntervals.getIntervalList().size(), vcfWriter, sd, outSummary, SNP_COVERAGE_HISTOGRAM);		
 
 		vcfReader.close();
 		return runResult;

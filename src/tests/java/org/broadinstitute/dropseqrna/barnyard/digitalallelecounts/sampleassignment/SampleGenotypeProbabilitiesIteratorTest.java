@@ -26,7 +26,9 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignm
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileupIterator;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SortOrder;
@@ -36,6 +38,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import picard.annotation.LocusFunction;
 
@@ -127,12 +130,17 @@ public class SampleGenotypeProbabilitiesIteratorTest {
 
 	private SampleGenotypeProbabilitiesIterator prepIterFromFile (final List<String> barcodes, final int editDistance) {
 		IntervalList snpIntervals = IntervalList.fromFile(snpIntervalsFile);
-
+		
+		// set all genotype qualities to missing.
+		Map<Interval, Double> meanGenotypeQuality = new HashMap<>();
+		for (Interval i: snpIntervals.getIntervals())
+			meanGenotypeQuality.put(i, -1d);
+		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 				new SamHeaderAndIterator(this.INPUT_BAM), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
 				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
-				molBCTag, snpTag, "XF", readMQ, assignReadsToAllGenes, barcodes, null, SortOrder.SNP_CELL);
-
+				molBCTag, snpTag, "XF", readMQ, assignReadsToAllGenes, barcodes, meanGenotypeQuality, SortOrder.SNP_CELL);
+		
 		boolean flag = sbpi.hasNext();
 		final SAMSequenceDictionary dict = snpIntervals.getHeader().getSequenceDictionary();
 		SampleGenotypeProbabilitiesIterator result = new SampleGenotypeProbabilitiesIterator(sbpi, dict, editDistance);

@@ -97,7 +97,7 @@ public class SNPUMIBasePileup extends SNPBasePileUp {
 		int first = counts.getCountForKey(keys.get(0));
 		int total = counts.getTotalCount();				
 		double result = (double) first / (double) (total);
-		return result;
+		return result; 
 	}
 
 	@Override

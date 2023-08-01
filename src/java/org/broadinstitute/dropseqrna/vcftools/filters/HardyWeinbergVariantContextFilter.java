@@ -53,6 +53,11 @@ public class HardyWeinbergVariantContextFilter extends FilteredIterator <Variant
 		if (c.getTotalCount()==0) return null;
 		return HardyWeinbergCalculation.hwCalculate(c.getCountForKey(0), c.getCountForKey(1), c.getCountForKey(2));
 	}
+	@Override
+	public void logFilterResults() {
+		String msg = String.format("Filter p-value threshold [%f] records pass [%d] records fail [%d] ",this.threshold, this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);										
+	}
 
 
 

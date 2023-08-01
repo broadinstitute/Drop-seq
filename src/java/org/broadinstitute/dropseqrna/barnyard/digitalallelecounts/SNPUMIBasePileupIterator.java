@@ -25,10 +25,12 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
@@ -67,7 +69,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	private final String functionTag;
 	private SamWriterSink sink;
 	
-		
+	
 	/**
 	 * Construct an object that generates SNPUMIBasePileup objects from a BAM file.
 	 * Each of these objects constructs a pileup of the bases and qualities
@@ -80,15 +82,18 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	 * @param assignReadsToAllGenes Should records tagged with multiple genes be double counted, once for each gene?
 	 * @param useStrandInfo should the gene and read strand match for the read to be accepted
 	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.  Only reads with these values will be used.  If set to null, all cell barcodes are used.
-	 * @param A map from SNP Intervals to the mean genotype quality.  This is an optional parameter.  If supplied, in cases where a read has 
+	 * @param meanGenotypeQuality A map from SNP Intervals to the mean genotype quality.  This is an optional parameter.  If supplied, in cases where a read has 
 	 * multiple SNPs, the SNP with the highest average genotype quality will be selected to avoid read "double counting".
+	 * @param order How the reads groups will be ordered by this iterator
+	 * @param failFastThreshold If the iterator sees at least this many UMIs without encountering a transcribed SNP the iterator will fail.  Set to -1 to disable
 	 */
 	public SNPUMIBasePileupIterator (final SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String geneTag, final String geneStrandTag, final String geneFunctionTag,
 			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, final String cellBarcodeTag,
             final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
-            final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final Map<Interval, Double> meanGenotypeQuality, final SortOrder order) {
-		
-		this.geneTag=geneTag;
+            final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final Map<Interval, Double> meanGenotypeQuality, final SortOrder order,
+            int failFastThreshold) {
+				
+		this.geneTag=geneTag; 
 		this.cellBarcodeTag=cellBarcodeTag;
 		this.molecularBarcodeTag=molecularBarcodeTag;
 		this.snpTag = snpTag;
@@ -114,9 +119,42 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
         
      	// Filter/assign reads based on functional annotations
      	GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator2, geneTag, geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
-
-        SNPUMICellReadIteratorWrapper snpumiCellReadIterator = new SNPUMICellReadIteratorWrapper(gfteratorWrapper, snpIntervals, cellBarcodeTag, cellBarcodes, geneTag, snpTag, readMQ, meanGenotypeQuality);
-
+     	
+     	/**
+     	 * In this section, data is sorted into the standard cell / gene / umi order and grouped so that all reads for a single UMI can be evaluated at once.
+     	 * After evaluation by SNPUMICellReadIteratorWrapper2, the groups of reads (List<SAMRECORD>) are flattened back to an iterator of SAMRecords,
+     	 * which is then pushed into the next sorting collection.
+     	 * 
+     	 * An alternative to this process would be to gather all reads that are within a 10kb window, and adjudicate which reads should be tagged with SNPs such 
+     	 * that each UMI only sees a single SNP.  This would happen with a sliding window where as each SNP fell "out" of the window it would be written.  Each SNP
+     	 * would memorize the cell/gene/umi of the reads, and look for conflicts with new incoming data.  
+     	 * That would prevent having to write records to disk to sort them, but would be far more complex to code.  Edge cases where there were long introns 
+     	 * would likely prevent all SNPs from being filtered, but might be a faster approach. 
+     	 */
+     	
+     	
+     	MultiComparator<SAMRecord> cellGeneMolBcComparator=new MultiComparator<>(
+     			new StringTagComparator(cellBarcodeTag),
+                new StringTagComparator(geneTag),
+                new StringTagComparator(molecularBarcodeTag));
+     	
+     	final CloseableIterator<SAMRecord> sortingIterator1 =
+                SamRecordSortingIteratorFactory.create(headerAndIter.header, gfteratorWrapper, cellGeneMolBcComparator, logger);
+     	
+     	GroupingIterator<SAMRecord> cellGeneMolBCGroupingIter= new GroupingIterator<>(sortingIterator1, cellGeneMolBcComparator);
+     	// retaining the reference to this to modify the fail fast threshold.
+     	SNPUMICellReadIteratorWrapper2 snpumiCellReadIterator = new SNPUMICellReadIteratorWrapper2(cellGeneMolBCGroupingIter, snpIntervals, cellBarcodeTag, cellBarcodes, geneTag, snpTag, readMQ, meanGenotypeQuality);
+     	snpumiCellReadIterator.setFailFastThreshold(failFastThreshold);
+     	
+     	Iterator<SAMRecord> flattenedIterator = StreamSupport.stream(snpumiCellReadIterator.spliterator(), false).flatMap(x->x.stream()).iterator();     	          	
+     	     	
+     	/**
+     	 * Return to the usual sorting by SNP/etc to generate pileups.
+     	 */
+     	     	
+        // If you comment out the block above and change the sorting iterator below to use this iter, you can swap back to the "old" code.
+     	// SNPUMICellReadIteratorWrapper snpumiCellReadIterator = new SNPUMICellReadIteratorWrapper(gfteratorWrapper, snpIntervals, cellBarcodeTag, cellBarcodes, geneTag, snpTag, readMQ, meanGenotypeQuality);
+     	
         // create comparators in the order the data should be sorted
         SAMSequenceDictionary sd = snpIntervals.getHeader().getSequenceDictionary();
         @SuppressWarnings("unchecked")
@@ -146,10 +184,21 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 			throw new IllegalArgumentException("Sort order " + order +" unsupported");
 		}
 		final CloseableIterator<SAMRecord> sortingIterator =
-		                SamRecordSortingIteratorFactory.create(headerAndIter.header, snpumiCellReadIterator, multiComparator, logger);
+		                SamRecordSortingIteratorFactory.create(headerAndIter.header, flattenedIterator, multiComparator, logger);
 
 		this.atoi = new GroupingIterator<>(sortingIterator, multiComparator);
 	}
+	
+	public SNPUMIBasePileupIterator (final SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String geneTag, final String geneStrandTag, final String geneFunctionTag,
+			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, final String cellBarcodeTag,
+           final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
+           final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final Map<Interval, Double> meanGenotypeQuality, final SortOrder order) {
+		
+		this(headerAndIter, snpIntervals, geneTag, geneStrandTag, geneFunctionTag, acceptedLociFunctions, strandStrategy, cellBarcodeTag, molecularBarcodeTag, snpTag, functionTag, readMQ, 
+				assignReadsToAllGenes, cellBarcodes, meanGenotypeQuality, order, -1);
+	}
+	
+	
 	
 	public void addReadSink (SamWriterSink sink) {
 		this.sink=sink;

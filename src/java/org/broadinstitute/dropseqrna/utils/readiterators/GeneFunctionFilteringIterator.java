@@ -29,10 +29,10 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.broadinstitute.dropseqrna.annotation.FunctionalData;
-import org.broadinstitute.dropseqrna.annotation.FunctionalDataProcessor;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.Log;
 import picard.annotation.LocusFunction;
 
 /**
@@ -45,6 +45,7 @@ import picard.annotation.LocusFunction;
  */
 public class GeneFunctionFilteringIterator extends FilteredIterator<SAMRecord> {
 	
+	private static final Log log = Log.getInstance(GeneFunctionFilteringIterator.class);
 	private final GeneFunctionProcessor p;
 	
 	public GeneFunctionFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String geneTag, final String strandTag, 
@@ -63,4 +64,12 @@ public class GeneFunctionFilteringIterator extends FilteredIterator<SAMRecord> {
 		// Otherwise, accept the read
 		return false;
 	}
+
+	@Override
+	public void logFilterResults() {
+		String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());  
+		log.info(msg);										
+	}
+	
+	
 }
