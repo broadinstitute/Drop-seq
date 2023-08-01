@@ -28,13 +28,17 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
@@ -59,8 +63,8 @@ public class BamTagHistogram extends CommandLineProgram {
 
 	private static final Log log = Log.getInstance(BamTagHistogram.class);
 
-	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted. (???)")
-	public File INPUT;
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
+	public List<File> INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of histogram of tag value frequencies. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
@@ -76,13 +80,14 @@ public class BamTagHistogram extends CommandLineProgram {
 
 	@Override
 	protected int doWork() {
-		IOUtil.assertFileIsReadable(INPUT);
+		this.INPUT = FileListParsingUtils.expandFileList(INPUT);
+		
 		IOUtil.assertFileIsWritable(OUTPUT);
 
 		ObjectCounter<String> counter = getBamTagCounts(INPUT, this.TAG, this.MINIMUM_MAPPING_QUALITY, this.FILTER_PCR_DUPLICATES);
 
         PrintStream writer = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUTPUT));
-        writeHeader(writer);
+        writeHeader(this.INPUT, writer);
         writeHistogram(counter, writer);
 
 		return 0;
@@ -101,9 +106,12 @@ public class BamTagHistogram extends CommandLineProgram {
         writer.close();
     }
 
-	private void writeHeader (final PrintStream writer) {
+	private void writeHeader (final List<File> bamFile, final PrintStream writer) {
 		List<String> header = new ArrayList<>();
-		header.add("INPUT="+this.INPUT.getAbsolutePath());
+		List<String> paths = bamFile.stream().map(x -> x.getAbsolutePath()).collect(Collectors.toList());
+		String bamList = StringUtils.join(paths, ",");
+		
+		header.add("INPUT="+bamList);
 		header.add("TAG="+this.TAG);
 		header.add("FILTER_PCR_DUPLICATES="+this.FILTER_PCR_DUPLICATES);
 		header.add("READ_QUALITY="+this.MINIMUM_MAPPING_QUALITY);
@@ -112,12 +120,12 @@ public class BamTagHistogram extends CommandLineProgram {
 		writer.println(h);
 	}
 
-	public ObjectCounter<String> getBamTagCounts (final File bamFile, final String tag, final int readQuality, final boolean filterPCRDuplicates) {
-		SamReader inputSam = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE).open(bamFile);
+	public ObjectCounter<String> getBamTagCounts (final List<File> bamFile, final String tag, final int readQuality, final boolean filterPCRDuplicates) {		
+		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputs(bamFile, false, SamReaderFactory.makeDefault());		
         try {
-            return getBamTagCounts(inputSam.iterator(), tag, readQuality, filterPCRDuplicates);
+            return getBamTagCounts(headerAndIter.iterator, tag, readQuality, filterPCRDuplicates);
         } finally {
-            CloserUtil.close(inputSam);
+            CloserUtil.close(headerAndIter.iterator);
         }
     }
 

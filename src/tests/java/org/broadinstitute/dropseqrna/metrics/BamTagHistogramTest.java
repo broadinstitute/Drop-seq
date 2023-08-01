@@ -2,6 +2,7 @@ package org.broadinstitute.dropseqrna.metrics;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.annotations.Test;
@@ -19,7 +20,7 @@ public class BamTagHistogramTest {
 		File outFile = File.createTempFile("BamTagHistogramTest.", ".counts_XC.txt");
 		outFile.deleteOnExit();
 		BamTagHistogram bth = new BamTagHistogram();
-		bth.INPUT=IN_FILE;
+		bth.INPUT=Collections.singletonList(IN_FILE);
 		bth.OUTPUT=outFile;
 		bth.MINIMUM_MAPPING_QUALITY=10;
 		bth.TAG="XC";
@@ -36,7 +37,7 @@ public class BamTagHistogramTest {
 		outFile = File.createTempFile("BamTagHistogramTest.", ".counts_NM.txt");
 		outFile.deleteOnExit();
 		BamTagHistogram bth = new BamTagHistogram();
-		bth.INPUT=IN_FILE;
+		bth.INPUT=Collections.singletonList(IN_FILE);
 		bth.OUTPUT=outFile;
 		bth.MINIMUM_MAPPING_QUALITY=10;
 		bth.TAG="NM";
