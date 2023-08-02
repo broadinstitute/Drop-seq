@@ -37,9 +37,12 @@ import java.util.stream.Collectors;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.metrics.BamTagHistogram;
 import org.broadinstitute.dropseqrna.utils.readiterators.MissingTagFilteringIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 
 import htsjdk.samtools.SAMFileHeader;
@@ -64,8 +67,8 @@ public class DownsampleBamByTag extends CommandLineProgram {
 
 	private final Log log = Log.getInstance(DownsampleBamByTag.class);
 
-	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
-	public File INPUT;
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
+	public List<File> INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output BAM.")
 	public File OUTPUT;
@@ -105,21 +108,32 @@ public class DownsampleBamByTag extends CommandLineProgram {
 		if (PAIRED_READS && !USE_PROBABILISTIC_STRATEGY)
 			log.error("PAIRED READS mode only available if USE_PROBABILISTIC_STRATEGY=true");
 
-		IOUtil.assertFileIsReadable(INPUT);
-		IOUtil.assertFileIsWritable(OUTPUT);
 		ObjectCounter<String> tc = null;
 
 		if (TAG_FILE!=null) {
-			IOUtil.assertFileIsReadable(TAG_FILE);
 			tc=parseTagFile(TAG_FILE);
 		}
-
 
 		if (USE_PROBABILISTIC_STRATEGY)
 			downsampleBAMByTagProbabilistic (this.INPUT, this.TAG, this.READ_MQ, this.OUTPUT, tc, this.PAIRED_READS, this.NUM_READS, this.RANDOM_SEED);
 		else
 			downsampleBAMByTag(this.INPUT, this.TAG, this.READ_MQ, this.OUTPUT, tc, this.NUM_READS, new Random (this.RANDOM_SEED));
 		return (0);
+	}
+	
+	@Override
+	protected String[] customCommandLineValidation() {
+
+		final ArrayList<String> list = new ArrayList<>(1);
+		
+		this.INPUT = FileListParsingUtils.expandFileList(INPUT);
+				
+		IOUtil.assertFileIsWritable(OUTPUT);
+		
+		if (TAG_FILE!=null) 
+			IOUtil.assertFileIsReadable(TAG_FILE);				
+		
+		return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
 	}
 
 	/**
@@ -132,7 +146,7 @@ public class DownsampleBamByTag extends CommandLineProgram {
 	 * @param desiredReads
 	 * @param numReads
 	 */
-	public void downsampleBAMByTagProbabilistic (final File input, final String tag, final int readQuality, final File output, ObjectCounter<String> desiredReads, final boolean pairedReadMode, final Integer numReads, final int randomSeed) {
+	public void downsampleBAMByTagProbabilistic (final List<File> input, final String tag, final int readQuality, final File output, ObjectCounter<String> desiredReads, final boolean pairedReadMode, final Integer numReads, final int randomSeed) {
 		Random random = new Random (randomSeed);
 
 		// get the count of the number of reads for each tag.
@@ -143,13 +157,14 @@ public class DownsampleBamByTag extends CommandLineProgram {
 		
 		PeekableIterator<SAMRecord> iter=null;
 
-		SamReader reader = SamReaderFactory.makeDefault().open(input);
+		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputs(input, false, SamReaderFactory.makeDefault());
+		
 		if (pairedReadMode)
-			iter=new PeekableIterator<>(CustomBAMIterators.getQuerynameSortedRecords(reader));
+			iter=new PeekableIterator<>(CustomBAMIterators.getQuerynameSortedRecords(headerAndIter));
 		else
-			iter=new PeekableIterator<>(reader.iterator());
+			iter=new PeekableIterator<>(headerAndIter.iterator);
 
-		SAMFileHeader h= reader.getFileHeader();
+		SAMFileHeader h= headerAndIter.header;
 		// when constructing the writer, the reads will be out of order in paired read mode since we're query name ordering the reads and tag sorting them.
 		SAMFileWriter writer=null;
 		if (pairedReadMode) writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(h, false, output);
@@ -165,7 +180,7 @@ public class DownsampleBamByTag extends CommandLineProgram {
 			if (pairedReadMode)  processDoubleProbabilistic (iter, tagProbabilityMap, tag, writer, pl, random);
 		}
 		CloserUtil.close(iter);
-		CloserUtil.close(reader);
+		
 		if (pairedReadMode) log.info("Done adding downsampled reads, putting data back into original sort order.");
 		writer.close();
 		if (pairedReadMode) {
@@ -293,17 +308,16 @@ public class DownsampleBamByTag extends CommandLineProgram {
 		return (result);
 	}
 
-	public void downsampleBAMByTag (final File input, final String tag, final int readQuality, final File output, final ObjectCounter<String> desiredReads, final ObjectCounter<String> observedReads, final Integer numReads, final Random random) {
-		SamReader reader = SamReaderFactory.makeDefault().open(input);
+	public void downsampleBAMByTag (final List<File> input, final String tag, final int readQuality, final File output, final ObjectCounter<String> desiredReads, final ObjectCounter<String> observedReads, final Integer numReads, final Random random) {
+		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputs(input, false, SamReaderFactory.makeDefault());
 
-		SAMFileHeader h= reader.getFileHeader();
-		SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(h, false, output);
+		SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(headerAndIter.header, false, output);
 
 		ProgressLogger pl = new ProgressLogger(this.log);
 
-        final Iterator<SAMRecord> filteringIterator = new MissingTagFilteringIterator(reader.iterator(), tag);
+        final Iterator<SAMRecord> filteringIterator = new MissingTagFilteringIterator(headerAndIter.iterator, tag);
         final PeekableIterator<SAMRecord> toi =
-                new PeekableIterator<>(SamRecordSortingIteratorFactory.create(reader.getFileHeader(), filteringIterator, new StringTagComparator(tag), pl));
+                new PeekableIterator<>(SamRecordSortingIteratorFactory.create(headerAndIter.header, filteringIterator, new StringTagComparator(tag), pl));
 
 		SAMRecord r = toi.peek();
 
@@ -359,7 +373,7 @@ public class DownsampleBamByTag extends CommandLineProgram {
 	}
 
 
-	public void downsampleBAMByTag (final File input, final String tag, final int readQuality, final File output, final ObjectCounter<String> tc, final Integer numReads, final Random random) {
+	public void downsampleBAMByTag (final List<File> input, final String tag, final int readQuality, final File output, final ObjectCounter<String> tc, final Integer numReads, final Random random) {
 		BamTagHistogram bth = new BamTagHistogram();
 		ObjectCounter<String> histogram = bth.getBamTagCounts (input, tag, readQuality, this.FILTER_PCR_DUPLICATES);
 		downsampleBAMByTag(input, tag, readQuality, output, tc, histogram, numReads, random);

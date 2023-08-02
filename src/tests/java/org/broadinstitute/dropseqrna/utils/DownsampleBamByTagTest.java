@@ -51,8 +51,8 @@ public class DownsampleBamByTagTest {
         clp.READ_MQ = READ_MQ;
         clp.FILTER_PCR_DUPLICATES = FILTER_PCR_DUPLICATES;
         clp.PAIRED_READS = false;
-        clp.TAG = TAG;
-        clp.INPUT = ALIGNED_UNPAIRED_BAM;
+        clp.TAG = TAG;                
+        clp.INPUT = Collections.singletonList(ALIGNED_UNPAIRED_BAM);
         clp.OUTPUT = TestUtils.getTempReportFile("testUnpaired.", ".sam");
         ObjectCounter<String> originalCounts = getTagCounts(clp.INPUT, TAG, READ_MQ, FILTER_PCR_DUPLICATES);
         final ObjectCounter<String> expectedCounts = new ObjectCounter<>();
@@ -72,8 +72,8 @@ public class DownsampleBamByTagTest {
             writeTagValuesToFile(clp.TAG_FILE, expectedCounts);
         }
         Assert.assertEquals(clp.doWork(), 0);
-        // Quality and dupe filtering alredy done, so shouldn't need to do it here.
-        ObjectCounter<String> actualCounts = getTagCounts(clp.OUTPUT, TAG, 0, false);
+        // Quality and dupe filtering alredy done, so shouldn't need to do it here.        
+        ObjectCounter<String> actualCounts = getTagCounts(Collections.singletonList(clp.OUTPUT), TAG, 0, false);
         final ArrayList<String> expectedKeys = new ArrayList<>(expectedCounts.getKeys());
         Collections.sort(expectedKeys);
         final ArrayList<String> actualKeys = new ArrayList<>(actualCounts.getKeys());
@@ -110,7 +110,7 @@ public class DownsampleBamByTagTest {
         return ret.toArray(new Object[0][]);
     }
 
-    public static ObjectCounter<String> getTagCounts(final File bam, final String tag, int READ_MQ, boolean FILTER_PCR_DUPLICATES) {
+    public static ObjectCounter<String> getTagCounts(final List<File> bam, final String tag, int READ_MQ, boolean FILTER_PCR_DUPLICATES) {
         return new BamTagHistogram().getBamTagCounts (bam, tag, READ_MQ, FILTER_PCR_DUPLICATES);
     }
 
@@ -129,8 +129,8 @@ public class DownsampleBamByTagTest {
         clp.USE_PROBABILISTIC_STRATEGY = true;
         clp.PAIRED_READS = true;
         clp.TAG = "RG";
-        clp.NUM_READS = 10;
-        clp.INPUT = ALIGNED_PAIRED_BAM;
+        clp.NUM_READS = 10;        
+        clp.INPUT = Collections.singletonList(ALIGNED_PAIRED_BAM);
         clp.OUTPUT = TestUtils.getTempReportFile("testPaired.", ".sam");
         Assert.assertEquals(clp.doWork(), 0);
     }
