@@ -108,7 +108,7 @@ public class FilterReadsByUMISupport extends GeneFunctionCommandLineBase {
     		}
     	}
         
-    	log.info("Total cell/UMIs observed [" +metrics.NUM_UMIS+"] UMIs filtered [" + metrics.NUM_UMIS_REMOVED+"] % ["+ String.format("%.2f%%",metrics.getPercentMarked())+"]");
+    	log.info("Total cell/UMIs observed [" +metrics.NUM_UMIS+"] UMIs filtered [" + metrics.NUM_UMIS_REMOVED+"] % ["+ String.format("%.2f%%",metrics.getFractionMarked()*100)+"]");
     	CloserUtil.close(umiIterator);
     	CloserUtil.close(out);
     	
@@ -172,7 +172,7 @@ public class FilterReadsByUMISupport extends GeneFunctionCommandLineBase {
 			histogram = new Histogram<>("UMI_READ_COUNT", "NUM_UMIS_FILTERED");
 		}
 		
-		public double getPercentMarked () {
+		public double getFractionMarked () {
 			FRAC_UMIS_REMOVED= ((double) NUM_UMIS_REMOVED / (double) NUM_UMIS);
 			return FRAC_UMIS_REMOVED;
 		}
@@ -202,14 +202,14 @@ public class FilterReadsByUMISupport extends GeneFunctionCommandLineBase {
 		IOUtil.assertFileIsWritable(this.OUTPUT);
 		
 		if (this.MIN_READ_SUPPORT!=-1) {
-			if (this.MAX_READ_SUPPORT<0) {
+			if (this.MIN_READ_SUPPORT<0) {
 				list.add("If MIN_READ_SUPPORT is set, the value must be >=0.");
 			}
 		}
 		
 		if (this.MAX_READ_SUPPORT!=-1) {
 			if (this.MAX_READ_SUPPORT<1) {
-				list.add("If MIN_READ_SUPPORT is set, the value must be >=1.");
+				list.add("If MAX_READ_SUPPORT is set, the value must be >=1.");
 			}
 		}					
 		return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
