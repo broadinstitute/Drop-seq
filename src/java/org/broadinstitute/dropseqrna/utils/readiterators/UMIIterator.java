@@ -47,7 +47,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	private final String molecularBarcodeTag;
     private final StringInterner stringCache = new StringInterner();
     private final Set<String> cellBarcodesSeen;
-
+    private final boolean retainReads;
 	/**
 	 * Construct an object that generates UMI objects from a BAM file
      * @param headerAndIterator The BAM records to extract UMIs from
@@ -106,7 +106,47 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final Collection<String> cellBarcodes,
                        final boolean cellFirstSort,
 					   final boolean recordCellsInInput) {
-
+		
+		this(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy, acceptedLociFunctions,
+				cellBarcodeTag, molecularBarcodeTag, readMQ, assignReadsToAllGenes, cellBarcodes, cellFirstSort, recordCellsInInput, false);
+		
+	}
+	/**
+	 * Construct an object that generates UMI objects from a BAM file
+	 * @param headerAndIterator The BAM records to extract UMIs from
+	 * @param geneTag The geneExon tag on BAM records
+	 * @param cellBarcodeTag The cell barcode tag on BAM records
+	 * @param molecularBarcodeTag The molecular barcode tag on BAM records
+	 * @param geneStrandTag The strand tag on BAM records
+	 * @param readMQ The minimum map quality of the reads
+	 * @param assignReadsToAllGenes Should records tagged with multiple genes be double counted, once for each gene?
+	 * @param strandStrategy should the gene and read strand match for the read to be accepted
+	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.
+     *                     Only reads with these values will be used.  If set to null, all cell barcodes are used.
+	 * @param cellFirstSort if true, then cell barcodes are sorted first, followed by gene/exon tags.
+     *                      If false, then gene/exon tags are sorted first, followed by cells.  false is the default and used in the other constructor.
+	 * @param recordCellsInInput While sorting the input, keep track of what cells appear in the input.  This record
+	 *                           is not complete until iteration is started.
+	 * @param retainReads If true the SAMRecords are added to the UMICollection.  This uses more memory than the standard UMICollection so exercise caution.  
+	 * This is false in other method signatures by default
+	 * 
+	 */
+	public UMIIterator(final SamHeaderAndIterator headerAndIterator,
+					   final String geneTag,
+                       final String geneStrandTag,
+                       final String geneFunctionTag,
+                       final StrandStrategy strandStrategy,
+                       final Collection <LocusFunction> acceptedLociFunctions,
+                       final String cellBarcodeTag,
+                       final String molecularBarcodeTag,
+                       final int readMQ,
+                       final boolean assignReadsToAllGenes,
+                       final Collection<String> cellBarcodes,
+                       final boolean cellFirstSort,
+					   final boolean recordCellsInInput, 
+					   final boolean retainReads) {
+		
+		this.retainReads=retainReads;
         this.geneTag=geneTag;
         this.cellBarcodeTag=cellBarcodeTag;
         this.molecularBarcodeTag=molecularBarcodeTag;
@@ -176,7 +216,10 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
             // but they are not cached *across* (cell, gene), so this should help.
 			String molecularBarcode = stringCache.intern(r.getStringAttribute(this.molecularBarcodeTag));
 			umi.incrementMolecularBarcodeCount(molecularBarcode);
-
+			// optionally store the reads for a cell/gene 
+			if (retainReads)
+				umi.addRead(molecularBarcode, r);
+			
 		}
 		// I ran out of reads
 		recordCollectionIter.close();
