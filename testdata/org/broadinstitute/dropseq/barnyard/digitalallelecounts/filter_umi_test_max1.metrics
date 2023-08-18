@@ -1,0 +1,12 @@
+
+## METRICS CLASS	org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.FilterReadsByUMISupport$FilteredUmiMetrics
+NUM_UMIS	NUM_UMIS_REMOVED	FRAC_UMIS_REMOVED
+5	4	0.8
+
+## HISTOGRAM	java.lang.Integer
+UMI_READ_COUNT	NUM_UMIS_FILTERED
+2	1
+3	1
+4	1
+5	1
+

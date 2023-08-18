@@ -226,6 +226,20 @@ public class ObjectCounter<T extends Comparable<T>> {
 		}
 		this.countMap=result;
 	}
+	
+	/**
+	 * Filters this counter to that only entries with at most <count> number of reads remain.
+	 */
+	public void filterByMaxCount (final int count) {
+		Map<T, Integer> result = new HashMap<>();
+		for (T key: this.countMap.keySet()) {
+			Integer value = countMap.get(key);
+			if (value<=count)
+				result.put(key, value);
+		}
+		this.countMap=result;
+	}
+	
 
 	/**
 	 * Subset this set of counts to a subset of the keys.

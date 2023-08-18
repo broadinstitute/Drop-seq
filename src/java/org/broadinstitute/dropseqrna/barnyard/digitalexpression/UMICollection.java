@@ -23,18 +23,24 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.PeekableIterator;
-import org.broadinstitute.dropseqrna.barnyard.GatherMolecularBarcodeDistributionByGene;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
-import picard.util.TabbedTextFileWithHeaderParser;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
+
+import org.broadinstitute.dropseqrna.barnyard.GatherMolecularBarcodeDistributionByGene;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
+
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.util.CloserUtil;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.PeekableIterator;
+import picard.util.TabbedTextFileWithHeaderParser;
 
 /**
  * Models a collection of UMIs for a gene and cell barcode.
@@ -45,8 +51,9 @@ public class UMICollection {
 
 	private String cellBarcode;
 	private String geneName;
-	private ObjectCounter<String> molecularBarcodeCounts;
+	private ObjectCounter<String> molecularBarcodeCounts;	
 	private static MapBarcodesByEditDistance mbed =new MapBarcodesByEditDistance(false);
+	private Map<String, List<SAMRecord>> reads=null;
 
 	public UMICollection (final String cellBarcode, final String geneName) {
 		this.cellBarcode = cellBarcode;
@@ -85,6 +92,29 @@ public class UMICollection {
 	public ObjectCounter<String> getMolecularBarcodeCountsCollapsed(final int editDistance) {
 		ObjectCounter<String> counts = collapseByEditDistance(this.molecularBarcodeCounts, editDistance);
 		return counts;
+	}
+	
+	public void addRead (String molecularBarcode, SAMRecord rec) {
+		if (reads==null) {
+			reads=new HashMap<>();
+		}
+		List<SAMRecord> l = reads.get(molecularBarcode);
+		if (l==null) {
+			l = new ArrayList<>();
+			reads.put(molecularBarcode, l);
+		}
+		l.add(rec);
+	}
+	
+	/**
+	 * If reads were added to this collection via addRead, they can be retrieved for a given molecular barcode via this method.
+	 * @param molecularBarcode The molecular barcode to request reads from
+	 * @return The list of reads for this molecular barcode.  This will return null when there were no reads added for a requested barcode.
+	 */
+	public List<SAMRecord> getReads (String molecularBarcode) {
+		if (this.reads==null)
+			return null;
+		return this.reads.get(molecularBarcode);		
 	}
 
 	/**
