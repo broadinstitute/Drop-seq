@@ -28,6 +28,7 @@ public class FilterReadsByUMISupportTest {
 		f.METRICS=File.createTempFile("FilterReadsByUMISupportTest.", ".metrics");
 		f.METRICS.deleteOnExit();
 		f.SORT_ORDER=SAMFileHeader.SortOrder.coordinate;
+		f.customCommandLineValidation();
 		
 		int ret = f.doWork();
 		Assert.assertTrue(ret==0);
@@ -50,6 +51,7 @@ public class FilterReadsByUMISupportTest {
 		f.METRICS=File.createTempFile("FilterReadsByUMISupportTest.", ".metrics");
 		f.METRICS.deleteOnExit();
 		f.SORT_ORDER=SAMFileHeader.SortOrder.coordinate;
+		f.customCommandLineValidation();
 		
 		int ret = f.doWork();
 		Assert.assertTrue(ret==0);
@@ -71,6 +73,7 @@ public class FilterReadsByUMISupportTest {
 		f.METRICS=File.createTempFile("FilterReadsByUMISupportTest.", ".metrics");
 		f.METRICS.deleteOnExit();
 		f.SORT_ORDER=SAMFileHeader.SortOrder.coordinate;
+		f.customCommandLineValidation();
 		
 		int ret = f.doWork();
 		Assert.assertTrue(ret==0);
