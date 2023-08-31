@@ -26,7 +26,7 @@ package org.broadinstitute.dropseqrna.utils.readiterators;
 import java.util.ArrayList;
 import java.util.List;
 
-import htsjdk.samtools.SAMTagUtil;
+import htsjdk.samtools.SAMTag;
 
 public class DEIteratorUtils {
 
@@ -34,7 +34,7 @@ public class DEIteratorUtils {
 		List<Short> result = new ArrayList<>(tags.size());
 
 		for (String tag : tags) {
-			short s = SAMTagUtil.getSingleton().makeBinaryTag(tag);
+			short s = SAMTag.makeBinaryTag(tag);
 			result.add(s);
 		}
 		return (result);
@@ -44,7 +44,7 @@ public class DEIteratorUtils {
 		List<String> result = new ArrayList<>(tags.size());
 
 		for (Short tag : tags) {
-			String s = SAMTagUtil.getSingleton().makeStringTag(tag);
+			String s = SAMTag.makeStringTag(tag);
 			result.add(s);
 		}
 		return (result);

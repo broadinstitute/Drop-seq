@@ -23,12 +23,12 @@
  */
 package org.broadinstitute.dropseqrna.readtrimming;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTagUtil;
-import htsjdk.samtools.util.SequenceUtil;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
+import htsjdk.samtools.util.SequenceUtil;
 
 public class AdapterDescriptor {
     /**
@@ -63,7 +63,7 @@ public class AdapterDescriptor {
 
         TagAdapterElement(String tag, boolean reverseComplement) {
             this.stringTag = tag;
-            this.binaryTag = SAMTagUtil.getSingleton().makeBinaryTag(tag);
+            this.binaryTag = SAMTag.makeBinaryTag(tag);
             this.reverseComplement = reverseComplement;
         }
 

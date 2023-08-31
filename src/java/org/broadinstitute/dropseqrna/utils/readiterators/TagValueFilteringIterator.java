@@ -1,16 +1,15 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTagUtil;
-import htsjdk.samtools.util.Log;
-
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-import org.broadinstitute.dropseqrna.utils.VariantContextSingletonFilter;
-
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
+import htsjdk.samtools.util.Log;
 
 /**
  * Filters out a read if the tag value does not match an one of an expected set of values or is not set.
@@ -25,7 +24,7 @@ public class TagValueFilteringIterator<T> extends FilteredIterator<SAMRecord> {
 	
     public TagValueFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String requiredTag, final Collection<T> expectedValues) {
         super(underlyingIterator);
-        this.requiredTag = SAMTagUtil.getSingleton().makeBinaryTag(requiredTag);
+        this.requiredTag = SAMTag.makeBinaryTag(requiredTag);
         this.expectedValues = new HashSet<T>(expectedValues);
     }
 
@@ -37,13 +36,14 @@ public class TagValueFilteringIterator<T> extends FilteredIterator<SAMRecord> {
     	if (value == null)
 			return true;
 
-    	if (this.expectedValues.contains(value)) return false;
+    	if (this.expectedValues.contains(value)) 
+    		return false;
         return true;
     }
 
 	@Override
-	public void logFilterResults() {
-		String msg = String.format("Required Tag [%s] Records pass [%d] records fail [%d] ",this.requiredTag, this.getRecordsPassed(), this.getRecordsFailed());  
+	public void logFilterResults() {		
+		String msg = String.format("Required Tag [%s] Records pass [%d] records fail [%d] ",SAMTag.makeStringTag(requiredTag), this.getRecordsPassed(), this.getRecordsFailed());  
 		log.info(msg);		
 	}
 }
