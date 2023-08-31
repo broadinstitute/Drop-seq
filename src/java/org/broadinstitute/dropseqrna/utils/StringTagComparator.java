@@ -23,10 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTagUtil;
-
 import java.util.Comparator;
+
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
 
 /**
  * Comparator for SAMRecord that orders by the value for the given tag, which must be a string value.
@@ -36,7 +36,7 @@ public class StringTagComparator implements Comparator<SAMRecord> {
     private final short tag;
 
     public StringTagComparator(String tag) {
-        this.tag = SAMTagUtil.getSingleton().makeBinaryTag(tag);
+        this.tag = SAMTag.makeBinaryTag(tag);
     }
 
     @Override

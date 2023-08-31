@@ -23,12 +23,11 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTagUtil;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+import java.util.Iterator;
+
 import org.broadinstitute.dropseqrna.utils.PredicateFilteredIterator;
 
-import java.util.Iterator;
+import htsjdk.samtools.SAMRecord;
 
 /**
  * Iterator wrapper that emits a SAMRecord only if *all* the required tags are present.

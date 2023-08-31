@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMTagUtil;
+import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.StringUtil;
 
@@ -58,12 +58,12 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
 	 * @param tag
 	 */
     public IntervalTagComparator(final String tag) {
-        this.tag = SAMTagUtil.getSingleton().makeBinaryTag(tag);
+        this.tag = SAMTag.makeBinaryTag(tag);
         this.dict=null;
     }
 
     public IntervalTagComparator (final String tag, final SAMSequenceDictionary dict) {
-    	this.tag = SAMTagUtil.getSingleton().makeBinaryTag(tag);
+    	this.tag = SAMTag.makeBinaryTag(tag);
     	this.dict=dict;
     }
 
@@ -124,7 +124,7 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
 
     	Object strIntervalRec = rec.getAttribute(tag);
     	if (!(strIntervalRec instanceof String))
-			throw new IllegalArgumentException(SAMTagUtil.getSingleton().makeStringTag(this.tag) + " does not have a String value");
+			throw new IllegalArgumentException(SAMTag.makeStringTag(this.tag) + " does not have a String value");
     	String intervalString = (String) strIntervalRec;
     	String [] result = new String [4];
     	StringUtil.splitConcatenateExcessTokens(intervalString, result, ENCODE_DELIMITER);
@@ -181,7 +181,7 @@ public class IntervalTagComparator implements Comparator<SAMRecord> {
     private Interval getIntervalForTag (final SAMRecord rec) {
     	Object strIntervalRec = rec.getAttribute(tag);
     	if (!(strIntervalRec instanceof String))
-			throw new IllegalArgumentException(SAMTagUtil.getSingleton().makeStringTag(this.tag) + " does not have a String value");
+			throw new IllegalArgumentException(SAMTag.makeStringTag(this.tag) + " does not have a String value");
     	Interval result = fromString((String) strIntervalRec );
     	return (result);
     }

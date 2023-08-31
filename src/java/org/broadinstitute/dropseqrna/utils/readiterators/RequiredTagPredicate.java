@@ -23,10 +23,10 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMTagUtil;
-
 import java.util.function.Predicate;
+
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
 
 public class RequiredTagPredicate
         implements Predicate<SAMRecord> {
@@ -36,14 +36,12 @@ public class RequiredTagPredicate
     public RequiredTagPredicate(final String... requiredTags) {
         this.requiredTags = new short[requiredTags.length];
         for (int i = 0; i < requiredTags.length; ++i)
-            this.requiredTags[i] = SAMTagUtil.getSingleton().makeBinaryTag(requiredTags[i]);
+            this.requiredTags[i] = SAMTag.makeBinaryTag(requiredTags[i]);
     }
 
     @Override
     public boolean test(SAMRecord rec) {
         for (final short tag : requiredTags)
-            // String strTag=SAMTagUtil.getSingleton().makeStringTag(tag);
-            // List<SAMTagAndValue> vals = rec.getAttributes();
             if (rec.getAttribute(tag) == null)
                 return false;
         return true;
