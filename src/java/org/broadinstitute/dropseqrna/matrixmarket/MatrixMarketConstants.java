@@ -38,6 +38,9 @@ public class MatrixMarketConstants {
     // Legacy names for header lines with row and column names
     public static final String GENES = "GENES";
     public static final String CELL_BARCODES = "CELL_BARCODES";
+    // After the header line, DropSeq Matrix Market files start with one of these
+    public static final String DROP_SEQ_MATRIX_MARKET_DETECTOR1 = MM_STRUCTURED_COMMENT_LINE_START + GENES + MM_HEADER_LIST_SEPARATOR;
+    public static final String DROP_SEQ_MATRIX_MARKET_DETECTOR2 = MM_STRUCTURED_COMMENT_LINE_START + ROWS + MM_HEADER_LIST_SEPARATOR;
     public static final int NUM_HEADER_ELEMENTS_PER_ROW = 1000;
 
     /**

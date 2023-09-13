@@ -92,6 +92,22 @@ public class MatrixMarketReader
         }
     }
 
+    public static boolean isDropSeqMatrixMarket(final File file) {
+        if (!isMatrixMarket(file)) return false;
+        BufferedReader reader = IOUtil.openFileForBufferedReading(file);
+        try {
+            // Skip the %%MatrixMarket line
+            reader.readLine();
+            final String rownames = reader.readLine();
+            return rownames.startsWith(MatrixMarketConstants.DROP_SEQ_MATRIX_MARKET_DETECTOR1) ||
+                    rownames.startsWith(MatrixMarketConstants.DROP_SEQ_MATRIX_MARKET_DETECTOR2);
+        } catch (IOException e) {
+            throw new RuntimeIOException("Exception reading " + file.getAbsolutePath(), e);
+        } finally {
+            CloserUtil.close(reader);
+        }
+    }
+
     private static String readAndReset(final BufferedReader reader, final int numChars) {
         try {
             reader.mark(numChars);
