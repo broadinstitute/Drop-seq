@@ -642,8 +642,9 @@ public class DGEMatrix {
 		final MatrixMarketReader matrixReader = new MatrixMarketReader(input);
 		if (matrixReader.getElementType() != MatrixMarketConstants.ElementType.integer)
 			throw new RuntimeException(input.getAbsolutePath() + " does not start with correct 10x Genomics Matrix Market header");
-		//TODO: this should be the 2nd column [1] to get the gene symbol.
-		List<String> geneNames=parse10xGenomicsAttributeFile(genesFile, 0, 2);
+		// Getting the 0th column works for both genes.tsv, which only has one column, and
+		// features.tsv.gz, which has 3 columns, in which the 0th column is either the gene name or the ID (not sure)
+		List<String> geneNames=parse10xGenomicsAttributeFile(genesFile, 0, 3);
 		List<String> cellBarcodes=parse10xGenomicsAttributeFile(barcodesFile, 0, 1);
 		return (parseGenericMatrixMarket(matrixReader, cellBarcodePrefix, geneNames, cellBarcodes));
 
@@ -658,7 +659,7 @@ public class DGEMatrix {
     private static List<String> parse10xGenomicsAttributeFile (final File input, final int columnIdx, final int numColumnsInFile) {
     	IOUtil.assertFileIsReadable(input);
 		List<String> result = new ArrayList<>();
-		BasicInputParser parser = new BasicInputParser(false, numColumnsInFile, input);
+		BasicInputParser parser = new TabbedInputParser(false, input);
 		while(parser.hasNext()) {
 			String [] line =parser.next();
 			result.add(line[columnIdx]);
@@ -738,19 +739,17 @@ public class DGEMatrix {
         }
     }
 
-	private static FileFormat detectFileFormat(final File input) {
-        BufferedReader reader = null;
-        try {
-            reader = IOUtil.openFileForBufferedReading(input);
-            if (MatrixMarketReader.isMatrixMarketReal(reader))
-				return FileFormat.MM_SPARSE;
-			else if (MatrixMarketReader.isMatrixMarketInteger(reader))
-				return FileFormat.MM_SPARSE_10X;
-			else
+	public static FileFormat detectFileFormat(final File input) {
+            if (MatrixMarketReader.isMatrixMarket(input)) {
+				if (MatrixMarketReader.isDropSeqMatrixMarket(input)) {
+					return FileFormat.MM_SPARSE;
+				} else {
+					return FileFormat.MM_SPARSE_10X;
+				}
+			}
+			else {
 				return FileFormat.DENSE;
-        } finally {
-            CloserUtil.close(reader);
-        }
+			}
     }
 
 	/**
@@ -767,9 +766,9 @@ public class DGEMatrix {
 		else if (format == FileFormat.MM_SPARSE) {
             if (header != null)
 				throw new IllegalArgumentException("DGE header not support for sparse matrix formats");
-            writeDropSeqMatrixMarket(output, formatAsInteger, false);
+            writeDropSeqMatrixMarket(output, formatAsInteger, false, true);
         } else
-			throw new IllegalArgumentException(format.name() + " Not yet supported for output.");
+			writeDropSeqMatrixMarket(output, formatAsInteger, false, false);
 	}
 
 	public void writeDenseDgeFile(final File output, final boolean formatAsInteger) {
@@ -818,7 +817,8 @@ public class DGEMatrix {
 			return Double.toString(exp);
 	}
 
-	public void writeDropSeqMatrixMarket(final File output, final boolean formatAsInteger, final boolean transpose) {
+	public void writeDropSeqMatrixMarket(final File output, final boolean formatAsInteger, final boolean transpose,
+										 final boolean putNamesInComments) {
 		try {
 			IOUtil.assertFileIsWritable(output);
 			final int cardinality;
@@ -826,10 +826,13 @@ public class DGEMatrix {
 				cardinality = ((SparseMatrix) expressionMatrix).cardinality();
 			else
 				cardinality = expressionMatrix.columns() * expressionMatrix.columns();
-			final MatrixMarketWriter writer = new MatrixMarketWriter(output, MatrixMarketConstants.ElementType.real,
+			final MatrixMarketWriter writer = new MatrixMarketWriter(output,
+					formatAsInteger? MatrixMarketConstants.ElementType.integer: MatrixMarketConstants.ElementType.real,
 					transpose? expressionMatrix.columns(): expressionMatrix.rows(),
 					transpose? expressionMatrix.rows(): expressionMatrix.columns(),
-					cardinality, this.getGenes(),this.getCellBarcodes(),
+					cardinality,
+					putNamesInComments? this.getGenes(): null,
+					putNamesInComments? this.getCellBarcodes(): null,
 					MatrixMarketConstants.GENES, MatrixMarketConstants.CELL_BARCODES);
 			if (expressionMatrix instanceof SparseMatrix) {
                 final SparseMatrix mat = (SparseMatrix)expressionMatrix;
