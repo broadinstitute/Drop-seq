@@ -474,8 +474,8 @@ public class MergeDgeSparse
             if (cellBarcodePath != null) {
                 final File cellBarcodeFile = new File(cellBarcodePath);
                 Set<String> unprefixedSelectedCells = loadSelectedCellsLists(Collections.singletonList(cellBarcodeFile));
-
                 dge.retainOnlyTheseCells(unprefixedSelectedCells);
+                LOG.info(String.format("After applying %s, %d cells remain.", cellBarcodeFile.getAbsolutePath(), dge.getNumCells()));
             }
 
             if (!prefix.isEmpty())
@@ -484,8 +484,12 @@ public class MergeDgeSparse
             if (cell_count > 0 && cell_count < dge.getNumCells())
                 dge.discardSmallestCells(cell_count);
 
-            if (selectedCells != null)
+            if (selectedCells != null) {
+                int numCellsBefore = dge.getNumCells();
                 dge.retainOnlyTheseCells(selectedCells);
+                LOG.info(String.format("%d cells removed after applying global CELL_BC_FILES.", numCellsBefore - dge.getNumCells()));
+            }
+
 
             if (MIN_GENES > 0) {
                 int numCells = dge.getNumCells();
