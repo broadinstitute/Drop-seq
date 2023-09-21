@@ -126,10 +126,12 @@ public class MatrixMarketReaderWriterTest {
         return new Object[][] {
                 // Test boundary conditions for number of elements in header lists
                 {1000, 1999, makeNames("R", 1000), makeNames("C", 1999), MatrixMarketConstants.GENES, MatrixMarketConstants.CELL_BARCODES},
+/* These tests are very slow...not worth it for code we don't use much.
                 // Test default names for row and column name lists
                 {100, 1999, makeNames("R", 100), makeNames("C", 1999), null, null},
                 // Test no row and column names
                 {100, 1999, null, null, null, null},
+*/
         };
     }
 
