@@ -109,31 +109,22 @@ import picard.util.TabbedTextFileWithHeaderParser;
         final TabbedTextFileWithHeaderParser parser = new TabbedTextFileWithHeaderParser(REDUCED_GTF);
         for (TabbedTextFileWithHeaderParser.Row row : parser)
 			try {
-                final String chr = row.getField(ReducedGtfColumn.chr.name());
-                final int start = Integer.parseInt(row.getField(ReducedGtfColumn.start.name()));
-                final int end = Integer.parseInt(row.getField(ReducedGtfColumn.end.name()));
                 final String annotationType = row.getField(ReducedGtfColumn.annotationType.name());
                 final String transcriptType = row.getField(ReducedGtfColumn.transcriptType.name());
-                final String strand = row.getField(ReducedGtfColumn.strand.name());
-                final String name;
 
-                if (annotationType.equals(AnnotationType.gene.name()))
-					name = row.getField(ReducedGtfColumn.gene_name.name());
-				else
-					name = makeIntervalName(chr, start, end);
-                final Interval interval = new Interval(chr, start, end, strand.equals("-"), name);
-
+                // Creating an Interval is expensive for every line in the file, so only create it when needed
                 if (annotationType.equals(AnnotationType.gene.name())) {
+                    final Interval interval = makeIntervalFromRow(row, annotationType);
                     genes.add(interval);
                     if (transcriptType.contains(TranscriptType.rRNA.name()))
 						// e.g. transcriptType "Mt_rRNA" is considered rRNA
                         rRNA.add(interval);
-                    if (MT_SEQUENCE.contains(chr))
+                    if (MT_SEQUENCE.contains(interval.getContig()))
 						mtIntervals.add(interval);
-                } else if (annotationType.equals(AnnotationType.exon.name()))
-					exons.add(interval);
-				else if (annotationType.equals(AnnotationType.consensus_intron.name()))
-					consensusIntrons.add(interval);
+                } else if (annotationType.equals(AnnotationType.exon.name())) {
+                    exons.add(makeIntervalFromRow(row, annotationType));
+                } else if (annotationType.equals(AnnotationType.consensus_intron.name()))
+					consensusIntrons.add(makeIntervalFromRow(row, annotationType));
             } catch (NumberFormatException e) {
                 throw new RuntimeException(String.format("Bad numeric value in file %s, line:\n %s",
                         REDUCED_GTF.getAbsolutePath(), row.getCurrentLine()), e);
@@ -161,6 +152,21 @@ import picard.util.TabbedTextFileWithHeaderParser;
 			write(nonAutosomeIntervals, "non_autosomes");
 
         return 0;
+    }
+
+    private Interval makeIntervalFromRow(final TabbedTextFileWithHeaderParser.Row row,
+                                         final String annotationType) {
+        final int start = Integer.parseInt(row.getField(ReducedGtfColumn.start.name()));
+        final int end = Integer.parseInt(row.getField(ReducedGtfColumn.end.name()));
+        final String strand = row.getField(ReducedGtfColumn.strand.name());
+        final String chr = row.getField(ReducedGtfColumn.chr.name());
+        final String name;
+        if (annotationType.equals(AnnotationType.gene.name()))
+            name = row.getField(ReducedGtfColumn.gene_name.name());
+        else
+            name = makeIntervalName(chr, start, end);
+        final Interval interval = new Interval(chr, start, end, strand.equals("-"), name);
+        return interval;
     }
 
     /*
