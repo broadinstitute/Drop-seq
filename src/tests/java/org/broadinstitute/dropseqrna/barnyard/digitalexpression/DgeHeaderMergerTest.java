@@ -24,7 +24,7 @@
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
 import htsjdk.samtools.util.RuntimeIOException;
-import junit.framework.Assert;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

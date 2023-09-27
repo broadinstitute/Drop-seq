@@ -27,7 +27,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
-import junit.framework.Assert;
+import org.testng.Assert;
 import org.broadinstitute.dropseqrna.spermseq.metrics.duplicates.SpermSeqMarkDuplicates.DuplicateStrategy;
 import org.broadinstitute.dropseqrna.spermseq.metrics.duplicates.SpermSeqMarkDuplicates.PCRDuplicateMetrics;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;

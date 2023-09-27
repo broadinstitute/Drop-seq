@@ -11,7 +11,7 @@ import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.util.TestUtil;
-import junit.framework.Assert;
+import org.testng.Assert;
 
 public class GatherDigitalAlleleCountsTest {
 

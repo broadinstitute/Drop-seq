@@ -5,7 +5,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.broadinstitute.dropseqrna.TranscriptomeException;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.SAMRecord;

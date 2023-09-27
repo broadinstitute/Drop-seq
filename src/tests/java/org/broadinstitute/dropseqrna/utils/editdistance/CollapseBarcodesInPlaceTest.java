@@ -11,7 +11,7 @@ import org.broadinstitute.dropseqrna.utils.CompareBAMTagValues;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.testng.annotations.Test;
 
-import junit.framework.Assert;
+import org.testng.Assert;
 
 public class CollapseBarcodesInPlaceTest {
 

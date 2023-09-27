@@ -33,7 +33,7 @@ import java.util.Map;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.util.Interval;
@@ -192,8 +192,8 @@ public class SNPUMIBasePileupIteratorTest {
 
 		char[] basesArray = getAsCharArray(bases);
 		byte[] qualsArray = getAsByteArray(quals);
-		Assert.assertArrayEquals(expectedBases, basesArray);
-		Assert.assertArrayEquals(expectedQuals, qualsArray);
+		Assert.assertEquals(expectedBases, basesArray);
+		Assert.assertEquals(expectedQuals, qualsArray);
 	}
 
 	private char [] getAsCharArray (final List<Character> l) {

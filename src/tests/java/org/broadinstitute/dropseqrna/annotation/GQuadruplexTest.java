@@ -2,7 +2,7 @@ package org.broadinstitute.dropseqrna.annotation;
 
 import java.util.List;
 
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.util.Interval;

@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.util.Collections;
 
 import org.apache.commons.io.FileUtils;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class BamTagOfTagCountsTest {

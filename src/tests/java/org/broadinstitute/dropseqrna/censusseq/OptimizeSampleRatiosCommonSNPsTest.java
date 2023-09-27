@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.Random;
 
 import org.broadinstitute.dropseqrna.censusseq.CommonSNPsData;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import picard.util.BasicInputParser;

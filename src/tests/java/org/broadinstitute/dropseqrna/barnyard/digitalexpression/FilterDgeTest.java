@@ -27,7 +27,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.dropseqrna.barnyard.DigitalExpression;
 import org.broadinstitute.dropseqrna.barnyard.DigitalExpressionTest;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintWriter;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

@@ -26,7 +26,7 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignm
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
-import junit.framework.Assert;
+import org.testng.Assert;
 import org.apache.commons.lang.RandomStringUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileup;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileupIterator;

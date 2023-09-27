@@ -30,7 +30,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.DigitalAlleleC
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileup;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.statistics.BinomialStatistics;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Collection;
@@ -103,7 +103,7 @@ public class DigitalAlleleCountsTest {
 		}
 		// this UMI no longer exists because of collapse!
 		ObjectCounter<Character> t = dac.getReadsPerUMI("AAAAT");
-		Assert.assertNull("", t);
+		Assert.assertNull(t);
 	}
 
 	private SNPUMIBasePileup buildPileUp (final DigitalAlleleCounts dac, final String molecularBarcode, final char [] bases, final byte [] qualities) {

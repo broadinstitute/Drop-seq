@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordSetBuilder;
-import junit.framework.Assert;
+import org.testng.Assert;
 
 public class ChromosomeFilteringIteratorTest {
 	@Test

@@ -27,7 +27,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SummarizeUMIBa
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.util.StringUtil;
-import junit.framework.Assert;
+import org.testng.Assert;
 
 public class SummarizeUMIBaseQualitiesTest {
 

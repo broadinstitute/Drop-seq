@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.List;
 
 import org.broadinstitute.dropseqrna.censusseq.SNPSampleRecord;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class SNPSampleRecordTest {

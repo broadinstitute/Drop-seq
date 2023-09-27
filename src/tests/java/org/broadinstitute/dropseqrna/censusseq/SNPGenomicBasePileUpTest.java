@@ -35,7 +35,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.Interval;
-import junit.framework.Assert;
+import org.testng.Assert;
 
 public class SNPGenomicBasePileUpTest {
 

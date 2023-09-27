@@ -25,7 +25,7 @@ package org.broadinstitute.dropseqrna.censusseq;
 
 import htsjdk.samtools.util.Log;
 import htsjdk.variant.variantcontext.GenotypeType;
-import junit.framework.Assert;
+import org.testng.Assert;
 
 import org.testng.annotations.Test;
 
