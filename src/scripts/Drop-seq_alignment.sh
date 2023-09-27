@@ -21,14 +21,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-tmpdir=
+source $(dirname $0)/defs.sh
+
 outdir=`pwd`
 genomedir=
 reference=
-echo_prefix=
-dropseq_root=$(dirname $0)
 star_executable=STAR
 keep_intermediates=0
+bead_repair=0
 progname=`basename $0`
 
 function usage () {
@@ -38,46 +38,29 @@ Perform Drop-seq tagging, trimming and alignment
 
 -g <genomedir>      : Directory of STAR genome directory.  Required.
 -r <referencefasta> : Reference fasta of the Drop-seq reference metadata bundle.  Required.
--d <dropseq_root>   : Directory containing Drop-seq executables.  Default: directory containing this script.
 -o <outputdir>      : Where to write output bam.  Default: current directory.
--t <tmpdir>         : Where to write temporary files.  Default: a new subdirectory in $TMPDIR.
 -s <STAR_path>      : Full path of STAR.  Default: STAR is found via PATH environment variable.
+-b                  : Do bead repair.  Not needed for 10X libraries, but recommended for Drop-seq chemistry.  Default: disabled.
 -e                  : Echo commands instead of executing them.
 -k                  : Keep intermediate files
+-v                  : verbose
 EOF
-}
-
-function error_exit() {
-    echo "ERROR: $1
-    " >&2
-    usage
-    exit 1
-}
-
-function check_set() {
-    value=$1
-    name=$2
-    flag=$3
-
-    if [[ -z "$value" ]]
-    then error_exit "$name has not been specified.  $flag flag is required"
-    fi
 }
 
 set -e
 # Fail if any of the commands in a pipeline fails
 set -o pipefail
 
-while getopts ":d:t:o:g:r:es:k" options; do
+while getopts ":o:g:r:es:kvb" options; do
   case $options in
-    d ) dropseq_root=$OPTARG;;
-    t ) tmpdir=$OPTARG;;
     o ) outdir=$OPTARG;;
     g ) genomedir=$OPTARG;;
     r ) reference=$OPTARG;;
     s ) star_executable=$OPTARG;;
-    e ) echo_prefix="echo";;
+    e ) ECHO="echo";;
+    b ) bead_repair=1;;
     k ) keep_intermediates=1;;
+    v ) verbose=1;;
     h ) usage
           exit 1;;
     \? ) usage
@@ -88,18 +71,18 @@ while getopts ":d:t:o:g:r:es:k" options; do
 done
 shift $(($OPTIND - 1))
 
-check_set "$dropseq_root" "Drop-seq root" "-d"
 check_set "$genomedir" "Genome directory" "-g"
 check_set "$reference" "Reference fasta"  "-r"
+
+check_TMPDIR
+
+TMPDIR=`mktemp -d`
+echo "Writing temporary files to $TMPDIR" 
 
 if (( $# != 1 ))
 then error_exit "Incorrect number of arguments"
 fi
 
-if [[ -z "$tmpdir" ]]
-then tmpdir=`mktemp -d`
-     echo "Using temporary directory $tmpdir"
-fi
 
 if [[ "$star_executable" != "STAR" ]]
 then if [[ ! ( -x $star_executable && -f $star_executable ) ]]
@@ -114,12 +97,11 @@ reference_basename=$(basename $(basename $reference .gz) .fasta)
 gene_intervals=$(dirname $reference)/$reference_basename.genes.intervals
 exon_intervals=$(dirname $reference)/$reference_basename.exon.intervals
 refflat=$(dirname $reference)/$reference_basename.refFlat
-picard_jar=${dropseq_root}/3rdParty/picard/picard.jar
 
 unmapped_bam=$1
-tagged_unmapped_bam=${tmpdir}/unaligned_mc_tagged_polyA_filtered.bam
-aligned_sam=${tmpdir}/star.Aligned.out.sam
-aligned_sorted_bam=${tmpdir}/aligned.sorted.bam
+tagged_unmapped_bam=${TMPDIR}/unaligned_mc_tagged_polyA_filtered.bam
+aligned_sam=${TMPDIR}/star.Aligned.out.sam
+aligned_sorted_bam=${TMPDIR}/aligned.sorted.bam
 files_to_delete=
 
 
@@ -130,72 +112,78 @@ tag_with_gene_exon=""
 # Stage 1: pre-alignment tag and trim
 
 # cellular tag
-$echo_prefix ${dropseq_root}/TagBamWithReadSequenceExtended SUMMARY=${outdir}/unaligned_tagged_Cellular.bam_summary.txt \
+invoke_dropseq TagBamWithReadSequenceExtended SUMMARY=${outdir}/unaligned_tagged_Cellular.bam_summary.txt \
   BASE_RANGE=1-12 BASE_QUALITY=10 BARCODED_READ=1 DISCARD_READ=false TAG_NAME=XC NUM_BASES_BELOW_QUALITY=1 \
-  INPUT=${unmapped_bam} OUTPUT=$tmpdir/unaligned_tagged_Cell.bam
-files_to_delete="$files_to_delete $tmpdir/unaligned_tagged_Cell.bam"
+  INPUT=${unmapped_bam} OUTPUT=$TMPDIR/unaligned_tagged_Cell.bam
+files_to_delete="$files_to_delete $TMPDIR/unaligned_tagged_Cell.bam"
 
 # molecular tag
-$echo_prefix ${dropseq_root}/TagBamWithReadSequenceExtended SUMMARY=${outdir}/unaligned_tagged_Molecular.bam_summary.txt \
+invoke_dropseq TagBamWithReadSequenceExtended SUMMARY=${outdir}/unaligned_tagged_Molecular.bam_summary.txt \
   BASE_RANGE=13-20 BASE_QUALITY=10 BARCODED_READ=1 DISCARD_READ=true TAG_NAME=XM NUM_BASES_BELOW_QUALITY=1 \
-  INPUT=$tmpdir/unaligned_tagged_Cell.bam OUTPUT=$tmpdir/unaligned_tagged_CellMolecular.bam
-files_to_delete="$files_to_delete $tmpdir/unaligned_tagged_CellMolecular.bam"
+  INPUT=$TMPDIR/unaligned_tagged_Cell.bam OUTPUT=$TMPDIR/unaligned_tagged_CellMolecular.bam
+files_to_delete="$files_to_delete $TMPDIR/unaligned_tagged_CellMolecular.bam"
 
 # quality filter
-$echo_prefix ${dropseq_root}/FilterBam TAG_REJECT=XQ INPUT=$tmpdir/unaligned_tagged_CellMolecular.bam \
-  OUTPUT=$tmpdir/unaligned_tagged_filtered.bam
-files_to_delete="$files_to_delete $tmpdir/unaligned_tagged_filtered.bam"
+invoke_dropseq FilterBam TAG_REJECT=XQ INPUT=$TMPDIR/unaligned_tagged_CellMolecular.bam \
+  OUTPUT=$TMPDIR/unaligned_tagged_filtered.bam
+files_to_delete="$files_to_delete $TMPDIR/unaligned_tagged_filtered.bam"
 
 # read trimming
-$echo_prefix ${dropseq_root}/TrimStartingSequence OUTPUT_SUMMARY=${outdir}/adapter_trimming_report.txt \
-  SEQUENCE=AAGCAGTGGTATCAACGCAGAGTGAATGGG MISMATCHES=0 NUM_BASES=5 INPUT=$tmpdir/unaligned_tagged_filtered.bam \
-  OUTPUT=$tmpdir/unaligned_tagged_trimmed_smart.bam
-files_to_delete="$files_to_delete $tmpdir/unaligned_tagged_trimmed_smart.bam"
+invoke_dropseq TrimStartingSequence OUTPUT_SUMMARY=${outdir}/adapter_trimming_report.txt \
+  SEQUENCE=AAGCAGTGGTATCAACGCAGAGTGAATGGG MISMATCHES=0 NUM_BASES=5 INPUT=$TMPDIR/unaligned_tagged_filtered.bam \
+  OUTPUT=$TMPDIR/unaligned_tagged_trimmed_smart.bam
+files_to_delete="$files_to_delete $TMPDIR/unaligned_tagged_trimmed_smart.bam"
 
-$echo_prefix ${dropseq_root}/PolyATrimmer OUTPUT=${tagged_unmapped_bam} OUTPUT_SUMMARY=${outdir}/polyA_trimming_report.txt \
-  MISMATCHES=0 NUM_BASES=6 NEW=true INPUT=$tmpdir/unaligned_tagged_trimmed_smart.bam
+invoke_dropseq PolyATrimmer OUTPUT=${tagged_unmapped_bam} OUTPUT_SUMMARY=${outdir}/polyA_trimming_report.txt \
+  MISMATCHES=0 NUM_BASES=6 NEW=true INPUT=$TMPDIR/unaligned_tagged_trimmed_smart.bam
 files_to_delete="$files_to_delete ${tagged_unmapped_bam}"
 
 
 # Stage 2: alignment
-$echo_prefix java -Xmx500m -jar ${picard_jar} SamToFastq INPUT=${tmpdir}/unaligned_mc_tagged_polyA_filtered.bam \
-  FASTQ=$tmpdir/unaligned_mc_tagged_polyA_filtered.fastq
-files_to_delete="$files_to_delete $tmpdir/unaligned_mc_tagged_polyA_filtered.fastq"
+invoke_picard SamToFastq INPUT=${TMPDIR}/unaligned_mc_tagged_polyA_filtered.bam \
+  FASTQ=$TMPDIR/unaligned_mc_tagged_polyA_filtered.fastq
+files_to_delete="$files_to_delete $TMPDIR/unaligned_mc_tagged_polyA_filtered.fastq"
 
-$echo_prefix $star_executable --genomeDir ${genomedir} --outFileNamePrefix ${tmpdir}/star. \
-  --readFilesIn $tmpdir/unaligned_mc_tagged_polyA_filtered.fastq
+$ECHO $star_executable --genomeDir ${genomedir} --outFileNamePrefix ${TMPDIR}/star. \
+  --readFilesIn $TMPDIR/unaligned_mc_tagged_polyA_filtered.fastq
 files_to_delete="$files_to_delete ${aligned_sam}"
 
 # Stage 3: sort aligned reads (STAR does not necessarily emit reads in the same order as the input)
-$echo_prefix java -Dsamjdk.buffer_size=131072 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx4000m -jar ${picard_jar} \
-  SortSam INPUT=${aligned_sam} OUTPUT=${aligned_sorted_bam} SORT_ORDER=queryname TMP_DIR=${tmpdir}
+invoke_picard \
+  SortSam INPUT=${aligned_sam} OUTPUT=${aligned_sorted_bam} SORT_ORDER=queryname TMP_DIR=${TMPDIR}
 files_to_delete="$files_to_delete ${aligned_sorted_bam}"
 
 # Stage 4: merge and tag aligned reads
-$echo_prefix java -Xmx4000m -jar ${picard_jar} MergeBamAlignment REFERENCE_SEQUENCE=${reference} UNMAPPED_BAM=${tagged_unmapped_bam} \
+invoke_picard MergeBamAlignment REFERENCE_SEQUENCE=${reference} UNMAPPED_BAM=${tagged_unmapped_bam} \
   ALIGNED_BAM=${aligned_sorted_bam} INCLUDE_SECONDARY_ALIGNMENTS=false PAIRED_RUN=false CLIP_ADAPTERS=false \
-  TMP_DIR=${tmpdir} OUTPUT=$tmpdir/merged.bam
-files_to_delete="$files_to_delete $tmpdir/merged.bam"
+  TMP_DIR=${TMPDIR} OUTPUT=$TMPDIR/merged.bam
+files_to_delete="$files_to_delete $TMPDIR/merged.bam"
 
-$echo_prefix ${dropseq_root}/TagReadWithInterval I=$tmpdir/merged.bam O=$tmpdir/gene_tagged.bam TMP_DIR=${tmpdir} \
+invoke_dropseq TagReadWithInterval I=$TMPDIR/merged.bam O=$TMPDIR/gene_tagged.bam TMP_DIR=${TMPDIR} \
   INTERVALS=${gene_intervals} TAG=XG
-files_to_delete="$files_to_delete $tmpdir/gene_tagged.bam"
+files_to_delete="$files_to_delete $TMPDIR/gene_tagged.bam"
 
-$echo_prefix ${dropseq_root}/TagReadWithGeneFunction O=${tmpdir}/function_tagged.bam ANNOTATIONS_FILE=${refflat} \
-  INPUT=$tmpdir/gene_tagged.bam
-files_to_delete="$files_to_delete $tmpdir/function_tagged.bam"
+invoke_dropseq TagReadWithGeneFunction O=${TMPDIR}/function_tagged.bam ANNOTATIONS_FILE=${refflat} \
+  INPUT=$TMPDIR/gene_tagged.bam
 
-# Stage 5: bead repair
-$echo_prefix ${dropseq_root}/DetectBeadSubstitutionErrors INPUT=${tmpdir}/function_tagged.bam OUTPUT=${tmpdir}/substitution_repaired.bam \
-  TMP_DIR=$tmpdir MIN_UMIS_PER_CELL=20 OUTPUT_REPORT=${outdir}/substitution_error_report.txt
-files_to_delete="$files_to_delete ${tmpdir}/substitution_repaired.bam"
+if (( $bead_repair != 0 ))
+then
+  files_to_delete="$files_to_delete $TMPDIR/function_tagged.bam"
 
-$echo_prefix ${dropseq_root}/DetectBeadSynthesisErrors INPUT=${tmpdir}/substitution_repaired.bam MIN_UMIS_PER_CELL=20 \
-  OUTPUT_STATS=${outdir}/synthesis_error_stats.txt SUMMARY=${outdir}/synthesis_error_summary.txt \
-  REPORT=${outdir}/synthesis_error_report.txt CREATE_INDEX=true TMP_DIR=$tmpdir OUTPUT=$outdir/final.bam
+  # Stage 5: bead repair
+  invoke_dropseq DetectBeadSubstitutionErrors INPUT=${TMPDIR}/function_tagged.bam OUTPUT=${TMPDIR}/substitution_repaired.bam \
+    TMP_DIR=$TMPDIR MIN_UMIS_PER_CELL=20 OUTPUT_REPORT=${outdir}/substitution_error_report.txt
+  files_to_delete="$files_to_delete ${TMPDIR}/substitution_repaired.bam"
+
+  invoke_dropseq DetectBeadSynthesisErrors INPUT=${TMPDIR}/substitution_repaired.bam MIN_UMIS_PER_CELL=20 \
+    OUTPUT_STATS=${outdir}/synthesis_error_stats.txt SUMMARY=${outdir}/synthesis_error_summary.txt \
+    REPORT=${outdir}/synthesis_error_report.txt CREATE_INDEX=true TMP_DIR=$TMPDIR OUTPUT=$outdir/final.bam
+else
+  $ECHO mv $TMPDIR/function_tagged.bam $outdir/final.bam
+fi
 
 if (( $keep_intermediates == 0 ))
-then $echo_prefix rm $files_to_delete
+then $ECHO rm $files_to_delete
 fi
 
 echo "Completed successfully."

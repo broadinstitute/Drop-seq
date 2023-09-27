@@ -25,7 +25,7 @@ package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
 import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.dropseqrna.barnyard.DigitalExpression;
-import org.broadinstitute.dropseqrna.barnyard.DigitalExpressionTest;
+import org.broadinstitute.dropseqrna.barnyard.DigitalExpressionTestUtil;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintWriter;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -58,8 +58,8 @@ public class FilterDgeTest {
 
 	@Test(dataProvider = "testFilteringWithHeadersDataProvider")
 	public void testFilteringWithHeaders(final boolean inputHasHeader, final boolean outputHasHeader) throws IOException {
-		final File inDge = DigitalExpressionTest.makeDigitalExpressionFile(inputHasHeader);
-        final File outDge = File.createTempFile("testFilteringWithHeaders.", DigitalExpressionTest.DIGITAL_EXPRESSION_EXTENSION);
+		final File inDge = DigitalExpressionTestUtil.makeDigitalExpressionFile(inputHasHeader);
+        final File outDge = File.createTempFile("testFilteringWithHeaders.", DigitalExpressionTestUtil.DIGITAL_EXPRESSION_EXTENSION);
         outDge.deleteOnExit();
         final File cellsFile = makeCellsToRetainFile();
         final FilterDge fd = new FilterDge();
@@ -93,9 +93,9 @@ public class FilterDgeTest {
     @Test(dataProvider = "testFilteringWithSummaryDataProvider")
     public void testFilteringWithSummary(final boolean useInputSummary) throws IOException {
 	    final boolean inputHasHeader = false;
-        final File inDge = DigitalExpressionTest.makeDigitalExpressionFile(inputHasHeader);
-        final File inDgeSummary = DigitalExpressionTest.makeSummaryPathFromDgePath(inDge);
-        final File outDge = File.createTempFile("testFilteringWithSummary.", DigitalExpressionTest.DIGITAL_EXPRESSION_EXTENSION);
+        final File inDge = DigitalExpressionTestUtil.makeDigitalExpressionFile(inputHasHeader);
+        final File inDgeSummary = DigitalExpressionTestUtil.makeSummaryPathFromDgePath(inDge);
+        final File outDge = File.createTempFile("testFilteringWithSummary.", DigitalExpressionTestUtil.DIGITAL_EXPRESSION_EXTENSION);
         outDge.deleteOnExit();
         final File cellsFile = makeCellsToRetainFile();
         final FilterDge fd = new FilterDge();
@@ -104,7 +104,7 @@ public class FilterDgeTest {
         fd.OUTPUT_HEADER = false;
         fd.CELLS_RETAIN = cellsFile;
         fd.INPUT_SUMMARY = useInputSummary? inDgeSummary: null;
-        fd.OUTPUT_SUMMARY = File.createTempFile("testFilteringWithSummary.", DigitalExpressionTest.DIGITAL_EXPRESSION_SUMMARY_EXTENSION);
+        fd.OUTPUT_SUMMARY = File.createTempFile("testFilteringWithSummary.", DigitalExpressionTestUtil.DIGITAL_EXPRESSION_SUMMARY_EXTENSION);
         fd.OUTPUT_SUMMARY.deleteOnExit();
         Assert.assertEquals(fd.doWork(), 0);
         List<DigitalExpression.DESummary> summaries = MetricsFile.readBeans(fd.OUTPUT_SUMMARY);

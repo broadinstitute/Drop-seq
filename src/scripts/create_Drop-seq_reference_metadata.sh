@@ -21,6 +21,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+source $(dirname $0)/defs.sh
+
 progname=`basename $0`
 function usage () {
     cat >&2 <<EOF
@@ -35,9 +37,7 @@ Create Drop-seq reference metadata bundle
                       specified by using this argument more than once, and/or by providing a comma-separated list.
                       Use ValidateReference command to see the gene_biotypes in your GTF in order to decide what to
                       exclude.  Default: not gene biotypes are filtered.
--d <dropseq_root>   : Directory containing Drop-seq executables.  Default: directory containing this script.
 -o <outputdir>      : Where to write output bam.  Default: current directory.
--t <tmpdir>         : Where to write temporary files.  Default: Value of $$TMPDIR environment variable.
 -a <STAR_path>      : Full path of STAR.  Default: STAR is found via PATH environment variable.
 -b <bgzip_path>     : Full path of bgzip: Default: bgzip is found via PATH environment variable.
 -i <samtools_path>  : Full path of samtools.  Default: samtools is found via PATH environment variable.
@@ -46,43 +46,30 @@ Create Drop-seq reference metadata bundle
 EOF
 }
 
-function error_exit() {
-    echo "ERROR: $@
-    " >&2
-    exit 1
-}
-
 
 unset reference_name
 unset reference_fasta
 unset species
 unset gtf
 filtered_gene_biotypes=
-unset dropseq_root
 outdir=.
-tmpdir=$TMPDIR
 star_executable=`which STAR 2> /dev/null`
 samtools_executable=`which samtools 2> /dev/null`
 bgzip_executable=`which bgzip 2> /dev/null`
-verbose=0
-ECHO=
-
 set -e
 # Fail if any of the commands in a pipeline fails
 set -o pipefail
 
 
 
-while getopts ":n:r:s:g:f:d:o:t:a:i:b:ev" options; do
+while getopts ":n:r:s:g:f:o:a:i:b:ev" options; do
   case $options in
     n ) reference_name=$OPTARG;;
     r ) reference_fasta=$OPTARG;;
     s ) species=$OPTARG;;
     g ) gtf=$OPTARG;;
     f ) filtered_gene_biotypes="$filtered_gene_biotypes G=$OPTARG";;
-    d ) dropseq_root=$OPTARG;;
     o ) outdir=$OPTARG;;
-    t ) tmpdir=$OPTARG;;
     a ) star_executable=$OPTARG;;
     i ) samtools_executable=$OPTARG;;
     b ) bgzip_executable=$OPTARG;;
@@ -98,34 +85,16 @@ while getopts ":n:r:s:g:f:d:o:t:a:i:b:ev" options; do
 done
 shift $(($OPTIND - 1))
 
+check_TMPDIR
+
 : ${reference_name:?"ERROR: -n is required"}
 : ${reference_fasta:?"ERROR: -r is required"}
 : ${species:?"ERROR: -s is required"}
 : ${gtf:?"ERROR: -g is required"}
-: ${dropseq_root:?"ERROR: -d is required"}
 : ${star_executable:?"ERROR: -s is required if STAR is not on PATH"}
 : ${samtools_executable:?"ERROR: -i is required if samtools is not on PATH"}
 : ${bgzip_executable:?"ERROR: -b is required if bgzip is not on PATH"}
 
-function check_invoke() {
-    if (( $verbose ))
-    then echo $@
-    fi
-    if $ECHO $@
-    then :
-    else error_exit "non-zero exit status " $? " executing $@"
-    fi
-}
-
-function invoke_picard() {
-    check_invoke java -jar $dropseq_root/3rdParty/picard/picard.jar $@
-}
-
-function invoke_dropseq() {
-    dropseq_program=$1
-    shift
-    check_invoke $dropseq_root/$dropseq_program $@
-}
 
 output_fasta=$outdir/$reference_name.fasta
 sequence_dictionary=$outdir/$reference_name.dict
