@@ -24,7 +24,7 @@
 package org.broadinstitute.dropseqrna.sbarro.utils;
 
 import htsjdk.samtools.util.SequenceUtil;
-import junit.framework.Assert;
+import org.testng.Assert;
 
 import org.broadinstitute.dropseqrna.sbarro.utils.FindSubSequence;
 import org.broadinstitute.dropseqrna.sbarro.utils.SubSequenceResultI;

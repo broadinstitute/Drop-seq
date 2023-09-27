@@ -23,7 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import junit.framework.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;

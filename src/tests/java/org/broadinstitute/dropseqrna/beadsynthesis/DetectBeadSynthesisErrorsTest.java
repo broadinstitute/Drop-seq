@@ -33,7 +33,7 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.utils.CompareBAMTagValues;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 

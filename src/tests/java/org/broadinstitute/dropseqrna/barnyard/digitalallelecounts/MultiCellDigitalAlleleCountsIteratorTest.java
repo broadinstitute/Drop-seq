@@ -33,7 +33,7 @@ import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.util.IntervalList;

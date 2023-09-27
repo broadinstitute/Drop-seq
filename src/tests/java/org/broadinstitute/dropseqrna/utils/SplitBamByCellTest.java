@@ -27,7 +27,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.Reporter;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -420,8 +420,8 @@ public class SplitBamByCellTest {
         // split BAMs + bam_list and report
         Assert.assertEquals(expectedExtensions.size(), outputFiles.size());
         for (final String expectedExtension: expectedExtensions) {
-            Assert.assertTrue("Test presence of " + expectedExtension,
-                    outputFileNames.contains(symlinkBasename + expectedExtension));
+            Assert.assertTrue(outputFileNames.contains(symlinkBasename + expectedExtension), "Test presence of " + expectedExtension
+                    );
         }
     }
 

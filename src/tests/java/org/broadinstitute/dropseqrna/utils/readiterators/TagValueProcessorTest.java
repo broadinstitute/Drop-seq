@@ -25,7 +25,7 @@ package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;

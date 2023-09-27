@@ -35,7 +35,7 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.variant.variantcontext.GenotypeType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
-import junit.framework.Assert;
+import org.testng.Assert;
 
 
 public class GenotypeMatrixTest {

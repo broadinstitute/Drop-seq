@@ -50,7 +50,7 @@ import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.IOUtil;
-import junit.framework.Assert;
+import org.testng.Assert;
 import picard.util.TabbedInputParser;
 
 public class MapBarcodesByEditDistanceTest {

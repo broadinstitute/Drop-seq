@@ -5,7 +5,7 @@ import java.io.IOException;
 
 import org.testng.annotations.Test;
 
-import junit.framework.Assert;
+import org.testng.Assert;
 
 public class TagBamTest {
 

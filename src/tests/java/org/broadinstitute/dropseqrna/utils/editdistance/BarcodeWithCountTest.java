@@ -2,7 +2,7 @@ package org.broadinstitute.dropseqrna.utils.editdistance;
 
 import org.testng.annotations.Test;
 
-import junit.framework.Assert;
+import org.testng.Assert;
 
 public class BarcodeWithCountTest {
 	@SuppressWarnings("unlikely-arg-type")

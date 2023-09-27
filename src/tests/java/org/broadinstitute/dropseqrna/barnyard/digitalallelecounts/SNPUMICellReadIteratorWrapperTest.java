@@ -36,7 +36,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMICellRead
 import org.broadinstitute.dropseqrna.utils.MultiComparator;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
 import org.broadinstitute.dropseqrna.utils.readiterators.*;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 import picard.annotation.LocusFunction;
 

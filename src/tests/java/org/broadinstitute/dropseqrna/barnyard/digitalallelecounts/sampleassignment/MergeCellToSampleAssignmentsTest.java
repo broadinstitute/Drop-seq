@@ -30,7 +30,7 @@ import htsjdk.samtools.util.IOUtil;
 
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.MergeCellToSampleAssignments;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 

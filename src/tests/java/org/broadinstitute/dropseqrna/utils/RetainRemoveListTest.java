@@ -29,7 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class RetainRemoveListTest {
@@ -43,7 +43,7 @@ public class RetainRemoveListTest {
 		List<String> retainedElements = rrl.getElementsToRetain(Arrays.asList(elements), getArrayAsSet(remove), new HashSet<String>());
 		String[] re = new String[retainedElements.size()];
 		re = retainedElements.toArray(re);
-		Assert.assertArrayEquals(expected, re);
+		Assert.assertEquals(expected, re);
 
 	}
 
@@ -56,7 +56,7 @@ public class RetainRemoveListTest {
 		List<String> retainedElements = rrl.getElementsToRetain(Arrays.asList(elements), new HashSet<String>(), getArrayAsSet(retain));
 		String[] re = new String[retainedElements.size()];
 		re = retainedElements.toArray(re);
-		Assert.assertArrayEquals(expected, re);
+		Assert.assertEquals(expected, re);
 	}
 
 	@Test
@@ -70,7 +70,7 @@ public class RetainRemoveListTest {
 		List<String> retainedElements = rrl.getElementsToRetain(Arrays.asList(elements), getArrayAsSet(remove), getArrayAsSet(retain));
 		String[] re = new String[retainedElements.size()];
 		re = retainedElements.toArray(re);
-		Assert.assertArrayEquals(expected, re);
+		Assert.assertEquals(expected, re);
 
 	}
 

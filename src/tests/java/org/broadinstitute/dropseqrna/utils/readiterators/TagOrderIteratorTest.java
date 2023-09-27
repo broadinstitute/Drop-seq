@@ -28,7 +28,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.dropseqrna.utils.MultiComparator;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;

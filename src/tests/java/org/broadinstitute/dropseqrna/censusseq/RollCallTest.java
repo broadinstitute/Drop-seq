@@ -11,7 +11,7 @@ import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import junit.framework.Assert;
+import org.testng.Assert;
 
 public class RollCallTest {
 

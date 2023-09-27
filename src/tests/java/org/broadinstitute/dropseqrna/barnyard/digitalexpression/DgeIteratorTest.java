@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeIterator.DgeLine;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.Sets;

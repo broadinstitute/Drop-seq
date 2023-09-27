@@ -24,7 +24,7 @@
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
 import org.apache.commons.lang.StringUtils;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class LevenshteinDistanceResultTest {

@@ -29,7 +29,7 @@ import java.util.List;
 
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileup;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.SAMRecord;

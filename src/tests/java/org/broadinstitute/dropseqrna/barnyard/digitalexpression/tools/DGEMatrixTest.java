@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.broadinstitute.dropseqrna.utils.TestUtils;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.util.TestUtil;
@@ -59,13 +59,13 @@ public class DGEMatrixTest {
 		final List<String> cells = result.getCellBarcodes();
 		final String [] expectedCells = {"CAATCCGACAAC", "CACTAAAGCCAG", "TCCCTTCAAGTA", "ATGGTCTCAAAC", "CCTTCCATGCGA"};
 		final String [] actualCells = cells.toArray(new String [cells.size()]);
-		Assert.assertArrayEquals(expectedCells, actualCells);
+		Assert.assertEquals(expectedCells, actualCells);
 
 		// test getting genes out.  They are returned in alphabetical order.
 		final String [] expectedGenes ={"Arl6ip1", "Prkg1", "Rasa1", "Exosc2", "Gimap5","Ranbp6","Tet3", "Nmnat3"};
 		final List<String> genes = result.getGenes();
 		final String [] actualGenes = genes.toArray(new String [genes.size()]);
-		Assert.assertArrayEquals(expectedGenes, actualGenes);
+		Assert.assertEquals(expectedGenes, actualGenes);
 
 		// test the expression data.  Test a few genes.
 		double [] expression = result.getExpression("Arl6ip1");
@@ -95,12 +95,12 @@ public class DGEMatrixTest {
 		// compare cell barcodes
 		final List<String> cells = result.getCellBarcodes();
 		final List<String> newCells = preMerged.getCellBarcodes();
-		Assert.assertArrayEquals(cells.toArray(new String [cells.size()]), newCells.toArray(new String [newCells.size()]));
+		Assert.assertEquals(cells.toArray(new String [cells.size()]), newCells.toArray(new String [newCells.size()]));
 
 		// compare genes
 		final List<String> genes = result.getGenes();
 		final List<String> newGenes = preMerged.getGenes();
-		Assert.assertArrayEquals(genes.toArray(new String [genes.size()]), newGenes.toArray(new String [newGenes.size()]));
+		Assert.assertEquals(genes.toArray(new String [genes.size()]), newGenes.toArray(new String [newGenes.size()]));
 
 		// compare expression
 		final double [] [] expectedExp = result.getExpressionMatrix();
@@ -189,7 +189,7 @@ public class DGEMatrixTest {
 		final List<String> cells = result.getCellBarcodes();
 		final String [] expectedCells = {"PREFIX_CAATCCGACAAC", "PREFIX_CACTAAAGCCAG", "PREFIX_TCCCTTCAAGTA", "PREFIX_ATGGTCTCAAAC", "PREFIX_CCTTCCATGCGA"};
 		final String [] actualCells = cells.toArray(new String [cells.size()]);
-		Assert.assertArrayEquals(expectedCells, actualCells);
+		Assert.assertEquals(expectedCells, actualCells);
 	}
 
 	@Test
@@ -205,12 +205,12 @@ public class DGEMatrixTest {
 		// test cells the same set, in the same order.
 		final List<String> cells = result.getCellBarcodes();
 		final String [] actualCells = cells.toArray(new String [cells.size()]);
-		Assert.assertArrayEquals(expectedCells, actualCells);
+		Assert.assertEquals(expectedCells, actualCells);
 
 		// test getting genes out.  They are returned in alphabetical order.
 		final List<String> genes = result.getGenes();
 		final String [] actualGenes = genes.toArray(new String [genes.size()]);
-		Assert.assertArrayEquals(expectedGenes, actualGenes);
+		Assert.assertEquals(expectedGenes, actualGenes);
 
 		// test the expression data.  Test a few genes.
 		double [] expression = result.getExpression("Arl6ip1");
@@ -312,7 +312,7 @@ public class DGEMatrixTest {
 		List<String> cells = result.getCellBarcodes();
 		final String [] actualCells = cells.toArray(new String [cells.size()]);
 		String [] expectedCells ={"CAATCCGACAAC", "TCCCTTCAAGTA"};
-		Assert.assertArrayEquals(expectedCells, actualCells);
+		Assert.assertEquals(expectedCells, actualCells);
 
 		// test 2.
 		final DGEMatrix result2= DGEMatrix.parseFile(exampleOne);
@@ -321,7 +321,7 @@ public class DGEMatrixTest {
 		List<String> cells2 = result2.getCellBarcodes();
 		final String [] actualCells2 = cells2.toArray(new String [cells2.size()]);
 		String [] expectedCells2 ={"CAATCCGACAAC", "CACTAAAGCCAG", "TCCCTTCAAGTA", "ATGGTCTCAAAC","CCTTCCATGCGA"};
-		Assert.assertArrayEquals(expectedCells, actualCells);
+		Assert.assertEquals(expectedCells, actualCells);
 
 	}
 
@@ -338,7 +338,7 @@ public class DGEMatrixTest {
 		List<String> genes = result.getGenes();
 		final String [] actualGenes = genes.toArray(new String [genes.size()]);
 		String [] expectedGenes ={"Arl6ip1", "Rasa1", "Ranbp6", "Tet3"};
-		Assert.assertArrayEquals(expectedGenes, actualGenes);
+		Assert.assertEquals(expectedGenes, actualGenes);
 
 	}
 
@@ -386,7 +386,7 @@ public class DGEMatrixTest {
     	Assert.assertTrue(result.getCellBarcodes().equals(resultNew.getCellBarcodes()));
     	Assert.assertTrue(result.getGenes().equals(resultNew.getGenes()));
 
-    	Assert.assertArrayEquals(result.getExpressionMatrix(), resultNew.getExpressionMatrix());
+    	Assert.assertEquals(result.getExpressionMatrix(), resultNew.getExpressionMatrix());
     }
 
 

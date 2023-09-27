@@ -8,7 +8,7 @@ import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.SAMFileHeader;
-import junit.framework.Assert;
+import org.testng.Assert;
 
 public class FilterReadsByUMISupportTest {
 	

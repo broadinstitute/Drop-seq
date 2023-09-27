@@ -24,7 +24,7 @@
 package org.broadinstitute.dropseqrna.censusseq;
 
 import org.broadinstitute.dropseqrna.censusseq.CommonSNPsData;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;

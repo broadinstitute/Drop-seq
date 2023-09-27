@@ -11,7 +11,7 @@ import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import junit.framework.Assert;
+import org.testng.Assert;
 
 public class CensusSeqTest {
 	private static final List<File> IN_BAM = new ArrayList<File> (Collections.singletonList(new File("testdata/org/broadinstitute/dropseq/censusseq/10_donors_chr22.selected_sites.bam")));

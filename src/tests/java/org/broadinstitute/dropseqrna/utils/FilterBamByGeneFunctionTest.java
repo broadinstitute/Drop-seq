@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
-import junit.framework.Assert;
+import org.testng.Assert;
 import picard.annotation.LocusFunction;
 
 public class FilterBamByGeneFunctionTest {

@@ -6,7 +6,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.broadinstitute.dropseqrna.vcftools.filters.GenotypeGQFilter;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import htsjdk.variant.variantcontext.Allele;
