@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
@@ -49,32 +48,6 @@ public class DigitalExpressionTest {
 
 
 	// generate an input file with 5 barcodes and 3 genes.
-	/**
-	 * For the integration test, make a relatively small BAM file and read it in.
-	 * Manually test the counts of the reads across UMIs - umi testing to collapse molecular barcodes is in it's own test.
-	 *
-	 * Data taken from 9-27-14 100 cells data set.
-	 *
-	 * cells
-	 * ATCAGGGACAGA
-	 * AGGGAAAATTGA
-	 * TTGCCTTACGCG
-	 * TGGCGAAGAGAT
-	 * TACAATTAAGGC
-	 *
-	 * genes
-	 * HUMAN_10:101948055-101989376:CHUK
-	 * HUMAN_15:101821715-101835487:SNRPA1
-	 * HUMAN_3:42642106-42690227:NKTR
-	 *
-	 * /fg/software/gap/gap_analysis/FilterBamByTag I=100cells_star_bq10_noPseudoGenes.bam O=test.bam TAG=ZC TAG_VALUES_FILE=bc.txt ACCEPT_TAG=true
-	 * samtools view -H test.bam > 5cell3gene.sam
-	 * samtools view test.bam |grep -f genes.txt >> 5cell3gene.sam
-	 * samtools view -Sb 5cell3gene.sam > 5cell3gene.bam
-	 *
-	 */
-
-	private static final File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.bam");
 	private static final File IN_CELL_BARCODE_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.cellbarcodes.txt");
 	private static final File IN_CELL_BARCODE_WITH_EXTRAS_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_with_extras.cellbarcodes.txt");
 
@@ -84,8 +57,6 @@ public class DigitalExpressionTest {
 	private static final File EXPECTED_OUTFILE_LONG = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.dge_long.txt");
 
 	private static final File EXPECTED_OUTPUT_SINGLE_CELL=new File("testdata/org/broadinstitute/transcriptome/barnyard/1_cell.dge.txt");
-	public static final String DIGITAL_EXPRESSION_EXTENSION = ".digital_expression.txt.gz";
-	public static final String DIGITAL_EXPRESSION_SUMMARY_EXTENSION = ".digital_expression_summary.txt";
 	//
 
 	private String GENE_NAME_TAG="gn";
@@ -97,11 +68,10 @@ public class DigitalExpressionTest {
 	private String MOLECULAR_BARCODE_TAG = "XM";
 	private int READ_MQ=10;
 	private Boolean USE_STRAND_INFO=true;
-    private static final String [] barcodes ={"ATCAGGGACAGA", "AGGGAAAATTGA", "TTGCCTTACGCG", "TGGCGAAGAGAT", "TACAATTAAGGC"};
 
 
 	private UMIIterator getUMIIterator (final File inFile) {
-		List<String> cellBarcodes = Arrays.asList(barcodes);
+		List<String> cellBarcodes = Arrays.asList(DigitalExpressionTestUtil.barcodes);
 
 		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(inFile), false), GENE_NAME_TAG,
 				GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
@@ -124,7 +94,7 @@ public class DigitalExpressionTest {
 		longOutput.deleteOnExit();
 
 		final DigitalExpression de = new DigitalExpression();
-		de.INPUT = IN_FILE;
+		de.INPUT = DigitalExpressionTestUtil.IN_FILE;
 		de.CELL_BC_FILE = cellBCFile;
 		de.OUTPUT = outFile;
 		de.SUMMARY = summaryFile;
@@ -168,7 +138,7 @@ public class DigitalExpressionTest {
 		}
 
         final DigitalExpression de = new DigitalExpression();
-		de.INPUT = IN_FILE;
+		de.INPUT = DigitalExpressionTestUtil.IN_FILE;
 		de.NUM_CORE_BARCODES=1;
 		de.OUTPUT = outFile;
         // the headers aren't going to match up because they contain specific path info.
@@ -208,7 +178,7 @@ public class DigitalExpressionTest {
 
 	@Test(groups={"dropseq", "transcriptome"})
 	public void DGEIntegrationTest () {
-		UMIIterator u = getUMIIterator (IN_FILE);
+		UMIIterator u = getUMIIterator (DigitalExpressionTestUtil.IN_FILE);
 		UMICollection batch;
 		int count=0;
 
@@ -355,7 +325,7 @@ public class DigitalExpressionTest {
 
 	@Test
 	public void testDigitalExpression() throws IOException {
-		makeDigitalExpressionFile(true);
+		DigitalExpressionTestUtil.makeDigitalExpressionFile(true);
 	}
 
     /**
@@ -366,7 +336,7 @@ public class DigitalExpressionTest {
     public void testDigitalExpressionWithHeaderButNoUei() throws IOException {
         final File[] tempFiles = prepareToDigitalExpression();
         final String[] dgeArgs = new String[]{
-                "INPUT=" + IN_FILE.getAbsolutePath(),
+                "INPUT=" + DigitalExpressionTestUtil.IN_FILE.getAbsolutePath(),
                 "OUTPUT=" + tempFiles[1].getAbsolutePath(),
                 "SUMMARY=" + tempFiles[2].getAbsolutePath(),
                 "CELL_BC_FILE=" + tempFiles[0].getAbsolutePath(),
@@ -375,46 +345,8 @@ public class DigitalExpressionTest {
         Assert.assertEquals(new DigitalExpression().instanceMain(dgeArgs), 0);
     }
 
+
 	/**
-	 * @return A digital expression file, which is marked as deleteOnExit
-     */
-	public static File makeDigitalExpressionFile(final boolean outputHeader) throws IOException {
-		return makeDigitalExpressionFile(outputHeader, new File("."));
-	}
-
-	public static File makeSummaryPathFromDgePath(final File dge) {
-		String dgeName = dge.getName();
-		String basename = dgeName.substring(0, dgeName.length() - DigitalExpressionTest.DIGITAL_EXPRESSION_EXTENSION.length());
-		return new File(dge.getParentFile(),
-				basename + DigitalExpressionTest.DIGITAL_EXPRESSION_SUMMARY_EXTENSION);
-	}
-
-	/** Use this version when calling from private tests */
-    public static File makeDigitalExpressionFile(final boolean outputHeader, final File basedir) throws IOException {
-		final File outFile = File.createTempFile("testDigitalExpression.", DIGITAL_EXPRESSION_EXTENSION);
-		final File summaryFile = makeSummaryPathFromDgePath(outFile);
-        final File cellBarcodesFile = File.createTempFile("testDigitalExpression.", ".selectedCellBarcodes.txt");
-		outFile.deleteOnExit();
-		summaryFile.deleteOnExit();
-        cellBarcodesFile.deleteOnExit();
-        final ErrorCheckingPrintWriter writer = new ErrorCheckingPrintWriter(cellBarcodesFile);
-        for (final String cellBarcode : barcodes)
-			writer.println(cellBarcode);
-        writer.close();
-        final DigitalExpression de = new DigitalExpression();
-		de.INPUT = new File(basedir, IN_FILE.getPath());
-		de.OUTPUT = outFile;
-		de.SUMMARY = summaryFile;
-        de.CELL_BC_FILE = cellBarcodesFile;
-        de.OUTPUT_HEADER = outputHeader;
-        de.UNIQUE_EXPERIMENT_ID = "UIE" + new Random().nextInt();
-
-        Assert.assertEquals(de.doWork(), 0);
-        return outFile;
-	}
-
-
-    /**
      * Creates barcodes file, DGE outfile (empty) and DGE summary file (empty), in temp directory and marked as
      * deleteOnExit().
      * @return [cellBarcodeFile, DgeOutFile, DgeSummaryFile]
@@ -428,7 +360,7 @@ public class DigitalExpressionTest {
         summaryFile.deleteOnExit();
         cellBarcodesFile.deleteOnExit();
         final ErrorCheckingPrintWriter writer = new ErrorCheckingPrintWriter(cellBarcodesFile);
-        for (final String cellBarcode : barcodes)
+        for (final String cellBarcode : DigitalExpressionTestUtil.barcodes)
 			writer.println(cellBarcode);
         writer.close();
         return new File[]{cellBarcodesFile, outFile, summaryFile};

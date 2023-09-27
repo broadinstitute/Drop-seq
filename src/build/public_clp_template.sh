@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 # MIT License
 #
-# Copyright 2017 Broad Institute
+# Copyright 2023 Broad Institute
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,13 +24,12 @@
 
 xmx=4g
 
-progname=__PROGNAME__
-thisdir=`dirname ${BASH_SOURCE[0]}`
+progname=`basename $0`
+thisdir=`dirname $0`
 if [ -f $thisdir/loadDotKits.sh ]
 then source $thisdir/loadDotKits.sh
 fi
 
-jar_deploy_dir=$thisdir/jar
 verbose=0
 
 USAGE=$(cat << EOF
@@ -44,7 +43,7 @@ EOF
 
 function usage () {
     echo "$USAGE" >&2
-    java -Xmx${xmx} -jar $jar_deploy_dir/dropseq.jar $progname -h
+    $thisdir/bin/dropseq $progname -h
 }
 
 set -e
@@ -68,8 +67,14 @@ if [ -z "$TMPDIR" -a -d $broad_tmpdir_root ]
 then export TMPDIR=$broad_tmpdir_root/$USER
 fi
 
+
+JAVA_OPTS="$JAVA_OPTS -Xmx${xmx}"
+if [ -n "$TMPDIR" ]
+then JAVA_OPTS="$JAVA_OPTS -Djava.io.tmpdir=$TMPDIR"
+fi
+
 if (( $verbose ))
 then set -x
 fi
 
-java -Xmx${xmx} -XX:+UseParallelOldGC -XX:ParallelGCThreads=1 -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -XX:+HeapDumpOnOutOfMemoryError -Djava.io.tmpdir=$TMPDIR -jar $jar_deploy_dir/dropseq.jar $progname $*
+JAVA_OPTS="$JAVA_OPTS" $thisdir/bin/dropseq $progname "$@"

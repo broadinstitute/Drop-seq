@@ -23,30 +23,24 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
-import htsjdk.samtools.util.RuntimeIOException;
+import org.broadinstitute.dropseqrna.utils.DgeHeaderMergerTestUtil;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 public class DgeHeaderMergerTest {
 
-    private static final File HG19 = new File("/broad/mccarroll/software/metadata/individual_reference/hg19/hg19.fasta");
     private static final File HG19_MM10_TRANSGENES = new File("/broad/mccarroll/software/metadata/merged_reference/hg19_mm10_transgenes/hg19_mm10_transgenes.fasta");
-    private static final String DGE_FILE_EXTENSION = ".digital_expression.txt.gz";
-
-    private Random random = new Random();
 
     @Test(dataProvider = "stringencyDataProvider")
     public void testExpressionFormatMismatch(final DgeHeaderMerger.Stringency stringency) {
-        final DgeHeader h1 = makeHeader(1);
-        final DgeHeader h2 = makeHeader(1);
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(1);
         h1.setExpressionFormat(DgeHeader.ExpressionFormat.raw);
         h2.setExpressionFormat(DgeHeader.ExpressionFormat.log10_normalized);
         final DgeHeader mergedHeader = mergeHeaders(h1, h2, stringency);
@@ -61,8 +55,8 @@ public class DgeHeaderMergerTest {
 
     @Test(dataProvider = "stringencyDataProvider")
     public void testExpressionFormatFirstUnknown(final DgeHeaderMerger.Stringency stringency) {
-        final DgeHeader h1 = makeHeader(1);
-        final DgeHeader h2 = makeHeader(1);
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(1);
         h1.setExpressionFormat(DgeHeader.ExpressionFormat.unknown);
         h2.setExpressionFormat(DgeHeader.ExpressionFormat.log10_normalized);
         final DgeHeader mergedHeader = mergeHeaders(h1, h2, stringency);
@@ -77,8 +71,8 @@ public class DgeHeaderMergerTest {
 
     @Test(dataProvider = "stringencyDataProvider")
     public void testExpressionFormatSecondUnknown(final DgeHeaderMerger.Stringency stringency) {
-        final DgeHeader h1 = makeHeader(1);
-        final DgeHeader h2 = makeHeader(1);
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(1);
         h1.setExpressionFormat(DgeHeader.ExpressionFormat.raw);
         h2.setExpressionFormat(DgeHeader.ExpressionFormat.unknown);
         final DgeHeader mergedHeader = mergeHeaders(h1, h2, stringency);
@@ -93,8 +87,8 @@ public class DgeHeaderMergerTest {
 
     @Test(dataProvider = "stringencyDataProvider")
     public void testNoLibraries(final DgeHeaderMerger.Stringency stringency) {
-        final DgeHeader h1 = makeHeader(1);
-        final DgeHeader h2 = makeHeader(0);
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(0);
         final DgeHeader mergedHeader = mergeHeaders(h1, h2, stringency);
         switch (stringency) {
             case NONE:
@@ -107,8 +101,8 @@ public class DgeHeaderMergerTest {
 
     @Test(dataProvider = "stringencyDataProvider")
     public void testNoPrefix(final DgeHeaderMerger.Stringency stringency) {
-        final DgeHeader h1 = makeHeader(1);
-        final DgeHeader h2 = makeHeader(1);
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(1);
         h2.getLibrary(0).setPrefix(null);
 
         final DgeHeader mergedHeader = mergeHeaders(h1, h2, stringency);
@@ -123,8 +117,8 @@ public class DgeHeaderMergerTest {
 
     @Test(dataProvider = "stringencyDataProvider")
     public void testReferenceMismatch(final DgeHeaderMerger.Stringency stringency) {
-        final DgeHeader h1 = makeHeader(1);
-        final DgeHeader h2 = makeHeader(1);
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(1);
         h2.getLibrary(0).setReference(HG19_MM10_TRANSGENES);
 
         final DgeHeader mergedHeader = mergeHeaders(h1, h2, stringency);
@@ -139,8 +133,8 @@ public class DgeHeaderMergerTest {
 
     @Test(dataProvider = "stringencyDataProvider")
     public void testOneReferenceNull(final DgeHeaderMerger.Stringency stringency) {
-        final DgeHeader h1 = makeHeader(1);
-        final DgeHeader h2 = makeHeader(1);
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(1);
         h2.getLibrary(0).setReference(null);
 
         final DgeHeader mergedHeader = mergeHeaders(h1, h2, stringency);
@@ -155,9 +149,9 @@ public class DgeHeaderMergerTest {
 
     @Test(dataProvider = "stringencyDataProvider")
     public void testBothReferenceNull(final DgeHeaderMerger.Stringency stringency) {
-        final DgeHeader h1 = makeHeader(1);
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
         h1.getLibrary(0).setReference(null);
-        final DgeHeader h2 = makeHeader(1);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(1);
         h2.getLibrary(0).setReference(null);
 
         final DgeHeader mergedHeader = mergeHeaders(h1, h2, stringency);
@@ -172,9 +166,9 @@ public class DgeHeaderMergerTest {
 
     @Test(dataProvider = "stringencyDataProvider")
     public void testUeiCollision(final DgeHeaderMerger.Stringency stringency) {
-        final DgeHeader h1 = makeHeader(1);
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
         final DgeHeaderLibrary lib1 = h1.getLibrary(0);
-        final DgeHeader h2 = makeHeader(0);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(0);
         final DgeHeaderLibrary lib2 = new DgeHeaderLibrary(lib1.getUei());
         h2.addLibrary(lib2);
 
@@ -191,9 +185,9 @@ public class DgeHeaderMergerTest {
 
     @Test(dataProvider = "stringencyDataProvider")
     public void testPrefixCollision(final DgeHeaderMerger.Stringency stringency) {
-        final DgeHeader h1 = makeHeader(1);
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
         final DgeHeaderLibrary lib1 = h1.getLibrary(0);
-        final DgeHeader h2 = makeHeader(1);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(1);
         final DgeHeaderLibrary lib2 = h2.removeLibrary(0);
         lib2.setPrefix(lib1.getPrefix());
         h2.addLibrary(lib2);
@@ -209,16 +203,16 @@ public class DgeHeaderMergerTest {
 
     @Test
     public void testMergePrefixFromInputs() {
-        final DgeHeader h1 = makeHeader(1);
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
         // It's fine to merge an input DGE with multiple libraries, as long as the input DGE has the prefixes.
-        final DgeHeader h2 = makeHeader(2);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(2);
         Assert.assertNotNull(mergeHeaders(h1, h2, Collections.<String>emptyList(), DgeHeaderMerger.Stringency.STRICT));
     }
 
     @Test
     public void testMergePrefixFromCommandLine() {
-        final DgeHeader h1 = makeHeader(1);
-        final DgeHeader h2 = makeHeader(1);
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(1);
         final DgeHeaderLibrary l1 = h1.getLibrary(0);
         final DgeHeaderLibrary l2 = h2.getLibrary(0);
         final List<String> prefix = Arrays.asList(l1.getPrefix(), l2.getPrefix());
@@ -229,9 +223,9 @@ public class DgeHeaderMergerTest {
 
     @Test(dataProvider = "stringencyDataProvider")
     public void testMergeOverwritePrefixFromCommandLine(final DgeHeaderMerger.Stringency stringency) {
-        final DgeHeader h1 = makeHeader(1);
-        final DgeHeader h2 = makeHeader(1);
-        final List<String> prefix = Arrays.asList(generateUniqueString(), generateUniqueString());
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(1);
+        final List<String> prefix = Arrays.asList(DgeHeaderMergerTestUtil.generateUniqueString(), DgeHeaderMergerTestUtil.generateUniqueString());
         h2.getLibrary(0).setPrefix(null);
         final DgeHeader mergedHeader = mergeHeaders(h1, h2, prefix, stringency);
         switch (stringency) {
@@ -245,9 +239,9 @@ public class DgeHeaderMergerTest {
 
     @Test(dataProvider = "stringencyDataProvider")
     public void testMergeMultiplePrefixFromCommandLine(final DgeHeaderMerger.Stringency stringency) {
-        final DgeHeader h1 = makeHeader(1);
-        final DgeHeader h2 = makeHeader(2);
-        final List<String> prefix = Arrays.asList(generateUniqueString(), generateUniqueString());
+        final DgeHeader h1 = DgeHeaderMergerTestUtil.makeHeader(1);
+        final DgeHeader h2 = DgeHeaderMergerTestUtil.makeHeader(2);
+        final List<String> prefix = Arrays.asList(DgeHeaderMergerTestUtil.generateUniqueString(), DgeHeaderMergerTestUtil.generateUniqueString());
         final DgeHeader mergedHeader = mergeHeaders(h1, h2, prefix, stringency);
         switch (stringency) {
             case NONE:
@@ -282,29 +276,14 @@ public class DgeHeaderMergerTest {
                                    final DgeHeader h2,
                                    final List<String> prefix,
                                    final DgeHeaderMerger.Stringency stringency) {
-        final File f1 = writeHeaderToFile(h1);
-        final File f2 = writeHeaderToFile(h2);
+        final File f1 = DgeHeaderMergerTestUtil.writeHeaderToFile(h1);
+        final File f2 = DgeHeaderMergerTestUtil.writeHeaderToFile(h2);
         final List<File> input = Arrays.asList(f1, f2);
         try {
             return DgeHeaderMerger.mergeDgeHeaders(input, prefix, stringency);
         } catch (DgeHeaderMerger.DgeMergerException e) {
             System.err.println(getClass().getSimpleName() + "." + getMethodName(1) + ":" + stringency + ": " + e.getMessage());
             return null;
-        }
-    }
-
-    /**
-     * @return Temporary file, which will deleteOnExit
-     */
-    public File writeHeaderToFile(final DgeHeader header) {
-        try {
-            final File f = File.createTempFile("DgeHeaderMergerTest.", DGE_FILE_EXTENSION);
-            f.deleteOnExit();
-            final DgeHeaderCodec codec = new DgeHeaderCodec();
-            codec.encode(f, header);
-            return f;
-        } catch (IOException e) {
-            throw new RuntimeIOException(e);
         }
     }
 
@@ -315,22 +294,6 @@ public class DgeHeaderMergerTest {
                 {DgeHeaderMerger.Stringency.LENIENT},
                 {DgeHeaderMerger.Stringency.NONE},
         };
-    }
-
-    public DgeHeader makeHeader(final int numLibraries) {
-        final DgeHeader ret = new DgeHeader();
-        ret.setExpressionFormat(DgeHeader.ExpressionFormat.raw);
-        for (int i = 0; i < numLibraries; ++i) {
-            final DgeHeaderLibrary lib = new DgeHeaderLibrary(generateUniqueString());
-            lib.setPrefix(generateUniqueString());
-            lib.setReference(HG19);
-            ret.addLibrary(lib);
-        }
-        return ret;
-    }
-
-    private String generateUniqueString() {
-        return Integer.toString(random.nextInt());
     }
 
     private static String getMethodName(final int depth) {

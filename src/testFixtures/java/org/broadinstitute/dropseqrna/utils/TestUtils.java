@@ -40,8 +40,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -219,30 +217,6 @@ public class TestUtils {
 			BlockGunzipper.setDefaultInflaterFactory(new InflaterFactory());
 		}
 	}
-
-    public static List<File> splitBamFile(File inputBAM, int numOutputs) {
-        final SplitBamByCell bamSplitter = new SplitBamByCell();
-
-        File outputBAM = getTempReportFile("SplitBamByCell", bamSplitter.OUTPUT_SLUG + ".bam");
-        File outputBAMList = getTempReportFile("SplitBamByCell", ".list");
-        bamSplitter.INPUT = Arrays.asList(inputBAM);
-        bamSplitter.OUTPUT = outputBAM;
-        bamSplitter.OUTPUT_LIST = outputBAMList;
-        bamSplitter.NUM_OUTPUTS = numOutputs;
-        bamSplitter.DELETE_INPUTS = false;
-        bamSplitter.USE_JDK_DEFLATER = isMacOs();
-        setInflaterDeflaterIfMacOs();
-        Assert.assertEquals(bamSplitter.doWork(), 0);
-
-        List<File> splitBAMFileList = new ArrayList<>();
-        for (String filePath : IOUtil.readLines(outputBAMList)) {
-            File bamFile = new File(filePath);
-            splitBAMFileList.add(bamFile);
-            bamFile.deleteOnExit();
-        }
-
-        return splitBAMFileList;
-    }
 
     public static File getTempReportFile (final String prefix, final String suffix) {
         File tempFile;
