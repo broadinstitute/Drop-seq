@@ -25,11 +25,11 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignm
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.text.DecimalFormat;
+import java.util.*;
+import java.util.function.Function;
 
+import htsjdk.samtools.util.Log;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -70,7 +70,42 @@ public class DetectDoubletsTest {
 		Assert.assertEquals(ret, 0);
 		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));
 	}
-	
+	// Surprisingly, 12 decimal places causes problems for Apple M2 Max
+	private static final DecimalFormat Format11DecimalPlaces = new DecimalFormat("0.###########");
+	private static Object format11DecimalPlaces(final String s) {
+		return Format11DecimalPlaces.format(Double.valueOf(s));
+	}
+	private static final Map<Integer, Function<String, Object>> OutputTransformerMap = new HashMap<>();
+	{
+		OutputTransformerMap.put(20, DetectDoubletsTest::format11DecimalPlaces);
+	}
+
+	private void assertOutputSame(final File expected, final File actual) {
+		Assert.assertTrue(TestUtils.testTabularFilesSame(expected, actual, OutputTransformerMap));
+	}
+
+	private static final Map<Integer, Function<String, Object>> PerDonorOutputTransformerMap = new HashMap<>();
+	{
+		PerDonorOutputTransformerMap.put(7, DetectDoubletsTest::format11DecimalPlaces);
+		PerDonorOutputTransformerMap.put(12, DetectDoubletsTest::format11DecimalPlaces);
+		PerDonorOutputTransformerMap.put(17, DetectDoubletsTest::format11DecimalPlaces);
+		PerDonorOutputTransformerMap.put(19, DetectDoubletsTest::format11DecimalPlaces);
+		PerDonorOutputTransformerMap.put(20, DetectDoubletsTest::format11DecimalPlaces);
+	}
+	private void assertPerDonorOutputSame(final File expected, final File actual) {
+		Assert.assertTrue(TestUtils.testTabularFilesSame(expected, actual, PerDonorOutputTransformerMap));
+	}
+
+	private static final Map<Integer, Function<String, Object>> PerSnpOutputTransformerMap = new HashMap<>();
+	{
+		PerSnpOutputTransformerMap.put(9, DetectDoubletsTest::format11DecimalPlaces);
+		PerSnpOutputTransformerMap.put(10, DetectDoubletsTest::format11DecimalPlaces);
+		PerSnpOutputTransformerMap.put(11, DetectDoubletsTest::format11DecimalPlaces);
+	}
+	private void assertPerSnpOutputSame(final File expected, final File actual) {
+		Assert.assertTrue(TestUtils.testTabularFilesSame(expected, actual, PerSnpOutputTransformerMap));
+	}
+
 	@Test (enabled=true)
 	// I'm not sure why "big" is a much smaller data set than "small", but it is.
 	public void testBig () throws IOException {
@@ -97,9 +132,9 @@ public class DetectDoubletsTest {
 		assigner.GQ_THRESHOLD=30;
 		int ret = assigner.doWork();
 		Assert.assertTrue(ret==0);
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_PAIR_OUTPUT, assigner.OUTPUT_ALL_PAIRS));
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_PER_SNP_OUTPUT, assigner.OUTPUT_PER_SNP));
+		assertOutputSame(EXPECTED_OUTPUT, assigner.OUTPUT);
+		assertPerDonorOutputSame(EXPECTED_PAIR_OUTPUT, assigner.OUTPUT_ALL_PAIRS);
+		assertPerSnpOutputSame(EXPECTED_PER_SNP_OUTPUT, assigner.OUTPUT_PER_SNP);
 	}
 	
 	@Test (enabled=true)
@@ -128,9 +163,9 @@ public class DetectDoubletsTest {
 		assigner.GQ_THRESHOLD=30;
 		int ret = assigner.doWork();
 		Assert.assertTrue(ret==0);
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_PAIR_OUTPUT, assigner.OUTPUT_ALL_PAIRS));
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_PER_SNP_OUTPUT, assigner.OUTPUT_PER_SNP));
+		assertOutputSame(EXPECTED_OUTPUT, assigner.OUTPUT);
+		assertPerDonorOutputSame(EXPECTED_PAIR_OUTPUT, assigner.OUTPUT_ALL_PAIRS);
+		assertPerSnpOutputSame(EXPECTED_PER_SNP_OUTPUT, assigner.OUTPUT_PER_SNP);
 	}
 	
 	
@@ -162,9 +197,9 @@ public class DetectDoubletsTest {
 		assigner.GQ_THRESHOLD=30;
 		int ret = assigner.doWork();
 		Assert.assertTrue(ret==0);
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_PAIR_OUTPUT, assigner.OUTPUT_ALL_PAIRS));
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_PER_SNP_OUTPUT, assigner.OUTPUT_PER_SNP));
+		assertOutputSame(EXPECTED_OUTPUT, assigner.OUTPUT);
+		assertPerDonorOutputSame(EXPECTED_PAIR_OUTPUT, assigner.OUTPUT_ALL_PAIRS);
+		assertPerSnpOutputSame(EXPECTED_PER_SNP_OUTPUT, assigner.OUTPUT_PER_SNP);
 	}
 	
 	@Test (enabled=true)
@@ -195,9 +230,9 @@ public class DetectDoubletsTest {
 		assigner.GQ_THRESHOLD=30;
 		int ret = assigner.doWork();
 		Assert.assertTrue(ret==0);
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_PAIR_OUTPUT, assigner.OUTPUT_ALL_PAIRS));
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_PER_SNP_OUTPUT, assigner.OUTPUT_PER_SNP));
+		assertOutputSame(EXPECTED_OUTPUT, assigner.OUTPUT);
+		assertPerDonorOutputSame(EXPECTED_PAIR_OUTPUT, assigner.OUTPUT_ALL_PAIRS);
+		assertPerSnpOutputSame(EXPECTED_PER_SNP_OUTPUT, assigner.OUTPUT_PER_SNP);
 	}
 
 	@Test (enabled=true)
@@ -223,7 +258,7 @@ public class DetectDoubletsTest {
 		int ret = assigner.doWork();
 		Assert.assertTrue(ret==0);
 		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_PAIR_OUTPUT, assigner.OUTPUT_ALL_PAIRS));
+		assertPerDonorOutputSame(EXPECTED_PAIR_OUTPUT, assigner.OUTPUT_ALL_PAIRS);
 	}
 	
 	@Test (enabled=true)

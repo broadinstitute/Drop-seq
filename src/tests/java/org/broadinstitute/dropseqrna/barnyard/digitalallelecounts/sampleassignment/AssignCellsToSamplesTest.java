@@ -25,6 +25,7 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignm
 
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
+import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -42,10 +43,11 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.text.DecimalFormat;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class AssignCellsToSamplesTest {
 
@@ -84,7 +86,7 @@ public class AssignCellsToSamplesTest {
 	private final File ONE_READ_TWO_SNPS_BAM = new File(rootDir+"/read_multiple_snps.bam");
 	private final File ONE_UMI_TWO_SNPS_BAM = new File(rootDir+"/umi_multiple_snps.bam");
 	private final File MULTI_SNP_TEST_VCF = new File (rootDir+"/multiple_snp_tests_small.vcf.gz");
-	
+
 	@Test
 	/**
 	 * The goal of this test is to see if the number of informative SNPs is one for a single read with two SNPs.
@@ -152,12 +154,26 @@ public class AssignCellsToSamplesTest {
 		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));	
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_VERBOSE_OUTPUT, assigner.VERBOSE_OUTPUT));
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));
+		assertVerboseOutputSame(EXPECTED_VERBOSE_OUTPUT, assigner.VERBOSE_OUTPUT);
 		
 	}
-	
-	
+
+	private static final DecimalFormat Format12DecimalPlaces = new DecimalFormat("0.############");
+	private static Object format12DecimalPlaces(final String s) {
+		return Format12DecimalPlaces.format(Double.valueOf(s));
+	}
+	final Map<Integer, Function<String, Object>> VerboseOutputTransformerMap = new HashMap<>();
+	{
+		VerboseOutputTransformerMap.put(13, AssignCellsToSamplesTest::format12DecimalPlaces);
+		VerboseOutputTransformerMap.put(14, AssignCellsToSamplesTest::format12DecimalPlaces);
+		VerboseOutputTransformerMap.put(15, AssignCellsToSamplesTest::format12DecimalPlaces);
+		VerboseOutputTransformerMap.put(16, AssignCellsToSamplesTest::format12DecimalPlaces);
+	}
+	private void assertVerboseOutputSame(final File expected, final File actual) {
+		Assert.assertTrue(TestUtils.testTabularFilesSame(expected, actual, VerboseOutputTransformerMap));
+	}
+
 	@Test
 	public void testEndToEnd() throws IOException {
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
@@ -174,9 +190,10 @@ public class AssignCellsToSamplesTest {
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);
 		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));	
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_VERBOSE_OUTPUT, assigner.VERBOSE_OUTPUT));
+		assertVerboseOutputSame(EXPECTED_VERBOSE_OUTPUT, assigner.VERBOSE_OUTPUT);
 		
 	}
+
 	
 	/**
 	 * Uses a sample list that has entries not in the VCF.
@@ -277,8 +294,8 @@ public class AssignCellsToSamplesTest {
 		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_MAXLIKE_OUTPUT, assigner.OUTPUT)); 
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_MAXLIKE_VERBOSE_OUTPUT, assigner.VERBOSE_OUTPUT)); 
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_MAXLIKE_OUTPUT, assigner.OUTPUT));
+		assertVerboseOutputSame(EXPECTED_MAXLIKE_VERBOSE_OUTPUT, assigner.VERBOSE_OUTPUT);
 	}
 
 	@Test (enabled=true)
@@ -298,8 +315,8 @@ public class AssignCellsToSamplesTest {
 		
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);		
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_CONTAM_OUTPUT, assigner.OUTPUT));	
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_CONTAM_VERBOSE_OUTPUT, assigner.VERBOSE_OUTPUT));
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_CONTAM_OUTPUT, assigner.OUTPUT));
+		assertVerboseOutputSame(EXPECTED_CONTAM_VERBOSE_OUTPUT, assigner.VERBOSE_OUTPUT);
 		
 	}
 	
