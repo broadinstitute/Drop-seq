@@ -29,14 +29,12 @@ import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.BlockCompressedOutputStream;
-import htsjdk.samtools.util.BlockGunzipper;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.*;
 import htsjdk.samtools.util.zip.DeflaterFactory;
 import htsjdk.samtools.util.zip.InflaterFactory;
 import org.testng.Assert;
 import picard.util.TabbedInputParser;
+import picard.util.TabbedTextFileWithHeaderParser;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -45,6 +43,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Helper methods for
@@ -53,11 +53,10 @@ import java.util.List;
  */
 public class TestUtils {
 
+	private static final Log LOG = Log.getInstance(TestUtils.class);
+
 	/**
 	 * Test if two text files are the same, ignoring "#" character lines.
-	 * @param expected
-	 * @param actual
-	 * @return
 	 */
 	public static boolean testFilesSame (final File expected, final File actual) {
 		TabbedInputParser e = new TabbedInputParser(true, expected);
@@ -76,8 +75,78 @@ public class TestUtils {
 		CloserUtil.close(e);
 		CloserUtil.close(a);
 		// one of the files is incomplete.
-		if (e.hasNext() || a.hasNext()) 
-			return false;		
+		if (e.hasNext() || a.hasNext())
+			return false;
+		return true;
+	}
+
+	/**
+	 * File comparison for files with values that may jiggle a little.
+	 * Call Log.setGlobalLogLevel(LogLevel.DEBUG) to get additional info on differences
+	 * @param expected tsv with header
+	 * @param actual tsv with header
+	 * @param transformers Map of function to transform strings into values that can be compared,
+	 *                     if the whole lines don't agree.  Key: 0-based column index.  Value: transformer function.
+	 * @return true if the files match
+	 */
+	public static boolean testTabularFilesSame (final File expected, final File actual,
+												final Map<Integer, Function<String, Object>> transformers) {
+		TabbedTextFileWithHeaderParser expectedParser = new TabbedTextFileWithHeaderParser(expected);
+		TabbedTextFileWithHeaderParser actualParser = new TabbedTextFileWithHeaderParser(actual);
+		if (!expectedParser.columnLabels().equals(actualParser.columnLabels())) {
+			LOG.debug("Column labels in files %s and %s do not agree", expected, actual);
+			return false;
+		}
+		CloseableIterator<TabbedTextFileWithHeaderParser.Row> e = expectedParser.iterator();
+		CloseableIterator<TabbedTextFileWithHeaderParser.Row> a = actualParser.iterator();
+
+		int lineNumber = 0;
+		while (e.hasNext() && a.hasNext()) {
+			++lineNumber;
+			final TabbedTextFileWithHeaderParser.Row expectedRow = e.next();
+			final TabbedTextFileWithHeaderParser.Row actualRow = a.next();
+			String le = expectedRow.getCurrentLine();
+			String la = actualRow.getCurrentLine();
+			if (!le.equals(la)) {
+				if (expectedRow.getFields().length != actualRow.getFields().length) {
+					LOG.debug(String.format(
+							"Number of fields differ at line %d for files %s and %s", lineNumber, expected, actual));
+				} else {
+					boolean failed = false;
+					for (int i = 0; i < expectedRow.getFields().length; ++i) {
+						final String expectedField = expectedRow.getFields()[i];
+						final String actualField = actualRow.getFields()[i];
+						final Object expectedTransformedField;
+						final Object actualTransformedField;
+						if (transformers.containsKey(i)) {
+							final Function<String, Object> transformer = transformers.get(i);
+							expectedTransformedField = transformer.apply(expectedField);
+							actualTransformedField = transformer.apply(actualField);
+						} else {
+							expectedTransformedField = expectedField;
+							actualTransformedField = actualField;
+						}
+						if (!expectedTransformedField.equals(actualTransformedField)) {
+							LOG.debug(String.format(
+									"In files %s and %s  at line %d, column %d, '%s' != '%s'; transformed: '%s' != '%s'",
+									expected, actual, lineNumber, i+1, expectedField, actualField, expectedTransformedField, actualTransformedField));
+							failed = true;
+							break;
+
+						}
+					}
+					if (!failed) continue;
+				}
+				CloserUtil.close(e);
+				CloserUtil.close(a);
+				return false;
+			}
+		}
+		CloserUtil.close(e);
+		CloserUtil.close(a);
+		// one of the files is incomplete.
+		if (e.hasNext() || a.hasNext())
+			return false;
 		return true;
 	}
 
