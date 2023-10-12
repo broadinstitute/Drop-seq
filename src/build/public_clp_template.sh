@@ -26,10 +26,6 @@ xmx=4g
 
 progname=`basename $0`
 thisdir=`dirname $0`
-if [ -f $thisdir/loadDotKits.sh ]
-then source $thisdir/loadDotKits.sh
-fi
-
 verbose=0
 
 USAGE=$(cat << EOF
