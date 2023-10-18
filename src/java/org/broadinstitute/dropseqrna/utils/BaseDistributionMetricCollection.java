@@ -24,7 +24,7 @@
 package org.broadinstitute.dropseqrna.utils;
 
 import htsjdk.samtools.util.IOUtil;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 
 import java.io.BufferedReader;

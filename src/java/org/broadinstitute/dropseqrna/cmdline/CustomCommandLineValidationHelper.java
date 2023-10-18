@@ -23,7 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.cmdline;
 
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 
 import java.util.ArrayList;
 import java.util.List;

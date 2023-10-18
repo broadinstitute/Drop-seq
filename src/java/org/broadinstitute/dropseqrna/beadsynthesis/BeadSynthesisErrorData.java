@@ -28,7 +28,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetric;
 import org.broadinstitute.dropseqrna.utils.BaseDistributionMetricCollection;
 import org.broadinstitute.dropseqrna.utils.Bases;

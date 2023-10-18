@@ -24,7 +24,7 @@
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment;
 
 import htsjdk.samtools.util.IOUtil;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import picard.util.BasicInputParser;
 

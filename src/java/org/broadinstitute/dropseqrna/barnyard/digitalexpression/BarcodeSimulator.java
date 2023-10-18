@@ -23,7 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
-import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
