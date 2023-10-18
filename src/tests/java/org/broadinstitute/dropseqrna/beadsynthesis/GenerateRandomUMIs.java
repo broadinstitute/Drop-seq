@@ -24,7 +24,7 @@
 
 package org.broadinstitute.dropseqrna.beadsynthesis;
 
-import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 import java.util.*;

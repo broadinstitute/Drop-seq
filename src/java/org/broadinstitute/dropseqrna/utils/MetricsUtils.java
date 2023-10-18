@@ -25,7 +25,7 @@ package org.broadinstitute.dropseqrna.utils;
 
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.StringHeader;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.util.ArrayList;

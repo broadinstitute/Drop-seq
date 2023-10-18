@@ -27,7 +27,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import org.testng.Assert;
-import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileup;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileupIterator;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SortOrder;

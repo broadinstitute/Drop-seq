@@ -24,7 +24,7 @@
 
 package org.broadinstitute.dropseqrna.utils.editdistance;
 
-import org.apache.commons.lang.builder.CompareToBuilder;
+import org.apache.commons.lang3.builder.CompareToBuilder;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 import java.util.*;

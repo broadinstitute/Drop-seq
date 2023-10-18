@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
-import org.apache.commons.lang.builder.CompareToBuilder;
+import org.apache.commons.lang3.builder.CompareToBuilder;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
