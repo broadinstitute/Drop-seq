@@ -16,6 +16,8 @@ plugins {
 
     // Make classes like TestUtils usable by projects that include this project
     id("java-test-fixtures")
+
+    jacoco
 }
 
 repositories {
@@ -50,11 +52,21 @@ application {
     mainClass.set("org.broadinstitute.dropseqrna.cmdline.DropSeqMain")
 }
 
-tasks.named<Test>("test") {
+tasks.withType<Test> {
     // Use TestNG for unit tests.
     useTestNG()
     // so test resources can be found
     workingDir("..")
+}
+
+tasks.test {
+    finalizedBy("jacocoTestReport")
+}
+tasks.jacocoTestReport {
+    dependsOn(tasks.test) // tests are required to run before generating the report
+    reports {
+        xml.required = true
+    }
 }
 
 // Conform to our non-standard directory structure
@@ -120,3 +132,4 @@ distributions {
 tasks.named("distZip").configure {
     dependsOn("generateWrappers")
 }
+

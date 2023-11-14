@@ -1,5 +1,12 @@
+dist: xenial
 language: java
-script: ant test
+jdk:
+  - openjdk21
+before_install:
+- chmod +x gradlew
+- chmod +x gradle/wrapper/gradle-wrapper.jar
+script:
+- ./gradlew test build
+- ./gradlew jacocoTestReport
 after_success:
-- ant coverage-and-report
 - bash <(curl -s https://codecov.io/bash)
