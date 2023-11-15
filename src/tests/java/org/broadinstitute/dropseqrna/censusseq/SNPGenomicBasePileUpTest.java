@@ -94,12 +94,12 @@ public class SNPGenomicBasePileUpTest {
 		p.finalizePileup();
 		List<Character> bases = p.getBasesAsCharacters();
 		List<Character> expectedBases = new ArrayList<>();
-		expectedBases.add(new Character ('T'));
+		expectedBases.add(Character.valueOf('T'));
 		Assert.assertEquals(expectedBases, bases);
 
 		List<Byte> quals = p.getQualities();
 		List<Byte> expectedQuals = new ArrayList<>();
-		expectedQuals.add(new Byte ((byte)30));
+		expectedQuals.add(Byte.valueOf((byte)30));
 		Assert.assertEquals(expectedQuals, quals);
 
 	}
@@ -119,14 +119,14 @@ public class SNPGenomicBasePileUpTest {
 		p.finalizePileup();
 		List<Character> bases = p.getBasesAsCharacters();
 		List<Character> expectedBases = new ArrayList<>();
-		expectedBases.add(new Character ('T'));
-		expectedBases.add(new Character ('A'));
+		expectedBases.add(Character.valueOf('T'));
+		expectedBases.add(Character.valueOf('A'));
 		Assert.assertEquals(expectedBases, bases);
 
 		List<Byte> quals = p.getQualities();
 		List<Byte> expectedQuals = new ArrayList<>();
-		expectedQuals.add(new Byte ((byte)28));
-		expectedQuals.add(new Byte ((byte)28));
+		expectedQuals.add(Byte.valueOf((byte)28));
+		expectedQuals.add(Byte.valueOf((byte)28));
 		Assert.assertEquals(expectedQuals, quals);
 
 	}

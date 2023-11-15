@@ -716,7 +716,7 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		/*
 		 * if (this.USE_GENOTYPE_QUALITY) { // the mean of the genotype qualities? if (meanGenotypeQuality.getN()==0)
 		 * log.info("STOP"); double meanGQ=gm.getMeanGenotypeQuality();
-		 * genotypeProbability=LikelihoodUtils.getInstance().phredScoreToErrorProbability(new Double(meanGQ).byteValue()); }
+		 * genotypeProbability=LikelihoodUtils.getInstance().phredScoreToErrorProbability(Double.valueOf(meanGQ).byteValue()); }
 		 */
 
 		// for each cell, update the samples where we have no genotype assigned for this variant.

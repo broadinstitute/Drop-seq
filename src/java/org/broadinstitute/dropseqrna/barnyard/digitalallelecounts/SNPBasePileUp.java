@@ -102,7 +102,7 @@ public abstract class SNPBasePileUp implements Locatable,SNPIntervalRecordI {
 	public Double getAverageQuality () {
 		if (this.qualities.size()==0) return null;
 		Mean m = new Mean();
-		double [] q = this.qualities.stream().mapToDouble(x -> new Double(x)).toArray();
+		double [] q = this.qualities.stream().mapToDouble(x -> Double.valueOf(x)).toArray();
 		return m.evaluate(q);		
 	}
 

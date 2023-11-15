@@ -112,7 +112,7 @@ public class SampleGenotypeProbabilities implements SNPIntervalRecordI {
 		List<Byte> bases = getBases();
 		ObjectCounter<Character> result = new ObjectCounter<>();
 		for (Byte b: bases)
-			result.increment(new Character (StringUtil.byteToChar(b)));
+			result.increment(Character.valueOf(StringUtil.byteToChar(b)));
 		return result;
 	}
 

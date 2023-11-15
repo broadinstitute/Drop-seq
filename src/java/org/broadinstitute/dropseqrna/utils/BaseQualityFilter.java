@@ -73,7 +73,7 @@ public class BaseQualityFilter {
 		public FailedBaseMetric (final Integer length){
 			data=new ArrayList<>(length+1);
 			for (int i=0; i<=length; i++)
-				data.add(new Integer(0));
+				data.add(Integer.valueOf(0));
 		}
 
 		public void addFailedBase(final int numBasesFailed) {

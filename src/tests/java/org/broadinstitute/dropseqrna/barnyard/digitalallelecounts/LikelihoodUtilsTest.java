@@ -196,7 +196,7 @@ public class LikelihoodUtilsTest {
 		GenotypeType [] g = {GenotypeType.HOM_REF, GenotypeType.HET, GenotypeType.HOM_VAR};
 		List<GenotypeType> genotypes  = Arrays.asList(g);
 
-		Double [] m = {new Double(2), new Double(1), new Double(1)};
+		Double [] m = {Double.valueOf(2), Double.valueOf(1), Double.valueOf(1)};
 		List<Double> mixture  = Arrays.asList(m);
 
 		char refAllele ='A';
@@ -204,7 +204,7 @@ public class LikelihoodUtilsTest {
 
 		Byte [] b = {StringUtil.charToByte('A'), StringUtil.charToByte('A')};
 		List<Byte> bases = Arrays.asList(b);
-		Byte [] q = {new Byte ((byte)10), new Byte ((byte)10)};
+		Byte [] q = {Byte.valueOf((byte)10), Byte.valueOf((byte)10)};
 		List<Byte> qualities =Arrays.asList(q);
 
 		double result = LikelihoodUtils.getInstance().getLogLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases, qualities, null, null, null, null, null);
@@ -217,14 +217,14 @@ public class LikelihoodUtilsTest {
 		GenotypeType [] g = {GenotypeType.HOM_REF, GenotypeType.HET, GenotypeType.HOM_VAR};
 		List<GenotypeType> genotypes  = Arrays.asList(g);
 
-		Double [] m = {new Double(2), new Double(1), new Double(1)};
+		Double [] m = {Double.valueOf(2), Double.valueOf(1), Double.valueOf(1)};
 		List<Double> mixture  = Arrays.asList(m);
 
 		char refAllele ='A';
 		char altAllele ='T';
 
 		List<Byte> bases = Collections.singletonList(StringUtil.charToByte('A'));
-		List<Byte> qualities =Collections.singletonList(new Byte ((byte)10));
+		List<Byte> qualities =Collections.singletonList(Byte.valueOf((byte)10));
 
 		double result = LikelihoodUtils.getInstance().getLogLikelihoodMixedModel(refAllele, altAllele, genotypes, mixture, bases, qualities, null, null, null, null, null);
 		Assert.assertEquals(result, Math.log10(0.6), 0.001);
@@ -349,7 +349,7 @@ public class LikelihoodUtilsTest {
 	private List<Byte> convert (final char [] x) {
 		List<Byte> r = new ArrayList<>();
 		for (char c: x)
-			r.add(new Byte((byte)c));
+			r.add(Byte.valueOf((byte)c));
 		return r;
 	}
 
@@ -426,17 +426,17 @@ public class LikelihoodUtilsTest {
 	//https://en.wikipedia.org/wiki/Phred_quality_score
 	public Object[][] createData1() {
 	 return new Object[][] {
-	   { new Byte((byte) 8), new Double(0.1584893) },
-	   { new Byte((byte) 10), new Double(0.1) },
-	   { new Byte((byte) 13), new Double(0.05011872) },
-	   { new Byte((byte) 20), new Double(0.01) },
-	   { new Byte((byte) 27), new Double(0.001995262) },
-	   { new Byte((byte) 30), new Double(0.001) },
-	   { new Byte((byte) 32), new Double(0.0006309573) },
-	   { new Byte((byte) 37), new Double(0.0001995262) },
-	   { new Byte((byte) 40), new Double(0.0001) },
-	   { new Byte((byte) 50), new Double(0.00001) },
-	   { new Byte((byte) 60), new Double(0.000001) }
+	   { Byte.valueOf((byte) 8), Double.valueOf(0.1584893) },
+	   { Byte.valueOf((byte) 10), Double.valueOf(0.1) },
+	   { Byte.valueOf((byte) 13), Double.valueOf(0.05011872) },
+	   { Byte.valueOf((byte) 20), Double.valueOf(0.01) },
+	   { Byte.valueOf((byte) 27), Double.valueOf(0.001995262) },
+	   { Byte.valueOf((byte) 30), Double.valueOf(0.001) },
+	   { Byte.valueOf((byte) 32), Double.valueOf(0.0006309573) },
+	   { Byte.valueOf((byte) 37), Double.valueOf(0.0001995262) },
+	   { Byte.valueOf((byte) 40), Double.valueOf(0.0001) },
+	   { Byte.valueOf((byte) 50), Double.valueOf(0.00001) },
+	   { Byte.valueOf((byte) 60), Double.valueOf(0.000001) }
 	 };
 	}
 }

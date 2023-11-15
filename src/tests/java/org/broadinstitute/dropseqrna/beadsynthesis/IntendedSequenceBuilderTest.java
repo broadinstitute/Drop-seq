@@ -62,12 +62,12 @@ public class IntendedSequenceBuilderTest {
 		IntendedSequence result = b.build(intendedSequence, neighbors);
 
 		Assert.assertEquals(result.getIntendedSequence(), "AAAAACCGGGAA");
-		Assert.assertEquals(result.getDeletedBase(), new Character ('A'));
-		Assert.assertEquals(result.getDeletedBasePos(), new Integer (5));
+		Assert.assertEquals(result.getDeletedBase(), Character.valueOf('A'));
+		Assert.assertEquals(result.getDeletedBasePos(), Integer.valueOf(5));
 		Assert.assertEquals(result.getDeletionRate(), 0.03767661, 0.001);
 		Assert.assertEquals(result.getIntendedSequenceUMIBias(), 0.008, 0.001);
 		Assert.assertEquals(result.getRelatedMedianUMIBias(), 0.9845, 0.001);
-		Assert.assertEquals(result.getIntendedSequenceUMIs(), new Integer(6130));
+		Assert.assertEquals(result.getIntendedSequenceUMIs(), Integer.valueOf(6130));
 		Assert.assertEquals(result.getMedianRelatedSequenceUMIs(), 60, 0.01);
 	}
 	/** group  intendedSeq                       relatedSequences deletedBase
@@ -139,12 +139,12 @@ public class IntendedSequenceBuilderTest {
 		IntendedSequence result = b.build(intendedSequence, neighbors);
 
 		Assert.assertEquals(result.getIntendedSequence(), "TGTATTGTTGGA");
-		Assert.assertEquals(result.getDeletedBase(), new Character ('A'));
-		Assert.assertEquals(result.getDeletedBasePos(), new Integer (12));
+		Assert.assertEquals(result.getDeletedBase(), Character.valueOf('A'));
+		Assert.assertEquals(result.getDeletedBasePos(), Integer.valueOf(12));
 		Assert.assertEquals(result.getDeletionRate(), 0.750, 0.001);
 		Assert.assertEquals(result.getIntendedSequenceUMIBias(), 0.5, 0.001);
 		Assert.assertEquals(result.getRelatedMedianUMIBias(), 0.98, 0.001);
-		Assert.assertEquals(result.getIntendedSequenceUMIs(), new Integer(50));
+		Assert.assertEquals(result.getIntendedSequenceUMIs(), Integer.valueOf(50));
 		Assert.assertEquals(result.getMedianRelatedSequenceUMIs(), 50, 0.01);
 
 	}

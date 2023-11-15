@@ -140,7 +140,7 @@ public class SummarizeUMIBaseQualities {
 			byte base = this.bases.get(i);
 			byte qual = this.qualities.get(i);
 			if (base==commonBase)
-				baseQuals.increment(new Integer(qual));
+				baseQuals.increment(Integer.valueOf(qual));
 		}
 		return baseQuals.getMode();
 	}

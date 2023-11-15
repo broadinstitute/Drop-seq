@@ -179,7 +179,7 @@ public class ReduceGtf extends CommandLineProgram {
 
 	private void writeLine (final GTFRecord r, final PrintStream out) {
 		if (r==null) return;
-		String [] line={r.getChromosome(),new Integer(r.getStart()).toString(), new Integer(r.getEnd()).toString(), r.getStrandAsString(), r.getGeneName(), r.getGeneID(),
+		String [] line={r.getChromosome(),Integer.valueOf(r.getStart()).toString(), Integer.valueOf(r.getEnd()).toString(), r.getStrandAsString(), r.getGeneName(), r.getGeneID(),
 				r.getTranscriptName(), r.getTranscriptID(), r.getTranscriptType(), r.getFeatureType()};
         for (int i = 0; i < line.length; ++i)
 			if (line[i] == null || line[i].isEmpty())

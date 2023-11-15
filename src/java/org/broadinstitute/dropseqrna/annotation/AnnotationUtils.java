@@ -58,11 +58,11 @@ public class AnnotationUtils {
 
 	private AnnotationUtils() {
 		functionScores = new HashMap<>();
-		functionScores.put(LocusFunction.CODING, new Integer (5));
-		functionScores.put(LocusFunction.UTR, new Integer (4));
-		functionScores.put(LocusFunction.INTRONIC, new Integer (3));
-		functionScores.put(LocusFunction.RIBOSOMAL, new Integer (2));
-		functionScores.put(LocusFunction.INTERGENIC, new Integer (1));
+		functionScores.put(LocusFunction.CODING, Integer.valueOf (5));
+		functionScores.put(LocusFunction.UTR, Integer.valueOf (4));
+		functionScores.put(LocusFunction.INTRONIC, Integer.valueOf (3));
+		functionScores.put(LocusFunction.RIBOSOMAL, Integer.valueOf (2));
+		functionScores.put(LocusFunction.INTERGENIC, Integer.valueOf (1));
 	}
 
 	public static AnnotationUtils getInstance() {
