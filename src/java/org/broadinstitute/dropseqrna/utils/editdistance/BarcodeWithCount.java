@@ -76,8 +76,8 @@ public class BarcodeWithCount {
 
         @Override
         public int compare(final BarcodeWithCount f1, final BarcodeWithCount f2) {
-            final Integer v1 = new Integer(f1.getCount());
-            final Integer v2 = new Integer(f2.getCount());
+            final Integer v1 = Integer.valueOf(f1.getCount());
+            final Integer v2 = Integer.valueOf(f2.getCount());
             return v1.compareTo(v2);
         }
     }

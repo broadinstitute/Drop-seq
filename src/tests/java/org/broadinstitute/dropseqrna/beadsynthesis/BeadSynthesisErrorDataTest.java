@@ -175,7 +175,7 @@ public class BeadSynthesisErrorDataTest {
 		DetectPrimerInUMI dp = new DetectPrimerInUMI(primer);
 		BeadSynthesisErrorData d = new BeadSynthesisErrorData("ATACAGTCTACA");
 		d.addUMI(UMI);
-		BeadSynthesisErrorType t= d.getErrorType(threshold, dp, new Integer (1));
+		BeadSynthesisErrorType t= d.getErrorType(threshold, dp, Integer.valueOf(1));
 		Assert.assertEquals(BeadSynthesisErrorType.PRIMER, t);
 
 		d = new BeadSynthesisErrorData("ATACAGTCTACA");
@@ -184,7 +184,7 @@ public class BeadSynthesisErrorDataTest {
 			String newUMI = umi.substring(0,7);
 			d.addUMI(newUMI);
 		}
-		t= d.getErrorType(threshold, dp, new Integer (1));
+		t= d.getErrorType(threshold, dp, Integer.valueOf(1));
 		Assert.assertEquals(BeadSynthesisErrorType.NO_ERROR, t);
 
 	}

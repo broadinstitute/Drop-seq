@@ -361,7 +361,7 @@ public class DownsampleBamByTag extends CommandLineProgram {
 			r=toi.next();
 			pl.record(r);
 			// if the read is in the index selected to use, write out the alignment.
-			if (index.contains(new Integer(recsSeen)))
+			if (index.contains(Integer.valueOf(recsSeen)))
 				writer.addAlignment(r);
 
 			recsSeen++;

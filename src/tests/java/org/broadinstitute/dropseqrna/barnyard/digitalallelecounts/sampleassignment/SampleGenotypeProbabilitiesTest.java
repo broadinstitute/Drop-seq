@@ -90,7 +90,7 @@ public class SampleGenotypeProbabilitiesTest {
 		result.collapseUMIs(1);
 		List<Byte> qualResult2 = result.getQualities();
 		Assert.assertEquals(qualResult2.size(), 1);
-		Assert.assertEquals(new Byte((byte) 8), qualResult2.get(0));
+		Assert.assertEquals(Byte.valueOf((byte) 8), qualResult2.get(0));
 
 	}
 
@@ -125,7 +125,7 @@ public class SampleGenotypeProbabilitiesTest {
 		result.collapseUMIs(1);
 		List<Byte> qualResult2 = result.getQualities();
 		Assert.assertEquals(qualResult2.size(), 1);
-		Assert.assertEquals(new Byte((byte) 8), qualResult2.get(0));
+		Assert.assertEquals(Byte.valueOf((byte) 8), qualResult2.get(0));
 	}
 
 	@Test
@@ -160,8 +160,8 @@ public class SampleGenotypeProbabilitiesTest {
 
 		List<Byte> qualResult2 = result.getQualities();
 		Assert.assertEquals(qualResult2.size(), 2);
-		Assert.assertEquals(new Byte((byte) 31), qualResult2.get(0));
-		Assert.assertEquals(new Byte((byte) 5), qualResult2.get(1));
+		Assert.assertEquals(Byte.valueOf((byte) 31), qualResult2.get(0));
+		Assert.assertEquals(Byte.valueOf((byte) 5), qualResult2.get(1));
 	}
 
 	/**

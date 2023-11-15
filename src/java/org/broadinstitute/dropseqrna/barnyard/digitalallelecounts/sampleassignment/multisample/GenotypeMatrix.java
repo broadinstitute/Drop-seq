@@ -226,9 +226,9 @@ public class GenotypeMatrix {
 		ObjectCounter< Integer> counter = new ObjectCounter<>();
 		Arrays.stream(genotypes).forEach(x-> counter.increment(x));
 				
-		double fracHomRef=(double) counter.getCountForKey(new Integer (0)) / (double) counter.getTotalCount();
-		double fracHet=(double) counter.getCountForKey(new Integer (1)) / (double) counter.getTotalCount();
-		double fracHomVar=(double) counter.getCountForKey(new Integer (2)) / (double) counter.getTotalCount();
+		double fracHomRef=(double) counter.getCountForKey(Integer.valueOf (0)) / (double) counter.getTotalCount();
+		double fracHet=(double) counter.getCountForKey(Integer.valueOf (1)) / (double) counter.getTotalCount();
+		double fracHomVar=(double) counter.getCountForKey(Integer.valueOf (2)) / (double) counter.getTotalCount();
 		double [] result2 = {fracHomRef, fracHet, fracHomVar};
 		this.genotypeAlleleFractionMap.put(interval, result2);
 		return result2;

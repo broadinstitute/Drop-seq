@@ -128,7 +128,7 @@ public class GTFParser extends IterableOnceIterator<GTFRecord> {
         final String geneVersionString = attributesMap.get("gene_version");
         final Integer geneVersion;
         if (geneVersionString != null) {
-            geneVersion = new Integer(geneVersionString);
+            geneVersion = Integer.valueOf(geneVersionString);
         } else {
             geneVersion = null;
         }

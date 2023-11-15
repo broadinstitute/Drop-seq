@@ -161,7 +161,7 @@ public class FilterValidRabiesBarcodes extends CommandLineProgram {
 		String v = r.getStringAttribute(tag);
 		if (v==null) return null;
 		// figure out how long the string is.
-		return new Integer (v.length());
+		return Integer.valueOf (v.length());
 	}
 
 	/**

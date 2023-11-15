@@ -288,7 +288,7 @@ public class CellCollectionSampleLikelihoodCollection {
 		Double minorAlleleFrequency = CellAssignmentUtils.getNullableValue(this.variantMinorAlleleFrequency, p.getSNPInterval());
 		Double contamination = CellAssignmentUtils.getNullableValue(this.cellContaminationMap, p.getCell());
 		List<GenotypeType> genotypes  = Arrays.asList(genotypeModels);
-		List<Double> mixture = Arrays.asList(new Double(homRefCount), new Double(hetCount), new Double(homVarCount));				
+		List<Double> mixture = Arrays.asList(Double.valueOf(homRefCount), Double.valueOf(hetCount), Double.valueOf(homVarCount));
 		double logLikelihood = p.getLogLikelihoodMissingData(refAllele, altAllele, genotypes, mixture, this.fixedGenotypeErrorRate, genotypeProbability, this.maximumObservationProbability, minorAlleleFrequency, contamination);
 		return logLikelihood;
 	}

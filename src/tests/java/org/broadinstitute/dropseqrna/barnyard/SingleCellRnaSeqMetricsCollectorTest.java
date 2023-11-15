@@ -80,7 +80,7 @@ public class SingleCellRnaSeqMetricsCollectorTest {
 			if (m.SAMPLE.equals("TTCGCCCGGCTT")) {
 				Assert.assertEquals(149785, m.PF_BASES);
 				Assert.assertEquals(107319, m.PF_ALIGNED_BASES);
-				Assert.assertEquals(new Long (761), m.RIBOSOMAL_BASES);
+				Assert.assertEquals(Long.valueOf(761), m.RIBOSOMAL_BASES);
 				Assert.assertEquals(53790L, m.CODING_BASES);
 				Assert.assertEquals(26818L, m.UTR_BASES);
 				Assert.assertEquals(9804L, m.INTRONIC_BASES);
@@ -89,7 +89,7 @@ public class SingleCellRnaSeqMetricsCollectorTest {
 			if (m.SAMPLE.equals("CGTCACTTGCAC")) {
 				Assert.assertEquals(163896, m.PF_BASES);
 				Assert.assertEquals(120171, m.PF_ALIGNED_BASES);
-				Assert.assertEquals(new Long (338), m.RIBOSOMAL_BASES);
+				Assert.assertEquals(Long.valueOf(338), m.RIBOSOMAL_BASES);
 				Assert.assertEquals(50169L, m.CODING_BASES);
 				Assert.assertEquals(39045L, m.UTR_BASES);
 				Assert.assertEquals(10622L, m.INTRONIC_BASES);
