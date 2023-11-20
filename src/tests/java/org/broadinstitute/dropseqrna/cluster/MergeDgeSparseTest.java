@@ -23,6 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.cluster;
 
+import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderMerger;
@@ -34,6 +35,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.yaml.snakeyaml.Yaml;
+import picard.util.TabbedInputParser;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -49,6 +51,18 @@ public class MergeDgeSparseTest {
     private static final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/cluster");
     private static final File YAML = new File(TEST_DATA_DIR, "test.yaml");
 
+    
+    private File getTempReportFile(final String suffix) {
+        return TestUtils.getTempReportFile("MergeDgeSparseTest.", suffix);
+    }
+
+    private List<String[]> readLines(final File inputFile) {
+        final TabbedInputParser parser = new TabbedInputParser(false, inputFile);
+        final List<String[]> ret = parser.stream().toList();
+        CloserUtil.close(parser);
+        return ret;
+    }
+    
     @SuppressWarnings("unchecked")
     @Test(dataProvider = "testBasicDataProvider")
     public void testBasic(final String testName,
@@ -61,9 +75,8 @@ public class MergeDgeSparseTest {
                           final Integer min_genes,
                           final Integer min_transcripts,
                           final DgeHeaderMerger.Stringency headerStringency,
-                          final List<File> selectedCellsFiles) throws IOException {
-        final File tempDir = Files.createTempDirectory("MergeDgeSparseTest.").toFile();
-        tempDir.deleteOnExit();
+                          final List<File> selectedCellsFiles,
+                          final boolean writeNamesFiles) throws IOException {
 
         final Yaml yamlConverter = new Yaml();
         final Map<String, Object> yamlMap = (Map<String, Object>)yamlConverter.load(IOUtil.openFileForReading(YAML));
@@ -79,17 +92,17 @@ public class MergeDgeSparseTest {
                 (datasets.get(i)).put(MergeDgeSparse.YamlKeys.DatasetsKeys.NAME_KEY, prefix[i]);
             }
         }
-        final File outputYaml = new File(tempDir, "test.yaml");
+        final File outputYaml = getTempReportFile( "test.yaml");
         outputYaml.deleteOnExit();
         final BufferedWriter outputYamlWriter = IOUtil.openFileForBufferedWriting(outputYaml);
         yamlConverter.dump(yamlMap, outputYamlWriter);
         outputYamlWriter.close();
 
-        final File cellSizeOutputFile = new File(tempDir, "test.cell_size.txt");    cellSizeOutputFile.deleteOnExit();
-        final File dgeHeaderOutputFile = new File(tempDir, "test.dge_header.txt");  dgeHeaderOutputFile.deleteOnExit();
-        final File rawDgeOutputFile = new File(tempDir, "test.raw.dge.txt");        rawDgeOutputFile.deleteOnExit();
-        final File scaledDgeOutputFile = new File(tempDir, "test.scaled.dge.txt");  scaledDgeOutputFile.deleteOnExit();
-        final File discardedCellsOutputFile = new File(tempDir, "test.discarded_cells.txt"); discardedCellsOutputFile.deleteOnExit();
+        final File cellSizeOutputFile = getTempReportFile( "test.cell_size.txt");
+        final File dgeHeaderOutputFile = getTempReportFile( "test.dge_header.txt");
+        final File rawDgeOutputFile = getTempReportFile( "test.raw.dge.txt");
+        final File scaledDgeOutputFile = getTempReportFile( "test.scaled.dge.txt");
+        final File discardedCellsOutputFile = getTempReportFile( "test.discarded_cells.txt");
 
         final MergeDgeSparse merger = new MergeDgeSparse();
         merger.YAML = outputYaml;
@@ -118,6 +131,11 @@ public class MergeDgeSparseTest {
         }
         merger.CELL_BC_FILE = selectedCellsFiles;
         merger.DISCARDED_CELLS_FILE = discardedCellsOutputFile;
+        if (writeNamesFiles) {
+            merger.OUTPUT_FEATURES = getTempReportFile(".features.tsv.gz");
+            merger.OUTPUT_GENES = getTempReportFile(".genes.tsv.gz");
+            merger.OUTPUT_CELLS = getTempReportFile(".barcodes.tsv.gz");
+        }
 
         Assert.assertEquals(merger.doWork(), 0);
 
@@ -135,6 +153,18 @@ public class MergeDgeSparseTest {
                 Assert.assertEquals(scaledExpressionMatrix[i][j], rawExpressionMatrix[i][j], 0.000001);
             }
         }
+        if (writeNamesFiles) {
+            final List<String[]> cellBarcodes = readLines(merger.OUTPUT_CELLS);
+            Assert.assertEquals(cellBarcodes.size(), expectedNumCells);
+            final List<String []> genes = readLines(merger.OUTPUT_GENES);
+            Assert.assertEquals(genes.size(), expectedNumGenes);
+            final List<String []> features = readLines(merger.OUTPUT_FEATURES);
+            Assert.assertEquals(features.size(), expectedNumGenes);
+            if (!features.isEmpty()) {
+                Assert.assertEquals(features.get(0).length, 3);
+            }
+        }
+
     }
 
     @DataProvider(name="testBasicDataProvider")
@@ -144,14 +174,15 @@ public class MergeDgeSparseTest {
             selectedCellsFiles.add(path.toFile());
         }
         return new Object[][]{
-                {"basic", 85, 297, null, new String[]{"A", "B", "C"}, null, null, 1, null, DgeHeaderMerger.Stringency.STRICT, null},
-                {"cellCount", 82, 248, new int[]{50, 0, 200}, new String[]{"A", "B", "C"}, null, null, 1, null, DgeHeaderMerger.Stringency.STRICT, null},
-                {"noPrefix", 85, 297, null, null, null, null, 1, null, DgeHeaderMerger.Stringency.STRICT, null},
-                {"filterGenes", 85, 297, null, new String[]{"A", "B", "C"}, new String[]{"^mt-"}, null, 1, null, DgeHeaderMerger.Stringency.STRICT, null},
-                {"minCells", 74, 297, null, new String[]{"A", "B", "C"}, null, 2, 1, null, DgeHeaderMerger.Stringency.STRICT, null},
-                {"minGenes", 84, 171, null, new String[]{"A", "B", "C"}, null, null, 10, null, DgeHeaderMerger.Stringency.STRICT, null},
-                {"minTranscripts", 84, 236, null, new String[]{"A", "B", "C"}, null, null, 1, 10, DgeHeaderMerger.Stringency.STRICT, null},
-                {"selectedCells", 47, 9, null, new String[]{"A", "B", "C"}, null, null, 1, null, DgeHeaderMerger.Stringency.STRICT, selectedCellsFiles},
+                {"basic", 85, 297, null, new String[]{"A", "B", "C"}, null, null, 1, null, DgeHeaderMerger.Stringency.STRICT, null, false},
+                {"cellCount", 82, 248, new int[]{50, 0, 200}, new String[]{"A", "B", "C"}, null, null, 1, null, DgeHeaderMerger.Stringency.STRICT, null, false},
+                {"noPrefix", 85, 297, null, null, null, null, 1, null, DgeHeaderMerger.Stringency.STRICT, null, false},
+                {"filterGenes", 85, 297, null, new String[]{"A", "B", "C"}, new String[]{"^mt-"}, null, 1, null, DgeHeaderMerger.Stringency.STRICT, null, false},
+                {"minCells", 74, 297, null, new String[]{"A", "B", "C"}, null, 2, 1, null, DgeHeaderMerger.Stringency.STRICT, null, false},
+                {"minGenes", 84, 171, null, new String[]{"A", "B", "C"}, null, null, 10, null, DgeHeaderMerger.Stringency.STRICT, null, false},
+                {"minTranscripts", 84, 236, null, new String[]{"A", "B", "C"}, null, null, 1, 10, DgeHeaderMerger.Stringency.STRICT, null, false},
+                {"selectedCells", 47, 9, null, new String[]{"A", "B", "C"}, null, null, 1, null, DgeHeaderMerger.Stringency.STRICT, selectedCellsFiles, false},
+                {"basicWithNames", 85, 297, null, new String[]{"A", "B", "C"}, null, null, 1, null, DgeHeaderMerger.Stringency.STRICT, null, true},
         };
     }
 
@@ -170,7 +201,7 @@ public class MergeDgeSparseTest {
         final String cellBarcodeToBeFiltered = "CCCC";
         final String prefix = "prefix";
         final String prefixedCellBarcodeToBeFiltered = prefix + "_" + cellBarcodeToBeFiltered;
-        final File denseDgeFile = TestUtils.getTempReportFile("MergeDgeSparseTest.", ".digital_expression.txt");
+        final File denseDgeFile = getTempReportFile( ".digital_expression.txt");
         PrintStream denseDgePrintStream = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(denseDgeFile));
         denseDgePrintStream.println(StringUtil.join("\t", "GENE", "AAAA", cellBarcodeToBeFiltered, "GGGG"));
         final int numGenes = 3;
@@ -197,19 +228,19 @@ public class MergeDgeSparseTest {
         yamlMap.put(MergeDgeSparse.YamlKeys.DATASETS_KEY, Collections.singletonList(datasetMap));
         datasetMap.put(MergeDgeSparse.YamlKeys.DatasetsKeys.NAME_KEY, prefix);
         datasetMap.put(MergeDgeSparse.YamlKeys.DatasetsKeys.PATH_KEY, denseDgeFile.getPath());
-        final File outputYaml = TestUtils.getTempReportFile("MergeDgeSparseTest.", ".yaml");
+        final File outputYaml = getTempReportFile( ".yaml");
         final BufferedWriter outputYamlWriter = IOUtil.openFileForBufferedWriting(outputYaml);
         new Yaml().dump(yamlMap, outputYamlWriter);
         outputYamlWriter.close();
 
         final MergeDgeSparse merger = new MergeDgeSparse();
         merger.YAML = outputYaml;
-        merger.RAW_DGE_OUTPUT_FILE = TestUtils.getTempReportFile("MergeDgeSparseTest.", ".mtx");
+        merger.RAW_DGE_OUTPUT_FILE = getTempReportFile( ".mtx");
         merger.MIN_CELLS = 2;
         merger.MIN_GENES = 1;
         merger.MIN_TRANSCRIPTS = 1;
         merger.FILTERED_GENE_RE = Collections.emptyList();
-        merger.DISCARDED_CELLS_FILE = TestUtils.getTempReportFile("MergeDgeSparseTest.", ".discarded_cells.txt");
+        merger.DISCARDED_CELLS_FILE = getTempReportFile( ".discarded_cells.txt");
         Assert.assertEquals(merger.doWork(), 0);
 
         final DGEMatrix rawMatrix = DGEMatrix.parseFile(merger.RAW_DGE_OUTPUT_FILE);

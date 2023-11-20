@@ -28,6 +28,7 @@ import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.RuntimeIOException;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.barnyard.digitalexpression.AbstractTripletDgeWriterClp;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderCodec;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderMerger;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
@@ -55,7 +56,7 @@ import java.util.stream.Collectors;
         programGroup = DropSeq.class
 )
 public class MergeDgeSparse
-        extends CommandLineProgram {
+        extends AbstractTripletDgeWriterClp {
 
     @Argument(shortName = "Y", doc="Input file containing list of data sets as for clustering workflow.\n" +
             "The file is expected to contain a 'datasets' list.  Each element of the list will contain:\n\n" +
@@ -275,6 +276,8 @@ public class MergeDgeSparse
                 throw new RuntimeIOException(e);
             }
         }
+
+        maybeWriteNamesFiles(geneFiltererSorter.getSortedGeneNames(), cellBarcodes);
 
         LOG.info(numFilteredElements + " filtered by a gene filter.");
         return 0;
