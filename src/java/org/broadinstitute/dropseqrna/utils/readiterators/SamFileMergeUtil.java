@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.utils.readiterators;
 import com.google.common.collect.Interner;
 import com.google.common.collect.Interners;
 import htsjdk.samtools.*;
+import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
 import picard.PicardException;
 
@@ -80,7 +81,15 @@ public class SamFileMergeUtil {
                 outputSortOrder = SAMFileHeader.SortOrder.unsorted;
             }
             final SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(outputSortOrder, headers, false);
-            final MergingSamRecordIterator iterator = new MergingSamRecordIterator(headerMerger, readers, true);
+            final CloseableIterator<SAMRecord> iterator;
+            if (outputSortOrder == SAMFileHeader.SortOrder.unsorted) {
+                // If unsorted, output the reads in the same order they came in.
+                // In contrast, MergingSamRecordIterator re-orders in an arbitrary way based on
+                // identityHashCode.
+                iterator = new UnsortedMergingSamRecordIterator(headerMerger.getMergedHeader(), readers);
+            } else {
+                iterator = new MergingSamRecordIterator(headerMerger, readers, true);
+            }
             return new SamHeaderAndIterator(headerMerger.getMergedHeader(), iterator);
         }
     }
