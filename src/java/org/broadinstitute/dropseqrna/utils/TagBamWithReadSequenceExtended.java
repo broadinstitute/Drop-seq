@@ -90,6 +90,18 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 	@Argument (doc="The tag for the barcode quality.  The number of bases that are below the quality threshold.")
 	public String TAG_QUALITY="XQ";
 
+/*
+	Don't enable this option because it is prone to user error and we don't have the use case we though we had.
+	@Argument(doc="If input is unsorted, don't queryname sort, but instead assume that read 2 will still immediately follow read 1. " +
+			"If the input is queryname sorted, this has no effect.  If if input is not queryname sorted but the 2 reads in each " +
+			"pair are adjacent in the input, setting this to true will save time.  If the input is not queryname sorted and " +
+			"ALLOW_UNSORTED is false, the input will be sorted by this program.  Not relevant if PAIRED_MODE is false.")
+*/
+	public boolean ALLOW_UNSORTED = false;
+
+	@Argument(doc="Set to false to process each read separately rather than processing a pair of reads together.")
+	public boolean PAIRED_MODE = true;
+
 	@Override
 	protected int doWork() {
 		if (this.TAG_BARCODED_READ && this.DISCARD_READ) {
@@ -106,11 +118,11 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		// get the header.
 		SamReader inputSam = SamReaderFactory.makeDefault().open(INPUT);
 		SAMFileHeader h= inputSam.getFileHeader();
-		PeekableIterator<SAMRecord> iter = new PeekableIterator<>(CustomBAMIterators.getQuerynameSortedRecords(inputSam));
+		final PeekableIterator<SAMRecord> iter = new PeekableIterator<>(ALLOW_UNSORTED? inputSam.iterator(): CustomBAMIterators.getQuerynameSortedRecords(inputSam));
 
 		SamHeaderUtil.addPgRecord(h, this);
 		// only assume reads are correctly sorted for output if the input BAM is queryname sorted.
-		boolean assumeSorted = h.getSortOrder().equals(SortOrder.queryname);
+		boolean assumeSorted = ALLOW_UNSORTED || h.getSortOrder().equals(SortOrder.queryname);
 		SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(h, assumeSorted, OUTPUT);
 
 		List<BaseRange> baseRanges = BaseRange.parseBaseRange(this.BASE_RANGE);
@@ -122,38 +134,36 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		ProgressLogger progress = new ProgressLogger(this.log);
 
 		while (iter.hasNext()) {
-			//log.info(count);
 			SAMRecord r1 = iter.next();
-			SAMRecord r2 = iter.peek();
-
-			// if the 2nd read is null, then you're just about done, so don't test the non-existent read name
-			boolean sameName=false;
-			if (r2!=null)
-				sameName=r1.getReadName().equals(r2.getReadName());
-
-			if (!sameName) {
-				processSingleRead(r1, filter, writer, this.HARD_CLIP_BASES);
-				continue;
-			}
-
-			// check to see if the two reads are properly paired if they have the same name
-			ReadPair p = new ReadPair(r1, r2);
-			if (p.testProperlyPaired()==false) {
-				log.error(("Reads not properly paired! R1: " + r1.getReadName() + " R2: " + r2.getReadName()));
-				System.exit(1);
-
-			}
-			// since you're in paired end land, make the 2nd read a real read and not a peeked read.
-			r2=iter.next();
-			r1=p.getRead1();
-			r2=p.getRead2();
-			if (BARCODED_READ==1)
-				processReadPair(r1, r2, filter, writer, this.DISCARD_READ, this.HARD_CLIP_BASES);
-			if (BARCODED_READ==2)
-				processReadPair(r2, r1, filter, writer, this.DISCARD_READ, this.HARD_CLIP_BASES);
 			progress.record(r1);
-			progress.record(r2);
+			if (!PAIRED_MODE) {
+				processSingleRead(r1, filter, writer, this.HARD_CLIP_BASES);
+			} else {
+				//log.info(count);
+				SAMRecord r2 = iter.peek();
+				if (r2 == null) {
+					throw new RuntimeException("The last read in the input is missing its mate.  Read: " + r1);
+				}
+				if (!r1.getReadName().equals(r2.getReadName())) {
+					throw new RuntimeException("Mate for read does not follow read.  R1: " + r1 +
+							"; R2: " + r2);
+				}
 
+				// check to see if the two reads are properly paired if they have the same name
+				ReadPair p = new ReadPair(r1, r2);
+				if (p.testProperlyPaired() == false) {
+					throw new RuntimeException("Reads not properly paired! R1: " + r1 + "; R2: " + r2);
+				}
+				// since you're in paired end land, make the 2nd read a real read and not a peeked read.
+				r2 = iter.next();
+				r1 = p.getRead1();
+				r2 = p.getRead2();
+				if (BARCODED_READ == 1)
+					processReadPair(r1, r2, filter, writer, this.DISCARD_READ, this.HARD_CLIP_BASES);
+				if (BARCODED_READ == 2)
+					processReadPair(r2, r1, filter, writer, this.DISCARD_READ, this.HARD_CLIP_BASES);
+				progress.record(r2);
+			}
 		}
 		log.info("Total of " + progress.getCount() + " reads processed.");
 		writer.close();
