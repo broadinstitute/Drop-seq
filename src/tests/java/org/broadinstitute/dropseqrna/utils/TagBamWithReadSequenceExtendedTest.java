@@ -142,6 +142,9 @@ public class TagBamWithReadSequenceExtendedTest {
         clp.INPUT = samRecords.samFile;
         clp.BARCODE_QUALITY_TAG = "XY";
         clp.OUTPUT = File.createTempFile("tagged.", ".sam");
+        if (whichRead == WhichRead.Unpaired) {
+            clp.PAIRED_MODE = false;
+        }
         clp.OUTPUT.deleteOnExit();
         clp.SUMMARY = File.createTempFile("TagBamWithReadSequenceExtended.", ".tag_summary.txt");
         clp.SUMMARY.deleteOnExit();

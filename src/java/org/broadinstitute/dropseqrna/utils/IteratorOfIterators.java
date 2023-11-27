@@ -57,6 +57,9 @@ implements Iterator<T> {
 
     @Override
     public T next() {
+        if (!hasNext()) {
+            throw new IllegalStateException("Cannot call next() when !hasNext()");
+        }
         return currentIt.next();
     }
 
