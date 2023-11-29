@@ -1,11 +1,11 @@
 
 ## METRICS CLASS	org.broadinstitute.dropseqrna.utils.SplitBamSummaryMetric
 MEAN	VARIANCE
-21036	90020730
+1968	601874
 
 ## HISTOGRAM	java.lang.Integer
 SPLIT_INDEX	READ_COUNT
-0	15586
-1	31992
-2	15531
+0	1506
+1	2864
+2	1535
 
