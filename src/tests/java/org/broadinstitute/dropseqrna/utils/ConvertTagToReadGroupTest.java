@@ -48,7 +48,7 @@ import htsjdk.samtools.util.IOUtil;
 
 public class ConvertTagToReadGroupTest {
 	private static final File TESTDATA_DIR = new File("testdata/org/broadinstitute/dropseq/utils");
-	private static final File ALIGNED_UNPAIRED_BAM = new File(TESTDATA_DIR, "N701_small.bam");
+	private static final File ALIGNED_UNPAIRED_BAM = new File(TESTDATA_DIR, "N701_very_small.sam");
 	private static final File NO_RG_BAM = new File(TESTDATA_DIR, "SequenceDictionaryIntersectionTest/no_chr.sam");
 	private static final String TAG = "XC";
 	private static final String BAD_TAG = "XX";

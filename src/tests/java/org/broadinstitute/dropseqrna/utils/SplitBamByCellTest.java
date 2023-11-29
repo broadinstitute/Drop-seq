@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 
 public class SplitBamByCellTest {
 
-    public static final File TEST_BAM = new File("testdata/org/broadinstitute/dropseq/barnyard/DgeStrandFuncTest/DgeStrandFuncTest.bam");
+    public static final File TEST_BAM = new File("testdata/org/broadinstitute/dropseq/utils/SplitBamByCell.aligned.bam");
     private static final File EXPECTED_REPORT = new File ("testdata/org/broadinstitute/dropseq/utils/SplitBamByCell.report");
     private static final File EXPECTED_MANIFEST = new File ("testdata/org/broadinstitute/dropseq/utils/SplitBamByCell.split_bam_manifest");
     private static final File QUERYNAME_SORTED_BAM = new File("testdata/org/broadinstitute/dropseq/metrics/compute_umi_sharing.unmapped.sam");
@@ -146,7 +146,7 @@ public class SplitBamByCellTest {
         bamSplitter.OUTPUT = TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.REPORT = reportFile;
-        bamSplitter.TARGET_BAM_SIZE = "1.5M";
+        bamSplitter.TARGET_BAM_SIZE = "150K";
         bamSplitter.DELETE_INPUTS = false;
         Assert.assertEquals(bamSplitter.doWork(), 0);
 
@@ -179,7 +179,6 @@ public class SplitBamByCellTest {
         bamSplitter.OUTPUT = previousOutputTemplate;
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.REPORT = reportFile;
-        bamSplitter.DELETE_INPUTS = false;
         bamSplitter.TARGET_BAM_SIZE = "2M";
         bamSplitter.OVERWRITE_EXISTING = true;
         bamSplitter.DELETE_INPUTS = true;
@@ -356,8 +355,8 @@ public class SplitBamByCellTest {
     public Object[][] testSplitGeneThresholdFailDataProvider() {
         return new Object[][] {
                 {-1d},
-                {0.9},
-                {60000d},
+                {0.95},
+                {5500d},
         };
     }
 
