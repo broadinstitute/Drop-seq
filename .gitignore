@@ -6,3 +6,5 @@ jacoco_reports
 # Ignore Gradle project-specific cache directory
 .gradle
 
+.idea
+

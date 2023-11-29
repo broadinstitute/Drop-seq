@@ -50,7 +50,7 @@ public class GenotypeMatrixTest {
 		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);
 		Set<String> samples = new HashSet<>(vcfReader.getFileHeader().getSampleNamesInOrder());
 		Iterator<VariantContext> filteredIter=vcfReader.iterator();
-		filteredIter = new SimpleDiploidVariantContextFilter(filteredIter, true, false, 2, true);
+		filteredIter = new SimpleDiploidVariantContextFilter(filteredIter, true, false, 2);
 
 		GenotypeMatrix m = new GenotypeMatrix(filteredIter, 0, samples);
 
@@ -83,7 +83,7 @@ public class GenotypeMatrixTest {
 		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);
 
 		Iterator<VariantContext> filteredIter=vcfReader.iterator();
-		filteredIter = new SimpleDiploidVariantContextFilter(filteredIter, true, false, 2, true);
+		filteredIter = new SimpleDiploidVariantContextFilter(filteredIter, true, false, 2);
 		Set<String> samples = new HashSet<>(vcfReader.getFileHeader().getSampleNamesInOrder());
 		GenotypeMatrix m = new GenotypeMatrix(filteredIter, 30, samples);
 
@@ -116,7 +116,7 @@ public class GenotypeMatrixTest {
 		final VCFFileReader vcfReader = new VCFFileReader(vcf, false);
 		Set<String> samples = new HashSet<>(vcfReader.getFileHeader().getSampleNamesInOrder());
 		Iterator<VariantContext> filteredIter=vcfReader.iterator();
-		filteredIter = new SimpleDiploidVariantContextFilter(filteredIter, true, false, 2, true);
+		filteredIter = new SimpleDiploidVariantContextFilter(filteredIter, true, false, 2);
 
 		GenotypeMatrix m = new GenotypeMatrix(filteredIter, 30, samples);
 		Interval interval = new Interval ("1", 1337334, 1337334);

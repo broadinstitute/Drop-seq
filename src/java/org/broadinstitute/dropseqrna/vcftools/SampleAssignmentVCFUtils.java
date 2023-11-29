@@ -36,10 +36,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollect
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.TransformingIterator;
 import org.broadinstitute.dropseqrna.utils.VariantContextProgressLoggerIterator;
-import org.broadinstitute.dropseqrna.vcftools.filters.CallRateVariantContextFilter;
-import org.broadinstitute.dropseqrna.vcftools.filters.ChromosomeVariantFilter;
-import org.broadinstitute.dropseqrna.vcftools.filters.FlipSNPFilter;
-import org.broadinstitute.dropseqrna.vcftools.filters.SimpleDiploidVariantContextFilter;
+import org.broadinstitute.dropseqrna.vcftools.filters.*;
 
 import com.google.common.collect.Sets;
 
@@ -65,7 +62,7 @@ public class SampleAssignmentVCFUtils {
 	 * Since we iterate through the VCF once to establish an interval list of sites to query, and then once to look at genotypes,
 	 * have a 1 stop shop to set up the filtered iterator that handles all processing of VariantContext data.
 	 * We require at least one sample to have a called genotype for the variant to enter the iterator.
-	 * @param VCFFile The VCF file to read.
+	 * @param vcfReader The VCF file to read.
 	 * @param samples A set of samples to filter on.  Can be empty to not filter samples.
 	 * @param log Should a progress logger iterator be added to this iterator chain at the start?  Pass in a Log object if you want logging.
 	 * @return A VCF iterator that can (optionally) reduce the number of samples in the VCF, find high quality variants, etc.
@@ -100,9 +97,14 @@ public class SampleAssignmentVCFUtils {
 
 		if (samples.size()>0)
 			filteredIter = new VariantContextSampleTransformer (filteredIter, new HashSet<>(samples));
-		
+
+		// When filtering out monomorphic sites, you must be looking at multiple samples to have some allele frequency to
+		// properly run the calculation.  If you only have a single donor, all sites appear monomorphic.
+		if (!retainMonomorphicSNPs && samples.size()>1) {
+			filteredIter = new MonomorphicVariantContextFilter(filteredIter, samples);
+		}
 		// filter on the variant #alleles, quality, etc.
-		filteredIter = new SimpleDiploidVariantContextFilter(filteredIter, true, true, 2, retainMonomorphicSNPs);
+		filteredIter = new SimpleDiploidVariantContextFilter(filteredIter, true, true, 2);
 		// filter on genotype call rate
 		filteredIter = new CallRateVariantContextFilter(filteredIter, genotypeGCThreshold, fractionPassing);
 		
@@ -127,8 +129,9 @@ public class SampleAssignmentVCFUtils {
 	 * This filters out variants not flagged as "PASSED", variants that aren't SNPs, or variants with more than 2 alleles.
 	 * The intervalList generated uses the sequence dictionary from the VCF file.
 	 * This is useful as it enforces how the BAM chromosomes are later sorted when the SampleGenotypeProbabilitiesIterator is created.
-	 * @param VCFFile The VCF File to parse
-	 * @param bamFile The BAM file to get a sequence dictionary for the IntervalList from.
+	 * @param vcfFile The VCF File to parse
+	 * @param samples A list of samples that will subset the VCF.  If empty use all samples in the VCF.
+	 * @param retainMonomorphicSNPs If true, retain sites that do not vary in the population (as defined by samples).
 	 * @param preserveIntervalNames Set to true to use the genotype site ID (via site.getID) as the interval name
 	 * @param vcfWriter (Optional) write the VCF records from the iterator to this file.  Set to null to ignore.
 	 * @return An intervalList of variant locations to examine in the BAM file.
@@ -277,7 +280,7 @@ public class SampleAssignmentVCFUtils {
 		@Override
 		public VariantContext next() {
 			VariantContext vc = this.underlyingIterator.next();
-			return vc.subContextFromSamples(sampleNames);
+			return vc.subContextFromSamples(sampleNames, false);
 		}
 	}
 

@@ -23,44 +23,40 @@
  */
 package org.broadinstitute.dropseqrna.vcftools.filters;
 
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-
-import org.apache.commons.lang3.ArrayUtils;
-import org.broadinstitute.dropseqrna.TranscriptomeException;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
-
 import htsjdk.samtools.util.Log;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContext.Type;
+import org.broadinstitute.dropseqrna.TranscriptomeException;
+import org.broadinstitute.dropseqrna.utils.FilteredIterator;
+
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 public class SimpleDiploidVariantContextFilter extends FilteredIterator <VariantContext> {
 
 	private final Log log = Log.getInstance(SimpleDiploidVariantContextFilter.class);
 
 	private final boolean filterNonSNPs;
-	private final boolean filterFilterFlagedVariants;
+	private final boolean filterFilterFlaggedVariants;
 	private final int maxNumAlleles;
-	private final boolean retainMonmorphicSNPs;
 	// Internally stored as int, converts null to -1.
 	private final int maxAlleleLength;
 	private final boolean verbose;
 	private final List<Character> canonicalBaseList= Arrays.asList('A', 'C', 'G', 'T');
 	private final byte [] canonicalBaseArray= new byte [canonicalBaseList.size()];
-	
+
 	/**
 	 * Filters the base length of alleles to 1 by default.
 	 * @param underlyingIterator
 	 * @param filterNonSNPs
-	 * @param filterFilterFlagedVariants
+	 * @param filterFilterFlaggedVariants
 	 * @param maxNumAlleles
-	 * @param retainMonmorphicSNPs
 	 */
-	public SimpleDiploidVariantContextFilter (final Iterator<VariantContext> underlyingIterator, final boolean filterNonSNPs, final boolean filterFilterFlagedVariants, 
-			final int maxNumAlleles, final boolean retainMonmorphicSNPs) {
-		this(underlyingIterator, filterNonSNPs, filterFilterFlagedVariants, maxNumAlleles, retainMonmorphicSNPs, 1, false);
+	public SimpleDiploidVariantContextFilter (final Iterator<VariantContext> underlyingIterator, final boolean filterNonSNPs, final boolean filterFilterFlaggedVariants,
+			final int maxNumAlleles) {
+		this(underlyingIterator, filterNonSNPs, filterFilterFlaggedVariants, maxNumAlleles, 1, false);
 	}
 
 	/**
@@ -68,17 +64,16 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 	 * 
 	 * @param underlyingIterator An iterator of variant context objects to filter
 	 * @param filterNonSNPs Remove non-SNP variants.
-	 * @param filterFilterFlagedVariants Remove variants that dont have a PASS filter
+	 * @param filterFlaggedVariants Remove variants that dont have a PASS filter
 	 * @param maxNumAlleles Restrict the maximum number of alleles.  Typically used to remove multi-allelic SNPs
-	 * @param retainMonmorphicSNPs Remove variants that are do not vary in the tested population
 	 * @param maxAlleleLength if set to null, do not filter on allele length.  If set to length one, also checks that the base for 
 	 * each allele is one of the canonical bases - A/C/G/T.  This excludes N and * bases.
 	 */
-	public SimpleDiploidVariantContextFilter (final Iterator<VariantContext> underlyingIterator, final boolean filterNonSNPs, final boolean filterFilterFlagedVariants, 
-			final Integer maxNumAlleles, final boolean retainMonmorphicSNPs, final Integer maxAlleleLength, final boolean verbose) {
+	public SimpleDiploidVariantContextFilter (final Iterator<VariantContext> underlyingIterator, final boolean filterNonSNPs, final boolean filterFlaggedVariants,
+			final Integer maxNumAlleles, final Integer maxAlleleLength, final boolean verbose) {
 		super(underlyingIterator);
 		this.filterNonSNPs=filterNonSNPs;
-		this.filterFilterFlagedVariants=filterFilterFlagedVariants;
+		this.filterFilterFlaggedVariants =filterFlaggedVariants;
 		
 		if (maxAlleleLength==null) {
 			this.maxAlleleLength=-1;
@@ -87,7 +82,6 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 		}
 		
 		this.maxNumAlleles=maxNumAlleles;
-		this.retainMonmorphicSNPs=retainMonmorphicSNPs;		
 		this.verbose=verbose;
 		
 		for (int i=0; i<canonicalBaseList.size(); i++) {			
@@ -98,7 +92,7 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 		
 	}
 	public SimpleDiploidVariantContextFilter (final Iterator<VariantContext> underlyingIterator) {
-		this(underlyingIterator, true, true, 2, false);
+		this(underlyingIterator, true, true, 2);
 	}
 
 	@Override
@@ -109,7 +103,7 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 			return true;
 		}
 		// if requested, filter out any "filtered" site.
-		if (filterFilterFlagedVariants && site.isFiltered()) {
+		if (filterFilterFlaggedVariants && site.isFiltered()) {
 			if (verbose) log.info("Rejecting variant site filtered "+site.toStringWithoutGenotypes());
 			return true;
 		}
@@ -130,14 +124,14 @@ public class SimpleDiploidVariantContextFilter extends FilteredIterator <Variant
 		}
 		
 		// if requested, filter out nonSNP sites.
-		// if the site is a non snp because it's monomorphic and you want to retain those, then return false.
 		if (filterNonSNPs && !site.isSNP()) {
-			if (site.getType()==Type.NO_VARIATION && retainMonmorphicSNPs)
-				return false;
-			if (verbose) log.info("Rejecting variant not a SNP or monomorphic in population "+site.toStringWithoutGenotypes());
+			if (verbose) log.info("Rejected variant not a SNP and nonSNPs are filtered" +site.toStringWithoutGenotypes());
 			return true;
 		}
 
+		// if the site does not vary and we don't want to retain monomorphic sites then filter this site.
+
+		// VariantContext passes all filters
 		return false;
 	}
 	

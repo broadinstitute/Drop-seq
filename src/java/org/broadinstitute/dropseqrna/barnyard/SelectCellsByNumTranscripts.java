@@ -160,7 +160,7 @@ public class SelectCellsByNumTranscripts
 
         log.info("Found " + transcriptsPerCell.size() + " cells with enough transcripts");
 
-        final Map.Entry<String, Integer> transcriptsPerCellArray[] = transcriptsPerCell.entrySet().toArray(new Map.Entry[transcriptsPerCell.size()]);
+        final Map.Entry<String, Integer>[] transcriptsPerCellArray = transcriptsPerCell.entrySet().toArray(new Map.Entry[transcriptsPerCell.size()]);
         Arrays.sort(transcriptsPerCellArray, new EntryComparator());
 
         final List<String> finalBarcodes = new ArrayList<>(transcriptsPerCellArray.length);
@@ -282,8 +282,8 @@ public class SelectCellsByNumTranscripts
 
     private class MultiOrganismMapContainer
             implements MapContainer {
-        final SingleOrganismMapContainer innerMapContainer[] = new SingleOrganismMapContainer[ORGANISM.size()];
-        final String genePrefixes[] = new String[ORGANISM.size()];
+        final SingleOrganismMapContainer[] innerMapContainer = new SingleOrganismMapContainer[ORGANISM.size()];
+        final String[] genePrefixes = new String[ORGANISM.size()];
 
         public MultiOrganismMapContainer(final List<String> cellBarcodes) {
             for (int i = 0; i < ORGANISM.size(); ++i) {

@@ -62,7 +62,9 @@ public class MonomorphicVariantContextFilter extends FilteredIterator <VariantCo
 				if (g.isHet()) c.increment(1);
 			}
 		}
-		boolean filter = c.getSize()<2;
+		// filter when the total number of observed alleles are all homozygous.
+		int total = c.getTotalCount();
+		boolean filter = c.getCountForKey(0)==total || c.getCountForKey(2)==total;
 		return (filter);
 	}
 
