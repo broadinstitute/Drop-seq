@@ -73,27 +73,6 @@ public class BeadSynthesisErrorData implements Serializable {
 		return b.toString();
 	}
 
-	/**
-	 * Build an object stub for testing that has the cell barcode and the error type.
-	 * This error type is set for all calls to getErrorType.
-	 * @param cellBarcode
-	 * @param errorType
-	 * @return
-	 */
-	/*
-	static BeadSynthesisErrorData getInstance(final String cellBarcode, final BeadSynthesisErrorType errorType, final BaseDistributionMetricCollection baseCounts) {
-		BeadSynthesisErrorData r = new BeadSynthesisErrorData(cellBarcode);
-		r.baseCounts=baseCounts;
-		r.errorTypeCached=errorType;
-		r.errorTypeExtendedCached=errorType;
-		r.dataChanged=false;
-		r.numReads=0;
-		r.numTranscripts=0;
-		r.numUMIs=0;
-		return null;
-	}
-	*/
-
 	//maybe add a finalize() method that gets the count of the total UMIs in the object counter, caches the number, and throws away the object counter since that might be expensive
 	// to store.
 	// if you finalize, you also need to run AbstractDetectBeadSynthesisErrors.getEnhancedErrorType first, so that should probably be part of this class, and not an "enhanced" error.
@@ -114,8 +93,7 @@ public class BeadSynthesisErrorData implements Serializable {
 	 * No more data can be added after this is called.  The collection of UMIs will be discarded to save space.
 	 * Whatever call was made to getErrorType will be cached, so one of the methods must be called before finalize.
 	 */
-	@Override
-	public void finalize () {
+	public void finalizeData() {
 		if (this.errorTypeCached==null && this.errorTypeExtendedCached==null)
 			throw new IllegalStateException("Can't finalize until call to getErrorType is made!");
 		// cache the number of UMIs.

@@ -72,7 +72,7 @@ import picard.cmdline.StandardOptionDefinitions;
                 "4) Throw away barcodes with less than threshold # of reads. " +
                 "5) Count the number of remaining unique molecular barcodes for the gene." +
                 "This program requires a tag for what gene a read is on, a molecular barcode tag, and a exon tag.  The exon and gene tags may not be present on every read." +
-                "When filtering the data for a set of barcodes to use, the data is filtered by ONE of the following methods (and if multiple params are filled in, the top one takes precidence):" +
+                "When filtering the data for a set of barcodes to use, the data is filtered by ONE of the following methods (and if multiple params are filled in, the top one takes precedence):" +
                 "1) CELL_BC_FILE, to filter by the some fixed list of cell barcodes" +
                 "2) MIN_NUM_GENES_PER_CELL " +
                 "3) MIN_NUM_TRANSCRIPTS_PER_CELL " +
@@ -146,11 +146,6 @@ public class DigitalExpression extends DGECommandLineBase {
             }
         }
 
-        // boolean check = new Utils().validateGetCellBarcodeListParams(this.INPUT, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-        //		this.GENE_TAG, this.EXON_TAG, this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
-        //		this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES);
-
-
         List<String> cellBarcodes=new BarcodeListRetrieval().getCellBarcodes(Collections.singletonList(this.INPUT), this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
                 this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
                 this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
@@ -189,7 +184,7 @@ public class DigitalExpression extends DGECommandLineBase {
         if (OUTPUT_HEADER)
 			writeDgeHeader(out);
 
-        //TODO should the ambiguous reads handling be a parameter?  It's set to false by default for DGE to get rid of ambiguous gene assignments on reads
+        // TODO should the ambiguous reads handling be a parameter?  It's set to false by default for DGE to get rid of ambiguous gene assignments on reads
         UMIIterator realUMIIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
                 GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
                 this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ, false, cellBarcodes,
@@ -221,7 +216,7 @@ public class DigitalExpression extends DGECommandLineBase {
 
         UMICollection batch;
         while ((batch=umiIterator.next())!=null) {
-            if (batch==null || batch.isEmpty())
+            if (batch.isEmpty())
 				continue;
             String currentGene = batch.getGeneName();
             // if just starting the loop
@@ -235,7 +230,7 @@ public class DigitalExpression extends DGECommandLineBase {
                 int readCount = batch.getDigitalExpression(this.MIN_BC_READ_THRESHOLD, this.EDIT_DISTANCE, true);
                 readCountMap.put(batch.getCellBarcode(), readCount);
 
-                // if you're gather the long file format, do it here.
+                // if you're gathering the long file format, do it here.
                 if (longFormatRecordCollection!=null)
                 	addLongFormatRecord(longFormatRecordCollection, batch.getCellBarcode(), batch.getGeneName(), molBCCount);
             }
@@ -251,14 +246,14 @@ public class DigitalExpression extends DGECommandLineBase {
                 int readCount = batch.getDigitalExpression(this.MIN_BC_READ_THRESHOLD, this.EDIT_DISTANCE, true);
                 readCountMap.put(batch.getCellBarcode(), readCount);
                 gene=currentGene;
-                // if you're gather the long file format, do it here.
+                // if you're gathering the long file format, do it here.
                 if (longFormatRecordCollection!=null)
                 	addLongFormatRecord(longFormatRecordCollection, batch.getCellBarcode(), batch.getGeneName(), molBCCount);
 
             }
         }
         // write out remainder
-        if (transcriptCountMap.isEmpty()==false) {
+        if (!transcriptCountMap.isEmpty()) {
             writeStats (gene, transcriptCountMap, cellBarcodes, out);
             addToSummary(readCountMap, transcriptCountMap, summaryMap);
         }
@@ -376,8 +371,7 @@ public class DigitalExpression extends DGECommandLineBase {
     private void writeHeader(final PrintStream out, final List<String> cellBarcodes) {
         List<String> header = new ArrayList<>(cellBarcodes.size()+1);
         header.add("GENE");
-        for (String c: cellBarcodes)
-			header.add(c);
+        header.addAll(cellBarcodes);
         String h = StringUtils.join(header, "\t");
         out.println(h);
     }
@@ -467,50 +461,5 @@ public class DigitalExpression extends DGECommandLineBase {
     public static void main(final String[] args) {
         System.exit(new DigitalExpression().instanceMain(args));
     }
-
-    /**
-     * Collapses a bunch of strings by the edit distance.
-     * If edit distance computations indicate it's greater than threshold edit distance, then the threshold is returned.
-     * This is to avoid hard work on indel calculations when edit distance between two strings is high.
-     * You can safely set threshold to be 3 * edit distance.
-     * @param barcodes
-     * @param editDistance
-     * @return
-     */
-    /*
-    public ObjectCounter <String> collapseByEditDistance (final ObjectCounter<String> barcodes, final int editDistance) {
-        // map the barcode to the object so I can look up counts
-
-
-        ObjectCounter <String> result = new ObjectCounter<>();
-        List<String> barcodeList = barcodes.getKeysOrderedByCount(true);
-
-        // short circuit for ED=0
-        if (this.EDIT_DISTANCE==0) {
-            for (String barcode: barcodeList) {
-                int count=barcodes.getCountForKey(barcode);
-                result.setCount(barcode, count);
-            }
-            return (result);
-        }
-
-        while (barcodeList.isEmpty()==false) {
-            String b = barcodeList.get(0);
-            barcodeList.remove(b);
-            // this is still the "old" single core version.  Molecular barcode counts are small, so this may be ok.
-            Set<String> closeBC = EDUtils.getInstance().getStringsWithinEditDistanceWithIndel(b,barcodeList, editDistance);
-            barcodeList.removeAll(closeBC);
-            // for counting.
-            closeBC.add(b);
-            int totalCount = 0;
-            for (String bc: closeBC) {
-                int count = barcodes.getCountForKey(bc);
-                totalCount+=count;
-            }
-            result.setCount(b, totalCount);
-        }
-        return (result);
-    }
-	*/
 
 }

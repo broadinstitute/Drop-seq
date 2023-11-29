@@ -50,7 +50,7 @@ public class BeadSynthesisErrorDataTest {
 		d.addUMI(umiCollection);
 
 		d.getErrorType(threshold);
-		d.finalize();
+		d.finalizeData();
 		boolean hasError = d.hasSynthesisError(threshold);
 		Assert.assertTrue(hasError);
 

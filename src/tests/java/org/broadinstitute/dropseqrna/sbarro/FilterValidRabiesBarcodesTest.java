@@ -57,8 +57,8 @@ public class FilterValidRabiesBarcodesTest {
 		int r = f.doWork();
 		Assert.assertEquals(r, 0);
 		
-		TestUtils.assertSamFilesSame(EXPECTED_OUTPUT_ACCEPTED, f.OUTPUT_ACCEPTED);
-		TestUtils.assertSamFilesSame(EXPECTED_OUTPUT_REJECTED, f.OUTPUT_REJECTED);
+		TestUtils.assertSamFilesSame(EXPECTED_OUTPUT_ACCEPTED, f.OUTPUT_ACCEPTED, false);
+		TestUtils.assertSamFilesSame(EXPECTED_OUTPUT_REJECTED, f.OUTPUT_REJECTED, false);
 		
 		
 	}

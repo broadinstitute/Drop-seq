@@ -57,8 +57,9 @@ public class MinorAlleleFreqVariantContextFilter extends FilteredIterator <Varia
 
 	/**
 	 * Calculate minor allele freq from a subset of donors in VCF.
-	 * @param site
-	 * @param samples.  If empty, use all samples in VCF.
+	 * @param site The variant to test
+	 * @param gqThreshold The minimum genotype quality to include a donor genotype in the calculation
+	 * @param samples If empty, use all samples in VCF.
 	 * @return
 	 */
 	public static double calculateMinorAlleleFrequency(final VariantContext site, final int gqThreshold, final Collection <String> samples) {
