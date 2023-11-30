@@ -34,6 +34,21 @@ dependencies {
 
     // From https://stackoverflow.com/questions/54166069/how-do-you-add-local-jar-file-dependency-to-build-gradle-kt-file
     implementation(fileTree(mapOf("dir" to "../lib", "include" to listOf("*.jar"))))
+    implementation("com.github.broadinstitute:picard:3.1.0")
+    testFixturesImplementation("com.github.broadinstitute:picard:3.1.0")
+    // The following picard transitive dependencies can be removed when we upgrade to picard with this PR included:
+    // https://github.com/broadinstitute/picard/pull/1919
+    implementation("com.github.samtools:htsjdk:3.0.5")
+    testFixturesImplementation("com.github.samtools:htsjdk:3.0.5")
+    implementation("org.broadinstitute:barclay:5.0.0")
+    implementation("org.apache.commons:commons-lang3:3.12.0")
+    implementation("commons-io:commons-io:2.11.0")
+    implementation("com.google.guava:guava:32.1.1-jre")
+    implementation("org.apache.commons:commons-math3:3.6.1")
+    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("org.apache.commons:commons-collections4:4.4")
+    // Might be good to eliminate this dependency
+    testImplementation("org.freemarker:freemarker:2.3.30")
 
     // testFixtures call testng and use dependent jar classes
     testFixturesImplementation(fileTree(mapOf("dir" to "../lib", "include" to listOf("*.jar"))))
