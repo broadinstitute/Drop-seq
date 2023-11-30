@@ -449,7 +449,7 @@ public class DigitalExpression extends DGECommandLineBase {
 
     private SortingCollection<DGELongFormatRecord> makeSortingCollection(final Collection<String> cellBarcodeOrder) {
         final String name = getClass().getSimpleName();
-        final File tmpDir = IOUtil.createTempDir(name, null);
+        final File tmpDir = IOUtil.createTempDir(name + ".tmp").toFile();
         tmpDir.deleteOnExit();
         // 256 byte for one name, and 1/10 part of all memory for this, rough estimate
         long maxNamesInRam = Runtime.getRuntime().maxMemory() / 256 / 10;

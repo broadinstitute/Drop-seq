@@ -23,9 +23,9 @@
  */
 package org.broadinstitute.dropseqrna.annotation;
 
-import com.google.common.io.Files;
 import htsjdk.samtools.util.IntervalList;
 import org.apache.commons.io.FileUtils;
+import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -38,7 +38,7 @@ public class CreateIntervalsFilesTest {
 
     private static final File METADATA_DIR = new File("testdata/org/broadinstitute/transcriptome/annotation");
     private static final String REFERENCE_NAME = "mm10";
-    private static final List<String> MT_SEQUENCE = Arrays.asList("MT");
+    private static final List<String> MT_SEQUENCE = List.of("MT");
     private static final List<String> NON_AUTOSOME_SEQUENCE = Arrays.asList("X", "Y", "MT");
 
     @Test
@@ -46,7 +46,7 @@ public class CreateIntervalsFilesTest {
         final CreateIntervalsFiles clp = new CreateIntervalsFiles();
         clp.SEQUENCE_DICTIONARY = new File(METADATA_DIR, REFERENCE_NAME + ".dict");
         clp.REDUCED_GTF = new File(METADATA_DIR, REFERENCE_NAME + ".reduced.gtf.gz");
-        clp.OUTPUT = Files.createTempDir();
+        clp.OUTPUT = TestUtils.createTempDirectory("CreateIntervalsFilesTest");
         clp.PREFIX = REFERENCE_NAME;
         clp.MT_SEQUENCE = MT_SEQUENCE;
         clp.NON_AUTOSOME_SEQUENCE = NON_AUTOSOME_SEQUENCE;

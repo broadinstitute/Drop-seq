@@ -40,6 +40,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -229,6 +230,16 @@ public class TestUtils {
         }
         return tempFile;
     }
+
+	public static File createTempDirectory(final String prefix) {
+		try {
+			File ret = Files.createTempDirectory(prefix).toFile();
+			ret.deleteOnExit();
+			return ret;
+		} catch (IOException e) {
+			throw new RuntimeIOException(e);
+		}
+	}
 
 	/**
 	 * @return true if l is sorted (equal values allowed)
