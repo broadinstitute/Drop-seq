@@ -315,7 +315,7 @@ public class DetectBeadSynthesisErrors extends GeneFunctionCommandLineBase {
             umiBias.put(bsed.getCellBarcode(), barcodeUMIBias);
 
             // finalize object so it uses less memory.
-            bsed.finalize();
+            bsed.finalizeData();
             // only add to the collection if you have UMIs and a repairable error.
             if (bsed.getUMICount()>=this.MIN_UMIS_PER_CELL && errorType==BeadSynthesisErrorType.SYNTH_MISSING_BASE)
             	errorBarcodesWithPositions.put(bsed.getCellBarcode(), bsed);

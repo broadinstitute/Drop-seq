@@ -141,7 +141,7 @@ public class FindMonomorphicSitesInDonorPool {
 		filteredIter = new VariantContextProgressLoggerIterator(filteredIter, new ProgressLogger(log));
 
 		// filter on the variant #alleles, quality, etc.
-		filteredIter = new SimpleDiploidVariantContextFilter(filteredIter, true, true, 2, true);
+		filteredIter = new SimpleDiploidVariantContextFilter(filteredIter, true, true, 2);
 		// filter on genotype call rate across the entire experiment AND across the pool.
 		filteredIter = new CallRateVariantContextFilter(filteredIter, genotypeQuality, fractionDonorsPassing, donorsInPool);
 		filteredIter = new CallRateVariantContextFilter(filteredIter, genotypeQuality, fractionDonorsPassing);

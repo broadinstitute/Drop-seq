@@ -57,12 +57,14 @@ public class MinorAlleleFreqVariantContextFilter extends FilteredIterator <Varia
 
 	/**
 	 * Calculate minor allele freq from a subset of donors in VCF.
-	 * @param site
-	 * @param samples.  If empty, use all samples in VCF.
+	 * @param site The variant to test
+	 * @param gqThreshold The minimum genotype quality to include a donor genotype in the calculation
+	 * @param samples If empty, use all samples in VCF.
 	 * @return
 	 */
 	public static double calculateMinorAlleleFrequency(final VariantContext site, final int gqThreshold, final Collection <String> samples) {
-		if (samples.isEmpty()) return calculateMinorAlleleFrequency(site, gqThreshold);
+		if (samples.isEmpty())
+			return calculateMinorAlleleFrequency(site, gqThreshold);
 		ObjectCounter<Integer> c = new ObjectCounter<>();
 		for (String s: samples) {
 			Genotype g = site.getGenotype(s);
@@ -84,12 +86,14 @@ public class MinorAlleleFreqVariantContextFilter extends FilteredIterator <Varia
 	 * @return
 	 */
 	public static double calculateMinorAlleleFrequency(final VariantContext site, final int gqThreshold) {
+		if (site.getNSamples()==0)
+			throw new IllegalArgumentException("Can not calculate allele frequency for variant with no genotypes.  Check to see if you VCF is sites only!");
 		return calculateMinorAlleleFrequency(site, gqThreshold, site.getSampleNames());
 	}
 
 	@Override
 	public void logFilterResults() {
-		String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());  
+		String msg = String.format("Records pass [%d] records fail [%d] ",this.getRecordsPassed(), this.getRecordsFailed());
 		log.info(msg);								
 	}
 

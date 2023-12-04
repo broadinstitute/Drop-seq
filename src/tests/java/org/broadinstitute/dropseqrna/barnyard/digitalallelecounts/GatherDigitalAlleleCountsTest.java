@@ -56,7 +56,7 @@ public class GatherDigitalAlleleCountsTest {
 		g.ALLELE_FREQUENCY_OUTPUT.deleteOnExit();
 		
 		int ret = g.doWork();
-		Assert.assertTrue(ret==0);
+        Assert.assertEquals(ret, 0);
 
 		Assert.assertTrue(FileUtils.contentEquals(g.OUTPUT, EXPECTED_OUTFILE));
 		Assert.assertTrue(FileUtils.contentEquals(g.SUMMARY, EXPECTED_SUMMARY));

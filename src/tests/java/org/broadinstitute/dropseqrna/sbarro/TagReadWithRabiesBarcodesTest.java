@@ -52,7 +52,7 @@ public class TagReadWithRabiesBarcodesTest {
 		Assert.assertEquals(result, 0);
 		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_REPORT, t.REPORT));
 		
-		TestUtils.assertSamFilesSame(EXPECTED_BAM, t.OUTPUT);		
+		TestUtils.assertSamFilesSame(EXPECTED_BAM, t.OUTPUT, false);
 	}
 		
 	@Test
@@ -70,7 +70,7 @@ public class TagReadWithRabiesBarcodesTest {
 		Assert.assertEquals(result, 0);
 		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_REPORT_CONSENSUS, t.REPORT));
 		
-		TestUtils.assertSamFilesSame(EXPECTED_BAM_CONSENSUS, t.OUTPUT);
+		TestUtils.assertSamFilesSame(EXPECTED_BAM_CONSENSUS, t.OUTPUT, false);
 	}
 	
 }
