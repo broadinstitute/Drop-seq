@@ -23,7 +23,9 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.SAMFileHeader;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
@@ -140,6 +142,28 @@ public class BaseRangeTest {
 		String seq2 = BaseRange.getSequenceForBaseRange (ranges2, seq);
 		String seq2True="JJJJJJJJJJJJ";
 		Assert.assertEquals(seq2, seq2True);
+
+	}
+
+	@Test(dataProvider = "testReplaceSequenceForBaseRangeDataProvider")
+	public void testReplaceSequenceForBaseRange(
+			final String testName,
+			final String sequence,
+			final String replacement,
+			final String baseRangesStr,
+			final String expectedResult) {
+		List<BaseRange> ranges = BaseRange.parseBaseRange(baseRangesStr);
+		final String result = BaseRange.replaceSequenceForBaseRange(ranges, sequence, replacement);
+		Assert.assertEquals(result, expectedResult);
+	}
+
+	@DataProvider(name="testReplaceSequenceForBaseRangeDataProvider")
+	public Object[][] testReplaceSequenceForBaseRangeDataProvider() {
+		return new Object[][]{
+				{"start", "ACGTACGT", "TCGA", "1-4", "TCGAACGT"},
+				{"end", "ACGTACGT", "TCGA", "5-8", "ACGTTCGA"},
+				{"dual", "ACGTACGTACGT", "TCGA", "3-4:8-9", "ACTCACGGACGT"}
+		};
 
 	}
 

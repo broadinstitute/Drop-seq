@@ -91,6 +91,29 @@ public class BaseRange {
 		return result.toString();
 	}
 
+	public static String replaceSequenceForBaseRange(final List<BaseRange> baseRange,
+													 final String sequence,
+													 final String replacement) {
+		final int expectLength = baseRange.stream().map(BaseRange::getSize).reduce(0, Integer::sum).intValue();
+		if (expectLength != replacement.length())  {
+			throw new IllegalArgumentException("Length of base ranges != replacement length");
+		}
+		StringBuilder result = new StringBuilder();
+		int replacementIndex = 0;
+		for (BaseRange b: baseRange) {
+			// transfer based before range
+			if (b.start - 1 > result.length()) {
+				result.append(sequence.substring(result.length(), b.start-1));
+			}
+			result.append(replacement.substring(replacementIndex, replacementIndex + b.getSize()));
+			replacementIndex += b.getSize();
+		}
+		if (result.length() < sequence.length()) {
+			result.append(sequence.substring(result.length(), sequence.length()));
+		}
+		return result.toString();
+	}
+
 	public static byte []  getBytesForBaseRange (final List<BaseRange> baseRange, final byte [] sequence) {
 		// this is the expected size of the output sequence.
 		int rangeSize = BaseRange.getTotalRangeSize(baseRange);
