@@ -87,29 +87,37 @@ public class CustomBAMIterators {
         log.info("Sorting finished.");
         return result; 
 	}
-	
+
 	public static CloseableIterator<SAMRecord> getQuerynameSortedRecords(final SamHeaderAndIterator headerAndIter) {
-		if (headerAndIter.header.getSortOrder().equals(SortOrder.queryname)) {
+		return getSortedRecords(headerAndIter, SortOrder.queryname);
+	}
+	public static CloseableIterator<SAMRecord> getSortedRecords(final SamHeaderAndIterator headerAndIter,
+																final SortOrder sortOrder) {
+		if (sortOrder == SortOrder.unknown || sortOrder == SortOrder.unsorted) {
+			throw  new IllegalArgumentException("Requesting sorted records with unexpected sort order " + sortOrder);
+		}
+		if (headerAndIter.header.getSortOrder().equals(sortOrder)) {
 			return headerAndIter.iterator;
 		}
-		log.info("Input SAM/BAM not in queryname order, sorting...");
+		log.info("Input SAM/BAM not in " + sortOrder + " order, sorting...");
 		SAMSequenceDictionary dict= headerAndIter.header.getSequenceDictionary();
 		List<SAMProgramRecord> programs =headerAndIter.header.getProgramRecords();
-		
+
 		final SAMFileHeader writerHeader = new SAMFileHeader();
-        writerHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
-        writerHeader.setSequenceDictionary(dict);
-        for (SAMProgramRecord spr : programs) {
-        	writerHeader.addProgramRecord(spr);
-        }
-        log.info("Reading in records for query name sorting");
-        final ProgressLogger progressLogger = new ProgressLogger(log, 1000000, "Sorting reads in query name order");
-        final CloseableIterator<SAMRecord> result =
-                SamRecordSortingIteratorFactory.create(writerHeader, headerAndIter.iterator, new SAMRecordQueryNameComparator(), progressLogger);
-        log.info("Sorting finished.");
-        return result; 
+		writerHeader.setSortOrder(sortOrder);
+		writerHeader.setSequenceDictionary(dict);
+		for (SAMProgramRecord spr : programs) {
+			writerHeader.addProgramRecord(spr);
+		}
+		log.info("Reading in records for " + sortOrder + " sorting");
+		final ProgressLogger progressLogger = new ProgressLogger(log, 1000000, "Sorting reads in " + sortOrder + " order");
+		final CloseableIterator<SAMRecord> result =
+				SamRecordSortingIteratorFactory.create(writerHeader, headerAndIter.iterator, sortOrder.getComparatorInstance(), progressLogger);
+		log.info("Sorting finished.");
+		return result;
 	}
-	
-	
-	
+
+
+
+
 }
