@@ -305,7 +305,7 @@ public class FilterBamByTag extends CommandLineProgram {
 		return vv;
 	}
 
-	private Set<String> readValues(File f) {
+	public static Set<String> readValues(File f) {
 		try {
 			f = f.getCanonicalFile();
 		} catch (IOException e) {
