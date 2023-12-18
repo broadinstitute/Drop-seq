@@ -199,9 +199,6 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		// get reads from the sink, sort by multiComparator, group
 		this.atoi = new GroupingIterator<>(sortedAlignmentIterator, multiComparator);
 
-		while (this.atoi.hasNext()) {
-			log.info(this.atoi.next());
-		}
 	}
 
 	/**
