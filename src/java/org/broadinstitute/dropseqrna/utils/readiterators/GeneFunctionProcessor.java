@@ -5,7 +5,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.broadinstitute.dropseqrna.annotation.FunctionalData;
 import org.broadinstitute.dropseqrna.annotation.FunctionalDataProcessor;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
@@ -80,6 +82,39 @@ public class GeneFunctionProcessor {
 				result.add(rr);
 			}
 		return result;
+	}
+
+	/**
+	 * For a list of reads that should be interpreted as a single "unit" (such as multiple reads that share the same query name.
+	 * This is useful to interpret primary/secondary alignments of the same read.
+	 * Filters reads to a perferred functional annotation (coding>intronic>intergenic), or none if ambiguous
+	 * @param recs A list of SAMRecords that come from the same observation
+	 * @return A the primary read with tags that best represents this group.  This can also return null if read group is ambiguous.
+	 */
+	public SAMRecord processReads (final List<SAMRecord> recs) {
+		List<FunctionalData> fdList = recs.stream()
+				.flatMap(r -> getReadFunctions(r).stream())
+				.collect(Collectors.toList());
+
+		// If there's no functional data that passes the filters, return.
+		if (fdList.isEmpty()) return null;
+
+		// filter to only the preferred class to resolve reads that overlap a coding region on one gene
+		// and an intronic region on a different gene.
+		// this filters the data to just the coding gene.
+		fdList = fdp.filterToPreferredAnnotations(fdList);
+
+		if (fdList.size() == 1) {
+			FunctionalData fd = fdList.get(0);
+			//retag and return the primary alignment
+			for (SAMRecord r: recs) {
+				if (!r.isSecondaryAlignment()) {
+					r = assignTagsToRead(r, fd);
+					return (r);
+				}
+			}
+		}
+		return null;
 	}
 	
 	public List<FunctionalData> getReadFunctions (final SAMRecord r) {

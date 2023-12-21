@@ -87,7 +87,7 @@ public class FunctionalDataProcessor {
     	 * @param fdList A list of functional data to be filtered
     	 * @return A subset of the input list of functional data.
     	 */
-    	public List<FunctionalData> filterToPreferredAnnotations(final List<FunctionalData> fdList) {
+    	public List<FunctionalData> filterToPreferredAnnotations(final Collection<FunctionalData> fdList) {
     		boolean hasCoding=false;
     		for (FunctionalData fd: fdList) {
 				if (isCodingUTR(fd.getLocusFunction())) {
