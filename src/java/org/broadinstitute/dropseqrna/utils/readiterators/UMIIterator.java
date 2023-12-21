@@ -187,7 +187,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 				geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
 		Iterator<SAMRecord> samRecordIter = wrapper;
 
-		//TODO: this is where I could strip down reads to serialize them more quickly
+		// Strip down the reads to a more minimal set of TAGS, set reads to be empty.
 		List<String> requiredTags = Arrays.asList(geneTag, geneStrandTag, geneFunctionTag, cellBarcodeTag, molecularBarcodeTag);
 		samRecordIter = new SimplifySAMRecordIterator(samRecordIter, requiredTags);
 
