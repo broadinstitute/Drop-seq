@@ -79,7 +79,7 @@ extends AbstractSplitBamClp {
     private List<BaseRange> baseRanges;
 
     private BarcodeCorrectionMetrics metrics = new BarcodeCorrectionMetrics();
-    private Histogram<Integer> numCandidatesHist = new Histogram<>();
+    private Histogram<Integer> numCandidatesHist = new Histogram<>("NUM_ED1_CANDIDATES", "NUM_READS");
 
     @Override
     protected void splitBAMs() {
