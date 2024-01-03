@@ -106,13 +106,14 @@ public class GeneFunctionProcessor {
 
 		if (fdList.size() == 1) {
 			FunctionalData fd = fdList.get(0);
-			//retag and return the primary alignment
-			for (SAMRecord r: recs) {
-				if (!r.isSecondaryAlignment()) {
-					r = assignTagsToRead(r, fd);
-					return (r);
-				}
-			}
+			//retag and return an alignment - it doesn't matter which.
+//			for (SAMRecord r: recs) {
+//				if (!r.isSecondaryAlignment()) {
+//					r = assignTagsToRead(r, fd);
+//					return (r);
+//				}
+//			}
+            return (assignTagsToRead(recs.getFirst(), fd));
 		}
 		return null;
 	}
