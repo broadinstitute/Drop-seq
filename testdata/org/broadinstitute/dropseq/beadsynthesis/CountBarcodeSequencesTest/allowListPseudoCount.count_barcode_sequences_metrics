@@ -1,0 +1,11 @@
+
+## METRICS CLASS	org.broadinstitute.dropseqrna.beadsynthesis.CountBarcodeSequences$CountBarcodeSequenceMetrics
+NUM_READ_PAIRS	NUM_NOT_ALLOWED
+13	8
+
+## HISTOGRAM	java.lang.String
+SEQUENCE	COUNT
+TACA	4
+TATG	3
+TTTT	1
+
