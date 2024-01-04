@@ -71,6 +71,10 @@ extends CommandLineProgram {
  optional = true)
  public File ALLOWED_BARCODES;
 
+ @Argument(doc="Add this value to the observed count of every barcode in the allow list.  The effect is to make " +
+         "every barcode in the allow list observed at least once.")
+ public int ALLOWLIST_PSEUDOCOUNT = 0;
+
  private final Log log = Log.getInstance(CountBarcodeSequences.class);
 
  @Override
@@ -114,6 +118,11 @@ extends CommandLineProgram {
   final SAMFileHeader header = readers.getFirst().getFileHeader();
   final CloseableIterator<SAMRecord> it = new UnsortedMergingSamRecordIterator(header, readers);
   final Histogram<String> histogram = new Histogram<>("SEQUENCE", "COUNT");
+
+  if (allowedBarcodes != null && ALLOWLIST_PSEUDOCOUNT > 0) {
+   allowedBarcodes.stream().forEach(bc -> histogram.increment(bc, 1));
+  }
+
   CountBarcodeSequenceMetrics metrics = new CountBarcodeSequenceMetrics();
   ProgressLogger progress = new ProgressLogger(this.log, 10000000);
   while (it.hasNext()) {

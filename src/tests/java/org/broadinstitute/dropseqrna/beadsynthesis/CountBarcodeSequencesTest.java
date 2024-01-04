@@ -39,15 +39,18 @@ public class CountBarcodeSequencesTest {
  private static final File ALLOW_LIST = new File(TEST_DATA_DIR, "allowList.txt");
  private static final File EXPECTED_NO_ALLOW_LIST = new File(TEST_DATA_DIR, "noAllowList.count_barcode_sequences_metrics");
  private static final File EXPECTED_ALLOW_LIST = new File(TEST_DATA_DIR, "allowList.count_barcode_sequences_metrics");
+ private static final File EXPECTED_ALLOW_LIST_PSEUDOCOUNT = new File(TEST_DATA_DIR, "allowListPseudoCount.count_barcode_sequences_metrics");
 
  @Test(dataProvider = "testBasicDataProvider")
- public void testBasic(final String testName, final File allowList, final File expectedMetricsFile) throws FileNotFoundException {
+ public void testBasic(final String testName, final File allowList, final int allowListPseudoCount, final File expectedMetricsFile)
+         throws FileNotFoundException {
   final CountBarcodeSequences clp = new CountBarcodeSequences();
   clp.BARCODED_READ = 1;
   clp.OUTPUT = TestUtils.getTempReportFile(testName + ".", ".count_barcode_sequences_metrics");
   clp.INPUT = Collections.singletonList(PAIRED_BAM);
   clp.BASE_RANGE = "1-4";
   clp.ALLOWED_BARCODES = allowList;
+  clp.ALLOWLIST_PSEUDOCOUNT = allowListPseudoCount;
   Assert.assertEquals(clp.doWork(), 0);
   Assert.assertTrue(TestUtils.testMetricsFilesEqual(expectedMetricsFile, clp.OUTPUT));
  }
@@ -55,8 +58,9 @@ public class CountBarcodeSequencesTest {
  @DataProvider(name = "testBasicDataProvider")
  public Object[][] testBasicDataProvider() {
   return new Object[][] {
-          {"noAllowList", null, EXPECTED_NO_ALLOW_LIST},
-          {"allowList", ALLOW_LIST, EXPECTED_ALLOW_LIST},
+          {"noAllowList", null, 0, EXPECTED_NO_ALLOW_LIST},
+          {"allowList", ALLOW_LIST, 0, EXPECTED_ALLOW_LIST},
+          {"allowListPseudoCount", ALLOW_LIST, 1, EXPECTED_ALLOW_LIST_PSEUDOCOUNT},
   };
 
  }
