@@ -1,6 +1,5 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
-import freemarker.template.utility.StringUtil;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
@@ -60,7 +59,7 @@ public class DownsampleTranscriptsAndQuantilesTest {
                 "TGGCTTAT=26","GGAGGTTT=24","TATGGTCC=18","GATGGGGG=54","GTTTTGGG=18","AACGGACG=6","TATGGCAT=1"};
 
         List<UMICollection> manualValidationLines = IntStream.range(0,cellBcs.length)
-            .mapToObj(i -> makeUMICollection(cellBcs[i], genes[i], StringUtil.split(mbcounts[i],',')))
+            .mapToObj(i -> makeUMICollection(cellBcs[i], genes[i], mbcounts[i].split(",")))
             .collect(Collectors.toList());
 
         int i = 0;

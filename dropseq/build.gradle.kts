@@ -25,19 +25,37 @@ repositories {
     mavenCentral()
 }
 
+configurations {
+    testFixturesApi {
+        extendsFrom(implementation.get())
+    }
+}
+
+
 dependencies {
-    // Use TestNG framework, also requires calling test.useTestNG() below
-    testImplementation("org.testng:testng:7.5.1")
 
     // I'm not sure why this is here -- maybe by accident?
     //implementation("com.google.guava:guava:32.1.1-jre")
 
-    // From https://stackoverflow.com/questions/54166069/how-do-you-add-local-jar-file-dependency-to-build-gradle-kt-file
-    implementation(fileTree(mapOf("dir" to "../lib", "include" to listOf("*.jar"))))
+    implementation("org.biojava:biojava-alignment:7.0.2"){
+        exclude(group = "openchart", module ="openchart") //this doesn't exist in maven and wasn't included in the checked in jar
+    }
 
-    // testFixtures call testng and use dependent jar classes
-    testFixturesImplementation(fileTree(mapOf("dir" to "../lib", "include" to listOf("*.jar"))))
+    implementation("org.biojava:biojava-core:7.0.2")
+    implementation("org.la4j:la4j:0.6.0")
+    implementation("org.slf4j:slf4j-api:2.0.9")
+    implementation("org.yaml:snakeyaml:2.2")
+
+    implementation("com.github.broadinstitute:picard:3.1.0"){
+        attributes{
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
+        }
+    }
+
     testFixturesImplementation("org.testng:testng:7.5.1")
+
+    // Use TestNG framework, also requires calling test.useTestNG() below
+    testImplementation("org.testng:testng:7.5.1")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
