@@ -71,7 +71,6 @@ extends AbstractSplitBamClp {
             "must be >= this value.")
     public double LIKELIHOOD_RATIO = 0.95;
 
-    public static final String UNCORRECTABLE_BARCODE = "-";
 
 
     private Map<String, Double> allowedBarcodeNormalizedOccurences;
@@ -143,7 +142,7 @@ extends AbstractSplitBamClp {
                 }
                 ++metrics.NUM_READS_UNCORRECTABLE_NO_ED1_BARCODES;
                 noEd1Barcodes.add(cellBarcode);
-                return UNCORRECTABLE_BARCODE;
+                return cellBarcode;
             } else if (ed1Matches.size() == 1) {
                 if (VERBOSITY == Log.LogLevel.DEBUG && metrics.NUM_READS_CORRECTED_SINGLE_ED1 == 0) {
                     log.debug("CORRECTED_SINGLE_ED1 " + readWithBarcode);
@@ -180,7 +179,7 @@ extends AbstractSplitBamClp {
                     }
                     ++metrics.NUM_READS_UNCORRECTED_AMBIGUOUS;
                     ambiguousBarcodes.add(cellBarcode);
-                    return UNCORRECTABLE_BARCODE;
+                    return cellBarcode;
                 }
             }
         }
