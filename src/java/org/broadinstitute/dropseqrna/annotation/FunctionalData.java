@@ -1,5 +1,6 @@
 package org.broadinstitute.dropseqrna.annotation;
 
+import com.google.common.base.Objects;
 import picard.annotation.LocusFunction;
 
 /**
@@ -35,4 +36,17 @@ public class FunctionalData {
 		public String toString () {
 			return (this.gene + " " + this.strand + " " + this.locusFunction.name());
 		}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		FunctionalData that = (FunctionalData) o;
+		return Objects.equal(gene, that.gene) && Objects.equal(strand, that.strand) && locusFunction == that.locusFunction;
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hashCode(gene, strand, locusFunction);
+	}
 }

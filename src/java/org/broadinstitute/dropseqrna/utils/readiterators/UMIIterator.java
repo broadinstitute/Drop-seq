@@ -128,7 +128,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	 * @param recordCellsInInput While sorting the input, keep track of what cells appear in the input.  This record
 	 *                           is not complete until iteration is started.
 	 * @param retainReads If true the SAMRecords are added to the UMICollection.  This uses more memory than the standard UMICollection so exercise caution.  
-	 * This is false in other method signatures by default
+	 * This is false in other method signatures by default.  If false, reads can be simplified for faster serialization.
 	 * 
 	 */
 	public UMIIterator(final SamHeaderAndIterator headerAndIterator,
@@ -187,9 +187,11 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 				geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
 		Iterator<SAMRecord> samRecordIter = wrapper;
 
-		// Strip down the reads to a more minimal set of TAGS, set reads to be empty.
-		List<String> requiredTags = Arrays.asList(geneTag, geneStrandTag, geneFunctionTag, cellBarcodeTag, molecularBarcodeTag);
-		samRecordIter = new SimplifySAMRecordIterator(samRecordIter, requiredTags);
+		// Strip down the reads to a more minimal set of TAGS, set reads to be empty on request
+		if (!retainReads) {
+			List<String> requiredTags = Arrays.asList(geneTag, geneStrandTag, geneFunctionTag, cellBarcodeTag, molecularBarcodeTag);
+			samRecordIter = new SimplifySAMRecordIterator(samRecordIter, requiredTags);
+		}
 
 		// if map quality < unique handle low map quality reads.
 		if (readMQ <=3) {

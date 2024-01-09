@@ -1,10 +1,6 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.NotImplementedException;
@@ -104,8 +100,13 @@ public class GeneFunctionProcessor {
 		// this filters the data to just the coding gene.
 		fdList = fdp.filterToPreferredAnnotations(fdList);
 
-		if (fdList.size() == 1) {
-			FunctionalData fd = fdList.get(0);
+		// Why a set?  If there are multiple reads that have a single consistent result, we can use that.
+		// This deals with multiple reads that map to the same gene, especially useful for MetaGene discovery where
+		// the newly applied tag can be identical.
+		Set<FunctionalData> fdSet = new HashSet<>(fdList);
+
+		if (fdSet.size() == 1) {
+			FunctionalData fd = fdList.getFirst();
 			//retag and return an alignment - it doesn't matter which.
 //			for (SAMRecord r: recs) {
 //				if (!r.isSecondaryAlignment()) {
