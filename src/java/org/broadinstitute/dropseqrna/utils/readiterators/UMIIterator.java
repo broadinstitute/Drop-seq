@@ -313,7 +313,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	 * Given an iterator that serves reads grouped by query name, process reads that map multiple times.
 	 * This tests if the interpreted GTF tags map to one gene, or more than one.  If only one gene, then
 	 * that read is selected for downstream analysis.  If reads are ambiguous, all reads are rejected.
-	 *
+	 * <p>
 	 * This should enable capture of expression for reads that map to multiple locations, but only once to a gene.
 	 * This replicates how expression is counted in STARSolo.
 	 */
