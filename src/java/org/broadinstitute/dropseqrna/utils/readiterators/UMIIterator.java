@@ -215,7 +215,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	 * 1. sort the reads in query name order
 	 * 2. filter multimapping reads that are map to more than one gene
 	 * 3. return an interator for further sorting.
-	 * @return
+	 * @return An iterator of SAMRecord objects
 	 */
 	private Iterator<SAMRecord> processLowMapQuality (Iterator<SAMRecord> readIter, SAMFileHeader header, GeneFunctionProcessor gfp) {
 		SimpleQueryNameComparator comp = new SimpleQueryNameComparator();
@@ -318,7 +318,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	 * This replicates how expression is counted in STARSolo.
 	 */
 	// change to TransformingIterator
-	private class MultiMapFilteringIterator extends CountChangingIteratorWrapper<List<SAMRecord>> {
+	private static class MultiMapFilteringIterator extends CountChangingIteratorWrapper<List<SAMRecord>> {
 
 		private final GeneFunctionProcessor gfp;
 		protected MultiMapFilteringIterator(Iterator<List<SAMRecord>> underlyingIterator, GeneFunctionProcessor gfp) {
@@ -335,7 +335,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 
 	}
 
-	private class SimplifySAMRecordIterator extends TransformingIterator<SAMRecord, SAMRecord> {
+	private static class SimplifySAMRecordIterator extends TransformingIterator<SAMRecord, SAMRecord> {
 
 		private final Set<String> requiredTags;
 		public SimplifySAMRecordIterator(Iterator<SAMRecord> underlyingIterator, Collection<String> requiredTags) {
@@ -357,7 +357,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		}
 	}
 
-	private class SimpleQueryNameComparator implements Comparator<SAMRecord> {
+	private static class SimpleQueryNameComparator implements Comparator<SAMRecord> {
 		SAMRecordQueryNameComparator comp = new SAMRecordQueryNameComparator();
 		@Override
 		public int compare(SAMRecord o1, SAMRecord o2) {

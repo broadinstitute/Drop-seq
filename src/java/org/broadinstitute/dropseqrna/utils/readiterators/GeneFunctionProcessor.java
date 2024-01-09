@@ -1,15 +1,13 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import java.util.*;
-import java.util.stream.Collectors;
-
-import org.apache.commons.lang3.NotImplementedException;
+import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.dropseqrna.annotation.FunctionalData;
 import org.broadinstitute.dropseqrna.annotation.FunctionalDataProcessor;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
-
-import htsjdk.samtools.SAMRecord;
 import picard.annotation.LocusFunction;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This class abstracts out the logic needed by GeneFunctionIteratorWrapper, but removes the iterator
@@ -49,13 +47,13 @@ public class GeneFunctionProcessor {
 	 * @return The output read(s).  
 	 */
 	public List<SAMRecord> processRead (final SAMRecord r) {
-		List<SAMRecord> result = new ArrayList<SAMRecord>();
+		List<SAMRecord> result = new ArrayList<>();
 
 		
 		List<FunctionalData> fdList = getReadFunctions (r);
 		
 		// If there's no functional data that passes the filters, return.
-		if (fdList.size()==0) return result;
+		if (fdList.isEmpty()) return result;
 
 		// filter to only the preferred class to resolve reads that overlap a coding region on one gene
 		// and an intronic region on a different gene.
@@ -65,7 +63,7 @@ public class GeneFunctionProcessor {
 		// If there's only one functional data result, re-tag the read, and
 		// queue it, then short circuit out.
 		if (fdList.size() == 1) {
-			FunctionalData fd = fdList.get(0);
+			FunctionalData fd = fdList.getFirst();
 			SAMRecord rr = assignTagsToRead(r, fd);
 			result.add(rr);
 			return result;

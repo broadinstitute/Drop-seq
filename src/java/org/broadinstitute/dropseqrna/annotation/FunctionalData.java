@@ -10,9 +10,9 @@ import picard.annotation.LocusFunction;
  */
 public class FunctionalData {
 
-		private String gene;
-		private String strand;
-		private LocusFunction locusFunction;
+		private final String gene;
+		private final String strand;
+		private final LocusFunction locusFunction;
 
 		public FunctionalData (final String gene, final String strand, final LocusFunction locusFunction) {
 			this.gene=gene;
