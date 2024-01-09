@@ -1,17 +1,13 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-
+import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.dropseqrna.annotation.FunctionalData;
 import org.broadinstitute.dropseqrna.annotation.FunctionalDataProcessor;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
-
-import htsjdk.samtools.SAMRecord;
 import picard.annotation.LocusFunction;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This class abstracts out the logic needed by GeneFunctionIteratorWrapper, but removes the iterator
@@ -51,13 +47,13 @@ public class GeneFunctionProcessor {
 	 * @return The output read(s).  
 	 */
 	public List<SAMRecord> processRead (final SAMRecord r) {
-		List<SAMRecord> result = new ArrayList<SAMRecord>();
+		List<SAMRecord> result = new ArrayList<>();
 
 		
 		List<FunctionalData> fdList = getReadFunctions (r);
 		
 		// If there's no functional data that passes the filters, return.
-		if (fdList.size()==0) return result;
+		if (fdList.isEmpty()) return result;
 
 		// filter to only the preferred class to resolve reads that overlap a coding region on one gene
 		// and an intronic region on a different gene.
@@ -67,7 +63,7 @@ public class GeneFunctionProcessor {
 		// If there's only one functional data result, re-tag the read, and
 		// queue it, then short circuit out.
 		if (fdList.size() == 1) {
-			FunctionalData fd = fdList.get(0);
+			FunctionalData fd = fdList.getFirst();
 			SAMRecord rr = assignTagsToRead(r, fd);
 			result.add(rr);
 			return result;
@@ -80,6 +76,45 @@ public class GeneFunctionProcessor {
 				result.add(rr);
 			}
 		return result;
+	}
+
+	/**
+	 * For a list of reads that should be interpreted as a single "unit" (such as multiple reads that share the same query name.
+	 * This is useful to interpret primary/secondary alignments of the same read.
+	 * Filters reads to a perferred functional annotation (coding>intronic>intergenic), or none if ambiguous
+	 * @param recs A list of SAMRecords that come from the same observation
+	 * @return A the primary read with tags that best represents this group.  This can also return null if read group is ambiguous.
+	 */
+	public SAMRecord processReads (final List<SAMRecord> recs) {
+		List<FunctionalData> fdList = recs.stream()
+				.flatMap(r -> getReadFunctions(r).stream())
+				.collect(Collectors.toList());
+
+		// If there's no functional data that passes the filters, return.
+		if (fdList.isEmpty()) return null;
+
+		// filter to only the preferred class to resolve reads that overlap a coding region on one gene
+		// and an intronic region on a different gene.
+		// this filters the data to just the coding gene.
+		fdList = fdp.filterToPreferredAnnotations(fdList);
+
+		// Why a set?  If there are multiple reads that have a single consistent result, we can use that.
+		// This deals with multiple reads that map to the same gene, especially useful for MetaGene discovery where
+		// the newly applied tag can be identical.
+		Set<FunctionalData> fdSet = new HashSet<>(fdList);
+
+		if (fdSet.size() == 1) {
+			FunctionalData fd = fdList.getFirst();
+			//retag and return an alignment - it doesn't matter which.
+//			for (SAMRecord r: recs) {
+//				if (!r.isSecondaryAlignment()) {
+//					r = assignTagsToRead(r, fd);
+//					return (r);
+//				}
+//			}
+            return (assignTagsToRead(recs.getFirst(), fd));
+		}
+		return null;
 	}
 	
 	public List<FunctionalData> getReadFunctions (final SAMRecord r) {

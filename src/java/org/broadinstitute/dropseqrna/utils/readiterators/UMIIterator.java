@@ -23,7 +23,9 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordQueryNameComparator;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
@@ -31,10 +33,8 @@ import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.utils.*;
 import picard.annotation.LocusFunction;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.StreamSupport;
 
 public class UMIIterator implements CloseableIterator<UMICollection>  {
 
@@ -128,7 +128,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	 * @param recordCellsInInput While sorting the input, keep track of what cells appear in the input.  This record
 	 *                           is not complete until iteration is started.
 	 * @param retainReads If true the SAMRecords are added to the UMICollection.  This uses more memory than the standard UMICollection so exercise caution.  
-	 * This is false in other method signatures by default
+	 * This is false in other method signatures by default.  If false, reads can be simplified for faster serialization.
 	 * 
 	 */
 	public UMIIterator(final SamHeaderAndIterator headerAndIterator,
@@ -162,8 +162,12 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		Iterator<SAMRecord> filteringIterator =
                 new MissingTagFilteringIterator(headerAndIterator.iterator, cellBarcodeTag, geneTag, molecularBarcodeTag);
 
-		// Filter reads on map quality
-		filteringIterator = new MapQualityFilteredIterator(filteringIterator, readMQ, true);
+		// Filter reads on map quality.  Optionally keep non-primary reads at low map quality.
+		boolean rejectNonPrimaryReads = readMQ>3;
+		if (!rejectNonPrimaryReads)
+			log.info("Detected map quality threshold <=3, retaining non primary reads");
+
+		filteringIterator = new MapQualityFilteredIterator(filteringIterator, readMQ, rejectNonPrimaryReads);
 
 		if (recordCellsInInput) {
 			this.cellBarcodesSeen = new HashSet<>();
@@ -179,17 +183,54 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		}
 
 		// Filter/assign reads based on functional annotations
-		GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator, geneTag,
+		GeneFunctionIteratorWrapper wrapper = new GeneFunctionIteratorWrapper(filteringIterator, geneTag,
 				geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
+		Iterator<SAMRecord> samRecordIter = wrapper;
 
-        CloseableIterator<SAMRecord> sortedAlignmentIterator = SamRecordSortingIteratorFactory.create(
-                headerAndIterator.header, gfteratorWrapper, multiComparator, prog);
+		// Strip down the reads to a more minimal set of TAGS, set reads to be empty on request
+		if (!retainReads) {
+			List<String> requiredTags = Arrays.asList(geneTag, geneStrandTag, geneFunctionTag, cellBarcodeTag, molecularBarcodeTag);
+			samRecordIter = new SimplifySAMRecordIterator(samRecordIter, requiredTags);
+		}
 
-        // Not really -- merge sort is ongoing.
+		// if map quality < unique handle low map quality reads.
+		if (readMQ <=3) {
+			samRecordIter= processLowMapQuality (samRecordIter, headerAndIterator.header, wrapper.getGeneFunctionProcessor());
+		}
+
+		// now sort by bam tags.
+		CloseableIterator<SAMRecord> sortedAlignmentIterator = SamRecordSortingIteratorFactory.create(
+				headerAndIterator.header, samRecordIter, multiComparator, prog);
+
+		// Not really -- merge sort is ongoing.
         log.info("Sorting finished.");
 
+		// get reads from the sink, sort by multiComparator, group
 		this.atoi = new GroupingIterator<>(sortedAlignmentIterator, multiComparator);
+
 	}
+
+	/**
+	 * If map quality includes non-unique reads:
+	 * 1. sort the reads in query name order
+	 * 2. filter multimapping reads that are map to more than one gene
+	 * 3. return an interator for further sorting.
+	 * @return An iterator of SAMRecord objects
+	 */
+	private Iterator<SAMRecord> processLowMapQuality (Iterator<SAMRecord> readIter, SAMFileHeader header, GeneFunctionProcessor gfp) {
+		SimpleQueryNameComparator comp = new SimpleQueryNameComparator();
+
+		CloseableIterator<SAMRecord> queryNameSortedIterator = SamRecordSortingIteratorFactory.create(
+				header, readIter, comp, prog);
+
+		// now that the data is sorting in read name order you can group and process.
+		GroupingIterator<SAMRecord> qnGroup = new GroupingIterator<>(queryNameSortedIterator, comp);
+		Iterator<List<SAMRecord>> iter = new MultiMapFilteringIterator(qnGroup, gfp);
+		Iterator<SAMRecord> flatIterator = StreamSupport.stream(Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED), false).flatMap(Collection::stream).iterator();
+		return flatIterator;
+	}
+
+
 
     /**
 	 * Gets the next UMI Collection - all the molecular barcodes and reads on those for a particular gene/cell.
@@ -265,6 +306,62 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 			final SAMRecord ret = underlyingIterator.next();
 			cellBarcodesSeen.add((String)ret.getAttribute(cellBarcodeBinaryTag));
 			return ret;
+		}
+	}
+
+	/**
+	 * Given an iterator that serves reads grouped by query name, process reads that map multiple times.
+	 * This tests if the interpreted GTF tags map to one gene, or more than one.  If only one gene, then
+	 * that read is selected for downstream analysis.  If reads are ambiguous, all reads are rejected.
+	 * <p>
+	 * This should enable capture of expression for reads that map to multiple locations, but only once to a gene.
+	 * This replicates how expression is counted in STARSolo.
+	 */
+	// change to TransformingIterator
+	private static class MultiMapFilteringIterator extends CountChangingIteratorWrapper<List<SAMRecord>> {
+
+		private final GeneFunctionProcessor gfp;
+		protected MultiMapFilteringIterator(Iterator<List<SAMRecord>> underlyingIterator, GeneFunctionProcessor gfp) {
+			super(underlyingIterator);
+			this.gfp = gfp;
+		}
+
+		@Override
+		protected void processRecord(List<SAMRecord> rec) {
+			SAMRecord result = gfp.processReads(rec);
+			if (result!=null)
+				queueRecordForOutput(Collections.singletonList(result));
+		}
+
+	}
+
+	private static class SimplifySAMRecordIterator extends TransformingIterator<SAMRecord, SAMRecord> {
+
+		private final Set<String> requiredTags;
+		public SimplifySAMRecordIterator(Iterator<SAMRecord> underlyingIterator, Collection<String> requiredTags) {
+			super(underlyingIterator);
+			this.requiredTags = new HashSet<>(requiredTags);
+		}
+
+		@Override
+		public SAMRecord next() {
+			SAMRecord r= this.underlyingIterator.next();
+			for (SAMRecord.SAMTagAndValue v: r.getAttributes()) {
+				if(!requiredTags.contains(v.tag))
+					r.setAttribute(v.tag, null);
+			}
+			r.setBaseQualities(SAMRecord.NULL_QUALS);
+			r.setReadBases(SAMRecord.NULL_SEQUENCE);
+			r.setCigarString(SAMRecord.NO_ALIGNMENT_CIGAR);
+			return r;
+		}
+	}
+
+	private static class SimpleQueryNameComparator implements Comparator<SAMRecord> {
+		SAMRecordQueryNameComparator comp = new SAMRecordQueryNameComparator();
+		@Override
+		public int compare(SAMRecord o1, SAMRecord o2) {
+			return comp.fileOrderCompare(o1, o2);
 		}
 	}
 }

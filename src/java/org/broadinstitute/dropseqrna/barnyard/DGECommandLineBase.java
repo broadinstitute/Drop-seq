@@ -41,7 +41,12 @@ public abstract class DGECommandLineBase extends GeneFunctionCommandLineBase {
 	@Argument(doc="The edit distance that molecular barcodes should be combined at within a gene.")
 	public Integer EDIT_DISTANCE=1;
 	
-	@Argument(doc="The map quality of the read to be included.")
+	@Argument(doc="The map quality of the read to be included.  Experimental: While the default map quality is 10 (unique" +
+			"reads), lower map quality can now be set to recover reads that map to multiple places in the genome.  " +
+			"This mirrors STARsolo's approach, where all mapping positions for a read are considered, and the read is included" +
+			"in downstream analysis if the read maps consistently to a single gene given all other thresholds (functional " +
+			"annotations, strand).  To reproduce STARSolo's expression output of these reads, set this value to 0 to " +
+			"include all reads.")
 	public Integer READ_MQ=10;
 	
 	@Argument(doc="The minimum number of reads a molecular barcode should have to be considered.  This is done AFTER edit distance collapse of barcodes.")
