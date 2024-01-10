@@ -15,7 +15,7 @@ import java.util.*;
  * @author nemesh
  *
  */
-public abstract class AbstractFunctionalDataProcessor {
+public abstract class AbstractFunctionalDataProcessor implements FunctionalDataProcessorI {
 
 	private final StrandStrategy strandStrategy;
 	private final Collection <LocusFunction> acceptedFunctions;
