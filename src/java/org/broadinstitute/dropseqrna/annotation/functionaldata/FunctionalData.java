@@ -1,4 +1,4 @@
-package org.broadinstitute.dropseqrna.annotation;
+package org.broadinstitute.dropseqrna.annotation.functionaldata;
 
 import com.google.common.base.Objects;
 import picard.annotation.LocusFunction;

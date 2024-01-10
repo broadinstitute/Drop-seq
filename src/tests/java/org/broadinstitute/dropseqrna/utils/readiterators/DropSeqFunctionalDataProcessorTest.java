@@ -1,20 +1,22 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import org.broadinstitute.dropseqrna.annotation.FunctionalData;
-import org.broadinstitute.dropseqrna.annotation.FunctionalDataProcessor;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.DropSeqFunctionalDataProcessor;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalData;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.AbstractFunctionalDataProcessor;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorI;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import picard.annotation.LocusFunction;
 
 import java.util.List;
 
-public class FunctionalDataProcessorTest {
+public class DropSeqFunctionalDataProcessorTest {
 
 
 	@Test
 	public void testSingleFD () {
 		LocusFunction [] acceptedFunctions = {LocusFunction.CODING, LocusFunction.UTR};
-		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		FunctionalDataProcessorI fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
 		String [] genes = {"A"};
 		String [] strands = {"+"};
 		LocusFunction [] locusFunctions = {LocusFunction.CODING};
@@ -33,7 +35,7 @@ public class FunctionalDataProcessorTest {
 	@Test
 	public void testNoResult () {
 		LocusFunction [] acceptedFunctions = {LocusFunction.CODING, LocusFunction.UTR};
-		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		FunctionalDataProcessorI fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
 		String [] genes = {"A"};
 		String [] strands = {"+"};
 		LocusFunction [] locusFunctions = {LocusFunction.INTRONIC};
@@ -48,7 +50,7 @@ public class FunctionalDataProcessorTest {
 	@Test
 	public void testFunctionalFiltering () {
 		LocusFunction [] acceptedFunctions = {LocusFunction.INTRONIC};
-		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		FunctionalDataProcessorI fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
 		String [] genes = {"A", "A"};
 		String [] strands = {"+", "+"};
 		LocusFunction [] locusFunctions = {LocusFunction.CODING, LocusFunction.INTRONIC};
@@ -57,7 +59,7 @@ public class FunctionalDataProcessorTest {
 
 		// now accept UTR and INTRONIC.
 		LocusFunction [] acceptedFunctions2 = {LocusFunction.INTRONIC, LocusFunction.CODING};
-		fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions2);
+		fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions2);
 		fdList = fdp.getFilteredFunctionalData(genes, strands, locusFunctions, false);
 		Assert.assertEquals(fdList.size(), 1);
 
@@ -75,7 +77,7 @@ public class FunctionalDataProcessorTest {
 	@Test
 	public void testStrandStrategy () {
 		LocusFunction [] acceptedFunctions = {LocusFunction.CODING, LocusFunction.UTR, LocusFunction.INTRONIC};
-		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		AbstractFunctionalDataProcessor fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
 		String [] genes = {"A", "B"};
 		String [] strands = {"+", "-"};
 		LocusFunction [] locusFunctions = {LocusFunction.CODING, LocusFunction.CODING};
@@ -96,7 +98,7 @@ public class FunctionalDataProcessorTest {
 		Assert.assertEquals(fd.getLocusFunction(), locusFunctions[1]);
 
 		// ANTISENSE STRAND TESTs
-		fdp = new FunctionalDataProcessor(StrandStrategy.ANTISENSE, acceptedFunctions);
+		fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.ANTISENSE, acceptedFunctions);
 
 		// ANTISENSE STRAND TEST negative strand
 		fdList = fdp.getFilteredFunctionalData(genes, strands, locusFunctions, true);
@@ -115,7 +117,7 @@ public class FunctionalDataProcessorTest {
 		Assert.assertEquals(fd.getLocusFunction(), locusFunctions[1]);
 
 		// BOTH returns both A and B.
-		fdp = new FunctionalDataProcessor(StrandStrategy.BOTH, acceptedFunctions);
+		fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.BOTH, acceptedFunctions);
 		fdList = fdp.getFilteredFunctionalData(genes, strands, locusFunctions, true);
 		Assert.assertEquals(fdList.size(), 2);
 		Assert.assertEquals(fdList.get(0).getGene(), genes[0]);
@@ -127,7 +129,7 @@ public class FunctionalDataProcessorTest {
 	@Test
 	public void testFunctionCollapse () {
 		LocusFunction [] acceptedFunctions = {LocusFunction.CODING, LocusFunction.UTR, LocusFunction.INTRONIC};
-		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		AbstractFunctionalDataProcessor fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
 		String [] genes = {"A", "A"};
 		String [] strands = {"+", "+"};
 		LocusFunction [] locusFunctions = {LocusFunction.CODING, LocusFunction.INTRONIC};
@@ -149,7 +151,7 @@ public class FunctionalDataProcessorTest {
 	// after filtering for the preferred type, only the coding read should be emitted.
 	public void testPreferredAnnotationTypeCodingIntronic () {
 		LocusFunction [] acceptedFunctions = {LocusFunction.CODING, LocusFunction.UTR, LocusFunction.INTRONIC};
-		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		AbstractFunctionalDataProcessor fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
 		String [] genes = {"A", "B"};
 		String [] strands = {"+", "+"};
 		LocusFunction [] locusFunctions = {LocusFunction.CODING, LocusFunction.INTRONIC};
@@ -181,7 +183,7 @@ public class FunctionalDataProcessorTest {
 	// after filtering for the preferred type, both are emitted.  Sad days, this doesn't resolve ambiguity.
 	public void testPreferredAnnotationTypeCodingCoding () {
 		LocusFunction [] acceptedFunctions = {LocusFunction.CODING, LocusFunction.UTR, LocusFunction.INTRONIC};
-		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		AbstractFunctionalDataProcessor fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
 		String [] genes = {"A", "B"};
 		String [] strands = {"+", "+"};
 		LocusFunction [] locusFunctions = {LocusFunction.CODING, LocusFunction.CODING};
@@ -215,7 +217,7 @@ public class FunctionalDataProcessorTest {
 	@Test
 	public void testFromRealData1() {
 		LocusFunction [] acceptedFunctions = {LocusFunction.CODING, LocusFunction.UTR, LocusFunction.INTRONIC};
-		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		AbstractFunctionalDataProcessor fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
 		String [] genes = {"CHKB-CPT1B", "CHKB-CPT1B", "CPT1B"};
 		String [] strands = {"-", "-", "-"};
 		LocusFunction [] locusFunctions = {LocusFunction.CODING, LocusFunction.INTRONIC, LocusFunction.UTR};
@@ -234,7 +236,7 @@ public class FunctionalDataProcessorTest {
 	@Test
 	public void testExample1() {
 		LocusFunction [] acceptedFunctions = {LocusFunction.CODING, LocusFunction.UTR, LocusFunction.INTRONIC};
-		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		AbstractFunctionalDataProcessor fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
 		String [] genes = {"A", "A", "B", "C"};
 		String [] strands = {"+", "+", "+", "-"};
 		LocusFunction [] locusFunctions = {LocusFunction.CODING, LocusFunction.INTRONIC, LocusFunction.INTRONIC, LocusFunction.INTRONIC};
@@ -255,7 +257,7 @@ public class FunctionalDataProcessorTest {
 	public void testExample2() {
 		
 		LocusFunction [] acceptedFunctions = {LocusFunction.INTRONIC};
-		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		AbstractFunctionalDataProcessor fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
 		String [] genes = {"A", "A", "B", "C"};
 		String [] strands = {"+", "+", "+", "-"};
 		LocusFunction [] locusFunctions = {LocusFunction.CODING, LocusFunction.INTRONIC, LocusFunction.INTRONIC, LocusFunction.INTRONIC};
@@ -276,7 +278,7 @@ public class FunctionalDataProcessorTest {
 	public void testExample3() {
 		
 		LocusFunction [] acceptedFunctions = {LocusFunction.CODING, LocusFunction.UTR};
-		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
+		AbstractFunctionalDataProcessor fdp = new DropSeqFunctionalDataProcessor(StrandStrategy.SENSE, acceptedFunctions);
 		String [] genes = {"A", "A", "B", "C"};
 		String [] strands = {"+", "+", "+", "-"};
 		LocusFunction [] locusFunctions = {LocusFunction.CODING, LocusFunction.INTRONIC, LocusFunction.INTRONIC, LocusFunction.INTRONIC};

@@ -1,8 +1,7 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.dropseqrna.annotation.FunctionalData;
-import org.broadinstitute.dropseqrna.annotation.FunctionalDataProcessor;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.*;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import picard.annotation.LocusFunction;
 
@@ -24,7 +23,7 @@ public class GeneFunctionProcessor {
 	private final String strandTag;
 	private final String functionTag;
 	private final boolean assignReadsToAllGenes;
-	private final FunctionalDataProcessor fdp;
+	private final FunctionalDataProcessorI fdp;
 	
 	public GeneFunctionProcessor(final String geneTag, final String strandTag, final String functionTag,
 			final boolean assignReadsToAllGenes, final StrandStrategy strandFilterStrategy,
@@ -35,8 +34,8 @@ public class GeneFunctionProcessor {
 		this.strandTag = strandTag;
 		this.functionTag = functionTag;
 		this.assignReadsToAllGenes = assignReadsToAllGenes;
-		this.fdp = new FunctionalDataProcessor(strandFilterStrategy,
-				acceptedLociFunctions);
+		this.fdp = FunctionalDataProcessorFactory.getFunctionalDataProcessor(strandFilterStrategy,
+				acceptedLociFunctions, FunctionalDataProcessorStrategyEnum.DROPSEQ);
 	}
 	
 	/**
@@ -127,7 +126,7 @@ public class GeneFunctionProcessor {
 		// If care about function, and you're missing the  function, you can't use this read.
 		if ((geneList == null) ||
 				(fdp.getStrandStrategy() != null && strandList == null) ||
-				(!fdp.getFunctions().isEmpty() && functionList == null)){
+				(!fdp.getAcceptedFunctions().isEmpty() && functionList == null)){
 			return Collections.emptyList();
 		}
 

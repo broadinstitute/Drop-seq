@@ -28,7 +28,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
-import org.broadinstitute.dropseqrna.annotation.FunctionalData;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalData;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
 import htsjdk.samtools.SAMRecord;
