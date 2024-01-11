@@ -78,11 +78,11 @@ public class GeneFunctionProcessor {
 	}
 
 	/**
-	 * For a list of reads that should be interpreted as a single "unit" (such as multiple reads that share the same query name.
+	 * For a list of reads that should be interpreted as a single "unit" (such as multiple reads that share the same query name).
 	 * This is useful to interpret primary/secondary alignments of the same read.
-	 * Filters reads to a perferred functional annotation (coding>intronic>intergenic), or none if ambiguous
+	 * Filters reads to a preferred functional annotation (coding>intronic>intergenic), or none if ambiguous
 	 * @param recs A list of SAMRecords that come from the same observation
-	 * @return A the primary read with tags that best represents this group.  This can also return null if read group is ambiguous.
+	 * @return A read with tags that best represents this group.  This can also return null if read group is ambiguous.
 	 */
 	public SAMRecord processReads (final List<SAMRecord> recs) {
 		List<FunctionalData> fdList = recs.stream()
@@ -104,13 +104,6 @@ public class GeneFunctionProcessor {
 
 		if (fdSet.size() == 1) {
 			FunctionalData fd = fdList.getFirst();
-			//retag and return an alignment - it doesn't matter which.
-//			for (SAMRecord r: recs) {
-//				if (!r.isSecondaryAlignment()) {
-//					r = assignTagsToRead(r, fd);
-//					return (r);
-//				}
-//			}
             return (assignTagsToRead(recs.getFirst(), fd));
 		}
 		return null;
@@ -144,7 +137,7 @@ public class GeneFunctionProcessor {
 	private SAMRecord assignTagsToRead(final SAMRecord r,
 			final FunctionalData fd) {
 		r.setAttribute(geneTag, fd.getGene());
-		r.setAttribute(strandTag, fd.getStrand());
+		r.setAttribute(strandTag, Utils.strandToString(fd.isGeneNegativeStrand()));
 		if (fd.getLocusFunction() != null) {
 			r.setAttribute(functionTag, fd.getLocusFunction().name());
 		}

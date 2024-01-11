@@ -51,4 +51,9 @@ public class Utils {
 		return "-";
 	}
 
+	public static Boolean stringToNegativeStrand(String strand) {
+        if (strand==null) return null;
+		return strand.equals("-");
+    }
+
 }
