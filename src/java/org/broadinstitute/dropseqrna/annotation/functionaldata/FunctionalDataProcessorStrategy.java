@@ -1,6 +1,6 @@
 package org.broadinstitute.dropseqrna.annotation.functionaldata;
 
-public enum FunctionalDataProcessorStrategyEnum {
+public enum FunctionalDataProcessorStrategy {
     DROPSEQ,
     STARSOLO;
 }

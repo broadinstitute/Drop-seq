@@ -23,7 +23,6 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts;
 
-import java.io.File;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -32,7 +31,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategyEnum;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
 import org.broadinstitute.dropseqrna.utils.MultiComparator;
@@ -88,7 +87,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	 * @param failFastThreshold If the iterator sees at least this many UMIs without encountering a transcribed SNP the iterator will fail.  Set to -1 to disable
 	 */
 	public SNPUMIBasePileupIterator (final SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String geneTag, final String geneStrandTag, final String geneFunctionTag,
-			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, FunctionalDataProcessorStrategyEnum functionStrategy,
+			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, FunctionalDataProcessorStrategy functionStrategy,
 									 final String cellBarcodeTag, final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
             final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final Map<Interval, Double> meanGenotypeQuality, final SortOrder order,
             int failFastThreshold) {
@@ -190,7 +189,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	}
 	
 	public SNPUMIBasePileupIterator (final SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String geneTag, final String geneStrandTag, final String geneFunctionTag,
-			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, FunctionalDataProcessorStrategyEnum functionStrategy,
+			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, FunctionalDataProcessorStrategy functionStrategy,
 									 final String cellBarcodeTag,
            final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
            final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final Map<Interval, Double> meanGenotypeQuality, final SortOrder order) {

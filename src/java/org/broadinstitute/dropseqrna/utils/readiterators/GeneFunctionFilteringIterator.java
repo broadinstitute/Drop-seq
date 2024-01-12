@@ -29,7 +29,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalData;
-import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategyEnum;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 
 import htsjdk.samtools.SAMRecord;
@@ -51,7 +51,7 @@ public class GeneFunctionFilteringIterator extends FilteredIterator<SAMRecord> {
 	
 	public GeneFunctionFilteringIterator(final Iterator<SAMRecord> underlyingIterator, final String geneTag, final String strandTag, 
 			final String functionTag, final StrandStrategy strandFilterStrategy, final Collection<LocusFunction> acceptedLociFunctions,
-										 FunctionalDataProcessorStrategyEnum functionStrategy) {
+										 FunctionalDataProcessorStrategy functionStrategy) {
 		
 		super(underlyingIterator);		
 		p = new GeneFunctionProcessor(geneTag, strandTag, functionTag, false, strandFilterStrategy, acceptedLociFunctions, functionStrategy);

@@ -1,7 +1,7 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategyEnum;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import picard.annotation.LocusFunction;
 import picard.cmdline.CommandLineProgram;
@@ -19,7 +19,7 @@ public abstract class GeneFunctionCommandLineBase extends CommandLineProgram {
     public static final String DEFAULT_FUNCTION_TAG = "XF";
     public static final StrandStrategy DEFAULT_STRAND_STRATEGY = StrandStrategy.SENSE;
 
-    public static final FunctionalDataProcessorStrategyEnum DEFAULT_FUNCTIONAL_STRATEGY = FunctionalDataProcessorStrategyEnum.DROPSEQ;
+    public static final FunctionalDataProcessorStrategy DEFAULT_FUNCTIONAL_STRATEGY = FunctionalDataProcessorStrategy.DROPSEQ;
     public static final List<LocusFunction> DEFAULT_LOCUS_FUNCTION_LIST = Collections.unmodifiableList(new ArrayList<>(Arrays.asList(LocusFunction.CODING, LocusFunction.UTR)));
     @Argument(doc="Gene Name tag.  Takes on the gene name this read overlaps (if any)")
 	public String GENE_NAME_TAG= DEFAULT_GENE_NAME_TAG;
@@ -37,5 +37,9 @@ public abstract class GeneFunctionCommandLineBase extends CommandLineProgram {
     @Argument(doc="A list of functional annotations that reads need to be completely contained by to be considered for analysis.")
     public List<LocusFunction> LOCUS_FUNCTION_LIST= new ArrayList<>(DEFAULT_LOCUS_FUNCTION_LIST);
 
-    public FunctionalDataProcessorStrategyEnum FUNCTIONAL_STRATEGY=DEFAULT_FUNCTIONAL_STRATEGY;
+    @Argument(doc="A strategy for interpreting functional annotations.  DropSeq is the default strategy.  STARSOLO strategy priority is very similar to DropSeq, except" +
+            "in cases where a read overlaps both an intron on the sense strand and a coding region on the antisense strand.  In these cases, DropSeq " +
+            "favors the intronic interpretation, while STARSolo interprets this as a technical artifact and labels the read as coming from the antisense coding gene, " +
+            "and the read does not contribute to the expression counts matrix.")
+    public FunctionalDataProcessorStrategy FUNCTIONAL_STRATEGY=DEFAULT_FUNCTIONAL_STRATEGY;
 }

@@ -26,7 +26,7 @@ package org.broadinstitute.dropseqrna.barnyard;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.*;
-import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategyEnum;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
 import org.broadinstitute.dropseqrna.metrics.BamTagHistogram;
 import org.broadinstitute.dropseqrna.metrics.BamTagOfTagCounts;
 import org.broadinstitute.dropseqrna.metrics.TagOfTagResults;
@@ -61,7 +61,7 @@ public class BarcodeListRetrieval {
 	 * @return
 	 */
 	public List<String> getCellBarcodes(final List<File> bamFile, final String cellBarcodeTag, final String molecularBarcodeTag,
-			final String geneNameTag, final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList, final FunctionalDataProcessorStrategyEnum functionStrategy,
+			final String geneNameTag, final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList, final FunctionalDataProcessorStrategy functionStrategy,
 										final File cellBCFile, final Integer readQuality, final Integer minNumTranscriptsPerCell,
 			final Integer minNumNumGenesPerCell, final Integer minNumReadsPerCell, final Integer numCoreBarcodes, final Integer editDistance, final Integer minNumReadsMolBarcode) {
 		List<String> cellBarcodes=new ArrayList<String>();
@@ -151,7 +151,7 @@ public class BarcodeListRetrieval {
 	}
 
 	public List<String> getListCellBarcodesByTranscriptCount(final List<File> input, final String cellBarcodeTag, final String molecularBarcodeTag, final String geneNameTag,
-			final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList, final FunctionalDataProcessorStrategyEnum functionStrategy,
+			final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList, final FunctionalDataProcessorStrategy functionStrategy,
 			final int readQuality, final int editDistance, final int minNumReadsMolBarcode, final int minNumTranscripts) {
 		
 		List<String> result = new ArrayList<String>();

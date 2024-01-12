@@ -26,17 +26,13 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignm
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
-import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategyEnum;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
 import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.testng.Assert;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileup;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileupIterator;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SortOrder;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.CellCollectionSampleLikelihoodCollection;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.CellSampleLikelihoodCollection;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.SampleGenotypeProbabilities;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.SampleGenotypeProbabilitiesIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import org.testng.annotations.Test;
@@ -69,7 +65,7 @@ public class CellCollectionSampleLikelihoodCollectionTest {
 	private String GENE_FUNCTION_TAG="gf";
 	private StrandStrategy STRAND_STRATEGY = StrandStrategy.SENSE;
 
-	private FunctionalDataProcessorStrategyEnum FUNCTION_STRATEGY = GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY;
+	private FunctionalDataProcessorStrategy FUNCTION_STRATEGY = GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY;
 	private List<LocusFunction> LOCUS_FUNCTION_LIST=new ArrayList<LocusFunction>(Arrays.asList(LocusFunction.CODING, LocusFunction.UTR));
 
 	@Test

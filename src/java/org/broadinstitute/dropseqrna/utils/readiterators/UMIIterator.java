@@ -28,7 +28,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordQueryNameComparator;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.util.*;
-import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategyEnum;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.utils.*;
@@ -68,7 +68,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final String geneFunctionTag,
                        final StrandStrategy strandStrategy,
                        final Collection <LocusFunction> acceptedLociFunctions,
-					   FunctionalDataProcessorStrategyEnum functionStrategy,
+					   FunctionalDataProcessorStrategy functionStrategy,
                        final String cellBarcodeTag,
                        final String molecularBarcodeTag,
                        final int readMQ,
@@ -101,7 +101,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final String geneFunctionTag,
                        final StrandStrategy strandStrategy,
                        final Collection <LocusFunction> acceptedLociFunctions,
-					   FunctionalDataProcessorStrategyEnum functionStrategy,
+					   FunctionalDataProcessorStrategy functionStrategy,
                        final String cellBarcodeTag,
                        final String molecularBarcodeTag,
                        final int readMQ,
@@ -140,7 +140,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final String geneFunctionTag,
                        final StrandStrategy strandStrategy,
                        final Collection <LocusFunction> acceptedLociFunctions,
-					   FunctionalDataProcessorStrategyEnum functionStrategy,
+					   FunctionalDataProcessorStrategy functionStrategy,
                        final String cellBarcodeTag,
                        final String molecularBarcodeTag,
                        final int readMQ,

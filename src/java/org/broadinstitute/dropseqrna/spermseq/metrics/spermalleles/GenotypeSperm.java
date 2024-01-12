@@ -10,7 +10,7 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategyEnum;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
 import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.DigitalAlleleCounts;
@@ -189,7 +189,7 @@ public class GenotypeSperm extends CommandLineProgram {
 			
 			SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 					headerAndIter, snpIntervals, GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_FUNCTION_TAG,
-					GeneFunctionCommandLineBase.DEFAULT_LOCUS_FUNCTION_LIST, StrandStrategy.BOTH, FunctionalDataProcessorStrategyEnum.DROPSEQ, this.CELL_BARCODE_TAG,
+					GeneFunctionCommandLineBase.DEFAULT_LOCUS_FUNCTION_LIST, StrandStrategy.BOTH, FunctionalDataProcessorStrategy.DROPSEQ, this.CELL_BARCODE_TAG,
 					this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, null, this.READ_MQ, true, cellBarcodes, null, SortOrder.SNP_GENE);
 			
 			return sbpi;

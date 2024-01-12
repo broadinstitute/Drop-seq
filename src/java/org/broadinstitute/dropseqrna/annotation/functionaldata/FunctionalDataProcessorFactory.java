@@ -7,10 +7,10 @@ import picard.annotation.LocusFunction;
 import java.util.Collection;
 
 public class FunctionalDataProcessorFactory {
-    public static FunctionalDataProcessorI getFunctionalDataProcessor(final StrandStrategy strandStrategy, final Collection<LocusFunction> acceptedFunctions, FunctionalDataProcessorStrategyEnum strategy) {
-        if (strategy==FunctionalDataProcessorStrategyEnum.DROPSEQ)
+    public static FunctionalDataProcessorI getFunctionalDataProcessor(final StrandStrategy strandStrategy, final Collection<LocusFunction> acceptedFunctions, FunctionalDataProcessorStrategy strategy) {
+        if (strategy== FunctionalDataProcessorStrategy.DROPSEQ)
             return new DropSeqFunctionalDataProcessor(strandStrategy, acceptedFunctions);
-        if (strategy==FunctionalDataProcessorStrategyEnum.STARSOLO)
+        if (strategy== FunctionalDataProcessorStrategy.STARSOLO)
             return new StarSoloFunctionalDataProcessor(strandStrategy, acceptedFunctions);
         throw new NotImplementedException("Strategy" + strategy +"not implemented!");
     }

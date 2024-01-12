@@ -35,7 +35,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
-import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategyEnum;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
@@ -49,7 +49,6 @@ import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
 import picard.annotation.LocusFunction;
 import picard.cmdline.StandardOptionDefinitions;
 
@@ -159,7 +158,7 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	 */
 	public ObjectCounter<String> getNumTranscriptsPerCell (final List<File> bamFile, final String cellBarcodeTag, final String molecularBarcodeTag,
 														   final String geneNameTag, final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList,
-														   final FunctionalDataProcessorStrategyEnum functionStrategy, final Integer mapQuality, final int editDistance, final int minNumReadsMolBarcode, final Collection<String> cellBarcodes) {
+														   final FunctionalDataProcessorStrategy functionStrategy, final Integer mapQuality, final int editDistance, final int minNumReadsMolBarcode, final Collection<String> cellBarcodes) {
 
 		SamReaderFactory factory= SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);		
 		SamHeaderAndIterator headerIterator= SamFileMergeUtil.mergeInputs(bamFile, false, factory);

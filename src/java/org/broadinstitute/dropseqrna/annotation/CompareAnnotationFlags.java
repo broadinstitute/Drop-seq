@@ -116,7 +116,7 @@ public class CompareAnnotationFlags extends CommandLineProgram {
 		LocusFunction [] acceptedLocusFunctions = {LocusFunction.UTR, LocusFunction.CODING};
 		GeneFunctionProcessor gfiw = new GeneFunctionProcessor("gn", "gs", "gf", false, StrandStrategy.SENSE, Arrays.asList(acceptedLocusFunctions), GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY);
 
-		FunctionalDataProcessorI fdp =  FunctionalDataProcessorFactory.getFunctionalDataProcessor(StrandStrategy.SENSE, LOCUS_FUNCTION_LIST, FunctionalDataProcessorStrategyEnum.DROPSEQ);
+		FunctionalDataProcessorI fdp =  FunctionalDataProcessorFactory.getFunctionalDataProcessor(StrandStrategy.SENSE, LOCUS_FUNCTION_LIST, FunctionalDataProcessorStrategy.DROPSEQ);
 		ObjectCounter<String> ambiguousGeneCounter = new ObjectCounter<String>();
 
 		for (SAMRecord r: inputSam) {

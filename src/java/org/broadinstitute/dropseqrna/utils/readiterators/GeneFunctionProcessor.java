@@ -27,7 +27,7 @@ public class GeneFunctionProcessor {
 	
 	public GeneFunctionProcessor(final String geneTag, final String strandTag, final String functionTag,
 			final boolean assignReadsToAllGenes, final StrandStrategy strandFilterStrategy,
-			final Collection<LocusFunction> acceptedLociFunctions, FunctionalDataProcessorStrategyEnum functionStrategy) {
+			final Collection<LocusFunction> acceptedLociFunctions, FunctionalDataProcessorStrategy functionStrategy) {
 		
 
 		this.geneTag = geneTag;
