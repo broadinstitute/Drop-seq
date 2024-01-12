@@ -1,6 +1,7 @@
 package org.broadinstitute.dropseqrna.annotation.functionaldata;
 
 import org.broadinstitute.dropseqrna.annotation.AnnotationUtils;
+import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import picard.annotation.LocusFunction;
 
@@ -44,17 +45,17 @@ public class DataProcessorUtils {
      * @return the subset of FunctionalData passing this filter.
      */
     public List<FunctionalData> filterOnStrand(final boolean readNegativeStrand, final List<FunctionalData> originalData) {
-
+        String readStrandString = Utils.strandToString(!readNegativeStrand);
         List<FunctionalData> result = new ArrayList<>();
 
         if (this.strandStrategy == StrandStrategy.SENSE)
             for (FunctionalData sf : originalData)
-                if (sf.isGeneNegativeStrand()==readNegativeStrand)
+                if (sf.getGeneStrand().equals(readStrandString))
                     result.add(sf);
 
         if (this.strandStrategy == StrandStrategy.ANTISENSE)
             for (FunctionalData sf : originalData)
-                if (sf.isGeneNegativeStrand()!=readNegativeStrand)
+                if (!sf.getGeneStrand().equals(readStrandString))
                     result.add(sf);
 
         // NO OP
@@ -140,7 +141,7 @@ public class DataProcessorUtils {
                 finalLF = AnnotationUtils.getInstance().getLocusFunction(lf, false);
             }
             // any instance of list l is fine.
-            FunctionalData result = new FunctionalData(l.getFirst().getGene(), l.getFirst().isGeneNegativeStrand(), finalLF, l.getFirst().isReadNegativeStrand());
+            FunctionalData result = new FunctionalData(l.getFirst().getGene(), l.getFirst().getGeneStrand(), finalLF, l.getFirst().getReadStrand());
             resultList.add(result);
         }
         return (resultList);

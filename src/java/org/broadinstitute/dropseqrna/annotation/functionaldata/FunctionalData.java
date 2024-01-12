@@ -17,20 +17,16 @@ import java.util.List;
 public class FunctionalData {
 
 	private final String gene;
-	private final Boolean geneNegativeStrand;
+	private final String geneStrand;
 	private final LocusFunction locusFunction;
 
-	private final boolean readNegativeStrand;
+	private final String readStrand;
 
-		public FunctionalData (final String gene, final String strand, final LocusFunction locusFunction, final boolean readNegativeStrand) {
-			this(gene, Utils.stringToNegativeStrand(strand), locusFunction, readNegativeStrand);
-		}
-
-	public FunctionalData (final String gene, final Boolean geneNegativeStrand, final LocusFunction locusFunction, final boolean readNegativeStrand) {
+	public FunctionalData (final String gene, final String geneStrand, final LocusFunction locusFunction, final String readStrand) {
 		this.gene=gene;
-		this.geneNegativeStrand =geneNegativeStrand;
+		this.geneStrand =geneStrand;
 		this.locusFunction=locusFunction;
-		this.readNegativeStrand=readNegativeStrand;
+		this.readStrand=readStrand;
 	}
 
 
@@ -58,18 +54,18 @@ public class FunctionalData {
 			FunctionalData sf = new FunctionalData(genes[i],
 					(strandStrategy == null ? null : strands[i]),
 					(acceptedFunctions.isEmpty() ? null : locusFunctions[i]),
-					readNegativeStrand);
+					Utils.strandToString(readNegativeStrand));
 			data.add(sf);
 		}
 		return (data);
 	}
 
-	public Boolean isGeneNegativeStrand() {
-		return this.geneNegativeStrand;
+	public String getGeneStrand() {
+		return this.geneStrand;
 	}
 
-	public boolean isReadNegativeStrand() {
-		return readNegativeStrand;
+	public String getReadStrand() {
+		return readStrand;
 	}
 
 	public String getGene () {
@@ -82,7 +78,12 @@ public class FunctionalData {
 
 	@Override
 	public String toString () {
-		return (this.gene + " " + this.geneNegativeStrand + " " + this.locusFunction.name());
+		return String.format("%s %s %s",
+				java.util.Objects.toString(gene, "null"),
+				java.util.Objects.toString(geneStrand, "null"),
+				java.util.Objects.toString(locusFunction, "null"),
+				java.util.Objects.toString(readStrand, "null")
+				);
 	}
 
 	@Override
@@ -90,11 +91,11 @@ public class FunctionalData {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		FunctionalData that = (FunctionalData) o;
-		return Objects.equal(gene, that.gene) && Objects.equal(geneNegativeStrand, that.geneNegativeStrand) && locusFunction == that.locusFunction;
+		return Objects.equal(gene, that.gene) && Objects.equal(geneStrand, that.geneStrand) && locusFunction == that.locusFunction;
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hashCode(gene, geneNegativeStrand, locusFunction);
+		return Objects.hashCode(gene, geneStrand, locusFunction);
 	}
 }

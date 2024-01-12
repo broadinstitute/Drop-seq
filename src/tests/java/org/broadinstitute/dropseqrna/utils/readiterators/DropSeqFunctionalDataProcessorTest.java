@@ -23,7 +23,7 @@ public class DropSeqFunctionalDataProcessorTest {
 		Assert.assertEquals(fdList.size(), 1);
 		FunctionalData fd = fdList.get(0);
 		Assert.assertEquals(fd.getGene(), genes[0]);
-		Assert.assertEquals(fd.isGeneNegativeStrand(), strands[0]);
+		Assert.assertEquals(fd.getGeneStrand(), strands[0]);
 		Assert.assertEquals(fd.getLocusFunction(), locusFunctions[0]);
 
 		fdList = fdp.filterToPreferredAnnotations(fdList);
@@ -64,7 +64,7 @@ public class DropSeqFunctionalDataProcessorTest {
 
 		FunctionalData fd = fdList.get(0);
 		Assert.assertEquals(fd.getGene(), genes[1]);
-		Assert.assertEquals(fd.isGeneNegativeStrand(), strands[1]);
+		Assert.assertEquals(fd.getGeneStrand(), strands[1]);
 		Assert.assertEquals(fd.getLocusFunction(), locusFunctions[0]);
 
 		fdList = fdp.filterToPreferredAnnotations(fdList);
@@ -85,7 +85,7 @@ public class DropSeqFunctionalDataProcessorTest {
 		Assert.assertEquals(fdList.size(), 1);
 		FunctionalData fd = fdList.getFirst();
 		Assert.assertEquals(fd.getGene(), genes[0]);
-		Assert.assertEquals(fd.isGeneNegativeStrand(), strands[0]);
+		Assert.assertEquals(fd.getGeneStrand(), strands[0]);
 		Assert.assertEquals(fd.getLocusFunction(), locusFunctions[0]);
 
 		// SENSE STRAND TEST negative strand
@@ -93,7 +93,7 @@ public class DropSeqFunctionalDataProcessorTest {
 		Assert.assertEquals(fdList.size(), 1);
 		fd = fdList.get(0);
 		Assert.assertEquals(fd.getGene(), genes[1]);
-		Assert.assertEquals(fd.isGeneNegativeStrand(), strands[1]);
+		Assert.assertEquals(fd.getGeneStrand(), strands[1]);
 		Assert.assertEquals(fd.getLocusFunction(), locusFunctions[1]);
 
 		// ANTISENSE STRAND TESTs
@@ -104,7 +104,7 @@ public class DropSeqFunctionalDataProcessorTest {
 		Assert.assertEquals(fdList.size(), 1);
 		fd = fdList.get(0);
 		Assert.assertEquals(fd.getGene(), genes[0]);
-		Assert.assertEquals(fd.isGeneNegativeStrand(), strands[0]);
+		Assert.assertEquals(fd.getGeneStrand(), strands[0]);
 		Assert.assertEquals(fd.getLocusFunction(), locusFunctions[0]);
 
 		// ANTISENSE SENSE STRAND TEST positive strand
@@ -112,7 +112,7 @@ public class DropSeqFunctionalDataProcessorTest {
 		Assert.assertEquals(fdList.size(), 1);
 		fd = fdList.get(0);
 		Assert.assertEquals(fd.getGene(), genes[1]);
-		Assert.assertEquals(fd.isGeneNegativeStrand(), strands[1]);
+		Assert.assertEquals(fd.getGeneStrand(), strands[1]);
 		Assert.assertEquals(fd.getLocusFunction(), locusFunctions[1]);
 
 		// BOTH returns both A and B.
@@ -137,7 +137,7 @@ public class DropSeqFunctionalDataProcessorTest {
 		Assert.assertEquals(fdList.size(), 1);
 		FunctionalData fd = fdList.getFirst();
 		Assert.assertEquals(fd.getGene(), genes[0]);
-		Assert.assertEquals(fd.isGeneNegativeStrand(), strands[0]);
+		Assert.assertEquals(fd.getGeneStrand(), strands[0]);
 		Assert.assertEquals(fd.getLocusFunction(), locusFunctions[0]);
 
 		fdList = fdp.filterToPreferredAnnotations(fdList);
@@ -160,11 +160,11 @@ public class DropSeqFunctionalDataProcessorTest {
 		Assert.assertEquals(fdList.size(), 2);
 		FunctionalData fd = fdList.get(0);
 		Assert.assertEquals(fd.getGene(), genes[0]);
-		Assert.assertEquals(fd.isGeneNegativeStrand(), strands[0]);
+		Assert.assertEquals(fd.getGeneStrand(), strands[0]);
 		Assert.assertEquals(fd.getLocusFunction(), locusFunctions[0]);
 		FunctionalData fd2 = fdList.get(1);
 		Assert.assertEquals(fd2.getGene(), genes[1]);
-		Assert.assertEquals(fd2.isGeneNegativeStrand(), strands[1]);
+		Assert.assertEquals(fd2.getGeneStrand(), strands[1]);
 		Assert.assertEquals(fd2.getLocusFunction(), locusFunctions[1]);
 
 		// once you filter to the preferred annotations, coding is "the best", so you only have a single FunctionalData.
@@ -172,7 +172,7 @@ public class DropSeqFunctionalDataProcessorTest {
 		Assert.assertEquals(fdList.size(), 1);
 		fd = fdList.get(0);
 		Assert.assertEquals(fd.getGene(), genes[0]);
-		Assert.assertEquals(fd.isGeneNegativeStrand(), strands[0]);
+		Assert.assertEquals(fd.getGeneStrand(), strands[0]);
 		Assert.assertEquals(fd.getLocusFunction(), locusFunctions[0]);
 	}
 
@@ -192,11 +192,11 @@ public class DropSeqFunctionalDataProcessorTest {
 		Assert.assertEquals(fdList.size(), 2);
 		FunctionalData fd = fdList.get(0);
 		Assert.assertEquals(fd.getGene(), genes[0]);
-		Assert.assertEquals(fd.isGeneNegativeStrand(), strands[0]);
+		Assert.assertEquals(fd.getGeneStrand(), strands[0]);
 		Assert.assertEquals(fd.getLocusFunction(), locusFunctions[0]);
 		FunctionalData fd2 = fdList.get(1);
 		Assert.assertEquals(fd2.getGene(), genes[1]);
-		Assert.assertEquals(fd2.isGeneNegativeStrand(), strands[1]);
+		Assert.assertEquals(fd2.getGeneStrand(), strands[1]);
 		Assert.assertEquals(fd2.getLocusFunction(), locusFunctions[1]);
 
 		// once you filter to the preferred annotations, both are still present.
@@ -204,11 +204,11 @@ public class DropSeqFunctionalDataProcessorTest {
 		Assert.assertEquals(fdList.size(), 2);
 		fd = fdList.get(0);
 		Assert.assertEquals(fd.getGene(), genes[0]);
-		Assert.assertEquals(fd.isGeneNegativeStrand(), strands[0]);
+		Assert.assertEquals(fd.getGeneStrand(), strands[0]);
 		Assert.assertEquals(fd.getLocusFunction(), locusFunctions[0]);
 		fd2 = fdList.get(1);
 		Assert.assertEquals(fd2.getGene(), genes[1]);
-		Assert.assertEquals(fd2.isGeneNegativeStrand(), strands[1]);
+		Assert.assertEquals(fd2.getGeneStrand(), strands[1]);
 		Assert.assertEquals(fd2.getLocusFunction(), locusFunctions[1]);
 	}
 

@@ -137,7 +137,7 @@ public class GeneFunctionProcessor {
 	private SAMRecord assignTagsToRead(final SAMRecord r,
 			final FunctionalData fd) {
 		r.setAttribute(geneTag, fd.getGene());
-		r.setAttribute(strandTag, Utils.strandToString(fd.isGeneNegativeStrand()));
+		r.setAttribute(strandTag, fd.getGeneStrand());
 		if (fd.getLocusFunction() != null) {
 			r.setAttribute(functionTag, fd.getLocusFunction().name());
 		}
