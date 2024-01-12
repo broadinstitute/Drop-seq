@@ -1,6 +1,7 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategyEnum;
 import org.broadinstitute.dropseqrna.utils.CountChangingIteratorWrapper;
 
 import picard.annotation.LocusFunction;
@@ -19,9 +20,11 @@ public class GeneFunctionIteratorWrapper extends
 			final String strandTag, final String functionTag,
 			final boolean assignReadsToAllGenes,
 			final StrandStrategy strandFilterStrategy,
-			final Collection<LocusFunction> acceptedLociFunctions) {
+			final Collection<LocusFunction> acceptedLociFunctions,
+			FunctionalDataProcessorStrategyEnum functionStrategy) {
 		super(underlyingIterator);
-		geneFunctionProcessor = new GeneFunctionProcessor(geneTag, strandTag, functionTag, assignReadsToAllGenes, strandFilterStrategy, acceptedLociFunctions);
+		geneFunctionProcessor = new GeneFunctionProcessor(geneTag, strandTag, functionTag, assignReadsToAllGenes,
+				strandFilterStrategy, acceptedLociFunctions, functionStrategy);
 	}
 
 	@Override

@@ -74,8 +74,8 @@ public class DigitalExpressionTest {
 		List<String> cellBarcodes = Arrays.asList(DigitalExpressionTestUtil.barcodes);
 
 		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(inFile), false), GENE_NAME_TAG,
-				GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-        		this.READ_MQ, true, cellBarcodes);
+				GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,
+				this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ, true, cellBarcodes);
 
 		return (umiIterator);
 	}
@@ -206,8 +206,8 @@ public class DigitalExpressionTest {
 		File inFile = new File ("");
 
 		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(inFile), false), GENE_NAME_TAG,
-				GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-        		this.READ_MQ, true, barcodes);
+				GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,
+				this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ, true, barcodes);
 	}
 
 

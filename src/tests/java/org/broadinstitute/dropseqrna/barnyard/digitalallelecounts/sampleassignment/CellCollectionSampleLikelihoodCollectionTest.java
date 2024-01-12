@@ -26,6 +26,8 @@ package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignm
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategyEnum;
+import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.testng.Assert;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileup;
@@ -66,6 +68,8 @@ public class CellCollectionSampleLikelihoodCollectionTest {
 	private String GENE_STRAND_TAG="gs";
 	private String GENE_FUNCTION_TAG="gf";
 	private StrandStrategy STRAND_STRATEGY = StrandStrategy.SENSE;
+
+	private FunctionalDataProcessorStrategyEnum FUNCTION_STRATEGY = GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY;
 	private List<LocusFunction> LOCUS_FUNCTION_LIST=new ArrayList<LocusFunction>(Arrays.asList(LocusFunction.CODING, LocusFunction.UTR));
 
 	@Test
@@ -203,7 +207,7 @@ public class CellCollectionSampleLikelihoodCollectionTest {
 		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 				new SamHeaderAndIterator(this.INPUT_BAM), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
-				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
+				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, FUNCTION_STRATEGY, cellBarcodeTag,
 				molBCTag, snpTag, "XF", readMQ, true, barcodes, meanGenotypeQuality, SortOrder.SNP_CELL);
 
 		boolean flag = sbpi.hasNext();

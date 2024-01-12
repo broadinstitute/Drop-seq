@@ -912,7 +912,7 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		// this explicitly filters to the best SNP seen on a read if there are multiple SNPs touched by a read
 		Map<Interval, Double> genotypeQuality = snpIntervals.getAverageGQ();		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(headerAndIter, snpIntervals.getIntervalList(), GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
-				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, this.FUNCTION_TAG, this.READ_MQ, false,
+				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, this.FUNCTION_TAG, this.READ_MQ, false,
 				barcodes, genotypeQuality, SortOrder.SNP_CELL, this.TRANSCRIBED_SNP_FAIL_FAST_THRESHOLD);
 		
 		

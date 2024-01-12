@@ -44,18 +44,17 @@ public class DataProcessorUtils {
      * @param originalData       the set of data to filter.
      * @return the subset of FunctionalData passing this filter.
      */
-    public List<FunctionalData> filterOnStrand(final boolean readNegativeStrand, final List<FunctionalData> originalData) {
-        String readStrandString = Utils.strandToString(!readNegativeStrand);
+    public List<FunctionalData> filterOnStrand(final List<FunctionalData> originalData) {
         List<FunctionalData> result = new ArrayList<>();
 
         if (this.strandStrategy == StrandStrategy.SENSE)
             for (FunctionalData sf : originalData)
-                if (sf.getGeneStrand().equals(readStrandString))
+                if (sf.getGeneStrand().equals(sf.getReadStrand()))
                     result.add(sf);
 
         if (this.strandStrategy == StrandStrategy.ANTISENSE)
             for (FunctionalData sf : originalData)
-                if (!sf.getGeneStrand().equals(readStrandString))
+                if (!sf.getGeneStrand().equals(sf.getReadStrand()))
                     result.add(sf);
 
         // NO OP

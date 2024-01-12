@@ -1,8 +1,9 @@
-package org.broadinstitute.dropseqrna.utils.readiterators;
+package org.broadinstitute.dropseqrna.annotation.functionaldata;
 
 import org.broadinstitute.dropseqrna.annotation.functionaldata.DropSeqFunctionalDataProcessor;
 import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalData;
 import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorI;
+import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import picard.annotation.LocusFunction;

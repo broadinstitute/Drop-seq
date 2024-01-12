@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPUMIBasePileupIterator;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SortOrder;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
@@ -138,7 +139,7 @@ public class SampleGenotypeProbabilitiesIteratorTest {
 		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 				new SamHeaderAndIterator(this.INPUT_BAM), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
-				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
+				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY, cellBarcodeTag,
 				molBCTag, snpTag, "XF", readMQ, assignReadsToAllGenes, barcodes, meanGenotypeQuality, SortOrder.SNP_CELL);
 		
 		boolean flag = sbpi.hasNext();

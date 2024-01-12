@@ -54,7 +54,7 @@ public class FunctionalData {
 			FunctionalData sf = new FunctionalData(genes[i],
 					(strandStrategy == null ? null : strands[i]),
 					(acceptedFunctions.isEmpty() ? null : locusFunctions[i]),
-					Utils.strandToString(readNegativeStrand));
+					Utils.negativeStrandToString(readNegativeStrand));
 			data.add(sf);
 		}
 		return (data);

@@ -257,11 +257,11 @@ public class TagReadWithGeneExonFunction extends CommandLineProgram {
 
         StringBuilder result = new StringBuilder();
         Iterator<Gene> iter = genes.iterator();
-        result.append(Utils.strandToString(iter.next().isPositiveStrand()));
+        result.append(Utils.negativeStrandToString(iter.next().isNegativeStrand()));
 
         while (iter.hasNext()) {
             result.append(RECORD_SEP);
-            result.append(Utils.strandToString(iter.next().isPositiveStrand()));
+            result.append(Utils.negativeStrandToString(iter.next().isNegativeStrand()));
         }
 
         return (result.toString());

@@ -28,9 +28,6 @@ public class StarSoloFunctionalDataProcessor implements FunctionalDataProcessorI
         this(strandStrategy, Arrays.asList(acceptedFunctions));
     }
 
-
-
-
     /**
      * Return the set of functional annotations this object holds by the strand of a read and strand filtering strategy,
      * and by the set of genes that overlap accepted locus functions.  If a gene has multiple functional annotations,
@@ -59,6 +56,7 @@ public class StarSoloFunctionalDataProcessor implements FunctionalDataProcessorI
      */
     public List<FunctionalData> filterToPreferredAnnotations(Collection<FunctionalData> fdList) {
         List<FunctionalData> result = util.filterToPreferredAnnotations(fdList, priority);
+        result = util.filterOnStrand(result);
         return result;
     }
 

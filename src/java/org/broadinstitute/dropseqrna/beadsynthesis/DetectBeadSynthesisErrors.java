@@ -590,7 +590,7 @@ public class DetectBeadSynthesisErrors extends GeneFunctionCommandLineBase {
 
 		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(INPUT, false, samReaderFactory),
 				GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
-        		this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+        		this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
         		this.READ_MQ, false, barcodes, true, false);
 
 				return (umiIterator);

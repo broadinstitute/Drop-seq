@@ -50,7 +50,7 @@ public class DropSeqFunctionalDataProcessor implements FunctionalDataProcessorI 
 	public List<FunctionalData> getFilteredFunctionalData(final String[] genes, final String[] strands, final LocusFunction[] locusFunctions, final boolean readNegativeStrand) {
         List<FunctionalData> result = FunctionalData.buildFD(genes, strands, locusFunctions, this.util.getStrandStrategy(), this.util.getAcceptedFunctions(), readNegativeStrand);
         if (util.getStrandStrategy() != null) {
-            result = util.filterOnStrand(readNegativeStrand, result);
+            result = util.filterOnStrand(result);
         }
         if (!getAcceptedFunctions().isEmpty()) {
             result = util.filterOnLocus(result);

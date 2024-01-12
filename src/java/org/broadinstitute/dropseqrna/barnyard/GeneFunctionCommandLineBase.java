@@ -1,6 +1,7 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategyEnum;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import picard.annotation.LocusFunction;
 import picard.cmdline.CommandLineProgram;
@@ -17,6 +18,8 @@ public abstract class GeneFunctionCommandLineBase extends CommandLineProgram {
     public static final String DEFAULT_GENE_FUNCTION_TAG = "gf";
     public static final String DEFAULT_FUNCTION_TAG = "XF";
     public static final StrandStrategy DEFAULT_STRAND_STRATEGY = StrandStrategy.SENSE;
+
+    public static final FunctionalDataProcessorStrategyEnum DEFAULT_FUNCTIONAL_STRATEGY = FunctionalDataProcessorStrategyEnum.DROPSEQ;
     public static final List<LocusFunction> DEFAULT_LOCUS_FUNCTION_LIST = Collections.unmodifiableList(new ArrayList<>(Arrays.asList(LocusFunction.CODING, LocusFunction.UTR)));
     @Argument(doc="Gene Name tag.  Takes on the gene name this read overlaps (if any)")
 	public String GENE_NAME_TAG= DEFAULT_GENE_NAME_TAG;
@@ -34,4 +37,5 @@ public abstract class GeneFunctionCommandLineBase extends CommandLineProgram {
     @Argument(doc="A list of functional annotations that reads need to be completely contained by to be considered for analysis.")
     public List<LocusFunction> LOCUS_FUNCTION_LIST= new ArrayList<>(DEFAULT_LOCUS_FUNCTION_LIST);
 
+    public FunctionalDataProcessorStrategyEnum FUNCTIONAL_STRATEGY=DEFAULT_FUNCTIONAL_STRATEGY;
 }

@@ -58,7 +58,7 @@ public class GeneStrandFilteringIterator extends FilteredIterator<SAMRecord>{
 		if (geneStrand==null) return false;
 
 		String [] strands = geneStrand.split(",");
-		String readStrandString = Utils.strandToString(!rec.getReadNegativeStrandFlag());
+		String readStrandString = Utils.negativeStrandToString(rec.getReadNegativeStrandFlag());
 		for (String s: strands)
 			if (!s.equals(readStrandString)) return true;
 		return false;

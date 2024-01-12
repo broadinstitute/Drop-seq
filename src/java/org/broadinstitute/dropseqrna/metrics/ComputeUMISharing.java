@@ -152,7 +152,7 @@ public class ComputeUMISharing
         if (LOCUS_FUNCTION_LIST.size() > 0) {
             iter = new GeneFunctionIteratorWrapper(iter, this.GENE_NAME_TAG,
                     this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, false, this.STRAND_STRATEGY,
-                    this.LOCUS_FUNCTION_LIST);
+                    this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY);
         }
 
         CloseableIterator<SAMRecord> sortedIter = SortingIteratorFactory.create(SAMRecord.class, iter,

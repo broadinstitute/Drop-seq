@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategyEnum;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
 import org.broadinstitute.dropseqrna.utils.MultiComparator;
@@ -77,10 +78,9 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	 * @param geneTag The geneExon tag on BAM records
 	 * @param cellBarcodeTag The cell barcode tag on BAM records
 	 * @param molecularBarcodeTag The molecular barcode tag on BAM records
-	 * @param strandTag The strand tag on BAM records
+	 * @param geneStrandTag The strand tag on BAM records
 	 * @param readMQ The minimum map quality of the reads
 	 * @param assignReadsToAllGenes Should records tagged with multiple genes be double counted, once for each gene?
-	 * @param useStrandInfo should the gene and read strand match for the read to be accepted
 	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.  Only reads with these values will be used.  If set to null, all cell barcodes are used.
 	 * @param meanGenotypeQuality A map from SNP Intervals to the mean genotype quality.  This is an optional parameter.  If supplied, in cases where a read has 
 	 * multiple SNPs, the SNP with the highest average genotype quality will be selected to avoid read "double counting".
@@ -88,8 +88,8 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	 * @param failFastThreshold If the iterator sees at least this many UMIs without encountering a transcribed SNP the iterator will fail.  Set to -1 to disable
 	 */
 	public SNPUMIBasePileupIterator (final SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String geneTag, final String geneStrandTag, final String geneFunctionTag,
-			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, final String cellBarcodeTag,
-            final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
+			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, FunctionalDataProcessorStrategyEnum functionStrategy,
+									 final String cellBarcodeTag, final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
             final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final Map<Interval, Double> meanGenotypeQuality, final SortOrder order,
             int failFastThreshold) {
 				
@@ -118,7 +118,7 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
                 new MissingTagFilteringIterator(filteringIterator, geneTag, cellBarcodeTag, molecularBarcodeTag);
         
      	// Filter/assign reads based on functional annotations
-     	GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator2, geneTag, geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
+     	GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator2, geneTag, geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions, functionStrategy);
      	
      	/**
      	 * In this section, data is sorted into the standard cell / gene / umi order and grouped so that all reads for a single UMI can be evaluated at once.
@@ -190,11 +190,12 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 	}
 	
 	public SNPUMIBasePileupIterator (final SamHeaderAndIterator headerAndIter, final IntervalList snpIntervals, final String geneTag, final String geneStrandTag, final String geneFunctionTag,
-			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, final String cellBarcodeTag,
+			 final Collection <LocusFunction> acceptedLociFunctions, final StrandStrategy strandStrategy, FunctionalDataProcessorStrategyEnum functionStrategy,
+									 final String cellBarcodeTag,
            final String molecularBarcodeTag, final String snpTag, final String functionTag, final int readMQ,
            final boolean assignReadsToAllGenes, final List<String> cellBarcodes, final Map<Interval, Double> meanGenotypeQuality, final SortOrder order) {
 		
-		this(headerAndIter, snpIntervals, geneTag, geneStrandTag, geneFunctionTag, acceptedLociFunctions, strandStrategy, cellBarcodeTag, molecularBarcodeTag, snpTag, functionTag, readMQ, 
+		this(headerAndIter, snpIntervals, geneTag, geneStrandTag, geneFunctionTag, acceptedLociFunctions, strandStrategy, functionStrategy, cellBarcodeTag, molecularBarcodeTag, snpTag, functionTag, readMQ,
 				assignReadsToAllGenes, cellBarcodes, meanGenotypeQuality, order, -1);
 	}
 	

@@ -46,14 +46,13 @@ public class Utils {
 		return (currentCell);
 	}
 
-	public static String strandToString(final boolean strand) {
-		if (strand) return "+";
-		return "-";
+	public static String negativeStrandToString(final boolean readNegativeStrand) {
+		if (readNegativeStrand) return "-";
+		return "+";
 	}
 
-	public static Boolean stringToNegativeStrand(String strand) {
-        if (strand==null) return null;
-		return strand.equals("-");
-    }
-
+	public static String positiveStrandToString(final boolean readPositiveStrand) {
+		if (readPositiveStrand) return "+";
+		return "-";
+	}
 }

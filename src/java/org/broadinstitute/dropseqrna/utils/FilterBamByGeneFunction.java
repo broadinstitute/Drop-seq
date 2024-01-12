@@ -85,7 +85,7 @@ public class FilterBamByGeneFunction extends GeneFunctionCommandLineBase {
 			filteringIterator = new TagValueFilteringIterator<>(filteringIterator, cellBarcodeTag, cellBarcodes);
 		}
 		// Filter/assign reads based on functional annotations
-		filteringIterator = new GeneFunctionFilteringIterator(filteringIterator, geneNameTag, geneStrandTag, geneFunctionTag, strandStrategy, acceptedLociFunctions); 				
+		filteringIterator = new GeneFunctionFilteringIterator(filteringIterator, geneNameTag, geneStrandTag, geneFunctionTag, strandStrategy, acceptedLociFunctions, this.FUNCTIONAL_STRATEGY);
 		return filteringIterator;
 	}
 	

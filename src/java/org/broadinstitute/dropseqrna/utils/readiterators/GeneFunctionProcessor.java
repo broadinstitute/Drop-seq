@@ -27,7 +27,7 @@ public class GeneFunctionProcessor {
 	
 	public GeneFunctionProcessor(final String geneTag, final String strandTag, final String functionTag,
 			final boolean assignReadsToAllGenes, final StrandStrategy strandFilterStrategy,
-			final Collection<LocusFunction> acceptedLociFunctions) {
+			final Collection<LocusFunction> acceptedLociFunctions, FunctionalDataProcessorStrategyEnum functionStrategy) {
 		
 
 		this.geneTag = geneTag;
@@ -35,7 +35,7 @@ public class GeneFunctionProcessor {
 		this.functionTag = functionTag;
 		this.assignReadsToAllGenes = assignReadsToAllGenes;
 		this.fdp = FunctionalDataProcessorFactory.getFunctionalDataProcessor(strandFilterStrategy,
-				acceptedLociFunctions, FunctionalDataProcessorStrategyEnum.DROPSEQ);
+				acceptedLociFunctions, functionStrategy);
 	}
 	
 	/**
