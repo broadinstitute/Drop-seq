@@ -26,38 +26,32 @@ package org.broadinstitute.dropseqrna.beadsynthesis;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import org.broadinstitute.dropseqrna.utils.BaseRange;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.Collections;
+import java.util.List;
 
 public class CorrectAndSplitScrnaReadPairsTest {
 
  private static final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/beadsynthesis/CorrectAndSplitScrnaReadPairsTest");
  private static final File INPUT_SAM = new File(TEST_DATA_DIR, "correct_barcodes_test.sam");
  private static final File EXPECTED_BARCODES_HIST = new File(TEST_DATA_DIR, "correct_barcodes_test.expected_barcode_metrics.gz");
+ private static final String BARCODE_QUALS_TAG = "CY";
+ private static final String RAW_BARCODE_TAG = "CR";
+ private static final String BASE_RANGE = "1-16";
 
  @Test
  public void testBasic() {
-  final CorrectAndSplitScrnaReadPairs clp = new CorrectAndSplitScrnaReadPairs();
-  clp.INPUT = Collections.singletonList(INPUT_SAM);
-  clp.ALLOWED_BARCODE_COUNTS = EXPECTED_BARCODES_HIST;
-  clp.BARCODED_READ = 1;
-  clp.BASE_RANGE = "1-16";
-  clp.METRICS = TestUtils.getTempReportFile("test.", ".corrected_barcode_metrics");
-  clp.NUM_OUTPUTS = 1;
-  clp.OUTPUT_LIST = TestUtils.getTempReportFile( "CorrectAndSplitScrnaReadPairsTest.", ".bam_list");
-  clp.OUTPUT = new File("test." + clp.OUTPUT_SLUG + ".sam");
-  clp.OVERWRITE_EXISTING = true;
+  CorrectAndSplitScrnaReadPairs clp = initClp();
   final File outputSam = new File(clp.OUTPUT_LIST.getParentFile(), "test.0.sam");
   outputSam.deleteOnExit();
-  clp.OUTPUT_MANIFEST = TestUtils.getTempReportFile("CorrectAndSplitScrnaReadPairsTest.", ".split_bam_manifest.gz");
-  clp.REPORT = TestUtils.getTempReportFile("CorrectAndSplitScrnaReadPairsTest.", ".split_bam_report");
   Assert.assertEquals(clp.doWork(), 0);
   final SamReader reader = SamReaderFactory.makeDefault().open(outputSam);
-  for (final SAMRecord rec: reader) {
+  for (final SAMRecord rec : reader) {
    if (rec.getSecondOfPairFlag()) {
     final String cellBarcode = rec.getStringAttribute(clp.BARCODE_TAG);
     final String expectedCellBarcode = rec.getReadName().split(":")[1];
@@ -65,4 +59,47 @@ public class CorrectAndSplitScrnaReadPairsTest {
    }
   }
  }
+
+ private CorrectAndSplitScrnaReadPairs initClp() {
+  final CorrectAndSplitScrnaReadPairs clp = new CorrectAndSplitScrnaReadPairs();
+  clp.INPUT = Collections.singletonList(INPUT_SAM);
+  clp.ALLOWED_BARCODE_COUNTS = EXPECTED_BARCODES_HIST;
+  clp.BARCODED_READ = 1;
+  clp.BASE_RANGE = BASE_RANGE;
+  clp.METRICS = TestUtils.getTempReportFile("test.", ".corrected_barcode_metrics");
+  clp.NUM_OUTPUTS = 1;
+  clp.OUTPUT_LIST = TestUtils.getTempReportFile("CorrectAndSplitScrnaReadPairsTest.", ".bam_list");
+  clp.OUTPUT = new File("test." + clp.OUTPUT_SLUG + ".sam");
+  clp.OVERWRITE_EXISTING = true;
+  clp.OUTPUT_MANIFEST = TestUtils.getTempReportFile("CorrectAndSplitScrnaReadPairsTest.", ".split_bam_manifest.gz");
+  clp.REPORT = TestUtils.getTempReportFile("CorrectAndSplitScrnaReadPairsTest.", ".split_bam_report");
+  return clp;
+ }
+
+ @Test
+ public void testOptionalTags() {
+  CorrectAndSplitScrnaReadPairs clp = initClp();
+  final File outputSam = new File(clp.OUTPUT_LIST.getParentFile(), "test.0.sam");
+  outputSam.deleteOnExit();
+  clp.BARCODE_QUALS_TAG = BARCODE_QUALS_TAG;
+  clp.RAW_BARCODE_TAG = RAW_BARCODE_TAG;
+  Assert.assertEquals(clp.doWork(), 0);
+  final SamReader reader = SamReaderFactory.makeDefault().open(outputSam);
+  final List<BaseRange> baseRanges = org.broadinstitute.dropseqrna.utils.BaseRange.parseBaseRange(BASE_RANGE);
+
+  String rawBarcode = null;
+  String barcodeQuals = null;
+  for (final SAMRecord rec : reader) {
+   if (rec.getFirstOfPairFlag()) {
+    rawBarcode = BaseRange.getSequenceForBaseRange(baseRanges, rec.getReadString());
+    barcodeQuals = BaseRange.getSequenceForBaseRange(baseRanges, rec.getBaseQualityString());
+   } else if (rec.getSecondOfPairFlag()) {
+    Assert.assertEquals(rec.getAttribute(RAW_BARCODE_TAG), rawBarcode);
+    Assert.assertEquals(rec.getAttribute(BARCODE_QUALS_TAG), barcodeQuals);
+   } else {
+    Assert.fail("unpossible");
+   }
+  }
+ }
 }
+
