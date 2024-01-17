@@ -71,7 +71,12 @@ extends AbstractSplitBamClp {
             "must be >= this value.")
     public double LIKELIHOOD_RATIO = 0.95;
 
-
+    @Argument(doc="Store the original barcode sequence in this tag on the non-barcode read.  Default: do not assign this tag.",
+    optional = true)
+    public String RAW_BARCODE_TAG;
+    @Argument(doc="Store the barcode base qualities in this tag on the non-barcode read.  Default: do not assign this tag.",
+    optional = true)
+    public String BARCODE_QUALS_TAG;
 
     private Map<String, Double> allowedBarcodeNormalizedOccurences;
     private final Map<String, List<String>> ed1MatchCache = new HashMap<>();
@@ -92,6 +97,12 @@ extends AbstractSplitBamClp {
             progressLogger.record(pair.getFirstRead());
             final SAMRecord readWithBarcode = BARCODED_READ == 1? pair.getFirstRead(): pair.getSecondRead();
             final SAMRecord otherRead = BARCODED_READ == 2? pair.getFirstRead(): pair.getSecondRead();
+            if (RAW_BARCODE_TAG != null) {
+                otherRead.setAttribute(RAW_BARCODE_TAG, BaseRange.getSequenceForBaseRange(baseRanges, readWithBarcode.getReadString()));
+            }
+            if (BARCODE_QUALS_TAG != null) {
+                otherRead.setAttribute(BARCODE_QUALS_TAG, BaseRange.getSequenceForBaseRange(baseRanges, readWithBarcode.getBaseQualityString()));
+            }
             final String cellBarcode = getCorrectedCellBarcode(readWithBarcode);
             otherRead.setAttribute(BARCODE_TAG, cellBarcode);
             final int writerIdx = getWriterIdxForCellBarcode(cellBarcode);
