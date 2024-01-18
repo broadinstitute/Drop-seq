@@ -237,7 +237,7 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
         StringInterner  geneStringCache = new StringInterner();
         
         // progress logger
-        ProgressLogger progLog = new ProgressLogger(log, 100, "cells chimeric marked");
+        ProgressLogger progLog = new ProgressLogger(log, 10000, "cells chimeric marked");
         
         while (umiIterator.hasNext()) {
         	
