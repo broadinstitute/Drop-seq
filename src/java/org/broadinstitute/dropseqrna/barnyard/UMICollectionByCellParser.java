@@ -21,7 +21,7 @@ public class UMICollectionByCellParser extends IterableOnceIterator<List<UMIColl
 
     private final PeekableIterator<TabbedTextFileWithHeaderParser.Row> parserIter;
     private final Log log = Log.getInstance(UMICollectionByCellParser.class);
-    private final ProgressLogger progress = new ProgressLogger(log, 100, "Processed", "cells");
+    private final ProgressLogger progress = new ProgressLogger(log, 10000, "Processed", "cells");
 
     private final boolean skipChimeric;
     
