@@ -5,6 +5,7 @@ import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import picard.annotation.LocusFunction;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class DisambiguateFunctionalAnnotation {
 
@@ -12,6 +13,8 @@ public class DisambiguateFunctionalAnnotation {
     private static final StrandStrategy DEFAULT_STRAND_STRATEGY = StrandStrategy.SENSE;
 
     private final DataProcessorUtils util;
+
+    private final StarSoloPriorityScore priorityScore = new StarSoloPriorityScore();
 
     /**
      * The default test, which compares the DropSeq and StarSolo strategies.
@@ -48,12 +51,62 @@ public class DisambiguateFunctionalAnnotation {
             List<FunctionalData> fdList = recs.get(readName);
             // filter on accepted functions
             fdList = util.filterOnLocus(fdList);
-            // simplify those functions
-            fdList = util.simplifyFD(fdList);
-            result.put(readName, fdList);
+            // simplify those functions but in a strand-specific way
+            // TODO clean this up.
+            List<FunctionalData> fdList1 = filterToPreferredAnnotationsStrandSpecific(fdList);
+            List<FunctionalData> fdList2 = filterToPreferredAnnotationsStrandSpecific2(fdList);
+            boolean areEqualSets = haveEqualSets(fdList1, fdList2);
+            if (!areEqualSets)
+                System.out.println("STOP");
+            result.put(readName, fdList2);
         }
         return result;
     }
+
+    private static <T> boolean haveEqualSets(List<T> list1, List<T> list2) {
+        Set<T> set1 = new HashSet<>(list1);
+        Set<T> set2 = new HashSet<>(list2);
+
+        return set1.equals(set2);
+    }
+
+
+    /**
+     * For each strand, simplify functional annotations to the preferred one.
+     * This simplifies CODING+INTRONIC -> CODING.
+     * But if coding and intronic occur on opposite strands, they are not simplified.
+     * @return The list of functional annotations, simplified to the highest priority annotation(s) per strand.
+     */
+    private List<FunctionalData> filterToPreferredAnnotationsStrandSpecific (List<FunctionalData> fdList) {
+        List<FunctionalData> result = new ArrayList<>();
+
+        Map<String, List<FunctionalData>> strandMap = fdList.stream()
+                .collect(Collectors.groupingBy(FunctionalData::getGeneStrand));
+
+        for (String strand: strandMap.keySet()) {
+            List<FunctionalData> fd = strandMap.get(strand);
+            fd=util.filterToPreferredAnnotations(fd, priorityScore);
+            result.addAll(fd);
+        }
+        return result;
+    }
+
+    /**
+     * For each strand, simplify functional annotations to the preferred one.
+     * This simplifies CODING+INTRONIC -> CODING.
+     * But if coding and intronic occur on opposite strands, they are not simplified.
+     *
+     * Thanks chatgpt!
+     *
+     * @return The list of functional annotations, simplified to the highest priority annotation(s) per strand.
+     */    private List<FunctionalData> filterToPreferredAnnotationsStrandSpecific2(List<FunctionalData> fdList) {
+        return fdList.stream()
+                .collect(Collectors.groupingBy(FunctionalData::getGeneStrand))
+                .values().stream()
+                .flatMap(strandGroup -> util.filterToPreferredAnnotations(strandGroup, priorityScore).stream())
+                .collect(Collectors.toList());
+    }
+
 
     boolean isAntisenseCoding (FunctionalData d) {
         return (d.getLocusFunction()==LocusFunction.CODING |d.getLocusFunction()==LocusFunction.UTR) & !d.getGeneStrand().equals(d.getReadStrand());

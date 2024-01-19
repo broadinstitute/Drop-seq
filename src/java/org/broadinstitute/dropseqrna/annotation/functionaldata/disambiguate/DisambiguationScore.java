@@ -20,12 +20,16 @@ public class DisambiguationScore {
     private final ObjectCounter<String> antisenseCodingCount;
     private final ObjectCounter<String> senseIntronicCount;
 
+
+    private boolean isComplex;
+
     public DisambiguationScore(String cell, String molecularBarcode) {
         this.cell=cell;
         this.molecularBarcode=molecularBarcode;
         this.ambiguousCount=new ObjectCounter<>();
         this.antisenseCodingCount =new ObjectCounter<>();
         this.senseIntronicCount=new ObjectCounter<>();
+        this.isComplex=false;
     }
 
     /**
@@ -35,21 +39,27 @@ public class DisambiguationScore {
      * @param fd functional data for a single read.
      */
     public void add(List<FunctionalData> fd) {
+        boolean senseCoding = containsSenseCoding(fd);
+        // if the read is a sense coding read that trumps all other priority, so don't evaluate
+        if (senseCoding)
+            return;
+
         boolean antisenseCoding=containsAntisenseCoding(fd);
         boolean senseIntronic=containsSenseIntronic(fd);
         List<String> geneNames = getGeneNames(fd);
         // if both, then make a "metagene" of the two genes that contributed to this.
         if (antisenseCoding && senseIntronic) {
             if (geneNames.size()>2)
-                throw new IllegalStateException(("More than 2 genes?"));
-            for (String geneName: geneNames)
-                ambiguousCount.increment(geneName);
+                this.isComplex=true;
+            else
+                for (String geneName: geneNames)
+                    ambiguousCount.increment(geneName);
         } else {
-            if (geneNames.size()>1)
-                throw new IllegalStateException(("Should only be one gene name for unambiguous reads"));
-            if (antisenseCoding)
+            if (geneNames.size()!=1)
+                this.isComplex=true;
+            else if (antisenseCoding)
                 antisenseCodingCount.increment(geneNames.getFirst());
-            if (senseIntronic)
+            else if (senseIntronic)
                 senseIntronicCount.increment (geneNames.getFirst());
             }
     }
@@ -104,8 +114,16 @@ public class DisambiguationScore {
         return (d.getLocusFunction()== LocusFunction.CODING |d.getLocusFunction()==LocusFunction.UTR) & !d.getGeneStrand().equals(d.getReadStrand());
     }
 
+    private boolean isSenseCoding (FunctionalData d) {
+        return (d.getLocusFunction()== LocusFunction.CODING |d.getLocusFunction()==LocusFunction.UTR) & d.getGeneStrand().equals(d.getReadStrand());
+    }
+
     private boolean containsAntisenseCoding (List<FunctionalData> fd) {
         return fd.stream().anyMatch(this::isAntisenseCoding);
+    }
+
+    private boolean containsSenseCoding (List<FunctionalData> fd) {
+        return fd.stream().anyMatch(this::isSenseCoding);
     }
 
     private boolean containsSenseIntronic (List<FunctionalData> fd) {
@@ -136,6 +154,11 @@ public class DisambiguationScore {
         return senseIntronicCount;
     }
 
+    public boolean isComplex() {
+        return isComplex;
+    }
+
+
     /**
      * Get the total number of recorded reads.
      * @return
@@ -147,6 +170,7 @@ public class DisambiguationScore {
     public String toString () {
         StringBuilder b = new StringBuilder();
         b.append("Cell [").append(this.getCell()).append("] UMI [").append(this.molecularBarcode)
+                .append(" is complex [").append(Boolean.toString(this.isComplex)).append(" ] ")
                 .append("] ambiguous [").append(this.ambiguousCount.toString()).append("]")
                 .append("] antisense coding  [").append(this.antisenseCodingCount.toString()).append("]")
                 .append("] sense intronic  [").append(this.senseIntronicCount.toString()).append("]");
