@@ -46,6 +46,16 @@ public class StarSoloFunctionalDataProcessor implements FunctionalDataProcessorI
     }
 
 
+    public List<FunctionalData> getFilteredFunctionalData(List <FunctionalData> fdList) {
+        if (!getAcceptedFunctions().isEmpty()) {
+            fdList = util.filterOnLocus(fdList);
+        }
+        // need to reduce result down to a unique set of genes/strands.
+        // so if a gene is matched at UTR and CODING separately, that counts as 1 read.
+        fdList = util.simplifyFD(fdList);
+        return (fdList);
+    }
+
     /**
      * Filter from multiple gene/functional annotations to a single annotation using the STARsolo priority.
      * In this pattern, the off-strand functional annotation has been retained by getFilteredFunctionalData,
@@ -54,7 +64,7 @@ public class StarSoloFunctionalDataProcessor implements FunctionalDataProcessorI
      * @param fdList A list of functional data to be filtered
      * @return
      */
-    public List<FunctionalData> filterToPreferredAnnotations(Collection<FunctionalData> fdList) {
+    public List<FunctionalData> filterToPreferredAnnotations(List<FunctionalData> fdList) {
         List<FunctionalData> result = util.filterToPreferredAnnotations(fdList, priority);
         result = util.filterOnStrand(result);
         return result;
@@ -67,6 +77,11 @@ public class StarSoloFunctionalDataProcessor implements FunctionalDataProcessorI
     @Override
     public Collection<LocusFunction> getAcceptedFunctions() {
         return this.util.getAcceptedFunctions();
+    }
+
+    @Override
+    public PriorityScoreI getPriority() {
+        return this.priority;
     }
 
 }

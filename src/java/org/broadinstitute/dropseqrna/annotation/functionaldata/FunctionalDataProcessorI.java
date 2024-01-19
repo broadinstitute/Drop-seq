@@ -21,6 +21,8 @@ public interface FunctionalDataProcessorI {
      */
     public List<FunctionalData> getFilteredFunctionalData (final String [] genes, final String[] strands, final LocusFunction[] locusFunctions, final boolean readNegativeStrand);
 
+    public List<FunctionalData> getFilteredFunctionalData (final List<FunctionalData> fdList);
+
     /**
      * Across all the functional data, find the annotation type with the highest priority.  This priority order is
      * implementation specific for a particular strategy.
@@ -28,9 +30,11 @@ public interface FunctionalDataProcessorI {
      * @param fdList A list of functional data to be filtered
      * @return A subset of the input list of functional data.
      */
-    public List<FunctionalData> filterToPreferredAnnotations(final Collection<FunctionalData> fdList);
+    public List<FunctionalData> filterToPreferredAnnotations(final List<FunctionalData> fdList);
 
     public StrandStrategy getStrandStrategy();
 
     public Collection<LocusFunction> getAcceptedFunctions();
+
+    public PriorityScoreI getPriority();
 }

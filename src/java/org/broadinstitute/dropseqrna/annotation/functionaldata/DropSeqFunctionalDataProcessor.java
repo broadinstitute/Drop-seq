@@ -47,18 +47,24 @@ public class DropSeqFunctionalDataProcessor implements FunctionalDataProcessorI 
      * @return A list of FunctionalData that passes criteria.
      */
     @Override
-	public List<FunctionalData> getFilteredFunctionalData(final String[] genes, final String[] strands, final LocusFunction[] locusFunctions, final boolean readNegativeStrand) {
+	public List <FunctionalData> getFilteredFunctionalData(final String[] genes, final String[] strands, final LocusFunction[] locusFunctions, final boolean readNegativeStrand) {
         List<FunctionalData> result = FunctionalData.buildFD(genes, strands, locusFunctions, this.util.getStrandStrategy(), this.util.getAcceptedFunctions(), readNegativeStrand);
+        result=getFilteredFunctionalData(result);
+        return (result);
+    }
+
+    @Override
+    public List<FunctionalData> getFilteredFunctionalData(List<FunctionalData> fdList) {
         if (util.getStrandStrategy() != null) {
-            result = util.filterOnStrand(result);
+            fdList = util.filterOnStrand(fdList);
         }
         if (!getAcceptedFunctions().isEmpty()) {
-            result = util.filterOnLocus(result);
+            fdList = util.filterOnLocus(fdList);
         }
         // need to reduce result down to a unique set of genes/strands.
         // so if a gene is matched at UTR and CODING separately, that counts as 1 read.
-        result = util.simplifyFD(result);
-        return (result);
+        fdList = util.simplifyFD(fdList);
+        return (fdList);
     }
 
 
@@ -72,25 +78,7 @@ public class DropSeqFunctionalDataProcessor implements FunctionalDataProcessorI 
      * @return A subset of the input list of functional data.
      */
     @Override
-	public List<FunctionalData> filterToPreferredAnnotations(final Collection<FunctionalData> fdList) {
-        /*
-        boolean hasCoding = false;
-
-        for (FunctionalData fd : fdList) {
-            if (isCodingUTR(fd.getLocusFunction())) {
-                hasCoding = true;
-                break;
-            }
-        }
-
-        List<FunctionalData> result = new ArrayList<FunctionalData>();
-        for (FunctionalData fd : fdList) {
-            boolean readIsCoding = isCodingUTR(fd.getLocusFunction());
-            if (!hasCoding || (readIsCoding)) {
-                result.add(fd);
-            }
-        }
-        */
+	public List<FunctionalData> filterToPreferredAnnotations(final List<FunctionalData> fdList) {
         List<FunctionalData> result = util.filterToPreferredAnnotations(fdList, priority);
         return result;
     }
@@ -103,6 +91,11 @@ public class DropSeqFunctionalDataProcessor implements FunctionalDataProcessorI 
     @Override
     public Collection<LocusFunction> getAcceptedFunctions() {
         return this.util.getAcceptedFunctions();
+    }
+
+    @Override
+    public PriorityScoreI getPriority() {
+        return this.priority;
     }
 
     private boolean isCodingUTR(final LocusFunction f) {
