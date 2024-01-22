@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 public class GeneFunctionProcessor {
 
 	// the delimiter for BAM TAGs
-	private static final String DELIMITER = ",";
+	public static final String DELIMITER = ",";
 
 	private final String geneTag;
 	private final String strandTag;
@@ -48,8 +48,7 @@ public class GeneFunctionProcessor {
 	public List<SAMRecord> processRead (final SAMRecord r) {
 		List<SAMRecord> result = new ArrayList<>();
 
-		
-		List<FunctionalData> fdList = getReadFunctions (r);
+		List<FunctionalData> fdList = getReadFunctions(r, true);
 		
 		// If there's no functional data that passes the filters, return.
 		if (fdList.isEmpty()) return result;
@@ -86,7 +85,7 @@ public class GeneFunctionProcessor {
 	 */
 	public SAMRecord processReads (final List<SAMRecord> recs) {
 		List<FunctionalData> fdList = recs.stream()
-				.flatMap(r -> getReadFunctions(r).stream())
+				.flatMap(r -> getReadFunctions(r, true).stream())
 				.collect(Collectors.toList());
 
 		// If there's no functional data that passes the filters, return.
@@ -108,8 +107,17 @@ public class GeneFunctionProcessor {
 		}
 		return null;
 	}
-	
-	public List<FunctionalData> getReadFunctions (final SAMRecord r) {
+
+	/**
+	 * For a SAMRecord, generate the list of functional data captured by this read.
+	 * This extracts the functional data tags from the read and converts it into the new domain.
+	 * If filter is true, defer to the functional data processor strategy for how to further process the functional data.
+	 * If filter is false, construct all functional data and pass it on.
+	 * @param r The read to process
+	 * @param filter Set to true to filter the output using the given FunctionalDataProcessorStrategy.
+	 * @return A list of 0 or more FunctionalData objects.
+	 */
+	public List<FunctionalData> getReadFunctions(final SAMRecord r, boolean filter) {
 		String geneList = r.getStringAttribute(this.geneTag);
 		String strandList = r.getStringAttribute(this.strandTag);
 		String functionList = r.getStringAttribute(this.functionTag);
@@ -128,11 +136,19 @@ public class GeneFunctionProcessor {
 		final String[] genes = geneList.split(DELIMITER);
 		final String[] strands = (strandList == null? null: strandList.split(DELIMITER));
 		final LocusFunction[] locusFunctions = (functionList == null? null: getLocusFunctionFromRead(functionList));
-
-		List<FunctionalData> fdList = fdp.getFilteredFunctionalData(genes,
-				strands, locusFunctions, r.getReadNegativeStrandFlag());
+		// if filtering is required, then apply filtering here.
+		// otherwise build all functional data.
+		List<FunctionalData> fdList;
+		if (filter)
+			fdList = fdp.getFilteredFunctionalData(genes, strands, locusFunctions, r.getReadNegativeStrandFlag());
+		else
+			fdList = FunctionalData.buildFD(genes, strands, locusFunctions, fdp.getStrandStrategy(), fdp.getAcceptedFunctions(), r.getReadNegativeStrandFlag());
 		return (fdList);
 	}
+
+
+
+
 
 	private SAMRecord assignTagsToRead(final SAMRecord r,
 			final FunctionalData fd) {

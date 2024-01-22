@@ -60,9 +60,9 @@ public class GeneFunctionFilteringIterator extends FilteredIterator<SAMRecord> {
 
 	@Override
  	public boolean filterOut(final SAMRecord r) {	 							
-		List<FunctionalData> fdList = p.getReadFunctions (r);
+		List<FunctionalData> fdList = p.getReadFunctions(r, true);
 		// If there's no functional data that passes the filters, filter the read.
-		if (fdList.size()==0) return true;
+		if (fdList.isEmpty()) return true;
 		// Otherwise, accept the read
 		return false;
 	}

@@ -52,13 +52,8 @@ public class DisambiguateFunctionalAnnotation {
             // filter on accepted functions
             fdList = util.filterOnLocus(fdList);
             // simplify those functions but in a strand-specific way
-            // TODO clean this up.
-            List<FunctionalData> fdList1 = filterToPreferredAnnotationsStrandSpecific(fdList);
-            List<FunctionalData> fdList2 = filterToPreferredAnnotationsStrandSpecific2(fdList);
-            boolean areEqualSets = haveEqualSets(fdList1, fdList2);
-            if (!areEqualSets)
-                System.out.println("STOP");
-            result.put(readName, fdList2);
+            fdList = filterToPreferredAnnotationsStrandSpecific(fdList);
+            result.put(readName, fdList);
         }
         return result;
     }
@@ -77,19 +72,19 @@ public class DisambiguateFunctionalAnnotation {
      * But if coding and intronic occur on opposite strands, they are not simplified.
      * @return The list of functional annotations, simplified to the highest priority annotation(s) per strand.
      */
-    private List<FunctionalData> filterToPreferredAnnotationsStrandSpecific (List<FunctionalData> fdList) {
-        List<FunctionalData> result = new ArrayList<>();
-
-        Map<String, List<FunctionalData>> strandMap = fdList.stream()
-                .collect(Collectors.groupingBy(FunctionalData::getGeneStrand));
-
-        for (String strand: strandMap.keySet()) {
-            List<FunctionalData> fd = strandMap.get(strand);
-            fd=util.filterToPreferredAnnotations(fd, priorityScore);
-            result.addAll(fd);
-        }
-        return result;
-    }
+//    private List<FunctionalData> filterToPreferredAnnotationsStrandSpecificOld (List<FunctionalData> fdList) {
+//        List<FunctionalData> result = new ArrayList<>();
+//
+//        Map<String, List<FunctionalData>> strandMap = fdList.stream()
+//                .collect(Collectors.groupingBy(FunctionalData::getGeneStrand));
+//
+//        for (String strand: strandMap.keySet()) {
+//            List<FunctionalData> fd = strandMap.get(strand);
+//            fd=util.filterToPreferredAnnotations(fd, priorityScore);
+//            result.addAll(fd);
+//        }
+//        return result;
+//    }
 
     /**
      * For each strand, simplify functional annotations to the preferred one.
@@ -99,7 +94,7 @@ public class DisambiguateFunctionalAnnotation {
      * Thanks chatgpt!
      *
      * @return The list of functional annotations, simplified to the highest priority annotation(s) per strand.
-     */    private List<FunctionalData> filterToPreferredAnnotationsStrandSpecific2(List<FunctionalData> fdList) {
+     */    private List<FunctionalData> filterToPreferredAnnotationsStrandSpecific(List<FunctionalData> fdList) {
         return fdList.stream()
                 .collect(Collectors.groupingBy(FunctionalData::getGeneStrand))
                 .values().stream()
