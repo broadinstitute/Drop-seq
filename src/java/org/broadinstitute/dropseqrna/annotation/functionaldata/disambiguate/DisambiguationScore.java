@@ -51,16 +51,14 @@ public class DisambiguationScore {
         if (antisenseCoding && senseIntronic) {
             if (geneNames.size()>2)
                 this.isComplex=true;
-            else
-                for (String geneName: geneNames)
-                    ambiguousCount.increment(geneName);
+            geneNames.forEach(ambiguousCount::increment);
         } else {
             if (geneNames.size()!=1)
                 this.isComplex=true;
-            else if (antisenseCoding)
-                antisenseCodingCount.increment(geneNames.getFirst());
-            else if (senseIntronic)
-                senseIntronicCount.increment (geneNames.getFirst());
+            if (antisenseCoding)
+                geneNames.forEach(antisenseCodingCount::increment);
+            if (senseIntronic)
+                geneNames.forEach(senseIntronicCount::increment);
             }
     }
 
@@ -84,11 +82,18 @@ public class DisambiguationScore {
         if (!this.hasAmbiguousReads())
             return FunctionCategory.UNAMBIGUOUS;
 
+        boolean overlapAntisenseCoding=testKeyOverlap(this.ambiguousCount, this.antisenseCodingCount);
+        boolean overlapSenseIntronic=testKeyOverlap(this.ambiguousCount, this.senseIntronicCount);
+
+        // if there are reads that disambiguate in both directions, it's still ambiguous!
+        if (overlapAntisenseCoding && overlapSenseIntronic)
+            return FunctionCategory.AMBIGUOUS;
+
         // resolve by looking for gene overlaps between unambiguous and ambiguous
-        if (testKeyOverlap(this.ambiguousCount, this.antisenseCodingCount))
+        if (overlapAntisenseCoding)
             return FunctionCategory.ANTISENSE_CODING;
 
-        if (testKeyOverlap(this.ambiguousCount, this.senseIntronicCount))
+        if (overlapSenseIntronic)
             return FunctionCategory.SENSE_INTRONIC;
 
         // if no reads resolve the data
