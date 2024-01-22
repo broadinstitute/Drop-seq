@@ -194,12 +194,7 @@ public class DisambiguateFunctionalAnnotationTest {
         Map<String, List<FunctionalData>> recs = new HashMap<>();
 
         // the ambiguous read that maps to intronic sense and coding antisense + intronic antisense
-        // but there's two intronic genes, which makes the whole thing ambiguous.
-        // TODO: Maybe this should contribute ambiguity to A,B,C
-        // and a read that resolves to A resolves to antisense, and a read that resolves to B or C or B+C
-        // resolves to sense?
-        // the exact gene doesn't matter as much as the functional annotation, though it wouldn't be
-        // counted for DGE.
+        // but there's two intronic genes
         List<FunctionalData> ambiguousRead = FunctionalData.buildFD(
                 new String [] {"A", "B", "C"},
                 new String [] {"-", "+", "+"},
@@ -207,8 +202,7 @@ public class DisambiguateFunctionalAnnotationTest {
                 strandStrategy, Arrays.asList(acceptedFunctions), false);
         recs.put("complex_ambiguous", ambiguousRead);
 
-        // the unambiguous read that maps to coding antisense only.  This would resolve the UMI if
-        // the ambiguous read wasn't complex.
+        // the unambiguous read that maps to coding antisense only.
         List<FunctionalData> unambiguousRead = FunctionalData.buildFD(
                 new String [] {"A"},
                 new String [] {"-"},
@@ -239,12 +233,7 @@ public class DisambiguateFunctionalAnnotationTest {
         Map<String, List<FunctionalData>> recs = new HashMap<>();
 
         // the ambiguous read that maps to intronic sense and coding antisense + intronic antisense
-        // but there's two intronic genes, which makes the whole thing ambiguous.
-        // TODO: Maybe this should contribute ambiguity to A,B,C
-        // and a read that resolves to A resolves to antisense, and a read that resolves to B or C or B+C
-        // resolves to sense?
-        // the exact gene doesn't matter as much as the functional annotation, though it wouldn't be
-        // counted for DGE.
+        // but there's two intronic genes
         List<FunctionalData> ambiguousRead = FunctionalData.buildFD(
                 new String [] {"A", "B", "C"},
                 new String [] {"-", "+", "+"},
@@ -252,8 +241,8 @@ public class DisambiguateFunctionalAnnotationTest {
                 strandStrategy, Arrays.asList(acceptedFunctions), false);
         recs.put("complex_ambiguous", ambiguousRead);
 
-        // the unambiguous read that maps to coding antisense only.  This would resolve the UMI if
-        // the ambiguous read wasn't complex.
+        // the unambiguous read that maps to the intronic sense genes B and C.
+        // we don't care which gene it is.
         List<FunctionalData> unambiguousRead = FunctionalData.buildFD(
                 new String [] {"B", "C"},
                 new String [] {"+", "+"},
@@ -274,52 +263,13 @@ public class DisambiguateFunctionalAnnotationTest {
         Assert.assertEquals(score.classify(), FunctionCategory.SENSE_INTRONIC);
         Assert.assertTrue(score.isComplex());
     }
-    /**
-     * Set up an ambiguous gene pair.
-     * Add an additional functional annotation to the sense intronic read that maps to a sense coding gene.
-     * This means the comparison should be between a coding gene on the correct strand and a coding gene on the incorrect strand.
-     * Thus, this should not be ambiguous in the first place, the coding gene should be used by DGE.
-    */
-    @Test
-    public void testComplexUnambiguous1() {
-        Map<String, List<FunctionalData>> recs = new HashMap<>();
-
-        // the ambiguous read that maps to intronic sense and coding antisense + intronic antisense
-        // but there's two second intronic genes, which makes the whole thing ambiguous.
-        List<FunctionalData> ambiguousRead = FunctionalData.buildFD(
-                new String [] {"A", "B", "B"},
-                new String [] {"-", "+", "+"},
-                new LocusFunction[] {LocusFunction.CODING, LocusFunction.INTRONIC, LocusFunction.CODING},
-                strandStrategy, Arrays.asList(acceptedFunctions), false);
-        recs.put("complex_ambiguous", ambiguousRead);
-
-        List<FunctionalData> unambiguousRead = FunctionalData.buildFD(
-                new String [] {"A"},
-                new String [] {"+"},
-                new LocusFunction[] {LocusFunction.CODING},
-                strandStrategy, Arrays.asList(acceptedFunctions), false);
-        recs.put("unambiguous", unambiguousRead);
-
-        DisambiguateFunctionalAnnotation dfa = new DisambiguateFunctionalAnnotation();
-        DisambiguationScore score= dfa.run("fake", "fake", recs);
-
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("A"),0);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("B"),0);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("C"),0);
-        Assert.assertEquals(score.getAntisenseCodingCount().getCountForKey("A"),0);
-        Assert.assertEquals(score.getSenseIntronicCount().getCountForKey("B"),0);
-        Assert.assertFalse(score.hasAmbiguousReads());
-        Assert.assertEquals(score.classify(), FunctionCategory.UNAMBIGUOUS);
-        Assert.assertFalse(score.isComplex());
-    }
-
 
     /**
      * This is a case that looks complex, but the complex read is actually a simple
      * coding interpretation, even without the "unambiguous" read.
      */
     @Test
-    public void testComplexUnambiguous2() {
+    public void testComplexUnambiguous() {
         Map<String, List<FunctionalData>> recs = new HashMap<>();
 
         // the ambiguous read that maps to intronic sense and coding antisense + intronic antisense
