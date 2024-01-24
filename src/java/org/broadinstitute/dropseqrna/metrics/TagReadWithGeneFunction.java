@@ -92,6 +92,12 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
 	@Argument(doc="Use strand info to determine what gene to assign the read to.  If this is on, reads can be assigned to a maximum one one gene.  This is used for the READ_FUNCTION_TAG output only.")
 	public boolean USE_STRAND_INFO=true;
 
+	@Argument(doc="What fraction of the read must overlap a locus function to be included in the annotation.  If this parameter is set to 0, then if any" +
+			"bases are overlap an annotation it is included in the output.  StarSolo / CellRanger would set this to 50.0, then only" +
+			"functional annotations with > 50% overlap would be included.  This forces a gene to have at most one annotation (coding, intronic, etc) instead" +
+			"of multiple annotations (coding + intronic). Set to 0 to reproduce the DropSeq standard, or 50 to emulate StarSolo.")
+	public double PCT_REQUIRED_OVERLAP=0;
+
 	// @Option(doc="Allow a read to span the exons of multiple genes.  If set to true, the gene name will be set to all of the gene/exons the read spans.  In that case, the gene names will be comma separated.")
 	private boolean ALLOW_MULTI_GENE_READS=false;
 
@@ -183,7 +189,7 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
 	 * @return
 	 */
 	public SAMRecord setAnnotations (final SAMRecord r, final OverlapDetector<Gene> geneOverlapDetector, final boolean allowMultiReadGenes) {
-		Map<Gene, List<LocusFunction>> map = AnnotationUtils.getInstance().getFunctionalDataForRead (r, geneOverlapDetector);
+		Map<Gene, List<LocusFunction>> map = AnnotationUtils.getInstance().getFunctionalDataForRead (r, geneOverlapDetector, this.PCT_REQUIRED_OVERLAP);
 		List<Gene> genes = new ArrayList<Gene>(map.keySet());
 		// sort genes by name alphabetically to maintain some consistent ordering.
 		Collections.sort(genes, GENE_NAME_COMPARATOR);

@@ -66,25 +66,6 @@ public class DisambiguateFunctionalAnnotation {
     }
 
 
-    /**
-     * For each strand, simplify functional annotations to the preferred one.
-     * This simplifies CODING+INTRONIC -> CODING.
-     * But if coding and intronic occur on opposite strands, they are not simplified.
-     * @return The list of functional annotations, simplified to the highest priority annotation(s) per strand.
-     */
-//    private List<FunctionalData> filterToPreferredAnnotationsStrandSpecificOld (List<FunctionalData> fdList) {
-//        List<FunctionalData> result = new ArrayList<>();
-//
-//        Map<String, List<FunctionalData>> strandMap = fdList.stream()
-//                .collect(Collectors.groupingBy(FunctionalData::getGeneStrand));
-//
-//        for (String strand: strandMap.keySet()) {
-//            List<FunctionalData> fd = strandMap.get(strand);
-//            fd=util.filterToPreferredAnnotations(fd, priorityScore);
-//            result.addAll(fd);
-//        }
-//        return result;
-//    }
 
     /**
      * For each strand, simplify functional annotations to the preferred one.

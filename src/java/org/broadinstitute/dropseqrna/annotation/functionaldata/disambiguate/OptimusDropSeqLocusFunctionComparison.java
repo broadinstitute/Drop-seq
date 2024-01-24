@@ -13,10 +13,7 @@ import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataPro
 import org.broadinstitute.dropseqrna.barnyard.*;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
-import org.broadinstitute.dropseqrna.utils.GroupingIterator;
-import org.broadinstitute.dropseqrna.utils.MultiComparator;
-import org.broadinstitute.dropseqrna.utils.StringTagComparator;
+import org.broadinstitute.dropseqrna.utils.*;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.*;
 import picard.cmdline.StandardOptionDefinitions;
@@ -74,6 +71,7 @@ public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLi
 
     @Override
     protected int doWork() {
+        ProgressLogger pl = new ProgressLogger(log);
 
         ErrorCheckingPrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUTPUT));
         writeOutputHeader(out);
@@ -91,12 +89,20 @@ public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLi
         // TODO: Gather summary metrics maybe in a metrics object/file?
         while (group.hasNext()) {
             List<SAMRecord> recs= group.next();
-            Map<String, List<FunctionalData>> fdMap = getFunctionalAnnotations(recs);
-            Map<String, List<FunctionalData>> fdMap2 = getFunctionalAnnotations2(recs);
+            // short circuit single read UMIs.
+            if (recs.size()<2)
+                continue;
 
+            Map<String, List<FunctionalData>> fdMap = getFunctionalAnnotations(recs);
             String cellBarcode = recs.getFirst().getStringAttribute(this.CELL_BARCODE_TAG);
             String umiBarcode = recs.getFirst().getStringAttribute(this.MOLECULAR_BARCODE_TAG);
+            if (cellBarcode.equals("AAACCCACAATGTCTG") && umiBarcode.equals("AAATCCGGCGGT")) {
+                log.info("DEBUG THIS");
+            }
             DisambiguationScore score = dfa.run(cellBarcode, umiBarcode, fdMap);
+            if (score.classify()!=FunctionCategory.UNAMBIGUOUS & score.classify()!=FunctionCategory.AMBIGUOUS) {
+                log.info("STOP");
+            }
             // do reporting and summarizing
             writeOutputLine(score, out);
         }
@@ -119,7 +125,7 @@ public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLi
         out.println(h);
     }
 
-    Map<String, List<FunctionalData>> getFunctionalAnnotations(List<SAMRecord> recs) {
+    Map<String, List<FunctionalData>> getFunctionalAnnotationsOld(List<SAMRecord> recs) {
         Map<String, List<FunctionalData>> result = new HashMap<>();
         for (SAMRecord rec: recs) {
             String readName = rec.getReadName();
@@ -134,13 +140,23 @@ public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLi
     }
 
 
-    Map<String, List<FunctionalData>> getFunctionalAnnotations2(List<SAMRecord> recs) {
+    /**
+     * Get functional data annotations using the DropSeq tags.
+     * @param recs The SAMRecords to transform
+     * @return A mapping from the gene name to a list of functional annotations.
+     */
+    Map<String, List<FunctionalData>> getFunctionalAnnotations(List<SAMRecord> recs) {
         return recs.stream()
                 .collect(Collectors.groupingBy(SAMRecord::getReadName,
                         Collectors.mapping(this::getFunctionalData, Collectors.flatMapping(List::stream, Collectors.toList()))));
     }
 
-    private List<FunctionalData> getFunctionalData (SAMRecord r) {
+    /**
+     * Convert a single SAMRecord with DropSeq functional annotation tags to a list of functional annotation records.
+     * @param r The read to convert
+     * @return A list of functional annotations.
+     */
+    private List<FunctionalData> getFunctionalData(SAMRecord r) {
         return gfp.getReadFunctions(r, false);
     }
 
@@ -151,9 +167,11 @@ public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLi
      * @return
      */
     Iterator<List<SAMRecord>> getSamRecordIterator (Collection <String> cellBarcodes) {
-        ProgressLogger prog = new ProgressLogger(log);
 
         SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(this.INPUT, false);
+
+        final ProgressLogger logger = new ProgressLogger(log);
+
 
         final StringTagComparator cellBarcodeTagComparator = new StringTagComparator(this.CELL_BARCODE_TAG);
         final StringTagComparator umiTagComparator = new StringTagComparator(this.MOLECULAR_BARCODE_TAG);
@@ -164,17 +182,13 @@ public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLi
                 new MissingTagFilteringIterator(headerAndIterator.iterator, this.CELL_BARCODE_TAG, this.GENE_NAME_TAG, this.MOLECULAR_BARCODE_TAG);
 
         // Filter reads on if the read contains a cell barcode, if cell barcodes have been specified.
-        if (cellBarcodes != null) {
-            filteringIterator =
-                    new TagValueFilteringIterator<>(filteringIterator, this.CELL_BARCODE_TAG, cellBarcodes);
-        }
+        filteringIterator = new CellBarcodeFilteringIterator(filteringIterator, this.CELL_BARCODE_TAG, cellBarcodes);
 
-        // filter on read quality.  Let's start with uniquely mapped reads to reduce complexity -
-        // multimappers are hard!
+        // filter on read quality.  Let's start with uniquely mapped reads to reduce complexity -multimappers are hard!
         filteringIterator = new MapQualityFilteredIterator(filteringIterator, this.READ_MQ, true);
 
         CloseableIterator<SAMRecord> sortedAlignmentIterator = SamRecordSortingIteratorFactory.create(
-                headerAndIterator.header, filteringIterator, multiComparator, prog);
+                headerAndIterator.header, filteringIterator, multiComparator, logger);
 
         Iterator<List<SAMRecord>> group = new GroupingIterator<>(sortedAlignmentIterator, multiComparator);
         return group;
@@ -182,13 +196,18 @@ public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLi
 
 
     List<String> getCellBarcodes () {
-        List<String> cellBarcodes=new ArrayList<String>();
-        if (this.CELL_BC_FILE!=null) {
-            cellBarcodes = ParseBarcodeFile.readCellBarcodeFile(this.CELL_BC_FILE);
+        if (CELL_BC_FILE!=null) {
+            List<String> cellBarcodes = ParseBarcodeFile.readCellBarcodeFile(CELL_BC_FILE);
             log.info("Found " + cellBarcodes.size()+ " cell barcodes in file");
+            return (cellBarcodes);
+        } else {
+            log.info("No cell barcodes file provided, using all cell barcodes");
+            return Collections.EMPTY_LIST;
         }
-        return (cellBarcodes);
+
     }
+
+
     @Override
     protected String[] customCommandLineValidation() {
         final ArrayList<String> list = new ArrayList<>(1);

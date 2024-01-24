@@ -19,7 +19,7 @@ public class DisambiguationScore {
     private final ObjectCounter<String> ambiguousCount;
     private final ObjectCounter<String> antisenseCodingCount;
     private final ObjectCounter<String> senseIntronicCount;
-
+    private final ObjectCounter<String> senseCodingCount;
 
     private boolean isComplex;
 
@@ -29,6 +29,7 @@ public class DisambiguationScore {
         this.ambiguousCount=new ObjectCounter<>();
         this.antisenseCodingCount =new ObjectCounter<>();
         this.senseIntronicCount=new ObjectCounter<>();
+        this.senseCodingCount =new ObjectCounter<>();
         this.isComplex=false;
     }
 
@@ -39,14 +40,17 @@ public class DisambiguationScore {
      * @param fd functional data for a single read.
      */
     public void add(List<FunctionalData> fd) {
-        boolean senseCoding = containsSenseCoding(fd);
-        // if the read is a sense coding read that trumps all other priority, so don't evaluate
-        if (senseCoding)
-            return;
-
-        boolean antisenseCoding=containsAntisenseCoding(fd);
-        boolean senseIntronic=containsSenseIntronic(fd);
         List<String> geneNames = getGeneNames(fd);
+
+        // if the read is a sense coding read that trumps all other priority, so don't evaluate
+        boolean isSenseCoding = containsCoding(fd, false);
+        if (isSenseCoding) {
+            geneNames.forEach(senseCodingCount::increment);
+            return;
+        }
+
+        boolean antisenseCoding=containsCoding(fd, true);
+        boolean senseIntronic=containsSenseIntronic(fd);
         // if both, then make a "metagene" of the two genes that contributed to this.
         if (antisenseCoding && senseIntronic) {
             if (geneNames.size()>2)
@@ -115,20 +119,14 @@ public class DisambiguationScore {
         Collections.sort(genes);
         return (genes);
     }
-    private boolean isAntisenseCoding (FunctionalData d) {
-        return (d.getLocusFunction()== LocusFunction.CODING |d.getLocusFunction()==LocusFunction.UTR) & !d.getGeneStrand().equals(d.getReadStrand());
+
+    private boolean isCoding(FunctionalData d, boolean antisense) {
+        return (d.getLocusFunction() == LocusFunction.CODING || d.getLocusFunction() == LocusFunction.UTR)
+                && Objects.equals(d.getGeneStrand(), d.getReadStrand()) != antisense;
     }
 
-    private boolean isSenseCoding (FunctionalData d) {
-        return (d.getLocusFunction()== LocusFunction.CODING |d.getLocusFunction()==LocusFunction.UTR) & d.getGeneStrand().equals(d.getReadStrand());
-    }
-
-    private boolean containsAntisenseCoding (List<FunctionalData> fd) {
-        return fd.stream().anyMatch(this::isAntisenseCoding);
-    }
-
-    private boolean containsSenseCoding (List<FunctionalData> fd) {
-        return fd.stream().anyMatch(this::isSenseCoding);
+    private boolean containsCoding(List<FunctionalData> fd, boolean antisense) {
+        return fd.stream().anyMatch(data -> isCoding(data, antisense));
     }
 
     private boolean containsSenseIntronic (List<FunctionalData> fd) {
@@ -155,6 +153,10 @@ public class DisambiguationScore {
         return antisenseCodingCount;
     }
 
+    public ObjectCounter<String> getSenseCodingCount() {
+        return senseCodingCount;
+    }
+
     public ObjectCounter<String> getSenseIntronicCount() {
         return senseIntronicCount;
     }
@@ -174,12 +176,13 @@ public class DisambiguationScore {
 
     public String toString () {
         StringBuilder b = new StringBuilder();
-        b.append("Cell [").append(this.getCell()).append("] UMI [").append(this.molecularBarcode)
+        b.append("Cell [").append(this.getCell()).append("] UMI [").append(this.molecularBarcode).append("] ")
+                .append("Category [").append(classify().toString()).append("]")
                 .append(" is complex [").append(Boolean.toString(this.isComplex)).append(" ] ")
+                .append("] sense coding [").append(this.senseCodingCount.toString()).append("]")
                 .append("] ambiguous [").append(this.ambiguousCount.toString()).append("]")
                 .append("] antisense coding  [").append(this.antisenseCodingCount.toString()).append("]")
                 .append("] sense intronic  [").append(this.senseIntronicCount.toString()).append("]");
-
         return b.toString();
     }
 
