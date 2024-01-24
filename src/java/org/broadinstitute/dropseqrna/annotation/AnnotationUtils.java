@@ -111,7 +111,7 @@ public class AnnotationUtils {
 	 * @return A map from each gene that is overlapped to its functional annotation(s).
 	 */
 	private Map<Gene, ObjectCounter<LocusFunction>> getFunctionalDataForInterval (final Interval interval, final OverlapDetector<Gene> geneOverlapDetector) {
-		//TODO implement pcrRequiredOverlap
+
 		Map<Gene, ObjectCounter<LocusFunction>> result = new HashMap<>();
 
 		final Collection<Gene> overlappingGenes = geneOverlapDetector.getOverlaps(interval);
@@ -227,7 +227,7 @@ public class AnnotationUtils {
 	 * @return
 	 */
 	private LocusFunction getLocusFunctionForRead (final SAMRecord rec, final Gene g, double pcrRequiredOverlap) {
-		//TODO implement pcrRequiredOverlap
+
 		List<AlignmentBlock> alignmentBlocks = rec.getAlignmentBlocks();
 
         LocusFunction [] blockSummaryFunction = new LocusFunction[alignmentBlocks.size()];
