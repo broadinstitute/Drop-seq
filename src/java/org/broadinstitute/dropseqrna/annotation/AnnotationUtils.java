@@ -89,6 +89,9 @@ public class AnnotationUtils {
 	 *                           of multiple annotations (coding + intronic).
 	 */
 	public Map<Gene, List<LocusFunction>> getFunctionalDataForRead (final SAMRecord rec, final OverlapDetector<Gene> geneOverlapDetector, double pcrRequiredOverlap) {
+		if (rec.getReadName().equals("LH00118:69:22CNFNLT3:6:2112:15442:1929"))
+			log.info("STOP");
+
 		List<AlignmentBlock> alignmentBlocks = rec.getAlignmentBlocks();
 
 		Map<AlignmentBlock,Map<Gene, ObjectCounter<LocusFunction>>> map = new HashMap<>();
@@ -99,7 +102,8 @@ public class AnnotationUtils {
 			map.put(block, locusFunctionsForGeneMap);
 		}
 		// simplify genes by only using genes that are common to all alignment blocks that pass the required number of bases of total overlap
-		Map<Gene, List<LocusFunction>> result = simplifyFunctionalDataAcrossAlignmentBlocks(map, pcrRequiredOverlap);
+		int readLength = rec.getReadLength();
+		Map<Gene, List<LocusFunction>> result = simplifyFunctionalDataAcrossAlignmentBlocks(map, readLength, pcrRequiredOverlap);
 		return result;
 	}
 
@@ -135,12 +139,21 @@ public class AnnotationUtils {
 	 * @param map
 	 * @return
 	 */
-	private Map<Gene, List<LocusFunction>> simplifyFunctionalDataAcrossAlignmentBlocks (Map<AlignmentBlock,Map<Gene, ObjectCounter<LocusFunction>>> map, double pcrRequiredOverlap) {
+	Map<Gene, List<LocusFunction>> simplifyFunctionalDataAcrossAlignmentBlocks (Map<AlignmentBlock,Map<Gene, ObjectCounter<LocusFunction>>> map,
+																						int readLength, double pcrRequiredOverlap) {
+
+		// remove Alignment blocks with empty gene maps.
+		// this might not be a good move - more consistent to make sure a read consistently touches the same
+		// gene across alignment blocks and isn't partially intergenic.
+		// map.entrySet().removeIf(entry -> entry.getValue().isEmpty());
+
 		// if map is empty.
 		if (map.isEmpty())
 			return Collections.emptyMap();
 
+		// Now that you have blocks with genes,
 		// initialize with the genes from the first alignment block.
+		// find the genes common to all blocks.
 		Iterator<Map<Gene, ObjectCounter<LocusFunction>>> iter = map.values().iterator();
 		Set<Gene> commonGenes = iter.next().keySet();
 		while (iter.hasNext()) {
@@ -148,61 +161,38 @@ public class AnnotationUtils {
 			commonGenes.retainAll(next);
 		}
 
-		// walk through alignment blocks and retain genes in the common set.
-		// why not remove keys not in the common set?
-
-		for (AlignmentBlock b: map.keySet()) {
-			Map<Gene, ObjectCounter<LocusFunction>> m = map.get(b);
-			for (Gene g: m.keySet()) {
-				if (!commonGenes.contains(g))
-					m.remove(g);
-			}
-		}
-		if (commonGenes.size()>1)
-			System.out.println("STOP");
-
-		// Get the common set of genes
-		Set<Gene> commonGenes2 = map.values().stream()
-				.map(Map::keySet)
-				.reduce((set1, set2) -> {
-					set1.retainAll(set2);
-					return set1;
-				})
-				.orElse(new HashSet<>());
-
-		if (!commonGenes.containsAll(commonGenes2)) {
-			System.out.println("STOP");
-		}
-		// Remove keys not in the common set from the original map
+		// Prune the alignment blocks to the common gene set.
 		map.forEach((alignmentBlock, geneObjectCounterMap) ->
-				geneObjectCounterMap.keySet().retainAll(commonGenes2));
+				geneObjectCounterMap.keySet().retainAll(commonGenes));
 
 		// merge the locus function counts for each gene across blocks.
 		Map<Gene, ObjectCounter<LocusFunction>> readMap = new HashMap<>();
 		for (AlignmentBlock b: map.keySet()) {
 			Map<Gene, ObjectCounter<LocusFunction>> blockMap=map.get(b);
 			for (Gene gene: blockMap.keySet()) {
+				if (!commonGenes.contains(gene))
+					log.info("I see a gene that isn't common.  This should never happen!");
 				ObjectCounter<LocusFunction> lf = readMap.computeIfAbsent(gene, k -> new ObjectCounter<LocusFunction>());
 				lf.increment(blockMap.get(gene));
 			}
 		}
 
-		// filter by pct to get the common locus functions and simplify
+		// filter by how much the locus functions are used.
+		// this may involve the function using more than some fraction of the read length.
+		// transforms the base-level counts of the locus function to the unique locus functions.
 		Map<Gene, List<LocusFunction>> result = new HashMap<>();
 
 		for (Gene gene: readMap.keySet()) {
 			ObjectCounter<LocusFunction> lf = readMap.get(gene);
 			List<LocusFunction> resultGene = result.computeIfAbsent(gene, k-> new ArrayList<>());
-			int totalSize = lf.getTotalCount();
 			for (LocusFunction locusFunction: lf.getKeys()) {
 				int size = lf.getCountForKey(locusFunction);
-				double pct = ((double) size/ (double) totalSize)*100;
+				double pct = ((double) size/ (double) readLength)*100;
 				if (pct > pcrRequiredOverlap) {
 					resultGene.add(locusFunction);
 				}
 			}
 		}
-
 		// return of gene to locus function.
 		return result;
 	}
