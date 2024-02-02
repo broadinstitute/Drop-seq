@@ -1,6 +1,7 @@
 package org.broadinstitute.dropseqrna.annotation.functionaldata;
 
 import org.broadinstitute.dropseqrna.annotation.AnnotationUtils;
+import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import picard.annotation.LocusFunction;
 
@@ -82,6 +83,53 @@ public class StarSoloFunctionalDataProcessor implements FunctionalDataProcessorI
     @Override
     public PriorityScoreI getPriority() {
         return this.priority;
+    }
+
+    /**
+     * Convert the Starsolo read annotations to a FunctionalData object.
+     * @param geneName The name of the gene
+     * @param priority The gene function priority as interpreted by StarSolo.  Ranges from 1 to 8, with
+     *                     higher numbers having higher priority.
+     * @param numGenes How many genes does this read map to at the priority score.  If more than one,
+     *                 the read is considered ambiguous, which is considered as Intergenic by Starsolo to
+     *                 encode "not counted".  We encode this as AMBIGUOUS instead of INTERGENIC to differentiate
+     *                 between a read that maps to an intergenic region and a read that maps to multiple genes.
+     * @param readNegativeStrand True if the read is on the negative strand
+     * @return A FunctionalData object encoding the results of this read.
+     */
+    public static FunctionalData getFunctionalData (String geneName, int priority, int numGenes, boolean readNegativeStrand) {
+        LocusFunction lf = convertPriority(priority, numGenes);
+        String readStrand = Utils.negativeStrandToString(readNegativeStrand);
+
+        // we have to infer the strand of the gene from the read and the priority.
+        // read matches gene for priority 1,3,5.  Strand opposite read 2,4,6.
+        String geneStrand = readStrand;
+        if (priority % 2==0)
+            geneStrand = Utils.negativeStrandToString(!readNegativeStrand);
+        boolean isAmbiguous = numGenes >1;
+        FunctionalData fd = new FunctionalData(geneName, geneStrand, lf, readStrand, isAmbiguous);
+        return (fd);
+    }
+
+    /**
+     * Convert the StarSolo numeric priority score to a LocusFunction
+     * This handles the type of locus function, but not the interaction of strand of gene and read.
+     * @param priority The priority score to convert
+     * @return The LocusFunction encoded.
+     */
+    public static LocusFunction convertPriority (int priority, int numGenes) {
+        if (numGenes> 1)
+            return LocusFunction.INTERGENIC;
+        LocusFunction result = switch (priority) {
+            case 1,2,3,4-> {
+                yield LocusFunction.CODING;
+            }
+            case 5,6 -> {
+                yield LocusFunction.INTRONIC;
+            }
+            default ->LocusFunction.INTERGENIC;
+        };
+        return result;
     }
 
 }

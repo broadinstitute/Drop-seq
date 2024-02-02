@@ -89,20 +89,22 @@ public class AnnotationUtils {
 	 *                           of multiple annotations (coding + intronic).
 	 */
 	public Map<Gene, List<LocusFunction>> getFunctionalDataForRead (final SAMRecord rec, final OverlapDetector<Gene> geneOverlapDetector, double pcrRequiredOverlap) {
-		if (rec.getReadName().equals("LH00118:69:22CNFNLT3:6:2112:15442:1929"))
+		if (rec.getReadName().equals("LH00118:69:22CNFNLT3:1:1254:15184:25514"))
 			log.info("STOP");
 
 		List<AlignmentBlock> alignmentBlocks = rec.getAlignmentBlocks();
 
 		Map<AlignmentBlock,Map<Gene, ObjectCounter<LocusFunction>>> map = new HashMap<>();
+		// the effective read length is the sum of the alignment block lengths.
+		int readLength=0;
 		// gather the locus functions for each alignment block.
 		for (AlignmentBlock block: alignmentBlocks) {
+			readLength+=block.getLength();
 			Interval interval = getInterval(rec.getReferenceName(), block);
 			Map<Gene, ObjectCounter<LocusFunction>> locusFunctionsForGeneMap = getFunctionalDataForInterval(interval, geneOverlapDetector);
 			map.put(block, locusFunctionsForGeneMap);
 		}
 		// simplify genes by only using genes that are common to all alignment blocks that pass the required number of bases of total overlap
-		int readLength = rec.getReadLength();
 		Map<Gene, List<LocusFunction>> result = simplifyFunctionalDataAcrossAlignmentBlocks(map, readLength, pcrRequiredOverlap);
 		return result;
 	}
@@ -180,31 +182,38 @@ public class AnnotationUtils {
 		// filter by how much the locus functions are used.
 		// this may involve the function using more than some fraction of the read length.
 		// transforms the base-level counts of the locus function to the unique locus functions.
+
+		// if there are both coding and UTR bases
+		// then sum the two annotations to calculate the overlap
+		// and emit both annotations.
+
 		Map<Gene, List<LocusFunction>> result = new HashMap<>();
 
 		for (Gene gene: readMap.keySet()) {
 			ObjectCounter<LocusFunction> lf = readMap.get(gene);
 			List<LocusFunction> resultGene = result.computeIfAbsent(gene, k-> new ArrayList<>());
+
+			// sum the coding + UTR for those weird edge cases.
+			int codingPlusUTR=lf.getCountForKey(LocusFunction.CODING)+lf.getCountForKey(LocusFunction.UTR);
+
 			for (LocusFunction locusFunction: lf.getKeys()) {
 				int size = lf.getCountForKey(locusFunction);
+				// if you're in CODING or UTR, use the summed value if it's larger.
+				if ((locusFunction==LocusFunction.CODING || locusFunction==LocusFunction.UTR) && codingPlusUTR > size)
+					size=codingPlusUTR;
 				double pct = ((double) size/ (double) readLength)*100;
-				if (pct > pcrRequiredOverlap) {
+				// special case: INTERGENIC annotation of any length is retained.
+				// this mimics STARsolo (I hope).
+				// don't add the locus function if it was added by both.
+				if ((pct > pcrRequiredOverlap || locusFunction==LocusFunction.INTERGENIC) && !resultGene.contains(locusFunction)) {
 					resultGene.add(locusFunction);
 				}
 			}
 		}
+
 		// return of gene to locus function.
 		return result;
 	}
-
-
-
-
-
-
-
-
-
 
 
 	/**

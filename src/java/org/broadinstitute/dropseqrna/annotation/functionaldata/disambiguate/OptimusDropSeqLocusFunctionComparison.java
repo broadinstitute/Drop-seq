@@ -1,5 +1,8 @@
 package org.broadinstitute.dropseqrna.annotation.functionaldata.disambiguate;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
@@ -10,12 +13,15 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalData;
 import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.StarSoloFunctionalDataProcessor;
 import org.broadinstitute.dropseqrna.barnyard.*;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.*;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.*;
+import picard.annotation.LocusFunction;
+import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
 import java.io.File;
@@ -31,14 +37,18 @@ import java.util.stream.Collectors;
         oneLineSummary = "Disambiguate UMI functional annotations",
         programGroup = DropSeq.class
 )
-public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLineBase {
+public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
 
     @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
     public List<File> INPUT;
 
     @Argument(doc="Contains one row for each cell/UMI that has an ambiguous read, and the status of how the UMI is resolved." +
-            "Cell/UMI read collections that are unambiguous are not emitted.", optional=true)
+            "Cell/UMI read collections that are unambiguous are not emitted.", optional=false)
     public File OUTPUT=null;
+
+    @Argument(doc="A BAM file that captures reads fro cell/UMI groupings that had discordant tagging between STARsolo " +
+            "and Dropseq.  Purely for debugging purposes.", optional = true)
+    public File OUT_BAM=null;
 
     @Argument(doc="A summary all cell/UMI results.", optional=true)
     public File SUMMARY=null;
@@ -56,6 +66,13 @@ public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLi
             "if non-unique reads are included.")
     public Integer READ_MQ=10;
 
+    private final String VALIDATION_TAG_STAR="VS";
+    private final String VALIDATION_TAG_DROPSEQ="VD";
+
+    private String STARSOLO_FUNCTION_TAG="sF";
+    private String STARSOLO_GENE_NAME="GN";
+
+
 //    @Argument(doc="Gene Name tag.  Takes on the gene name this read overlaps (if any)")
 //    public String GENE_NAME_TAG= DEFAULT_GENE_NAME_TAG;
 //
@@ -65,51 +82,144 @@ public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLi
 //    @Argument(doc="Gene Function tag.  For a given gene name <GENE_NAME_TAG>, this is the function of the gene at this read's position: UTR/CODING/INTRONIC/...")
 //    public String GENE_FUNCTION_TAG= DEFAULT_GENE_FUNCTION_TAG;
 
+    private final List<LocusFunction> LOCUS_FUNCTION_LIST = Collections.unmodifiableList(new ArrayList<>(Arrays.asList(LocusFunction.CODING, LocusFunction.UTR, LocusFunction.INTRONIC)));
+    private final StrandStrategy STRAND_STRATEGY=GeneFunctionCommandLineBase.DEFAULT_STRAND_STRATEGY;
+
     private GeneFunctionProcessor gfp;
 
     private static final Log log = Log.getInstance(OptimusDropSeqLocusFunctionComparison.class);
 
+    private ObjectCounter<Boolean> readTagValidation;
+
     @Override
     protected int doWork() {
+        readTagValidation = new ObjectCounter<>();
         ProgressLogger pl = new ProgressLogger(log);
 
+        // Set up outputs
         ErrorCheckingPrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUTPUT));
         writeOutputHeader(out);
 
+        SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(this.INPUT, false);
+        // the writer can be null.
+        SAMFileWriter writer = getBamWriter (headerAndIterator.header, this.OUT_BAM);
+
         // the FunctionalDataProcessorStrategy shouldn't matter here.
-        gfp = new GeneFunctionProcessor(this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG,false,
-                this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, FunctionalDataProcessorStrategy.STARSOLO);
+        gfp = new GeneFunctionProcessor(GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG,
+                GeneFunctionCommandLineBase.DEFAULT_GENE_FUNCTION_TAG,false,
+                STRAND_STRATEGY, LOCUS_FUNCTION_LIST, FunctionalDataProcessorStrategy.STARSOLO);
+
+        ValidateAnnotations validator = new ValidateAnnotations(gfp);
 
         Collection <String> cellBarcodes= getCellBarcodes();
-
-        Iterator<List<SAMRecord>> group = getSamRecordIterator(cellBarcodes);
-
+        Iterator<List<SAMRecord>> group = getSamRecordIterator(headerAndIterator, cellBarcodes);
         DisambiguateFunctionalAnnotation dfa = new DisambiguateFunctionalAnnotation();
+        ObjectCounter<FunctionCategory> summaryCounter = new ObjectCounter<>();
+
+        log.info("Scanning cell / UMIs for ambiguous antisense coding / sense intronic scenarios.");
+        ProgressLogger plIter = new ProgressLogger(log, 1000000);
 
         // TODO: Gather summary metrics maybe in a metrics object/file?
-        while (group.hasNext()) {
+        outerloop: while (group.hasNext()) {
             List<SAMRecord> recs= group.next();
+            recs.forEach(plIter::record);
             // short circuit single read UMIs.
             if (recs.size()<2)
                 continue;
 
-            Map<String, List<FunctionalData>> fdMap = getFunctionalAnnotations(recs);
             String cellBarcode = recs.getFirst().getStringAttribute(this.CELL_BARCODE_TAG);
             String umiBarcode = recs.getFirst().getStringAttribute(this.MOLECULAR_BARCODE_TAG);
-            if (cellBarcode.equals("AAACCCACAATGTCTG") && umiBarcode.equals("AAATCCGGCGGT")) {
+            if (cellBarcode.equals("AAACCCACAATGTCTG") && umiBarcode.equals("AACTGATGTACG")) {
                 log.info("DEBUG THIS");
             }
-            DisambiguationScore score = dfa.run(cellBarcode, umiBarcode, fdMap);
-            if (score.classify()!=FunctionCategory.UNAMBIGUOUS & score.classify()!=FunctionCategory.AMBIGUOUS) {
+
+            Map<String, FunctionalData> starsoloFD= getStarSoloAnnotations (recs);
+            Map<String, List<FunctionalData>> dropSeqFD = getFunctionalAnnotations(recs);
+
+            // validate that the tags are approximately the same.
+            // Starsolo doesn't track gene names for antisense, so we can't check which gene is antisense.
+            // for the (hopefully) small number of reads that don't validate, skip analysis of these to be safe.
+            Map<String, ValidationStatus> validationResult = validator.validate (starsoloFD, dropSeqFD, false);
+            boolean invalidRead=false;
+            for (SAMRecord r: recs) {
+                ValidationStatus vs = validationResult.get(r.getReadName());
+                boolean isValid=vs.isValid();
+                readTagValidation.increment(isValid);
+                if (!vs.isValid()) {
+                    r.setAttribute(this.VALIDATION_TAG_STAR, vs.getStar().getCategory().toString());
+                    r.setAttribute(this.VALIDATION_TAG_DROPSEQ, vs.getDropseq().getCategory().toString());
+                    writer.addAlignment(r);
+                    invalidRead=true;
+                }
+            }
+
+            if (invalidRead)
+                continue outerloop;
+
+            DisambiguationScore score = dfa.run(cellBarcode, umiBarcode, dropSeqFD);
+            // capture the functional category so we can summarize how many of each type we see.
+            summaryCounter.increment(score.classify());
+            /*
+            if (cat==FunctionCategory.RESOLVED_SENSE_INTRONIC || cat==FunctionCategory.RESOLVED_ANTISENSE_CODING) {
                 log.info("STOP");
             }
+            */
             // do reporting and summarizing
             writeOutputLine(score, out);
+
         }
 
-
+        if (writer!=null)
+            writer.close();
         return 0;
     }
+
+
+
+    /**
+     * Validate the STARsolo and dropseq annotations to make sure they are the same before further processing.
+     * @param starSolo
+     * @param dropseq
+     * @return
+     */
+
+
+    /**
+     * Get the set of genes that match this functional annotation and sense/antisense pattern
+     * @param fdList A list of functional data
+     * @param lf The locus function to filter on.  Only genes that match this locus function are retained
+     * @param isSense If true, only return genes where the read and gene strand match
+     * @return A Set of gene names
+     */
+    private Set<String> getGenesForFunction (Collection <FunctionalData> fdList, LocusFunction lf, boolean isSense) {
+        Set<String> result = new HashSet<>();
+        for (FunctionalData d: fdList) {
+            if (d.isSense()== isSense & d.getLocusFunction()==lf)
+                result.add(d.getGene());
+
+        }
+        return result;
+    }
+
+    /**
+     * Starsolo encodes one and only one functional data annotation per read.
+     * The tags are written to the SAM file after interpretation.
+     * @param recs
+     * @return
+     */
+    private Map<String, FunctionalData> getStarSoloAnnotations (List<SAMRecord> recs) {
+        Map<String, FunctionalData> result = new HashMap<>();
+        for (SAMRecord r: recs) {
+            Object func = r.getAttribute(this.STARSOLO_FUNCTION_TAG);
+            int [] funcArray = (int []) func;
+            String geneName = r.getStringAttribute(this.STARSOLO_GENE_NAME);
+            boolean readNegativeStrand = r.getReadNegativeStrandFlag();
+            FunctionalData fd = StarSoloFunctionalDataProcessor.getFunctionalData(geneName, funcArray[0], funcArray[1], readNegativeStrand);
+            result.put(r.getReadName(), fd);
+        }
+        return result;
+    }
+
 
     private void writeOutputHeader (PrintStream out) {
         List<String> line = new ArrayList<>();
@@ -124,21 +234,6 @@ public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLi
         String h = StringUtils.join(line, "\t");
         out.println(h);
     }
-
-    Map<String, List<FunctionalData>> getFunctionalAnnotationsOld(List<SAMRecord> recs) {
-        Map<String, List<FunctionalData>> result = new HashMap<>();
-        for (SAMRecord rec: recs) {
-            String readName = rec.getReadName();
-            List<FunctionalData> fdList = result.get(readName);
-            if (fdList==null)
-                fdList = new ArrayList<>();
-            List<FunctionalData> fd = getFunctionalData(rec);
-            fdList.addAll(fd);
-            result.put(readName, fdList);
-        }
-        return (result);
-    }
-
 
     /**
      * Get functional data annotations using the DropSeq tags.
@@ -166,12 +261,8 @@ public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLi
      * @param cellBarcodes
      * @return
      */
-    Iterator<List<SAMRecord>> getSamRecordIterator (Collection <String> cellBarcodes) {
-
-        SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(this.INPUT, false);
-
+    Iterator<List<SAMRecord>> getSamRecordIterator (SamHeaderAndIterator headerAndIterator, Collection <String> cellBarcodes) {
         final ProgressLogger logger = new ProgressLogger(log);
-
 
         final StringTagComparator cellBarcodeTagComparator = new StringTagComparator(this.CELL_BARCODE_TAG);
         final StringTagComparator umiTagComparator = new StringTagComparator(this.MOLECULAR_BARCODE_TAG);
@@ -179,7 +270,8 @@ public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLi
 
         // Filter records before sorting, to reduce I/O
         Iterator<SAMRecord> filteringIterator =
-                new MissingTagFilteringIterator(headerAndIterator.iterator, this.CELL_BARCODE_TAG, this.GENE_NAME_TAG, this.MOLECULAR_BARCODE_TAG);
+                new MissingTagFilteringIterator(headerAndIterator.iterator, this.CELL_BARCODE_TAG,
+                        GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, this.MOLECULAR_BARCODE_TAG);
 
         // Filter reads on if the read contains a cell barcode, if cell barcodes have been specified.
         filteringIterator = new CellBarcodeFilteringIterator(filteringIterator, this.CELL_BARCODE_TAG, cellBarcodes);
@@ -207,14 +299,22 @@ public class OptimusDropSeqLocusFunctionComparison extends GeneFunctionCommandLi
 
     }
 
+    private SAMFileWriter getBamWriter (SAMFileHeader header, File outBAM) {
+        if (outBAM==null)
+            return null;
+
+        IOUtil.assertFileIsWritable(outBAM);
+        SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(header, false, outBAM);
+        return writer;
+    }
 
     @Override
     protected String[] customCommandLineValidation() {
         final ArrayList<String> list = new ArrayList<>(1);
 
         this.INPUT = FileListParsingUtils.expandFileList(INPUT);
-        IOUtil.assertFileIsWritable(OUTPUT);
-        IOUtil.assertFileIsWritable(SUMMARY);
+        if (this.OUTPUT!=null) IOUtil.assertFileIsWritable(OUTPUT);
+        if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(SUMMARY);
         if (CELL_BC_FILE!=null)
             IOUtil.assertFileIsReadable(CELL_BC_FILE);
         return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);

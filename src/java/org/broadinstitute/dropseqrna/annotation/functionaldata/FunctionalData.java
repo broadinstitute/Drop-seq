@@ -22,13 +22,24 @@ public class FunctionalData {
 
 	private final String readStrand;
 
+	private final boolean isAmbiguous;
+	private Type type;
+
 	public FunctionalData (final String gene, final String geneStrand, final LocusFunction locusFunction, final String readStrand) {
 		this.gene=gene;
 		this.geneStrand =geneStrand;
 		this.locusFunction=locusFunction;
 		this.readStrand=readStrand;
+		this.isAmbiguous=false;
 	}
 
+	public FunctionalData (final String gene, final String geneStrand, final LocusFunction locusFunction, final String readStrand, boolean isAmbiguous) {
+		this.gene=gene;
+		this.geneStrand =geneStrand;
+		this.locusFunction=locusFunction;
+		this.readStrand=readStrand;
+		this.isAmbiguous=isAmbiguous;
+	}
 
 
 	/**
@@ -72,17 +83,26 @@ public class FunctionalData {
 		return this.gene;
 	}
 
+	/**
+	 * Test if the read strand and gene strand match
+	 * @return True if the read strand == gene strand
+	 */
+	public boolean isSense () {
+		return (this.getGeneStrand().equals(this.readStrand));
+	}
+
 	public LocusFunction getLocusFunction () {
 		return this.locusFunction;
 	}
 
 	@Override
 	public String toString () {
-		return String.format("%s %s %s",
+		return String.format("%s %s %s %s %s" ,
 				java.util.Objects.toString(gene, "null"),
 				java.util.Objects.toString(geneStrand, "null"),
 				java.util.Objects.toString(locusFunction, "null"),
-				java.util.Objects.toString(readStrand, "null")
+				java.util.Objects.toString(readStrand, "null"),
+				java.util.Objects.toString(getType(), "null")
 				);
 	}
 
@@ -97,5 +117,57 @@ public class FunctionalData {
 	@Override
 	public int hashCode() {
 		return Objects.hashCode(gene, geneStrand, locusFunction);
+	}
+
+	/**
+	 * A convenience method to get the type this functional data encodes.
+	 * This combines the gene strand, read strand, and locus function to yield a single classification
+	 * This simplifies CODING and UTR into CODING.
+	 * @return
+	 */
+	public Type getType() {
+		if (this.type == null) {
+			this.type = calculateType();
+		}
+		return this.type;
+	}
+
+	private Type calculateType() {
+		if (this.locusFunction == LocusFunction.INTERGENIC && this.isAmbiguous)
+			return Type.AMBIGUOUS;
+
+		if (this.locusFunction == LocusFunction.INTERGENIC) {
+			return Type.INTERGENIC;
+		}
+
+		if (this.isSense()) {
+			switch (this.locusFunction) {
+				case CODING:
+				case UTR:
+					return Type.CODING_SENSE;
+				case INTRONIC:
+					return Type.INTRONIC_SENSE;
+			}
+		} else {
+			switch (this.locusFunction) {
+				case CODING:
+				case UTR:
+					return Type.CODING_ANTISENSE;
+				case INTRONIC:
+					return Type.INTRONIC_ANTISENSE;
+			}
+		}
+
+		// Anything else
+		return Type.INTERGENIC;
+	}
+
+	public enum Type {
+		CODING_SENSE,
+		CODING_ANTISENSE,
+		INTRONIC_SENSE,
+		INTRONIC_ANTISENSE,
+		INTERGENIC,
+		AMBIGUOUS
 	}
 }

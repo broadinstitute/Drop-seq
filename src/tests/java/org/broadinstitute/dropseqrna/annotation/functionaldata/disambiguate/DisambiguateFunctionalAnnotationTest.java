@@ -20,7 +20,7 @@ public class DisambiguateFunctionalAnnotationTest {
     /**
      * No ambiguous reads.  One coding read, one intronic read.
      */
-    public void testUnambiguous() {
+    public void testUnambiguousSenseCoding() {
         Map<String, List<FunctionalData>> recs = new HashMap<>();
 
         // 2 reads where the gene and read strand match.
@@ -41,15 +41,79 @@ public class DisambiguateFunctionalAnnotationTest {
         DisambiguateFunctionalAnnotation dfa = new DisambiguateFunctionalAnnotation();
         DisambiguationScore score= dfa.run("fake", "fake", recs);
 
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("A"),0);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("B"),0);
+        Assert.assertEquals(score.getAmbiguousAntiSenseCount().getCountForKey("A"),0);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("B"),0);
         Assert.assertEquals(score.getSenseIntronicCount().getCountForKey("B"),1);
 
         Assert.assertFalse(score.hasAmbiguousReads());
-        Assert.assertEquals(score.classify(), FunctionCategory.UNAMBIGUOUS);
+        Assert.assertEquals(score.classify(), FunctionCategory.SENSE_CODING);
         Assert.assertFalse(score.isComplex());
     }
 
+    @Test
+    public void testUnambiguousAntiSenseCoding() {
+        Map<String, List<FunctionalData>> recs = new HashMap<>();
+
+        // 2 reads where the gene and read strand match.
+        List<FunctionalData> unambiguousRead = FunctionalData.buildFD(
+                new String [] {"A"},
+                new String [] {"-"},
+                new LocusFunction[] {LocusFunction.CODING},
+                strandStrategy, Arrays.asList(acceptedFunctions), false);
+        recs.put("unambiguous", unambiguousRead);
+
+        List<FunctionalData> unambiguousRead2 = FunctionalData.buildFD(
+                new String [] {"B"},
+                new String [] {"-"},
+                new LocusFunction[] {LocusFunction.INTRONIC},
+                strandStrategy, Arrays.asList(acceptedFunctions), true);
+        recs.put("unambiguous2", unambiguousRead2);
+
+        DisambiguateFunctionalAnnotation dfa = new DisambiguateFunctionalAnnotation();
+        DisambiguationScore score= dfa.run("fake", "fake", recs);
+
+        Assert.assertEquals(score.getAmbiguousAntiSenseCount().getCountForKey("A"),0);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("B"),0);
+        Assert.assertEquals(score.getSenseIntronicCount().getCountForKey("B"),1);
+
+        Assert.assertFalse(score.hasAmbiguousReads());
+        Assert.assertEquals(score.classify(), FunctionCategory.ANTISENSE_CODING);
+        Assert.assertFalse(score.isComplex());
+    }
+
+    @Test
+    /**
+     * Reads map to two different genes, but they are both sense intronic.
+     */
+    public void testUnambiguousSenseIntronic() {
+        Map<String, List<FunctionalData>> recs = new HashMap<>();
+
+        // 2 reads where the gene and read strand match, and are both intronic.
+        List<FunctionalData> unambiguousRead = FunctionalData.buildFD(
+                new String [] {"A"},
+                new String [] {"-"},
+                new LocusFunction[] {LocusFunction.INTRONIC},
+                strandStrategy, Arrays.asList(acceptedFunctions), true);
+        recs.put("unambiguous", unambiguousRead);
+
+        List<FunctionalData> unambiguousRead2 = FunctionalData.buildFD(
+                new String [] {"B"},
+                new String [] {"-"},
+                new LocusFunction[] {LocusFunction.INTRONIC},
+                strandStrategy, Arrays.asList(acceptedFunctions), true);
+        recs.put("unambiguous2", unambiguousRead2);
+
+        DisambiguateFunctionalAnnotation dfa = new DisambiguateFunctionalAnnotation();
+        DisambiguationScore score= dfa.run("fake", "fake", recs);
+
+        Assert.assertEquals(score.getAmbiguousAntiSenseCount().getCountForKey("A"),0);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("B"),0);
+        Assert.assertEquals(score.getSenseIntronicCount().getCountForKey("B"),1);
+
+        Assert.assertFalse(score.hasAmbiguousReads());
+        Assert.assertEquals(score.classify(), FunctionCategory.SENSE_INTRONIC);
+        Assert.assertFalse(score.isComplex());
+    }
     @Test
     /**
      * Simple case of a single ambiguous read and a single antisense coding read that is successfully disambiguated.
@@ -77,14 +141,14 @@ public class DisambiguateFunctionalAnnotationTest {
         DisambiguateFunctionalAnnotation dfa = new DisambiguateFunctionalAnnotation();
         DisambiguationScore score= dfa.run("fake", "fake", recs);
 
-        Assert.assertEquals(score.getTotalCount(),3);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("A"),1);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("B"),1);
+        Assert.assertEquals(score.getTotalCount(),2);
+        Assert.assertEquals(score.getAmbiguousAntiSenseCount().getCountForKey("A"),1);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("B"),1);
         Assert.assertEquals(score.getAntisenseCodingCount().getCountForKey("A"),1);
         Assert.assertEquals(score.getSenseIntronicCount().getCountForKey("B"),0);
 
         Assert.assertTrue(score.hasAmbiguousReads());
-        Assert.assertEquals(score.classify(), FunctionCategory.ANTISENSE_CODING);
+        Assert.assertEquals(score.classify(), FunctionCategory.RESOLVED_ANTISENSE_CODING);
         Assert.assertFalse(score.isComplex());
     }
 
@@ -133,14 +197,14 @@ public class DisambiguateFunctionalAnnotationTest {
         DisambiguateFunctionalAnnotation dfa = new DisambiguateFunctionalAnnotation();
         DisambiguationScore score= dfa.run("fake", "fake", recs);
 
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("A"),1);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("B"),1);
+        Assert.assertEquals(score.getAmbiguousAntiSenseCount().getCountForKey("A"),1);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("B"),1);
         Assert.assertEquals(score.getAntisenseCodingCount().getCountForKey("A"),1);
         Assert.assertEquals(score.getSenseIntronicCount().getCountForKey("B"),0);
         Assert.assertEquals(score.getAntisenseCodingCount().getCountForKey("D"),1);
         Assert.assertEquals(score.getSenseIntronicCount().getCountForKey("C"),1);
         Assert.assertTrue(score.hasAmbiguousReads());
-        Assert.assertEquals(score.classify(), FunctionCategory.ANTISENSE_CODING);
+        Assert.assertEquals(score.classify(), FunctionCategory.RESOLVED_ANTISENSE_CODING);
         Assert.assertFalse(score.isComplex());
     }
 
@@ -172,12 +236,12 @@ public class DisambiguateFunctionalAnnotationTest {
         DisambiguateFunctionalAnnotation dfa = new DisambiguateFunctionalAnnotation();
         DisambiguationScore score= dfa.run("fake", "fake", recs);
 
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("A"),1);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("B"),1);
+        Assert.assertEquals(score.getAmbiguousAntiSenseCount().getCountForKey("A"),1);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("B"),1);
         Assert.assertEquals(score.getAntisenseCodingCount().getCountForKey("A"),1);
         Assert.assertEquals(score.getSenseIntronicCount().getCountForKey("B"),0);
         Assert.assertTrue(score.hasAmbiguousReads());
-        Assert.assertEquals(score.classify(), FunctionCategory.ANTISENSE_CODING);
+        Assert.assertEquals(score.classify(), FunctionCategory.RESOLVED_ANTISENSE_CODING);
         Assert.assertFalse(score.isComplex());
     }
 
@@ -213,13 +277,13 @@ public class DisambiguateFunctionalAnnotationTest {
         DisambiguateFunctionalAnnotation dfa = new DisambiguateFunctionalAnnotation();
         DisambiguationScore score= dfa.run("fake", "fake", recs);
 
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("A"),1);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("B"),1);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("C"),1);
+        Assert.assertEquals(score.getAmbiguousAntiSenseCount().getCountForKey("A"),1);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("B"),1);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("C"),1);
         Assert.assertEquals(score.getAntisenseCodingCount().getCountForKey("A"),1);
         Assert.assertEquals(score.getSenseIntronicCount().getCountForKey("B"),0);
         Assert.assertTrue(score.hasAmbiguousReads());
-        Assert.assertEquals(score.classify(), FunctionCategory.ANTISENSE_CODING);
+        Assert.assertEquals(score.classify(), FunctionCategory.RESOLVED_ANTISENSE_CODING);
         Assert.assertTrue(score.isComplex());
     }
 
@@ -253,14 +317,14 @@ public class DisambiguateFunctionalAnnotationTest {
         DisambiguateFunctionalAnnotation dfa = new DisambiguateFunctionalAnnotation();
         DisambiguationScore score= dfa.run("fake", "fake", recs);
 
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("A"),1);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("B"),1);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("C"),1);
+        Assert.assertEquals(score.getAmbiguousAntiSenseCount().getCountForKey("A"),1);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("B"),1);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("C"),1);
         Assert.assertEquals(score.getAntisenseCodingCount().getCountForKey("A"),0);
         Assert.assertEquals(score.getSenseIntronicCount().getCountForKey("B"),1);
         Assert.assertEquals(score.getSenseIntronicCount().getCountForKey("C"),1);
         Assert.assertTrue(score.hasAmbiguousReads());
-        Assert.assertEquals(score.classify(), FunctionCategory.SENSE_INTRONIC);
+        Assert.assertEquals(score.classify(), FunctionCategory.RESOLVED_SENSE_INTRONIC);
         Assert.assertTrue(score.isComplex());
     }
 
@@ -284,13 +348,13 @@ public class DisambiguateFunctionalAnnotationTest {
         DisambiguateFunctionalAnnotation dfa = new DisambiguateFunctionalAnnotation();
         DisambiguationScore score= dfa.run("fake", "fake", recs);
 
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("A"),0);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("B"),0);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("C"),0);
+        Assert.assertEquals(score.getAmbiguousAntiSenseCount().getCountForKey("A"),0);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("B"),0);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("C"),0);
         Assert.assertEquals(score.getAntisenseCodingCount().getCountForKey("A"),0);
         Assert.assertEquals(score.getSenseIntronicCount().getCountForKey("B"),0);
         Assert.assertFalse(score.hasAmbiguousReads());
-        Assert.assertEquals(score.classify(), FunctionCategory.UNAMBIGUOUS);
+        Assert.assertEquals(score.classify(), FunctionCategory.SENSE_CODING);
         Assert.assertFalse(score.isComplex());
 
         // add an unamiguous read.  The result doesn't change.
@@ -301,13 +365,13 @@ public class DisambiguateFunctionalAnnotationTest {
                 strandStrategy, Arrays.asList(acceptedFunctions), false);
         recs.put("unambiguous", unambiguousRead);
         score= dfa.run("fake", "fake", recs);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("A"),0);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("B"),0);
-        Assert.assertEquals(score.getAmbiguousCount().getCountForKey("C"),0);
+        Assert.assertEquals(score.getAmbiguousAntiSenseCount().getCountForKey("A"),0);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("B"),0);
+        Assert.assertEquals(score.getAmbiguousSenseIntronicCount().getCountForKey("C"),0);
         Assert.assertEquals(score.getAntisenseCodingCount().getCountForKey("A"),0);
         Assert.assertEquals(score.getSenseIntronicCount().getCountForKey("B"),0);
         Assert.assertFalse(score.hasAmbiguousReads());
-        Assert.assertEquals(score.classify(), FunctionCategory.UNAMBIGUOUS);
+        Assert.assertEquals(score.classify(), FunctionCategory.SENSE_CODING);
         Assert.assertFalse(score.isComplex());
 
     }

@@ -23,6 +23,8 @@ public class GeneFunctionProcessor {
 	private final String strandTag;
 	private final String functionTag;
 	private final boolean assignReadsToAllGenes;
+
+
 	private final FunctionalDataProcessorI fdp;
 	
 	public GeneFunctionProcessor(final String geneTag, final String strandTag, final String functionTag,
@@ -169,4 +171,9 @@ public class GeneFunctionProcessor {
 		}
 		return result;
 	}
+
+	public FunctionalDataProcessorI getFdp() {
+		return fdp;
+	}
+
 }

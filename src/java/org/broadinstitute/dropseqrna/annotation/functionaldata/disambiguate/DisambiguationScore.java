@@ -16,21 +16,30 @@ public class DisambiguationScore {
     private final String cell;
     private final String molecularBarcode;
 
-    private final ObjectCounter<String> ambiguousCount;
+    // private final ObjectCounter<String> ambiguousCount;
+
+
+    private final ObjectCounter<String> ambiguousAntiSenseCount;
+    private final ObjectCounter<String> ambiguousSenseIntronicCount;
+
     private final ObjectCounter<String> antisenseCodingCount;
     private final ObjectCounter<String> senseIntronicCount;
     private final ObjectCounter<String> senseCodingCount;
 
+    private int numReads;
     private boolean isComplex;
 
     public DisambiguationScore(String cell, String molecularBarcode) {
         this.cell=cell;
         this.molecularBarcode=molecularBarcode;
-        this.ambiguousCount=new ObjectCounter<>();
+        // this.ambiguousCount=new ObjectCounter<>();
         this.antisenseCodingCount =new ObjectCounter<>();
         this.senseIntronicCount=new ObjectCounter<>();
         this.senseCodingCount =new ObjectCounter<>();
+        this.ambiguousAntiSenseCount = new ObjectCounter<>();
+        this.ambiguousSenseIntronicCount = new ObjectCounter<>();
         this.isComplex=false;
+        this.numReads=0;
     }
 
     /**
@@ -40,6 +49,7 @@ public class DisambiguationScore {
      * @param fd functional data for a single read.
      */
     public void add(List<FunctionalData> fd) {
+        this.numReads++;
         List<String> geneNames = getGeneNames(fd);
 
         // if the read is a sense coding read that trumps all other priority, so don't evaluate
@@ -51,19 +61,28 @@ public class DisambiguationScore {
 
         boolean antisenseCoding=containsCoding(fd, true);
         boolean senseIntronic=containsSenseIntronic(fd);
-        // if both, then make a "metagene" of the two genes that contributed to this.
+        // if both, this is the ambiguous category.
         if (antisenseCoding && senseIntronic) {
             if (geneNames.size()>2)
                 this.isComplex=true;
-            geneNames.forEach(ambiguousCount::increment);
-        } else {
-            if (geneNames.size()!=1)
-                this.isComplex=true;
-            if (antisenseCoding)
-                geneNames.forEach(antisenseCodingCount::increment);
-            if (senseIntronic)
-                geneNames.forEach(senseIntronicCount::increment);
+            // more explicitly capture the ambiguous antisense coding and ambiguous sense intronic genes!
+            for (FunctionalData d: fd) {
+                if (isCoding(d, true))
+                    this.ambiguousAntiSenseCount.increment(d.getGene());
+                if (isSenseIntronic(d))
+                    this.ambiguousSenseIntronicCount.increment(d.getGene());
             }
+        } else {
+            if (geneNames.size() != 1)
+                this.isComplex = true;
+            // more explicitly capture the unambiguous coding and sense intronic genes!
+            for (FunctionalData d : fd) {
+                if (isCoding(d, true))
+                    this.antisenseCodingCount.increment(d.getGene());
+                if (isSenseIntronic(d))
+                    this.senseIntronicCount.increment(d.getGene());
+            }
+        }
     }
 
     /**
@@ -71,7 +90,7 @@ public class DisambiguationScore {
      * @return True if at least one read was assigned to both sense intronic and antisense coding
      */
     public boolean hasAmbiguousReads () {
-        return (this.ambiguousCount.getTotalCount() >0);
+        return (this.ambiguousAntiSenseCount.getTotalCount() >0 ||  this.ambiguousSenseIntronicCount.getTotalCount() >0);
     }
 
     /**
@@ -83,11 +102,17 @@ public class DisambiguationScore {
      * @return
      */
     public FunctionCategory classify () {
-        if (!this.hasAmbiguousReads())
-            return FunctionCategory.UNAMBIGUOUS;
+        if (!this.hasAmbiguousReads()) {
+            if (this.senseCodingCount.getTotalCount()>0)
+                return FunctionCategory.SENSE_CODING;
+            if (this.antisenseCodingCount.getTotalCount()>0)
+                return FunctionCategory.ANTISENSE_CODING;
+            if (this.senseIntronicCount.getTotalCount()>0)
+                return FunctionCategory.SENSE_INTRONIC;
+        }
 
-        boolean overlapAntisenseCoding=testKeyOverlap(this.ambiguousCount, this.antisenseCodingCount);
-        boolean overlapSenseIntronic=testKeyOverlap(this.ambiguousCount, this.senseIntronicCount);
+        boolean overlapAntisenseCoding=testKeyOverlap(this.ambiguousAntiSenseCount, this.antisenseCodingCount);
+        boolean overlapSenseIntronic=testKeyOverlap(this.ambiguousSenseIntronicCount, this.senseIntronicCount);
 
         // if there are reads that disambiguate in both directions, it's still ambiguous!
         if (overlapAntisenseCoding && overlapSenseIntronic)
@@ -95,10 +120,10 @@ public class DisambiguationScore {
 
         // resolve by looking for gene overlaps between unambiguous and ambiguous
         if (overlapAntisenseCoding)
-            return FunctionCategory.ANTISENSE_CODING;
+            return FunctionCategory.RESOLVED_ANTISENSE_CODING;
 
         if (overlapSenseIntronic)
-            return FunctionCategory.SENSE_INTRONIC;
+            return FunctionCategory.RESOLVED_SENSE_INTRONIC;
 
         // if no reads resolve the data
         return FunctionCategory.AMBIGUOUS;
@@ -145,10 +170,6 @@ public class DisambiguationScore {
         return molecularBarcode;
     }
 
-    public ObjectCounter<String> getAmbiguousCount() {
-        return ambiguousCount;
-    }
-
     public ObjectCounter<String> getAntisenseCodingCount() {
         return antisenseCodingCount;
     }
@@ -171,8 +192,17 @@ public class DisambiguationScore {
      * @return
      */
     public int getTotalCount () {
-        return this.ambiguousCount.getTotalCount()+this.antisenseCodingCount.getTotalCount()+this.senseIntronicCount.getTotalCount();
+        return this.numReads;
     }
+
+    public ObjectCounter<String> getAmbiguousAntiSenseCount() {
+        return ambiguousAntiSenseCount;
+    }
+
+    public ObjectCounter<String> getAmbiguousSenseIntronicCount() {
+        return ambiguousSenseIntronicCount;
+    }
+
 
     public String toString () {
         StringBuilder b = new StringBuilder();
@@ -180,7 +210,8 @@ public class DisambiguationScore {
                 .append("Category [").append(classify().toString()).append("]")
                 .append(" is complex [").append(Boolean.toString(this.isComplex)).append(" ] ")
                 .append("] sense coding [").append(this.senseCodingCount.toString()).append("]")
-                .append("] ambiguous [").append(this.ambiguousCount.toString()).append("]")
+                .append("] ambiguous antisense [").append(this.ambiguousAntiSenseCount.toString()).append("]")
+                .append("] ambiguous sense intronic [").append(this.ambiguousSenseIntronicCount.toString()).append("]")
                 .append("] antisense coding  [").append(this.antisenseCodingCount.toString()).append("]")
                 .append("] sense intronic  [").append(this.senseIntronicCount.toString()).append("]");
         return b.toString();
