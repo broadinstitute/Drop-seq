@@ -16,7 +16,7 @@ import java.util.List;
 
 public class ClassifyDropSeqFunctionalDataTest {
 
-
+    private static String NO_GENE = ClassifyDropSeqFunctionalData.DEFAULT_MISSING_GENE_LABEL;
     private ClassifyDropSeqFunctionalData getDefaultValidator () {
         List<LocusFunction> LOCUS_FUNCTION_LIST = Collections.unmodifiableList(new ArrayList<>(Arrays.asList(LocusFunction.CODING, LocusFunction.UTR, LocusFunction.INTRONIC)));
         StrandStrategy STRAND_STRATEGY=GeneFunctionCommandLineBase.DEFAULT_STRAND_STRATEGY;
@@ -169,6 +169,70 @@ public class ClassifyDropSeqFunctionalDataTest {
 
         expected = new GeneWithFunction(ClassifyDropSeqFunctionalData.DEFAULT_MISSING_GENE_LABEL, FunctionalData.Type.INTERGENIC);
         gf =  va.convert(intergeic);
+        Assert.assertEquals(gf, expected);
+
+    }
+
+
+
+    // a read that maps to antisense intronic twice.
+    // Star for some reason tags this as antisense intronic and gives it a gene name of '-' so it's not counted.
+    // LH00118:69:22CNFNLT3:1:1255:24097:2154	0	chr2	59347496	255	90M	*	0	0  CB:Z:AAACCCACAATGTCTG	UB:Z:AAATACGGTCTA	XF:Z:INTERGENIC	sF:B:i,6,0	NH:i:1
+    // GN:Z:-	CR:Z:AAACCCACAATGTCTG	UR:Z:AAATACGGTCTA GX:Z:-	CY:Z:FFFFFFFFFFFFFFFF	UY:Z:FFFFFFFFFFFF	gf:Z:INTRONIC,INTRONIC	gn:Z:AC007100.1,AC007179.2	gs:Z:-,-
+    @Test
+    public void testAmbiguousAntisenseIntronic () {
+        ClassifyDropSeqFunctionalData va = getDefaultValidator();
+        FunctionalData A = new FunctionalData("A", "+", LocusFunction.INTRONIC, "-");
+        FunctionalData B = new FunctionalData("B", "+", LocusFunction.INTRONIC, "-");
+        List<FunctionalData> ambiguous = Arrays.asList(A, B);
+        Assert.assertNull(va.getDropSeqAntisenseIntronic(ambiguous));
+        Assert.assertTrue(va.isDropSeqAmbiguous(ambiguous));
+
+        GeneWithFunction expected = new GeneWithFunction(ClassifyDropSeqFunctionalData.DEFAULT_MISSING_GENE_LABEL, FunctionalData.Type.AMBIGUOUS);
+        GeneWithFunction gf =  va.convert(ambiguous);
+        Assert.assertEquals(gf, expected);
+
+    }
+
+    @Test
+    public void testCodingPlusUTRAntisense () {
+        ClassifyDropSeqFunctionalData va = getDefaultValidator();
+        FunctionalData a1 = new FunctionalData("A", "+", LocusFunction.CODING, "-");
+        FunctionalData a2 = new FunctionalData("A", "+", LocusFunction.UTR, "-");
+
+        List<FunctionalData> antisense = Arrays.asList(a1, a2);
+        Assert.assertNotNull(va.getDropSeqAntisenseCoding(antisense));
+        Assert.assertFalse(va.isDropSeqAmbiguous(antisense));
+
+        GeneWithFunction expected = new GeneWithFunction("A", FunctionalData.Type.CODING_ANTISENSE);
+        GeneWithFunction gf =  va.convert(antisense);
+        Assert.assertEquals(gf, expected);
+
+    }
+
+    @Test
+    /**
+     * Classified as ambiguous / intronic.
+     * The coding overlaps intergenic so should be removed, leaving two genes that are intronic sense.
+     * 0 = {FunctionalData@3570} "AL122008.1 + INTRONIC + INTRONIC_SENSE"
+     * 1 = {FunctionalData@3571} "AL122008.4 - CODING + CODING_ANTISENSE"
+     * 2 = {FunctionalData@3572} "AL122008.4 - INTERGENIC + INTERGENIC"
+     * 3 = {FunctionalData@3573} "SLC35F3 + INTRONIC + INTRONIC_SENSE"
+     */
+    public void complexAntisense () {
+        ClassifyDropSeqFunctionalData va = getDefaultValidator();
+        FunctionalData a = new FunctionalData("A", "+", LocusFunction.INTRONIC, "+");
+        FunctionalData b1= new FunctionalData("B", "+", LocusFunction.CODING, "-");
+        FunctionalData b2= new FunctionalData("B", "+", LocusFunction.INTERGENIC, "-");
+        FunctionalData c= new FunctionalData("C", "+", LocusFunction.INTRONIC, "+");
+
+        List<FunctionalData> test = Arrays.asList(a, b1,b2,c);
+        Assert.assertNull(va.getDropSeqAntisenseCoding(test));
+        Assert.assertTrue(va.isDropSeqAmbiguous(test));
+        Assert.assertNull(va.getDropSeqSense(test));
+
+        GeneWithFunction expected = new GeneWithFunction(NO_GENE, FunctionalData.Type.AMBIGUOUS);
+        GeneWithFunction gf =  va.convert(test);
         Assert.assertEquals(gf, expected);
 
     }

@@ -53,6 +53,10 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
     @Argument(doc="A summary all cell/UMI results.", optional=true)
     public File SUMMARY=null;
 
+    @Argument(doc= "For each read, gather the functional data type (coding, intronic, etc) for each read classified by STAR and DropSeq.  Emit a confusion matrix" +
+            "of the results", optional = true)
+    public File OUT_CONFUSION_MATRIX =null;
+
     @Argument(doc="File containing a list of cell barcodes to process.  If not provided, process all cell barcodes", optional=true)
     public File CELL_BC_FILE=null;
 
@@ -72,6 +76,7 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
     private String STARSOLO_FUNCTION_TAG="sF";
     private String STARSOLO_GENE_NAME="GN";
 
+    private final String RECORD_SEP="\t";
 
 //    @Argument(doc="Gene Name tag.  Takes on the gene name this read overlaps (if any)")
 //    public String GENE_NAME_TAG= DEFAULT_GENE_NAME_TAG;
@@ -96,7 +101,7 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
         readTagValidation = new ObjectCounter<>();
         ProgressLogger pl = new ProgressLogger(log);
 
-        // Set up outputs
+        // Set up output
         ErrorCheckingPrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUTPUT));
         writeOutputHeader(out);
 
@@ -114,12 +119,16 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
         Collection <String> cellBarcodes= getCellBarcodes();
         Iterator<List<SAMRecord>> group = getSamRecordIterator(headerAndIterator, cellBarcodes);
         DisambiguateFunctionalAnnotation dfa = new DisambiguateFunctionalAnnotation();
-        ObjectCounter<FunctionCategory> summaryCounter = new ObjectCounter<>();
+        // Stores the summary results per cell/UMI.
+        ObjectCounter<FunctionCategory> resolvedSummaryCounter = new ObjectCounter<>();
 
         log.info("Scanning cell / UMIs for ambiguous antisense coding / sense intronic scenarios.");
         ProgressLogger plIter = new ProgressLogger(log, 1000000);
 
-        // TODO: Gather summary metrics maybe in a metrics object/file?
+        // Gather summary metrics maybe in a metrics object/file?
+        ConfusionMatrix<FunctionalData.Type> confusionMatrix = new ConfusionMatrix<>(FunctionalData.Type.class);
+
+        // Operating on all reads for a single cell / UMI.
         outerloop: while (group.hasNext()) {
             List<SAMRecord> recs= group.next();
             recs.forEach(plIter::record);
@@ -129,48 +138,38 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
 
             String cellBarcode = recs.getFirst().getStringAttribute(this.CELL_BARCODE_TAG);
             String umiBarcode = recs.getFirst().getStringAttribute(this.MOLECULAR_BARCODE_TAG);
-            if (cellBarcode.equals("AAACCCACAATGTCTG") && umiBarcode.equals("AACTGATGTACG")) {
-                log.info("DEBUG THIS");
-            }
 
-            Map<String, FunctionalData> starsoloFD= getStarSoloAnnotations (recs);
             Map<String, List<FunctionalData>> dropSeqFD = getFunctionalAnnotations(recs);
 
             // validate that the tags are approximately the same.
-            // Starsolo doesn't track gene names for antisense, so we can't check which gene is antisense.
-            // for the (hopefully) small number of reads that don't validate, skip analysis of these to be safe.
-            Map<String, ValidationStatus> validationResult = validator.validate (starsoloFD, dropSeqFD, false);
-            boolean invalidRead=false;
-            for (SAMRecord r: recs) {
-                ValidationStatus vs = validationResult.get(r.getReadName());
-                boolean isValid=vs.isValid();
-                readTagValidation.increment(isValid);
-                if (!vs.isValid()) {
-                    r.setAttribute(this.VALIDATION_TAG_STAR, vs.getStar().getCategory().toString());
-                    r.setAttribute(this.VALIDATION_TAG_DROPSEQ, vs.getDropseq().getCategory().toString());
-                    writer.addAlignment(r);
-                    invalidRead=true;
-                }
-            }
-
-            if (invalidRead)
+            // if even a single read for the cell / UMI does not validate, do not evaluate this result.
+            boolean readsValid = validateFunctionalAnnotations (validator, recs, dropSeqFD, confusionMatrix, writer);
+            if (!readsValid)
                 continue outerloop;
 
             DisambiguationScore score = dfa.run(cellBarcode, umiBarcode, dropSeqFD);
             // capture the functional category so we can summarize how many of each type we see.
-            summaryCounter.increment(score.classify());
-            /*
+            FunctionCategory cat = score.classify();
+            resolvedSummaryCounter.increment(score.classify());
             if (cat==FunctionCategory.RESOLVED_SENSE_INTRONIC || cat==FunctionCategory.RESOLVED_ANTISENSE_CODING) {
-                log.info("STOP");
+                Set<String> contigs = getUniqueContigs(recs);
+                writeOutputLine(score, contigs, out);
             }
-            */
-            // do reporting and summarizing
-            writeOutputLine(score, out);
-
         }
 
+        // capture the differences in classification of read functional data type.
+        writeConfusionMatrix(confusionMatrix);
+
+        // write the summary results
+        writeSummary (resolvedSummaryCounter);
+
+        // wrap up writing to the output BAM.
         if (writer!=null)
             writer.close();
+
+        // close the per cell/UMI writer.
+        out.close();
+
         return 0;
     }
 
@@ -178,11 +177,64 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
 
     /**
      * Validate the STARsolo and dropseq annotations to make sure they are the same before further processing.
-     * @param starSolo
-     * @param dropseq
+     * @param validator
+     * @param recs
+     * @param dropSeqFD
+     * @param confusionMatrix
+     * @param writer
      * @return
      */
+    private boolean validateFunctionalAnnotations (ValidateAnnotations validator, List<SAMRecord> recs, Map<String, List<FunctionalData>> dropSeqFD,
+                                                ConfusionMatrix<FunctionalData.Type> confusionMatrix, SAMFileWriter writer) {
+        Map<String, FunctionalData> starsoloFD= getStarSoloAnnotations (recs);
+        Map<String, ValidationStatus> validationResult = validator.validate (starsoloFD, dropSeqFD, false);
+        boolean readsValue=true;
+        for (SAMRecord r: recs) {
+            ValidationStatus vs = validationResult.get(r.getReadName());
+            confusionMatrix.update(vs.getStar().getCategory(), vs.getDropseq().getCategory());
+            boolean isValid=vs.isValid();
+            readTagValidation.increment(isValid);
+            if (!vs.isValid()) {
+                r.setAttribute(this.VALIDATION_TAG_STAR, vs.getStar().getCategory().toString());
+                r.setAttribute(this.VALIDATION_TAG_DROPSEQ, vs.getDropseq().getCategory().toString());
+                writer.addAlignment(r);
+                readsValue=false;
+            }
+        }
+        return readsValue;
+    }
 
+    private void writeConfusionMatrix (ConfusionMatrix<FunctionalData.Type> m) {
+        if (this.OUT_CONFUSION_MATRIX ==null)
+            return;
+
+        ErrorCheckingPrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUT_CONFUSION_MATRIX));
+        m.writeFile(out, '\t', "STARsolo in rows, DropSeq in columns.");
+        out.close();
+    }
+
+    private void writeSummary (ObjectCounter<FunctionCategory> resolvedSummaryCounter) {
+        if (this.SUMMARY==null)
+            return;
+
+        // prepare the summary file if not null
+        ErrorCheckingPrintStream out= new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.SUMMARY));
+        // write the header
+        List<String> header = List.of ("CATEGORY", "COUNT");
+        String h = StringUtils.join(header, RECORD_SEP);
+        out.println(h);
+
+        // write the categories and counts, sorted from largest to smallest.
+        List<FunctionCategory> keys = resolvedSummaryCounter.getKeysOrderedByCount(true);
+        for (FunctionCategory key: keys) {
+            int count = resolvedSummaryCounter.getCountForKey(key);
+            List<String> line = List.of (key.toString(), Integer.toString(count));
+            String body = StringUtils.join(line, RECORD_SEP);
+            out.println(body);
+        }
+        out.close();;
+
+    }
 
     /**
      * Get the set of genes that match this functional annotation and sense/antisense pattern
@@ -222,16 +274,26 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
 
 
     private void writeOutputHeader (PrintStream out) {
-        List<String> line = new ArrayList<>();
-        line.add("HEADER");
-        String h = StringUtils.join(line, "\t");
+        List<String> line = Arrays.asList("CELL_BARCODE", "MOLECULAR_BARCODE", "CONTIG", "AMBIGUOUS_ANTISENSE", "AMBIGUOUS_SENSE", "ANTISENSE", "SENSE", "CODING", "NUM_READS");
+        String h = StringUtils.join(line, RECORD_SEP);
         out.println(h);
     }
 
-    private void writeOutputLine (DisambiguationScore score, PrintStream out) {
+    private void writeOutputLine (DisambiguationScore score, Set<String> contigs, PrintStream out) {
+        String contigString = contigs.toString();
+        if (contigs.size()==1)
+            contigString=contigs.iterator().next().toString();
         List<String> line = new ArrayList<>();
-        line.add("FOO");
-        String h = StringUtils.join(line, "\t");
+        line.add(score.getCell());
+        line.add(score.getMolecularBarcode());
+        line.add(contigString);
+        line.add(score.getAmbiguousSenseIntronicCount().toString());
+        line.add(score.getAmbiguousSenseIntronicCount().toString());
+        line.add(score.getAntisenseCodingCount().toString());
+        line.add(score.getSenseIntronicCount().toString());
+        line.add(score.getSenseCodingCount().toString());
+        line.add(Integer.toString(score.getTotalCount()));
+        String h = StringUtils.join(line, RECORD_SEP);
         out.println(h);
     }
 
@@ -308,6 +370,12 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
         return writer;
     }
 
+    public static Set<String> getUniqueContigs(List<SAMRecord> samRecords) {
+        return samRecords.stream()
+                .map(SAMRecord::getContig)
+                .collect(Collectors.toSet());
+    }
+
     @Override
     protected String[] customCommandLineValidation() {
         final ArrayList<String> list = new ArrayList<>(1);
@@ -315,6 +383,7 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
         this.INPUT = FileListParsingUtils.expandFileList(INPUT);
         if (this.OUTPUT!=null) IOUtil.assertFileIsWritable(OUTPUT);
         if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(SUMMARY);
+        if (this.OUT_CONFUSION_MATRIX !=null) IOUtil.assertFileIsWritable(OUT_CONFUSION_MATRIX);
         if (CELL_BC_FILE!=null)
             IOUtil.assertFileIsReadable(CELL_BC_FILE);
         return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);

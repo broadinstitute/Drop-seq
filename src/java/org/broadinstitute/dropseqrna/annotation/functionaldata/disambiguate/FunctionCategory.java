@@ -7,5 +7,6 @@ public enum FunctionCategory {
     RESOLVED_SENSE_INTRONIC,
     SENSE_INTRONIC,
     AMBIGUOUS,
+    UNRESOLVED,
     UNAMBIGUOUS;
 }

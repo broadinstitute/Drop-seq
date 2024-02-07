@@ -34,5 +34,8 @@ public class ValidationStatus {
     }
 
 
-
+    @Override
+    public String toString() {
+        return "star=" + star + " dropseq=" + dropseq;
+    }
 }

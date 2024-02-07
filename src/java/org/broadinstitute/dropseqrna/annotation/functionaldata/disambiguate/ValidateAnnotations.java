@@ -35,8 +35,8 @@ public class ValidateAnnotations {
         Map<String, ValidationStatus> validationResult = new HashMap<>();
 
         for (String readName: starsoloFD.keySet()) {
-            if (readName.equals("LH00118:69:22CNFNLT3:3:2164:21055:18833"))
-                log.info("STOP");
+//            if (readName.equals("LH00118:69:22CNFNLT3:3:2164:21055:18833"))
+//                log.info("STOP");
             ValidationStatus validationStatus = validate(starsoloFD.get(readName), fdMap.get(readName), verbose);
             validationResult.put(readName, validationStatus);
             if (!validationStatus.isValid()) {

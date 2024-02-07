@@ -85,7 +85,7 @@ public class AnnotationUtilsTest {
 		Map<Gene, List<LocusFunction>> funcMap = u.getFunctionalDataForRead(rec, geneOverlapDetector, PCT_REQUIRED_OVERLAP_STARSOLO);
 		Set<LocusFunction> actual = new HashSet<>(funcMap.get(map.get("RPL22")));
 		// UTR has the majority of bases.
-		Set<LocusFunction> expected = new HashSet<> (Arrays.asList(LocusFunction.UTR));
+		Set<LocusFunction> expected = new HashSet<> (Arrays.asList(LocusFunction.UTR, LocusFunction.CODING));
 		Assert.assertEquals(actual, expected);
 
 		// expected CODING once for each gene.

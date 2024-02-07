@@ -114,9 +114,13 @@ public class DisambiguationScore {
         boolean overlapAntisenseCoding=testKeyOverlap(this.ambiguousAntiSenseCount, this.antisenseCodingCount);
         boolean overlapSenseIntronic=testKeyOverlap(this.ambiguousSenseIntronicCount, this.senseIntronicCount);
 
-        // if there are reads that disambiguate in both directions, it's still ambiguous!
+        // if there are reads that disambiguate in both directions, it's unresolved.
         if (overlapAntisenseCoding && overlapSenseIntronic)
-            return FunctionCategory.AMBIGUOUS;
+            return FunctionCategory.UNRESOLVED;
+
+        // if there are no reads to disambiguate in either direction, it's unresolved
+        if (this.hasAmbiguousReads() & this.senseIntronicCount.getSize()==0 & this.antisenseCodingCount.getSize()==0)
+            return FunctionCategory.UNRESOLVED;
 
         // resolve by looking for gene overlaps between unambiguous and ambiguous
         if (overlapAntisenseCoding)

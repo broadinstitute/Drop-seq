@@ -1,6 +1,7 @@
 package org.broadinstitute.dropseqrna.annotation.functionaldata.disambiguate;
 
 import com.google.api.gax.rpc.UnimplementedException;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.DataProcessorUtils;
 import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalData;
 import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionProcessor;
 import picard.annotation.LocusFunction;
@@ -19,12 +20,14 @@ import java.util.stream.Collectors;
  */
 public class ClassifyDropSeqFunctionalData extends ClassifyFunctionalDataBase{
 
+    private DataProcessorUtils util;
     public ClassifyDropSeqFunctionalData(GeneFunctionProcessor gfp, String missingGeneLabel) {
         super(gfp, missingGeneLabel);
+        util = new DataProcessorUtils(gfp.getFdp().getStrandStrategy(), gfp.getFdp().getAcceptedFunctions());
     }
 
     public ClassifyDropSeqFunctionalData(GeneFunctionProcessor gfp) {
-        super(gfp, DEFAULT_MISSING_GENE_LABEL);
+        this(gfp, DEFAULT_MISSING_GENE_LABEL);
     }
 
     /**
@@ -37,6 +40,12 @@ public class ClassifyDropSeqFunctionalData extends ClassifyFunctionalDataBase{
     public GeneWithFunction convert (List<FunctionalData> fdList) {
         // begin testing conditions.
         // as each condition is tested, if a classification is reached return it.
+
+        // to reduce headaches between CODING and UTR (, simplify all UTR to CODING
+        List<FunctionalData> fdList2 = fdList.stream()
+                .map(this::simplifyCoding)
+                .collect(Collectors.toList());
+        fdList=fdList2;
 
         // INTERGENIC - dropseq will contain an intergenic portion of the read, Star will flag the read as intergenic.
         boolean isIntergenicDropSeq=isIntergenic(fdList);
@@ -76,13 +85,24 @@ public class ClassifyDropSeqFunctionalData extends ClassifyFunctionalDataBase{
     }
 
     /**
-     * Ambiguous assignments have multiple valid functional data annotations to different genes.
+     * Ambiguous assignments have multiple functional data annotations to different genes at the same highest priority.
+     * This counts as ambiguous reads that might not be counted (for example multiple genes associated to intronic antisense)
      * @param fdList
      * @return
      */
     boolean isDropSeqAmbiguous (List<FunctionalData> fdList) {
+        // first test if there's one or more functions that pass.
         List<FunctionalData> filtered = filterFunctionalData (fdList);
         int countUniqueGenes = filtered.stream().map(FunctionalData::getGene).collect(Collectors.toSet()).size();
+        // if there are multiple on-strand genes, it's ambiguous.
+        if (countUniqueGenes>=2)
+            return true;
+        // if there's a single on-strand gene, it's not ambiguous
+        if (countUniqueGenes==1)
+            return false;
+        // if there are multiple off-strand genes.  This occurs when the number of filtered genes is 0.
+        filtered = filterFunctionalDataWithoutStrand (fdList);
+        countUniqueGenes = filtered.stream().map(FunctionalData::getGene).collect(Collectors.toSet()).size();
         return countUniqueGenes > 1;
     }
 
@@ -102,7 +122,12 @@ public class ClassifyDropSeqFunctionalData extends ClassifyFunctionalDataBase{
 
     private FunctionalData getDropSeqAntisense (List<FunctionalData> fdList, FunctionalData.Type type) {
         List<FunctionalData> filtered = filterFunctionalData (fdList);
+
+        // simplify before testing antisense.
+        fdList = util.simplifyFD(fdList);
         List<FunctionalData> antisense = fdList.stream().filter(x -> x.getType()==type).toList();
+        // simplify multiple annotations on the same gene.
+
         if (filtered.isEmpty() && antisense.size()==1) {
             return antisense.getFirst();
         }
@@ -122,6 +147,18 @@ public class ClassifyDropSeqFunctionalData extends ClassifyFunctionalDataBase{
             return sense.getFirst();
         }
         return null;
+    }
+
+    /**
+     * For purposes of validation, simplify all UTR to coding.
+     * @param fd
+     * @return
+     */
+    private FunctionalData simplifyCoding (FunctionalData fd) {
+        if (fd.getLocusFunction()!=LocusFunction.UTR)
+            return fd;
+        FunctionalData result = new FunctionalData(fd.getGene(), fd.getGeneStrand(), LocusFunction.CODING, fd.getReadStrand());
+        return result;
     }
 
     /**
@@ -147,6 +184,12 @@ public class ClassifyDropSeqFunctionalData extends ClassifyFunctionalDataBase{
         // this filters on strand, so antisense functional annotations are removed.
         filtered = gfp.getFdp().filterToPreferredAnnotations(filtered);
         return filtered;
+    }
+
+    private List<FunctionalData> filterFunctionalDataWithoutStrand(List<FunctionalData> fdList) {
+        List<FunctionalData> filtered = gfp.getFdp().getFilteredFunctionalData(fdList);
+        List<FunctionalData> result = util.filterToPreferredAnnotations(fdList, gfp.getFdp().getPriority());
+        return result;
     }
 
     boolean containsFunctionalAnnotation(List<FunctionalData> fdList, LocusFunction func) {
