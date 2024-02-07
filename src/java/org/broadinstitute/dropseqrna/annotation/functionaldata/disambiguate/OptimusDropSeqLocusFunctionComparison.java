@@ -43,7 +43,7 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
     public List<File> INPUT;
 
     @Argument(doc="Contains one row for each cell/UMI that has an ambiguous read, and the status of how the UMI is resolved." +
-            "Cell/UMI read collections that are unambiguous are not emitted.", optional=false)
+            "Cell/UMI read collections that are unambiguous or unresolvable are not emitted.", optional=false)
     public File OUTPUT=null;
 
     @Argument(doc="A BAM file that captures reads fro cell/UMI groupings that had discordant tagging between STARsolo " +
@@ -61,10 +61,10 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
     public File CELL_BC_FILE=null;
 
     @Argument(doc="The cell barcode tag.  If there are no reads with this tag, the program will assume that all reads belong to the same cell and process in single sample mode.")
-    public String CELL_BARCODE_TAG="XC";
+    public String CELL_BARCODE_TAG="CB";
 
     @Argument(doc="The molecular barcode tag.")
-    public String MOLECULAR_BARCODE_TAG="XM";
+    public String MOLECULAR_BARCODE_TAG="UB";
 
     @Argument(doc="The map quality of the read to be included.  The code is not tested (and will no doubt be more complex)" +
             "if non-unique reads are included.")
@@ -153,7 +153,8 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
             resolvedSummaryCounter.increment(score.classify());
             if (cat==FunctionCategory.RESOLVED_SENSE_INTRONIC || cat==FunctionCategory.RESOLVED_ANTISENSE_CODING) {
                 Set<String> contigs = getUniqueContigs(recs);
-                writeOutputLine(score, contigs, out);
+                ObjectCounter<String> readStrandCounts = getStrandCount (recs);
+                writeOutputLine(score, contigs, readStrandCounts, out);
             }
         }
 
@@ -171,6 +172,12 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
         out.close();
 
         return 0;
+    }
+
+    private ObjectCounter<String> getStrandCount (List<SAMRecord> recs) {
+        ObjectCounter<String> strand = new ObjectCounter<>();
+        recs.forEach(x-> strand.increment(Utils.negativeStrandToString(x.getReadNegativeStrandFlag())));
+        return strand;
     }
 
 
@@ -237,23 +244,6 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
     }
 
     /**
-     * Get the set of genes that match this functional annotation and sense/antisense pattern
-     * @param fdList A list of functional data
-     * @param lf The locus function to filter on.  Only genes that match this locus function are retained
-     * @param isSense If true, only return genes where the read and gene strand match
-     * @return A Set of gene names
-     */
-    private Set<String> getGenesForFunction (Collection <FunctionalData> fdList, LocusFunction lf, boolean isSense) {
-        Set<String> result = new HashSet<>();
-        for (FunctionalData d: fdList) {
-            if (d.isSense()== isSense & d.getLocusFunction()==lf)
-                result.add(d.getGene());
-
-        }
-        return result;
-    }
-
-    /**
      * Starsolo encodes one and only one functional data annotation per read.
      * The tags are written to the SAM file after interpretation.
      * @param recs
@@ -274,12 +264,12 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
 
 
     private void writeOutputHeader (PrintStream out) {
-        List<String> line = Arrays.asList("CELL_BARCODE", "MOLECULAR_BARCODE", "CONTIG", "AMBIGUOUS_ANTISENSE", "AMBIGUOUS_SENSE", "ANTISENSE", "SENSE", "CODING", "NUM_READS");
+        List<String> line = Arrays.asList("CELL_BARCODE", "MOLECULAR_BARCODE", "CONTIG", "CLASS", "AMBIGUOUS_ANTISENSE_CODING", "AMBIGUOUS_SENSE_INTRONIC", "ANTISENSE_CODING", "SENSE_INTRONIC", "CODING", "NUM_READS_POSITIVE_STRAND", "NUM_READS_NEGATIVE_STRAND");
         String h = StringUtils.join(line, RECORD_SEP);
         out.println(h);
     }
 
-    private void writeOutputLine (DisambiguationScore score, Set<String> contigs, PrintStream out) {
+    private void writeOutputLine (DisambiguationScore score, Set<String> contigs, ObjectCounter<String> readStrandCounts, PrintStream out) {
         String contigString = contigs.toString();
         if (contigs.size()==1)
             contigString=contigs.iterator().next().toString();
@@ -287,12 +277,16 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
         line.add(score.getCell());
         line.add(score.getMolecularBarcode());
         line.add(contigString);
+        line.add(score.classify().toString());
         line.add(score.getAmbiguousSenseIntronicCount().toString());
         line.add(score.getAmbiguousSenseIntronicCount().toString());
         line.add(score.getAntisenseCodingCount().toString());
         line.add(score.getSenseIntronicCount().toString());
         line.add(score.getSenseCodingCount().toString());
-        line.add(Integer.toString(score.getTotalCount()));
+
+        // line.add(Integer.toString(score.getTotalCount()));
+        line.add(Integer.toString(readStrandCounts.getCountForKey("+")));
+        line.add(Integer.toString(readStrandCounts.getCountForKey("-")));
         String h = StringUtils.join(line, RECORD_SEP);
         out.println(h);
     }
