@@ -30,6 +30,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
+import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
@@ -75,7 +77,7 @@ public class SNPUMIBasePileupIteratorTest {
 		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 				new SamHeaderAndIterator(smallBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
-				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
+				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY, cellBarcodeTag,
 				molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, meanGenotypeQuality, SortOrder.SNP_GENE);
 
 		int expectedPileups=8;
@@ -117,7 +119,7 @@ public class SNPUMIBasePileupIteratorTest {
 	private void testSNPQualities (IntervalList snpIntervals, List<String> cellBarcodes, Map<Interval, Double> genotypeQuality, int expectedPileUps, String expectedSnpNamePrefix) {
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 				new SamHeaderAndIterator(smallBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
-				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, cellBarcodeTag,
+				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, FunctionalDataProcessorStrategy.DROPSEQ, cellBarcodeTag,
 				molBCTag, snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, genotypeQuality, SortOrder.SNP_GENE);
 		
 		int count=0;

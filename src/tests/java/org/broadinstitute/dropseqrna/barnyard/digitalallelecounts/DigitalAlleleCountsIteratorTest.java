@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
 import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
@@ -82,10 +83,10 @@ public class DigitalAlleleCountsIteratorTest {
 		IntervalList snpIntervals = IntervalList.fromFile(snpIntervalsFile);
 		int baseQualityThreshold=10;
 		Map<Interval, Double> meanGQ= getAverageGQ(snpIntervals);
-		
+
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 				new SamHeaderAndIterator(smallBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
-				LOCUS_FUNCTION_LIST,STRAND_STRATEGY, cellBarcodeTag, molBCTag, snpTag,
+				LOCUS_FUNCTION_LIST,STRAND_STRATEGY, FunctionalDataProcessorStrategy.DROPSEQ, cellBarcodeTag, molBCTag, snpTag,
 				GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG, readMQ, assignReadsToAllGenes,
 				cellBarcodes, meanGQ, SortOrder.SNP_GENE);
 
@@ -113,7 +114,7 @@ public class DigitalAlleleCountsIteratorTest {
 		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 				new SamHeaderAndIterator(smallBAMFile2), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
-				LOCUS_FUNCTION_LIST,STRAND_STRATEGY, cellBarcodeTag, molBCTag, snpTag,
+				LOCUS_FUNCTION_LIST,STRAND_STRATEGY, FunctionalDataProcessorStrategy.DROPSEQ, cellBarcodeTag, molBCTag, snpTag,
 				GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG, readMQ, assignReadsToAllGenes,
 				cellBarcodes, meanGQ, SortOrder.SNP_GENE);
 

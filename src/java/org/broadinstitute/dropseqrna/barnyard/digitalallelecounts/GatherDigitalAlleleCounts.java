@@ -255,7 +255,7 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 		}
 
 		List<String> cellBarcodes = new BarcodeListRetrieval().getCellBarcodes(this.INPUT, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-				this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.CELL_BC_FILE,
+				this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BC_FILE,
 				this.READ_MQ, null, null, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, null);
 
 		log.info("Selected cell barcodes for analysis [" + cellBarcodes.size() + "]");
@@ -289,7 +289,7 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 
 		//TODO: should this be assignReadsToAllGenes be set to false to mirror DigitalExpression and donor assignment code?
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(headerAndIter, snpInfo.getIntervalList(), GENE_NAME_TAG, GENE_STRAND_TAG,
-				GENE_FUNCTION_TAG, LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, null, this.READ_MQ,
+				GENE_FUNCTION_TAG, LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG, null, this.READ_MQ,
 				true, cellBarcodes, genotypeQuality, SortOrder.SNP_GENE);
 
 		MultiCellDigitalAlleleCountsIterator multiIter = getDACIterator(sbpi, MULTI_GENES_PER_READ, snpInfo);

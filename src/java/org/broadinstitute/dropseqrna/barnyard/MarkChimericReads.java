@@ -142,7 +142,7 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
 	}
 
 	private long markReads(final Map<String, ChimericUmiCollection> chimerics) {
-		final GeneFunctionProcessor p = new GeneFunctionProcessor(GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, false, STRAND_STRATEGY, LOCUS_FUNCTION_LIST);		
+		final GeneFunctionProcessor p = new GeneFunctionProcessor(GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, false, STRAND_STRATEGY, LOCUS_FUNCTION_LIST, FUNCTIONAL_STRATEGY);
 		
 		long numMarked = 0;
 		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputs(this.INPUT, false, SamReaderFactory.makeDefault());
@@ -226,7 +226,7 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
         PeekableIterator<UMICollection> umiIterator = new PeekableIterator<>(
                 new UMIIterator(SamFileMergeUtil.mergeInputs(this.INPUT, false),
                         GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
-                        this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+                        this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
                         this.READ_MQ, false, cellBarcodes, true, false));
 
         // Remember {CBC, UMI, Gene} pairs to be marked chimeric

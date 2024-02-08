@@ -14,9 +14,10 @@ import java.util.Set;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.*;
+import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
-import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionIteratorWrapper;
 import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionProcessor;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 
@@ -113,9 +114,9 @@ public class CompareAnnotationFlags extends CommandLineProgram {
 		int counter=0;
 		int totalNumReads=0;
 		LocusFunction [] acceptedLocusFunctions = {LocusFunction.UTR, LocusFunction.CODING};
-		GeneFunctionProcessor gfiw = new GeneFunctionProcessor("gn", "gs", "gf", false, StrandStrategy.SENSE, Arrays.asList(acceptedLocusFunctions));
+		GeneFunctionProcessor gfiw = new GeneFunctionProcessor("gn", "gs", "gf", false, StrandStrategy.SENSE, Arrays.asList(acceptedLocusFunctions), GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY);
 
-		FunctionalDataProcessor fdp = new FunctionalDataProcessor(StrandStrategy.SENSE, LOCUS_FUNCTION_LIST);
+		FunctionalDataProcessorI fdp =  FunctionalDataProcessorFactory.getFunctionalDataProcessor(StrandStrategy.SENSE, LOCUS_FUNCTION_LIST, FunctionalDataProcessorStrategy.DROPSEQ);
 		ObjectCounter<String> ambiguousGeneCounter = new ObjectCounter<String>();
 
 		for (SAMRecord r: inputSam) {
@@ -171,7 +172,7 @@ public class CompareAnnotationFlags extends CommandLineProgram {
 	 * @param r
 	 * @return
 	 */
-	private Set<String> findAmbiguousGenes (final SAMRecord r , final FunctionalDataProcessor fdp) {
+	private Set<String> findAmbiguousGenes (final SAMRecord r , final FunctionalDataProcessorI fdp) {
 		Set<String> result = new HashSet<String>();
 
 

@@ -61,7 +61,7 @@ public class BarcodeListRetrievalTest {
         }
         writer.close();
         final List<String> barcodes = blr.getCellBarcodes(null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,
                 barcodeListFile,
                 null, null, null, null,
                 null, null, null);
@@ -72,13 +72,13 @@ public class BarcodeListRetrievalTest {
     public void testGetCellBarcodesByGeneCount() {
         List<String> barcodes = blr.getCellBarcodes(Collections.singletonList(BAM), CELL_BARCODE_TAG, MOLECULAR_BARCODE_TAG,
                 GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG,
-        null, null, null, null, null, READ_QUALITY,
-        null, 3, null, null,
+                null, null, null, null, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,null, READ_QUALITY,
+                null, 3, null, null,
                 null, null);
         Assert.assertEquals(barcodes.size(), 14);
         barcodes = blr.getCellBarcodes(Collections.singletonList(BAM), CELL_BARCODE_TAG, MOLECULAR_BARCODE_TAG,
                 GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG,
-                null, null, null, null, null, READ_QUALITY,
+                null, null, null, null, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,null, READ_QUALITY,
                 null, 6, null, null,
                 null, null);
         Assert.assertEquals(barcodes.size(), 0);
@@ -90,7 +90,7 @@ public class BarcodeListRetrievalTest {
                 GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG,
                 GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_FUNCTION_TAG,
                 GeneFunctionCommandLineBase.DEFAULT_STRAND_STRATEGY, GeneFunctionCommandLineBase.DEFAULT_LOCUS_FUNCTION_LIST,
-                null, READ_QUALITY,
+                GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY, null, READ_QUALITY,
                 10, null, 10, null,
                 1, 10);
         Assert.assertEquals(barcodes.size(), 8);
@@ -99,7 +99,7 @@ public class BarcodeListRetrievalTest {
                 GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG,
                 GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_FUNCTION_TAG,
                 GeneFunctionCommandLineBase.DEFAULT_STRAND_STRATEGY, GeneFunctionCommandLineBase.DEFAULT_LOCUS_FUNCTION_LIST,
-                null, READ_QUALITY,
+                GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY, null, READ_QUALITY,
                 200, null, 10, null,
                 1, 10);
         Assert.assertEquals(barcodes.size(), 0);
@@ -108,12 +108,12 @@ public class BarcodeListRetrievalTest {
     @Test
     public void testGetCellBarcodesByReadCount() {
         List<String> barcodes = blr.getCellBarcodes(Collections.singletonList(BAM), CELL_BARCODE_TAG, null, null,
-                null, null, null, null,null, READ_QUALITY,
+                null, null, null, null,GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY, null, READ_QUALITY,
                 null, null, 10, null,
                 null, null);
         Assert.assertEquals(barcodes.size(), 16);
         barcodes = blr.getCellBarcodes(Collections.singletonList(BAM), CELL_BARCODE_TAG, null, null,
-                null, null, null, null,null, READ_QUALITY,
+                null, null, null, null,GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY, null, READ_QUALITY,
                 null, null, 5000, null,
                 null, null);
         Assert.assertEquals(barcodes.size(), 0);
@@ -122,17 +122,17 @@ public class BarcodeListRetrievalTest {
     @Test
     public void testGetCellBarcodesByNumCoreBarcodes() {
         List<String> barcodes = blr.getCellBarcodes(Collections.singletonList(BAM), CELL_BARCODE_TAG, null, null,
-                null, null, null, null,null, READ_QUALITY,
+                null, null, null, null,GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY, null, READ_QUALITY,
                 null, null, null, 100,
                 null, null);
         Assert.assertEquals(barcodes.size(), 59);
         barcodes = blr.getCellBarcodes(Collections.singletonList(BAM), CELL_BARCODE_TAG, null, null,
-                null, null, null, null,null, 1,
+                null, null, null, null,GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY, null, 1,
                 null, null, null, 100,
                 null, null);
         Assert.assertEquals(barcodes.size(), 64);
         barcodes = blr.getCellBarcodes(Collections.singletonList(BAM), CELL_BARCODE_TAG, null, null,
-                null, null, null, null,null, READ_QUALITY,
+                null, null, null, null,GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,null, READ_QUALITY,
                 null, null, null, 10,
                 null, null);
         Assert.assertEquals(barcodes.size(), 10);

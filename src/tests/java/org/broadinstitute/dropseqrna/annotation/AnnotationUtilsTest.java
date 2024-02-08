@@ -31,6 +31,8 @@ public class AnnotationUtilsTest {
 	File GTF = new File ("testdata/org/broadinstitute/dropseq/annotation/test.gtf.gz");
 	File BAM = new File ("testdata/org/broadinstitute/dropseq/annotation/test.bam");
 
+	private final static double PCT_REQUIRED_OVERLAP_DROPSEQ=0;
+	private final static double PCT_REQUIRED_OVERLAP_STARSOLO=50;
 	@Test
 	public void testGetFunctionalDataForRead() {
 		AnnotationUtils u = AnnotationUtils.getInstance();
@@ -38,14 +40,14 @@ public class AnnotationUtilsTest {
 		Map<String, Gene> map = getGeneMap(geneOverlapDetector);
 		// expected UTR and coding.
 		SAMRecord rec = getReadByName("000000000-AMY9M:1:2104:20987:12124", BAM);
-		Map<Gene, List<LocusFunction>> funcMap = u.getFunctionalDataForRead(rec, geneOverlapDetector);
+		Map<Gene, List<LocusFunction>> funcMap = u.getFunctionalDataForRead(rec, geneOverlapDetector, PCT_REQUIRED_OVERLAP_DROPSEQ);
 		Set<LocusFunction> actual = new HashSet<>(funcMap.get(map.get("RPL22")));
 		Set<LocusFunction> expected = new HashSet<> (Arrays.asList(LocusFunction.CODING, LocusFunction.UTR));
 		Assert.assertEquals(actual, expected);
 
 		// expected CODING once for each gene.
 		rec = getReadByName("000000000-AMY9M:1:1114:17300:12082", BAM);
-		funcMap = u.getFunctionalDataForRead(rec, geneOverlapDetector);
+		funcMap = u.getFunctionalDataForRead(rec, geneOverlapDetector, PCT_REQUIRED_OVERLAP_DROPSEQ);
 		actual = new HashSet<>(funcMap.get(map.get("PLEKHM2")));
 		expected = new HashSet<> (Arrays.asList(LocusFunction.CODING));
 		Assert.assertEquals(actual, expected);
@@ -54,14 +56,14 @@ public class AnnotationUtilsTest {
 
 		// expected CODING AND INTRONIC for the same gene.
 		rec = getReadByName("000000000-AMY9M:1:2109:19958:23569", BAM);
-		funcMap = u.getFunctionalDataForRead(rec, geneOverlapDetector);
+		funcMap = u.getFunctionalDataForRead(rec, geneOverlapDetector, PCT_REQUIRED_OVERLAP_DROPSEQ);
 		actual = new HashSet<>(funcMap.get(map.get("UTP11L")));
 		expected = new HashSet<> (Arrays.asList(LocusFunction.CODING, LocusFunction.INTRONIC));
 		Assert.assertEquals(actual, expected);
 
 		//  CODING, CODING, INTRONIC.
 		rec = getReadByName("000000000-AMY9M:1:2104:15433:7166", BAM);
-		funcMap = u.getFunctionalDataForRead(rec, geneOverlapDetector);
+		funcMap = u.getFunctionalDataForRead(rec, geneOverlapDetector, PCT_REQUIRED_OVERLAP_DROPSEQ);
 		actual = new HashSet<>(funcMap.get(map.get("RP11-288I21.1")));
 		expected = new HashSet<> (Arrays.asList(LocusFunction.CODING, LocusFunction.INTRONIC));
 		Assert.assertEquals(actual, expected);
@@ -70,6 +72,47 @@ public class AnnotationUtilsTest {
 
 	}
 
+	/**
+	 * Test functional annotations where >50% of the read must match the locus function.
+	 */
+	@Test
+	public void testGetFunctionalDataForReadStarSolo() {
+		AnnotationUtils u = AnnotationUtils.getInstance();
+		OverlapDetector<Gene> geneOverlapDetector = getGeneOverlapDetector(BAM, GTF);
+		Map<String, Gene> map = getGeneMap(geneOverlapDetector);
+		// expected UTR and coding.
+		SAMRecord rec = getReadByName("000000000-AMY9M:1:2104:20987:12124", BAM);
+		Map<Gene, List<LocusFunction>> funcMap = u.getFunctionalDataForRead(rec, geneOverlapDetector, PCT_REQUIRED_OVERLAP_STARSOLO);
+		Set<LocusFunction> actual = new HashSet<>(funcMap.get(map.get("RPL22")));
+		// UTR has the majority of bases.
+		Set<LocusFunction> expected = new HashSet<> (Arrays.asList(LocusFunction.UTR, LocusFunction.CODING));
+		Assert.assertEquals(actual, expected);
+
+		// expected CODING once for each gene.
+		rec = getReadByName("000000000-AMY9M:1:1114:17300:12082", BAM);
+		funcMap = u.getFunctionalDataForRead(rec, geneOverlapDetector, PCT_REQUIRED_OVERLAP_STARSOLO);
+		actual = new HashSet<>(funcMap.get(map.get("PLEKHM2")));
+		expected = new HashSet<> (Arrays.asList(LocusFunction.CODING));
+		Assert.assertEquals(actual, expected);
+		actual = new HashSet<>(funcMap.get(map.get("RP11-288I21.1")));
+		Assert.assertEquals(actual, expected);
+
+		// expected CODING AND INTRONIC for the same gene.
+		rec = getReadByName("000000000-AMY9M:1:2109:19958:23569", BAM);
+		funcMap = u.getFunctionalDataForRead(rec, geneOverlapDetector, PCT_REQUIRED_OVERLAP_STARSOLO);
+		actual = new HashSet<>(funcMap.get(map.get("UTP11L")));
+		// CODING 38, INTRONIC 2 - coding is the annotation > 50%
+		expected = new HashSet<> (Arrays.asList(LocusFunction.CODING));
+		Assert.assertEquals(actual, expected);
+
+		//  CODING, INTRONIC.
+		rec = getReadByName("000000000-AMY9M:1:2104:15433:7166", BAM);
+		funcMap = u.getFunctionalDataForRead(rec, geneOverlapDetector, PCT_REQUIRED_OVERLAP_STARSOLO);
+		// {CODING=6, INTRONIC=44}
+		actual = new HashSet<>(funcMap.get(map.get("RP11-288I21.1")));
+		expected = new HashSet<> (Arrays.asList(LocusFunction.INTRONIC));
+		Assert.assertEquals(actual, expected);
+	}
 	@Test
 	public void testGetLocusFunctionForReadByGene () {
 		AnnotationUtils u = AnnotationUtils.getInstance();
@@ -77,21 +120,21 @@ public class AnnotationUtilsTest {
 		Map<String, Gene> map = getGeneMap(geneOverlapDetector);
 		// expected UTR and coding.
 		SAMRecord rec = getReadByName("000000000-AMY9M:1:2104:20987:12124", BAM);
-		Map<Gene, LocusFunction> funcMap = u.getLocusFunctionForReadByGene(rec, geneOverlapDetector);
+		Map<Gene, LocusFunction> funcMap = u.getLocusFunctionForReadByGene(rec, geneOverlapDetector, PCT_REQUIRED_OVERLAP_DROPSEQ);
 		LocusFunction actual = funcMap.get(map.get("RPL22"));
 		LocusFunction expected = LocusFunction.CODING;
 		Assert.assertEquals(actual, expected);
 
 		// expected CODING,INTRONIC->CODING.
 		rec = getReadByName("000000000-AMY9M:1:2109:19958:23569", BAM);
-		funcMap = u.getLocusFunctionForReadByGene(rec, geneOverlapDetector);
+		funcMap = u.getLocusFunctionForReadByGene(rec, geneOverlapDetector, PCT_REQUIRED_OVERLAP_DROPSEQ);
 		actual = funcMap.get(map.get("UTP11L"));
 		expected = LocusFunction.CODING;
 		Assert.assertEquals(actual, expected);
 
 		//
 		rec = getReadByName("000000000-AMY9M:1:2104:15433:7166", BAM);
-		funcMap = u.getLocusFunctionForReadByGene(rec, geneOverlapDetector);
+		funcMap = u.getLocusFunctionForReadByGene(rec, geneOverlapDetector, PCT_REQUIRED_OVERLAP_DROPSEQ);
 		actual = funcMap.get(map.get("PLEKHM2"));
 		expected = LocusFunction.CODING;
 		Assert.assertEquals(actual, expected);

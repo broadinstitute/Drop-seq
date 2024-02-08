@@ -530,7 +530,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		}
 		
 		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(headerAndIter, snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
-				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG,
+				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.SNP_TAG,
 				GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG, this.READ_MQ, false, cellBarcodes, genotypeQuality, SortOrder.CELL_SNP);
 
 		final SAMSequenceDictionary dict = snpIntervals.getHeader().getSequenceDictionary();

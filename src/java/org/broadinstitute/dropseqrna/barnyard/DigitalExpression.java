@@ -147,7 +147,7 @@ public class DigitalExpression extends DGECommandLineBase {
         }
 
         List<String> cellBarcodes=new BarcodeListRetrieval().getCellBarcodes(Collections.singletonList(this.INPUT), this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-                this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
+                this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY,
                 this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
                 this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD);
 
@@ -186,7 +186,7 @@ public class DigitalExpression extends DGECommandLineBase {
 
         // TODO should the ambiguous reads handling be a parameter?  It's set to false by default for DGE to get rid of ambiguous gene assignments on reads
         UMIIterator realUMIIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
-                GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
+                GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY,
                 this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ, false, cellBarcodes,
                 false, OMIT_MISSING_CELLS);
         CloseableIterator<UMICollection> umiIterator = realUMIIterator;

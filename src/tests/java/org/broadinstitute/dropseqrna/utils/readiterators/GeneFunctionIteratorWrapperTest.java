@@ -3,6 +3,7 @@ package org.broadinstitute.dropseqrna.utils.readiterators;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import picard.annotation.LocusFunction;
@@ -39,7 +40,7 @@ public class GeneFunctionIteratorWrapperTest {
 		List<SAMRecord> list = new ArrayList<SAMRecord>();
 		list.add(r1);
 
-		GeneFunctionIteratorWrapper gfiw = new GeneFunctionIteratorWrapper(list.iterator(), geneTag, strandTag, functionTag, assignReadsToAllGenes, strandFilterStrategy, acceptedLociFunctions);
+		GeneFunctionIteratorWrapper gfiw = new GeneFunctionIteratorWrapper(list.iterator(), geneTag, strandTag, functionTag, assignReadsToAllGenes, strandFilterStrategy, acceptedLociFunctions, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY);
 		int counter=0;
 		while (gfiw.hasNext()) {
 			SAMRecord result = gfiw.next();
@@ -80,7 +81,7 @@ public class GeneFunctionIteratorWrapperTest {
 		List<SAMRecord> list = new ArrayList<SAMRecord>();
 		list.add(r1);
 
-		GeneFunctionIteratorWrapper gfiw = new GeneFunctionIteratorWrapper(list.iterator(), geneTag, strandTag, functionTag, assignReadsToAllGenes, strandFilterStrategy, acceptedLociFunctions);
+		GeneFunctionIteratorWrapper gfiw = new GeneFunctionIteratorWrapper(list.iterator(), geneTag, strandTag, functionTag, assignReadsToAllGenes, strandFilterStrategy, acceptedLociFunctions, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY);
 		int counter=0;
 		while (gfiw.hasNext()) {
 			SAMRecord result = gfiw.next();
@@ -122,7 +123,7 @@ public class GeneFunctionIteratorWrapperTest {
 		list.add(r1);
 		// should remove read because it's ambiguous.
 		boolean assignReadsToAllGenes=false;
-		GeneFunctionIteratorWrapper gfiw = new GeneFunctionIteratorWrapper(list.iterator(), geneTag, strandTag, functionTag, assignReadsToAllGenes, strandFilterStrategy, acceptedLociFunctions);
+		GeneFunctionIteratorWrapper gfiw = new GeneFunctionIteratorWrapper(list.iterator(), geneTag, strandTag, functionTag, assignReadsToAllGenes, strandFilterStrategy, acceptedLociFunctions, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY);
 		int counter=0;
 		while (gfiw.hasNext()) {
 
@@ -132,7 +133,7 @@ public class GeneFunctionIteratorWrapperTest {
 
 		// should return 2 reads because it's ambiguous and we're ok with that.
 		assignReadsToAllGenes=true;
-		gfiw = new GeneFunctionIteratorWrapper(list.iterator(), geneTag, strandTag, functionTag, assignReadsToAllGenes, strandFilterStrategy, acceptedLociFunctions);
+		gfiw = new GeneFunctionIteratorWrapper(list.iterator(), geneTag, strandTag, functionTag, assignReadsToAllGenes, strandFilterStrategy, acceptedLociFunctions, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY);
 		counter=0;
 		int countA=0;
 		int countB=0;

@@ -1,8 +1,7 @@
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
 import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.dropseqrna.annotation.FunctionalData;
-import org.broadinstitute.dropseqrna.annotation.FunctionalDataProcessor;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.*;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import picard.annotation.LocusFunction;
 
@@ -18,25 +17,27 @@ import java.util.stream.Collectors;
 public class GeneFunctionProcessor {
 
 	// the delimiter for BAM TAGs
-	private static final String DELIMITER = ",";
+	public static final String DELIMITER = ",";
 
 	private final String geneTag;
 	private final String strandTag;
 	private final String functionTag;
 	private final boolean assignReadsToAllGenes;
-	private final FunctionalDataProcessor fdp;
+
+
+	private final FunctionalDataProcessorI fdp;
 	
 	public GeneFunctionProcessor(final String geneTag, final String strandTag, final String functionTag,
 			final boolean assignReadsToAllGenes, final StrandStrategy strandFilterStrategy,
-			final Collection<LocusFunction> acceptedLociFunctions) {
+			final Collection<LocusFunction> acceptedLociFunctions, FunctionalDataProcessorStrategy functionStrategy) {
 		
 
 		this.geneTag = geneTag;
 		this.strandTag = strandTag;
 		this.functionTag = functionTag;
 		this.assignReadsToAllGenes = assignReadsToAllGenes;
-		this.fdp = new FunctionalDataProcessor(strandFilterStrategy,
-				acceptedLociFunctions);
+		this.fdp = FunctionalDataProcessorFactory.getFunctionalDataProcessor(strandFilterStrategy,
+				acceptedLociFunctions, functionStrategy);
 	}
 	
 	/**
@@ -49,8 +50,7 @@ public class GeneFunctionProcessor {
 	public List<SAMRecord> processRead (final SAMRecord r) {
 		List<SAMRecord> result = new ArrayList<>();
 
-		
-		List<FunctionalData> fdList = getReadFunctions (r);
+		List<FunctionalData> fdList = getReadFunctions(r, true);
 		
 		// If there's no functional data that passes the filters, return.
 		if (fdList.isEmpty()) return result;
@@ -79,15 +79,15 @@ public class GeneFunctionProcessor {
 	}
 
 	/**
-	 * For a list of reads that should be interpreted as a single "unit" (such as multiple reads that share the same query name.
+	 * For a list of reads that should be interpreted as a single "unit" (such as multiple reads that share the same query name).
 	 * This is useful to interpret primary/secondary alignments of the same read.
-	 * Filters reads to a perferred functional annotation (coding>intronic>intergenic), or none if ambiguous
+	 * Filters reads to a preferred functional annotation (coding>intronic>intergenic), or none if ambiguous
 	 * @param recs A list of SAMRecords that come from the same observation
-	 * @return A the primary read with tags that best represents this group.  This can also return null if read group is ambiguous.
+	 * @return A read with tags that best represents this group.  This can also return null if read group is ambiguous.
 	 */
 	public SAMRecord processReads (final List<SAMRecord> recs) {
 		List<FunctionalData> fdList = recs.stream()
-				.flatMap(r -> getReadFunctions(r).stream())
+				.flatMap(r -> getReadFunctions(r, true).stream())
 				.collect(Collectors.toList());
 
 		// If there's no functional data that passes the filters, return.
@@ -105,19 +105,21 @@ public class GeneFunctionProcessor {
 
 		if (fdSet.size() == 1) {
 			FunctionalData fd = fdList.getFirst();
-			//retag and return an alignment - it doesn't matter which.
-//			for (SAMRecord r: recs) {
-//				if (!r.isSecondaryAlignment()) {
-//					r = assignTagsToRead(r, fd);
-//					return (r);
-//				}
-//			}
             return (assignTagsToRead(recs.getFirst(), fd));
 		}
 		return null;
 	}
-	
-	public List<FunctionalData> getReadFunctions (final SAMRecord r) {
+
+	/**
+	 * For a SAMRecord, generate the list of functional data captured by this read.
+	 * This extracts the functional data tags from the read and converts it into the new domain.
+	 * If filter is true, defer to the functional data processor strategy for how to further process the functional data.
+	 * If filter is false, construct all functional data and pass it on.
+	 * @param r The read to process
+	 * @param filter Set to true to filter the output using the given FunctionalDataProcessorStrategy.
+	 * @return A list of 0 or more FunctionalData objects.
+	 */
+	public List<FunctionalData> getReadFunctions(final SAMRecord r, boolean filter) {
 		String geneList = r.getStringAttribute(this.geneTag);
 		String strandList = r.getStringAttribute(this.strandTag);
 		String functionList = r.getStringAttribute(this.functionTag);
@@ -127,7 +129,7 @@ public class GeneFunctionProcessor {
 		// If care about function, and you're missing the  function, you can't use this read.
 		if ((geneList == null) ||
 				(fdp.getStrandStrategy() != null && strandList == null) ||
-				(!fdp.getFunctions().isEmpty() && functionList == null)){
+				(!fdp.getAcceptedFunctions().isEmpty() && functionList == null)){
 			return Collections.emptyList();
 		}
 
@@ -136,16 +138,24 @@ public class GeneFunctionProcessor {
 		final String[] genes = geneList.split(DELIMITER);
 		final String[] strands = (strandList == null? null: strandList.split(DELIMITER));
 		final LocusFunction[] locusFunctions = (functionList == null? null: getLocusFunctionFromRead(functionList));
-
-		List<FunctionalData> fdList = fdp.getFilteredFunctionalData(genes,
-				strands, locusFunctions, r.getReadNegativeStrandFlag());
+		// if filtering is required, then apply filtering here.
+		// otherwise build all functional data.
+		List<FunctionalData> fdList;
+		if (filter)
+			fdList = fdp.getFilteredFunctionalData(genes, strands, locusFunctions, r.getReadNegativeStrandFlag());
+		else
+			fdList = FunctionalData.buildFD(genes, strands, locusFunctions, fdp.getStrandStrategy(), fdp.getAcceptedFunctions(), r.getReadNegativeStrandFlag());
 		return (fdList);
 	}
+
+
+
+
 
 	private SAMRecord assignTagsToRead(final SAMRecord r,
 			final FunctionalData fd) {
 		r.setAttribute(geneTag, fd.getGene());
-		r.setAttribute(strandTag, fd.getStrand());
+		r.setAttribute(strandTag, fd.getGeneStrand());
 		if (fd.getLocusFunction() != null) {
 			r.setAttribute(functionTag, fd.getLocusFunction().name());
 		}
@@ -161,4 +171,9 @@ public class GeneFunctionProcessor {
 		}
 		return result;
 	}
+
+	public FunctionalDataProcessorI getFdp() {
+		return fdp;
+	}
+
 }

@@ -143,7 +143,8 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
         UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(this.INPUT, false),
 				GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG,
                 GeneFunctionCommandLineBase.DEFAULT_GENE_FUNCTION_TAG, GeneFunctionCommandLineBase.DEFAULT_STRAND_STRATEGY,
-                GeneFunctionCommandLineBase.DEFAULT_LOCUS_FUNCTION_LIST, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+                GeneFunctionCommandLineBase.DEFAULT_LOCUS_FUNCTION_LIST, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,
+				this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
                 this.READ_MQ, false, cellBarcodes, true, false);
 
         // get list of barcodes that have enough UMIs, and are not polyT biased.

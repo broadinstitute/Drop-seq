@@ -56,7 +56,7 @@ public class DigitalAlleleCountsBestGeneIteratorTest {
 			
 			SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
 					new SamHeaderAndIterator(smallBAMFile2), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
-					LOCUS_FUNCTION_LIST,STRAND_STRATEGY, cellBarcodeTag, molBCTag, snpTag,
+					LOCUS_FUNCTION_LIST,STRAND_STRATEGY, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY, cellBarcodeTag, molBCTag, snpTag,
 					GeneFunctionCommandLineBase.DEFAULT_FUNCTION_TAG, readMQ, assignReadsToAllGenes,
 					cellBarcodes, meanGenotypeQuality, SortOrder.SNP_GENE);
 

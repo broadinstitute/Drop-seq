@@ -58,11 +58,11 @@ public class AnnotationUtils {
 
 	private AnnotationUtils() {
 		functionScores = new HashMap<>();
-		functionScores.put(LocusFunction.CODING, Integer.valueOf (5));
-		functionScores.put(LocusFunction.UTR, Integer.valueOf (4));
-		functionScores.put(LocusFunction.INTRONIC, Integer.valueOf (3));
-		functionScores.put(LocusFunction.RIBOSOMAL, Integer.valueOf (2));
-		functionScores.put(LocusFunction.INTERGENIC, Integer.valueOf (1));
+		functionScores.put(LocusFunction.CODING, 5);
+		functionScores.put(LocusFunction.UTR, 4);
+		functionScores.put(LocusFunction.INTRONIC, 3);
+		functionScores.put(LocusFunction.RIBOSOMAL, 2);
+		functionScores.put(LocusFunction.INTERGENIC, 1);
 	}
 
 	public static AnnotationUtils getInstance() {
@@ -81,19 +81,31 @@ public class AnnotationUtils {
 	 *
 	 * Only retain genes where alignment blocks all reference that gene.  If block one refers to genes A,B and block two to gene A only, then only retain gene A.
 	 *
+	 * @param rec The record to generate a list of locus function data for
+	 * @param geneOverlapDetector The gene models to test
+	 * @param pcrRequiredOverlap What fraction of the read must overlap a locus function to be included in the annotation.  If this parameter is set to 0, then if any
+	 *                           bases are overlap an annotation it is included in the output.  StarSolo / CellRanger would set this to 50.0, then only
+	 *                           functional annotations with > 50% overlap would be included.  This forces a gene to have at most one annotation (coding, intronic, etc) instead
+	 *                           of multiple annotations (coding + intronic).
 	 */
-	public Map<Gene, List<LocusFunction>> getFunctionalDataForRead (final SAMRecord rec, final OverlapDetector<Gene> geneOverlapDetector) {
+	public Map<Gene, List<LocusFunction>> getFunctionalDataForRead (final SAMRecord rec, final OverlapDetector<Gene> geneOverlapDetector, double pcrRequiredOverlap) {
+		if (rec.getReadName().equals("LH00118:69:22CNFNLT3:1:1254:15184:25514"))
+			log.info("STOP");
+
 		List<AlignmentBlock> alignmentBlocks = rec.getAlignmentBlocks();
 
-		Map<AlignmentBlock, Map<Gene, List<LocusFunction>>> map = new HashMap<>();
+		Map<AlignmentBlock,Map<Gene, ObjectCounter<LocusFunction>>> map = new HashMap<>();
+		// the effective read length is the sum of the alignment block lengths.
+		int readLength=0;
 		// gather the locus functions for each alignment block.
 		for (AlignmentBlock block: alignmentBlocks) {
+			readLength+=block.getLength();
 			Interval interval = getInterval(rec.getReferenceName(), block);
-			Map<Gene, List<LocusFunction>> locusFunctionsForGeneMap = getFunctionalDataForInterval(interval, geneOverlapDetector);
+			Map<Gene, ObjectCounter<LocusFunction>> locusFunctionsForGeneMap = getFunctionalDataForInterval(interval, geneOverlapDetector);
 			map.put(block, locusFunctionsForGeneMap);
 		}
-		// simplify genes by only using genes that are common to all alignment blocks.
-		Map<Gene, List<LocusFunction>> result = simplifyFunctionalDataAcrossAlignmentBlocks(map);
+		// simplify genes by only using genes that are common to all alignment blocks that pass the required number of bases of total overlap
+		Map<Gene, List<LocusFunction>> result = simplifyFunctionalDataAcrossAlignmentBlocks(map, readLength, pcrRequiredOverlap);
 		return result;
 	}
 
@@ -104,21 +116,21 @@ public class AnnotationUtils {
 	 * @param geneOverlapDetector The gene model to interrogate.
 	 * @return A map from each gene that is overlapped to its functional annotation(s).
 	 */
-	private Map<Gene, List<LocusFunction>> getFunctionalDataForInterval (final Interval interval, final OverlapDetector<Gene> geneOverlapDetector) {
-		Map<Gene, List<LocusFunction>> result = new HashMap<>();
+	private Map<Gene, ObjectCounter<LocusFunction>> getFunctionalDataForInterval (final Interval interval, final OverlapDetector<Gene> geneOverlapDetector) {
+
+		Map<Gene, ObjectCounter<LocusFunction>> result = new HashMap<>();
 
 		final Collection<Gene> overlappingGenes = geneOverlapDetector.getOverlaps(interval);
 		for (Gene g: overlappingGenes) {
 			List<LocusFunction> locusFunctionsForGene = new ArrayList<>();
 
 			LocusFunction [] locusFunctionArray = getLocusFunctionsByInterval(interval, g);
-			// simplify to the unique list of functions.
+			// update: don't simplify to the unique list of functions.
+			// simply return the number of counts of each LocusFunction for each gene in this interval.
 			ObjectCounter<LocusFunction> o = new ObjectCounter<>();
 			for (LocusFunction f: locusFunctionArray)
 				o.increment(f);
-			for (LocusFunction f: o.getKeys())
-				locusFunctionsForGene.add(f);
-			result.put(g,locusFunctionsForGene);
+			result.put(g,o);
 		}
 		return (result);
 	}
@@ -129,52 +141,79 @@ public class AnnotationUtils {
 	 * @param map
 	 * @return
 	 */
-	private Map<Gene, List<LocusFunction>> simplifyFunctionalDataAcrossAlignmentBlocks (final Map<AlignmentBlock, Map<Gene, List<LocusFunction>>> map) {
-		// if map is empty.
-		if (map.size()==0)
-			return Collections.emptyMap();
-		// short circuit if there's only 1 alignment block.
-		if (map.size()==1)
-			return map.values().iterator().next();
+	Map<Gene, List<LocusFunction>> simplifyFunctionalDataAcrossAlignmentBlocks (Map<AlignmentBlock,Map<Gene, ObjectCounter<LocusFunction>>> map,
+																						int readLength, double pcrRequiredOverlap) {
 
+		// remove Alignment blocks with empty gene maps.
+		// this might not be a good move - more consistent to make sure a read consistently touches the same
+		// gene across alignment blocks and isn't partially intergenic.
+		// map.entrySet().removeIf(entry -> entry.getValue().isEmpty());
+
+		// if map is empty.
+		if (map.isEmpty())
+			return Collections.emptyMap();
+
+		// Now that you have blocks with genes,
 		// initialize with the genes from the first alignment block.
-		Iterator<Map<Gene, List<LocusFunction>>> iter = map.values().iterator();
+		// find the genes common to all blocks.
+		Iterator<Map<Gene, ObjectCounter<LocusFunction>>> iter = map.values().iterator();
 		Set<Gene> commonGenes = iter.next().keySet();
 		while (iter.hasNext()) {
 			Set<Gene> next = iter.next().keySet();
 			commonGenes.retainAll(next);
 		}
 
-		// walk through alignment blocks and retain genes in the common set.
-		Map<Gene, List<LocusFunction>> result = new HashedMap<>();
-		for (AlignmentBlock b: map.keySet())
-			for (Gene g: commonGenes) {
-				List<LocusFunction> tempResult = result.get(g);
-				if (tempResult==null) tempResult = new ArrayList<>();
-				List<LocusFunction> lf = map.get(b).get(g);
-				tempResult.addAll(lf);
-				result.put(g, tempResult);
-			}
+		// Prune the alignment blocks to the common gene set.
+		map.forEach((alignmentBlock, geneObjectCounterMap) ->
+				geneObjectCounterMap.keySet().retainAll(commonGenes));
 
-		// remove any repeats of a locus function for a gene - so if two blocks are both coding, only have 1 coding in the result.
-		for (Gene g: result.keySet()) {
-			List<LocusFunction> lf = result.get(g);
-			Set<LocusFunction> s = new HashSet<>(lf);
-			lf.clear();
-			lf.addAll(s);
+		// merge the locus function counts for each gene across blocks.
+		Map<Gene, ObjectCounter<LocusFunction>> readMap = new HashMap<>();
+		for (AlignmentBlock b: map.keySet()) {
+			Map<Gene, ObjectCounter<LocusFunction>> blockMap=map.get(b);
+			for (Gene gene: blockMap.keySet()) {
+				if (!commonGenes.contains(gene))
+					log.info("I see a gene that isn't common.  This should never happen!");
+				ObjectCounter<LocusFunction> lf = readMap.computeIfAbsent(gene, k -> new ObjectCounter<LocusFunction>());
+				lf.increment(blockMap.get(gene));
+			}
 		}
 
+		// filter by how much the locus functions are used.
+		// this may involve the function using more than some fraction of the read length.
+		// transforms the base-level counts of the locus function to the unique locus functions.
+
+		// if there are both coding and UTR bases
+		// then sum the two annotations to calculate the overlap
+		// and emit both annotations.
+
+		Map<Gene, List<LocusFunction>> result = new HashMap<>();
+
+		for (Gene gene: readMap.keySet()) {
+			ObjectCounter<LocusFunction> lf = readMap.get(gene);
+			List<LocusFunction> resultGene = result.computeIfAbsent(gene, k-> new ArrayList<>());
+
+			// sum the coding + UTR for those weird edge cases.
+			int codingPlusUTR=lf.getCountForKey(LocusFunction.CODING)+lf.getCountForKey(LocusFunction.UTR);
+
+			for (LocusFunction locusFunction: lf.getKeys()) {
+				int size = lf.getCountForKey(locusFunction);
+				// if you're in CODING or UTR, use the summed value if it's larger.
+				if ((locusFunction==LocusFunction.CODING || locusFunction==LocusFunction.UTR) && codingPlusUTR > size)
+					size=codingPlusUTR;
+				double pct = ((double) size/ (double) readLength)*100;
+				// special case: INTERGENIC annotation of any length is retained.
+				// this mimics STARsolo (I hope).
+				// don't add the locus function if it was added by both.
+				if ((pct > pcrRequiredOverlap || locusFunction==LocusFunction.INTERGENIC) && !resultGene.contains(locusFunction)) {
+					resultGene.add(locusFunction);
+				}
+			}
+		}
+
+		// return of gene to locus function.
 		return result;
 	}
-
-
-
-
-
-
-
-
-
 
 
 	/**
@@ -182,17 +221,19 @@ public class AnnotationUtils {
 	 * If a read is split into multiple blocks, each block should point to the same gene - if blocks point to
 	 * different genes (which can't happen, you can't splice different genes together), then that gene result should not be returned.
 	 * Instead, return null in those cases.
-	 * @param alignmentBlocks
+	 * @param rec
 	 * @param g
 	 * @return
 	 */
-	private LocusFunction getLocusFunctionForRead (final SAMRecord rec, final Gene g) {
+	private LocusFunction getLocusFunctionForRead (final SAMRecord rec, final Gene g, double pcrRequiredOverlap) {
+
 		List<AlignmentBlock> alignmentBlocks = rec.getAlignmentBlocks();
 
         LocusFunction [] blockSummaryFunction = new LocusFunction[alignmentBlocks.size()];
         Set<Gene> temp = new HashSet<>();
         temp.add(g);
-
+		// instead of summarizing block functions build an array of locus functions per base over
+		// all bases of the read, then get the majority locus function.
         for (int i=0; i<alignmentBlocks.size(); i++) {
         	AlignmentBlock alignmentBlock =alignmentBlocks.get(i);
 
@@ -207,13 +248,13 @@ public class AnnotationUtils {
 
 
 
-	public Map<Gene, LocusFunction> getLocusFunctionForReadByGene (final SAMRecord rec, final OverlapDetector<Gene> geneOverlapDetector) {
+	public Map<Gene, LocusFunction> getLocusFunctionForReadByGene (final SAMRecord rec, final OverlapDetector<Gene> geneOverlapDetector, double pcrRequiredOverlap) {
 		Map<Gene, LocusFunction> result = new HashMap<>();
 		final Interval readInterval = new Interval(rec.getReferenceName(), rec.getAlignmentStart(), rec.getAlignmentEnd(), rec.getReadNegativeStrandFlag(), rec.getReadName());
 		final Collection<Gene> overlappingGenes = geneOverlapDetector.getOverlaps(readInterval);
 
         for (Gene g: overlappingGenes) {
-        	LocusFunction f = getLocusFunctionForRead(rec, g);
+        	LocusFunction f = getLocusFunctionForRead(rec, g, pcrRequiredOverlap);
             result.put(g, f);
         }
         return result;
@@ -227,7 +268,6 @@ public class AnnotationUtils {
 	 * Note that this is not strand specific, which may cause problems if a read overlaps two genes on opposite strands that have overlapping exons.
 	 * @param rec
 	 * @param genes A set of genes that the read originally overlaps.
-	 * @param allowMultipleGenes.  If false, and a read overlaps multiple gene exons, then none of the genes are returned.  If true, return the set of all genes.
 	 * @return
 	 */
 	//TODO: if this is used in the future, make it strand specific.
@@ -355,11 +395,12 @@ public class AnnotationUtils {
 
 	/**
 	 * Generates the locus function at each base of the interval.
-	 * @param interval
-	 * @param overlappingGenes
-	 * @return
+	 * @param i The interval to query
+	 * @param gene the gene to query
+	 * @return The functional annotations at each base in the interval
 	 */
 	public LocusFunction[] getLocusFunctionsByInterval (final Interval i, final Gene gene) {
+
 		// Get functional class for each position in the alignment block.
         final LocusFunction[] locusFunctions = new LocusFunction[i.length()];
 

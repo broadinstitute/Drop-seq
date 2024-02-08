@@ -28,6 +28,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordQueryNameComparator;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.util.*;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.utils.*;
@@ -67,12 +68,13 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final String geneFunctionTag,
                        final StrandStrategy strandStrategy,
                        final Collection <LocusFunction> acceptedLociFunctions,
+					   FunctionalDataProcessorStrategy functionStrategy,
                        final String cellBarcodeTag,
                        final String molecularBarcodeTag,
                        final int readMQ,
                        final boolean assignReadsToAllGenes,
                        final Collection<String> cellBarcodes) {
-		this(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy, acceptedLociFunctions,
+		this(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy, acceptedLociFunctions, functionStrategy,
 				cellBarcodeTag, molecularBarcodeTag, readMQ, assignReadsToAllGenes, cellBarcodes, false, false);
 	}
 
@@ -99,6 +101,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final String geneFunctionTag,
                        final StrandStrategy strandStrategy,
                        final Collection <LocusFunction> acceptedLociFunctions,
+					   FunctionalDataProcessorStrategy functionStrategy,
                        final String cellBarcodeTag,
                        final String molecularBarcodeTag,
                        final int readMQ,
@@ -107,7 +110,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final boolean cellFirstSort,
 					   final boolean recordCellsInInput) {
 		
-		this(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy, acceptedLociFunctions,
+		this(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy, acceptedLociFunctions, functionStrategy,
 				cellBarcodeTag, molecularBarcodeTag, readMQ, assignReadsToAllGenes, cellBarcodes, cellFirstSort, recordCellsInInput, false);
 		
 	}
@@ -137,6 +140,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final String geneFunctionTag,
                        final StrandStrategy strandStrategy,
                        final Collection <LocusFunction> acceptedLociFunctions,
+					   FunctionalDataProcessorStrategy functionStrategy,
                        final String cellBarcodeTag,
                        final String molecularBarcodeTag,
                        final int readMQ,
@@ -184,7 +188,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 
 		// Filter/assign reads based on functional annotations
 		GeneFunctionIteratorWrapper wrapper = new GeneFunctionIteratorWrapper(filteringIterator, geneTag,
-				geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions);
+				geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions, functionStrategy);
 		Iterator<SAMRecord> samRecordIter = wrapper;
 
 		// Strip down the reads to a more minimal set of TAGS, set reads to be empty on request

@@ -91,6 +91,8 @@ public class TagReadWithGeneExonFunction extends CommandLineProgram {
     @Argument(doc="Allow a read to span multiple genes.  If set to true, the gene name will be set to all of the gene/exons the read spans.  In that case, the gene names will be comma separated.")
     public boolean ALLOW_MULTI_GENE_READS=false;
 
+    // The old dropseq default.  This program hasn't been used in years in our pipelines so isn't going to be updated to match STARSolo.
+    private double PCT_REQUIRED_OVERLAP=0;
     private ReadTaggingMetric metrics = new ReadTaggingMetric();
     static String RECORD_SEP=",";
 
@@ -136,7 +138,7 @@ public class TagReadWithGeneExonFunction extends CommandLineProgram {
     }
 
     public SAMRecord setAnnotations (final SAMRecord r, final OverlapDetector<Gene> geneOverlapDetector) {
-        Map<Gene, LocusFunction> map = AnnotationUtils.getInstance().getLocusFunctionForReadByGene(r, geneOverlapDetector);
+        Map<Gene, LocusFunction> map = AnnotationUtils.getInstance().getLocusFunctionForReadByGene(r, geneOverlapDetector, this.PCT_REQUIRED_OVERLAP);
         Set<Gene> exonsForRead = AnnotationUtils.getInstance().getConsistentExons (r, map.keySet(), ALLOW_MULTI_GENE_READS);
 
         List<Gene> genes = new ArrayList<>();
@@ -257,11 +259,11 @@ public class TagReadWithGeneExonFunction extends CommandLineProgram {
 
         StringBuilder result = new StringBuilder();
         Iterator<Gene> iter = genes.iterator();
-        result.append(Utils.strandToString(iter.next().isPositiveStrand()));
+        result.append(Utils.negativeStrandToString(iter.next().isNegativeStrand()));
 
         while (iter.hasNext()) {
             result.append(RECORD_SEP);
-            result.append(Utils.strandToString(iter.next().isPositiveStrand()));
+            result.append(Utils.negativeStrandToString(iter.next().isNegativeStrand()));
         }
 
         return (result.toString());
