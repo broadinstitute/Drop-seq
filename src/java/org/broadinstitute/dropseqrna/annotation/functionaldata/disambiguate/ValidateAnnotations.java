@@ -35,10 +35,15 @@ public class ValidateAnnotations {
         Map<String, ValidationStatus> validationResult = new HashMap<>();
 
         for (String readName: starsoloFD.keySet()) {
-//            if (readName.equals("LH00118:69:22CNFNLT3:3:2164:21055:18833"))
-//                log.info("STOP");
             ValidationStatus validationStatus = validate(starsoloFD.get(readName), fdMap.get(readName), verbose);
-            validationResult.put(readName, validationStatus);
+
+            // It's possible for a category to be null if the data is unclassified, but this should never happen.
+            // only add the result when non-null, but log the error so we can circle back and fix this.
+            if (validationStatus.getDropseq().getCategory()==null)
+                log.error("Unable to classify read using dropseq functional annotations ["+ readName+"].  This should not happen, please submit a bug report.");
+            else
+                validationResult.put(readName, validationStatus);
+
             if (!validationStatus.isValid()) {
                 if (verbose) log.info("Read fails validation [" + readName+"]");
             }

@@ -30,16 +30,19 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
-        summary = "Starsolo and DropSeq process some functional annotations differently.  Can these ambiguities be resolved" +
-                "by looking at many reads from the same UMIs?  In particular, for reads that are on the opposite strand of a coding" +
-                " annotation and on the same strand as an intron, STARsolo interprets those reads as antisense coding, while DropSeq interprets " +
-                "those reads as intronic.  Perhaps other reads coming from the same UMI can disambiguate these assignments.",
-        oneLineSummary = "Disambiguate UMI functional annotations",
+        summary = "Given differing methods used by Starsolo and DropSeq for processing functional annotations, we wondered if analyzing multiple reads" +
+                " from the same cell and UMI could resolve ambiguities. For instance, Starsolo categorizes reads aligned to the opposite strand of a coding " +
+                "annotation and the same strand as an intron as antisense coding, while DropSeq categorizes them as intronic. Some fraction of UMIs are sequenced " +
+                "by multiple reads that may not be ambiguously assigned to both genes.  Since the reads come from the same physical molecule, these reads may " +
+                "be unambiguously assigned to one of the genes allowing the UMI to be disambiguated.",
+        oneLineSummary = "Disambiguate antisense coding / sense intronic UMIs",
         programGroup = DropSeq.class
 )
 public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
 
-    @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
+    @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze, generate by STARsolo." +
+            " This bam must be pre-processed by TagReadWithGeneFunction with the same GTF file used by STARsolo and the argument PCT_REQUIRED_OVERLAP=50." +
+            "This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
     public List<File> INPUT;
 
     @Argument(doc="Contains one row for each cell/UMI that has an ambiguous read, and the status of how the UMI is resolved." +
@@ -50,7 +53,7 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
             "and Dropseq.  Purely for debugging purposes.", optional = true)
     public File OUT_BAM=null;
 
-    @Argument(doc="A summary all cell/UMI results.", optional=true)
+    @Argument(doc="A summary all cell/UMI results for all antisense coding / sense intronic events that are resolved.", optional=true)
     public File SUMMARY=null;
 
     @Argument(doc= "For each read, gather the functional data type (coding, intronic, etc) for each read classified by STAR and DropSeq.  Emit a confusion matrix" +
@@ -77,16 +80,6 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
     private String STARSOLO_GENE_NAME="GN";
 
     private final String RECORD_SEP="\t";
-
-//    @Argument(doc="Gene Name tag.  Takes on the gene name this read overlaps (if any)")
-//    public String GENE_NAME_TAG= DEFAULT_GENE_NAME_TAG;
-//
-//    @Argument(doc="Gene Strand tag.  For a given gene name <GENE_NAME_TAG>, this is the strand of the gene.")
-//    public String GENE_STRAND_TAG= DEFAULT_GENE_STRAND_TAG;
-//
-//    @Argument(doc="Gene Function tag.  For a given gene name <GENE_NAME_TAG>, this is the function of the gene at this read's position: UTR/CODING/INTRONIC/...")
-//    public String GENE_FUNCTION_TAG= DEFAULT_GENE_FUNCTION_TAG;
-
     private final List<LocusFunction> LOCUS_FUNCTION_LIST = Collections.unmodifiableList(new ArrayList<>(Arrays.asList(LocusFunction.CODING, LocusFunction.UTR, LocusFunction.INTRONIC)));
     private final StrandStrategy STRAND_STRATEGY=GeneFunctionCommandLineBase.DEFAULT_STRAND_STRATEGY;
 
@@ -94,11 +87,9 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
 
     private static final Log log = Log.getInstance(OptimusDropSeqLocusFunctionComparison.class);
 
-    private ObjectCounter<Boolean> readTagValidation;
-
     @Override
     protected int doWork() {
-        readTagValidation = new ObjectCounter<>();
+        ObjectCounter<Boolean> readTagValidation = new ObjectCounter<>();
         ProgressLogger pl = new ProgressLogger(log);
 
         // Set up output
@@ -143,7 +134,7 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
 
             // validate that the tags are approximately the same.
             // if even a single read for the cell / UMI does not validate, do not evaluate this result.
-            boolean readsValid = validateFunctionalAnnotations (validator, recs, dropSeqFD, confusionMatrix, writer);
+            boolean readsValid = validateFunctionalAnnotations (validator, recs, dropSeqFD, confusionMatrix, readTagValidation, writer);
             if (!readsValid)
                 continue outerloop;
 
@@ -188,11 +179,12 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
      * @param recs
      * @param dropSeqFD
      * @param confusionMatrix
+     * @param readTagValidation
      * @param writer
      * @return
      */
     private boolean validateFunctionalAnnotations (ValidateAnnotations validator, List<SAMRecord> recs, Map<String, List<FunctionalData>> dropSeqFD,
-                                                ConfusionMatrix<FunctionalData.Type> confusionMatrix, SAMFileWriter writer) {
+                                                ConfusionMatrix<FunctionalData.Type> confusionMatrix, ObjectCounter<Boolean> readTagValidation, SAMFileWriter writer) {
         Map<String, FunctionalData> starsoloFD= getStarSoloAnnotations (recs);
         Map<String, ValidationStatus> validationResult = validator.validate (starsoloFD, dropSeqFD, false);
         boolean readsValue=true;

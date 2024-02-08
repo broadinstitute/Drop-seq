@@ -72,8 +72,10 @@ public class ClassifyDropSeqFunctionalData extends ClassifyFunctionalDataBase{
         if (sense!=null)
             return new GeneWithFunction(sense.getGene(), sense.getType());
 
-        // sigh
-        throw new UnsupportedOperationException("Data not classified.  You should not get here.");
+        // Return a null category if this can't be classified
+        // this should never happen, but we want to catch it as a warning instead of an error.
+        return new GeneWithFunction(missingGeneLabel, null);
+
     }
 
 
