@@ -32,10 +32,6 @@ public class ConfusionMatrix<T extends Enum<T>> {
         matrix[actualIndex][predictedIndex]++;
     }
 
-    public void writeFile(PrintStream printStream, char delimiter) {
-        writeFile(printStream, delimiter, null);
-    }
-
     public void writeFile(PrintStream printStream, char delimiter, String comment) {
         T[] enumConstants = enumClass.getEnumConstants();
 
@@ -58,11 +54,6 @@ public class ConfusionMatrix<T extends Enum<T>> {
             }
             printStream.println();
         }
-    }
-
-    public void writeFile(PrintStream printStream) {
-        // Default to tab delimiter
-        writeFile(printStream, '\t');
     }
 
 }

@@ -15,8 +15,11 @@ public class ValidationStatus {
     }
 
     public boolean isValid () {
-        // for antisense annotations, ignore the gene label.
+        // for antisense annotations, ignore the gene label as STARsolo doesn't provide one.
         if (star.getCategory()== FunctionalData.Type.CODING_ANTISENSE && dropseq.getCategory()== FunctionalData.Type.CODING_ANTISENSE)
+            return true;
+
+        if (star.getCategory()== FunctionalData.Type.INTRONIC_ANTISENSE && dropseq.getCategory()== FunctionalData.Type.INTRONIC_ANTISENSE)
             return true;
 
         // otherwise, straight up comparison.

@@ -7,10 +7,6 @@ import java.util.List;
 
 public class ClassifyStarSoloFunctionalData extends ClassifyFunctionalDataBase {
 
-    public ClassifyStarSoloFunctionalData(GeneFunctionProcessor gfp, String missingGeneLabel) {
-        super(gfp, missingGeneLabel);
-    }
-
     public ClassifyStarSoloFunctionalData(GeneFunctionProcessor gfp) {
         super(gfp);
     }
