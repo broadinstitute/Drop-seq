@@ -137,12 +137,6 @@ public class DisambiguationScore {
         return o1.getKeys().stream().anyMatch(o2.getKeys()::contains);
     }
 
-    private String getGeneName (List<FunctionalData> fd) {
-        List<String> geneNames = getGeneNames(fd);
-        String geneName=String.join(":", geneNames);
-        return geneName;
-    }
-
     private List<String> getGeneNames (List<FunctionalData> fd) {
         List<String> genes = fd.stream().map(x -> x.getGene()).collect(Collectors.toList());
         Collections.sort(genes);

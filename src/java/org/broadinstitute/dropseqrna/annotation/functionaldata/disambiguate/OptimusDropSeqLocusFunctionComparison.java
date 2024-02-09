@@ -139,9 +139,12 @@ public class OptimusDropSeqLocusFunctionComparison extends CommandLineProgram {
                 continue outerloop;
 
             DisambiguationScore score = dfa.run(cellBarcode, umiBarcode, dropSeqFD);
+            // log.info("CELL [" + cellBarcode +"] UMI [" + umiBarcode+"] " + score.classify().toString());
+
             // capture the functional category so we can summarize how many of each type we see.
             FunctionCategory cat = score.classify();
             resolvedSummaryCounter.increment(score.classify());
+
             if (cat==FunctionCategory.RESOLVED_SENSE_INTRONIC || cat==FunctionCategory.RESOLVED_ANTISENSE_CODING) {
                 Set<String> contigs = getUniqueContigs(recs);
                 ObjectCounter<String> readStrandCounts = getStrandCount (recs);

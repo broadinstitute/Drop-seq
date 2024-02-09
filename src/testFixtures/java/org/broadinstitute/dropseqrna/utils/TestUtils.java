@@ -58,8 +58,12 @@ public class TestUtils {
 	 * Test if two text files are the same, ignoring "#" character lines.
 	 */
 	public static boolean testFilesSame (final File expected, final File actual) {
-		TabbedInputParser e = new TabbedInputParser(true, expected);
-		TabbedInputParser a = new TabbedInputParser(true, actual);
+		return testFilesSame(expected, actual, true);
+	}
+
+	public static boolean testFilesSame (final File expected, final File actual, boolean treatGroupedDelimitersAsOne) {
+		TabbedInputParser e = new TabbedInputParser(treatGroupedDelimitersAsOne, expected);
+		TabbedInputParser a = new TabbedInputParser(treatGroupedDelimitersAsOne, actual);
 		while (e.hasNext() && a.hasNext()) {
 			e.next();
 			a.next();
