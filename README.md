@@ -9,3 +9,31 @@ See https://github.com/broadinstitute/Drop-seq/releases to download binaries.
 See [Drop-seq alignment cookbook](doc/Drop-seq_Alignment_Cookbook.pdf) for detailed usage of these tools.
 
 See [Census-seq computational protocols](doc/Census-seq_Computational_Protcools.pdf) for detailed usage of Census-Seq tools.
+
+# Building from source and installing
+
+Download source:
+```
+git clone https://github.com/broadinstitute/Drop-seq.git 
+cd Drop-seq
+```
+
+There are two options for building and installing.  
+
+- Build the executable jarfile, a single wrapper script from which all command-line programs can be invoked, installed in the cloned git sandbox.
+- Build a zipfile containing the executable jarfile and wrapper scripts for all command-line programs.  The zipfile can be installed in an arbitrary location.
+
+## Building the exectable jarfile and single wrapper script
+`./gradlew installDist`
+
+The wrapper script will be `dropseq/build/install/dropseq/bin/dropseq`.  `dropseq.bat` for Windows.
+## Build zipfile containing executable jarfile and wrapper scripts
+`./gradlew distZip`
+
+### Installing
+```
+unzip -d <install-location> ./dropseq/build/distributions/dropseq.zip
+```
+Note that the name of the zipfile will be based on the state of your git sandbox.
+
+The files will be deployed into a subdirectory of `<install-location>` above, with name based on the state of your git sandbox. 
