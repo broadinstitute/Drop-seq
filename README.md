@@ -32,8 +32,8 @@ The wrapper script will be `dropseq/build/install/dropseq/bin/dropseq`.  `dropse
 
 ### Installing
 ```
-unzip -d <install-location> ./dropseq/build/distributions/dropseq.zip
+unzip -d <install-location> ./dropseq/build/distributions/dropseq-<version>.zip
 ```
-Note that the name of the zipfile will be based on the state of your git sandbox.
+Note that the name of the zipfile will be based on the tagged version and state of your git sandbox.
 
-The files will be deployed into a subdirectory of `<install-location>` above, with name based on the state of your git sandbox. 
+The files will be deployed into a subdirectory of `<install-location>` above, with name based on the name of the zipfile. 
