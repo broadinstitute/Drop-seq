@@ -120,6 +120,17 @@ public class FunctionalData {
 	}
 
 	/**
+	 * Test if two FunctionalData objects have the same interpretation - the same gene and type.
+	 * For example, for a metagene, the one copy might align on the + strand, and one on the negative strand
+	 * They both interpret to CODING_SENSE, but equals will say they are different.
+	 * @param other
+	 * @return
+	 */
+	public boolean sameGeneAndType (FunctionalData other) {
+		return this.getType()==other.getType() & this.getGene().equals(other.getGene());
+	}
+
+	/**
 	 * A convenience method to get the type this functional data encodes.
 	 * This combines the gene strand, read strand, and locus function to yield a single classification
 	 * This simplifies CODING and UTR into CODING.

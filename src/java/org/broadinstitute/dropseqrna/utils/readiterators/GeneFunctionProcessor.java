@@ -101,12 +101,25 @@ public class GeneFunctionProcessor {
 		// Why a set?  If there are multiple reads that have a single consistent result, we can use that.
 		// This deals with multiple reads that map to the same gene, especially useful for MetaGene discovery where
 		// the newly applied tag can be identical.
-		Set<FunctionalData> fdSet = new HashSet<>(fdList);
+		// Some metagenes are on opposite strands, which makes this more complex.
+		// equals might be better implemented as the interpreted functional annotation + gene name
+		// instead of testing for the number of unique FunctionalData objects by equals, test the how
+		// many have the same gene and type.
 
-		if (fdSet.size() == 1) {
-			FunctionalData fd = fdList.getFirst();
-            return (assignTagsToRead(recs.getFirst(), fd));
-		}
+//		Set<FunctionalData> fdSet = new HashSet<>(fdList);
+//
+//		if (fdSet.size() == 1) {
+//			FunctionalData fd = fdList.getFirst();
+//            return (assignTagsToRead(recs.getFirst(), fd));
+//		}
+
+		// test if all functional annotations are the same as the first entry.
+		FunctionalData first = fdList.getFirst();
+		boolean allSame = fdList.stream().allMatch(first::sameGeneAndType);
+		// if so, assign and finish.
+		if (allSame)
+            return (assignTagsToRead(recs.getFirst(), first));
+
 		return null;
 	}
 
