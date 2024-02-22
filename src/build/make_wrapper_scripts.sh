@@ -31,7 +31,7 @@ Create wrapper scripts for Java command-line programs
 -t <template-file>  : File to be copied to make the wrapper.  Required.
 -c <classpath>      : Classpath for running the CLP lister.  Required.
 -d <output-directory>  : Where to write the wrappers.  Required.
--m <main-class>     : Where to write temporary files.  Default: $main_class.
+-m <main-class>     : Class to invoke to list CLPs.  Default: $main_class.
 [main-class-args]   : Passed to main-class
 EOF
 }
@@ -57,7 +57,7 @@ set -e
 # Fail if any of the commands in a pipeline fails
 set -o pipefail
 
-while getopts ":d:t:c:m" options; do
+while getopts ":d:t:c:m:" options; do
   case $options in
     d ) outdir=$OPTARG;;
     t ) template=$OPTARG;;
