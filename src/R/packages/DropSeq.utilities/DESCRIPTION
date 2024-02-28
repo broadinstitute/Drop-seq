@@ -1,0 +1,12 @@
+Package: DropSeq.utilities
+Type: Package
+Title: Generic Drop-seq utilities
+Version: 2.0
+Date: 2024-02-29
+Imports: data.table
+Author: Alec Wysoker
+Maintainer: McCarroll Lab <dropseq@gmail.com>
+Description: Grab-bag of generic functions for handling strings, files, errors.
+License: MIT + file LICENSE
+RoxygenNote: 7.2.3
+Encoding: UTF-8
