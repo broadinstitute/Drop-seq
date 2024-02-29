@@ -92,12 +92,16 @@ read_dge_gz<-function(file, decreasing_order_by_size=TRUE) {
   dge = fastRead(file, comment_regexp = '^#')
   setkey(dge,GENE)
   gene_names = dge$GENE
+  GENE <- NULL # Silence R CMD check warning https://www.r-bloggers.com/2019/08/no-visible-binding-for-global-variable/
   dge[, GENE:=NULL]
   rownames(dge) = gene_names
 
   if (decreasing_order_by_size) {
     # order cells by expression
-    colsums.full.data=dge[,lapply(.SD,sum,na.rm=TRUE),.SDcols=colnames(dge)]
+
+    # I don't understand data.table, but this returns a data.table with one row rather than
+    # a vector, so convert to list to avoid warnings
+    colsums.full.data=unlist(dge[,lapply(.SD,sum,na.rm=TRUE),.SDcols=colnames(dge)])
     order.data=names(colsums.full.data)[order(colsums.full.data,decreasing=T)]
     full.data.cells=dge[,order.data,with=F]
   } else {
