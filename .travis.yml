@@ -1,12 +1,21 @@
-dist: xenial
-language: java
-jdk:
-  - openjdk21
-before_install:
-- chmod +x gradlew
-- chmod +x gradle/wrapper/gradle-wrapper.jar
-script:
-- ./gradlew test build
-- ./gradlew jacocoTestReport
-after_success:
-- bash <(curl -s https://codecov.io/bash)
+jobs:
+  include:
+    - dist: xenial
+      language: java
+      jdk:
+      - openjdk21
+      before_install:
+      - chmod +x gradlew
+      - chmod +x gradle/wrapper/gradle-wrapper.jar
+      script:
+      - ./gradlew test build
+      - ./gradlew jacocoTestReport
+      after_success:
+      - bash <(curl -s https://codecov.io/bash)
+    - language: r
+      r: 4.1.0
+      before_install:
+        # This needs to happen early because install step loads dependencies from DESCRIPTION
+        # The directory is sticky so no need to cd in before_script
+        - cd src/R/packages/DropSeq.utilities
+      warnings_are_errors: true
