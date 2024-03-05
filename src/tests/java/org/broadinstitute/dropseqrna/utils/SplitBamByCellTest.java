@@ -342,11 +342,13 @@ public class SplitBamByCellTest {
         final File mergedOutputBAM = TestUtils.getTempReportFile("SplitBamByCell.merged.", ".sam");
         mergedOutputBAM.deleteOnExit();
 
+        final int numOutputs = 3;
         bamSplitter.INPUT = Collections.singletonList(TEST_BAM);
         bamSplitter.OUTPUT =
                 TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
+        markBamsDeleteOnExit(bamSplitter.OUTPUT, bamSplitter.OUTPUT_SLUG, numOutputs);
         bamSplitter.OUTPUT_LIST = TestUtils.getTempReportFile("SplitBamByCell.", ".list");
-        bamSplitter.NUM_OUTPUTS = 3;
+        bamSplitter.NUM_OUTPUTS = numOutputs;
         bamSplitter.DELETE_INPUTS = false;
         bamSplitter.OVERWRITE_EXISTING = true;
         bamSplitter.REPORT = TestUtils.getTempReportFile("SplitBamByCell.", ".report");
