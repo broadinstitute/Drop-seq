@@ -57,6 +57,9 @@ tasks.withType<Test> {
     useTestNG()
     // so test resources can be found
     workingDir("..")
+    if (System.getenv("TMPDIR") != null) {
+        systemProperty("java.io.tmpdir", System.getenv("TMPDIR"))
+    }
 }
 
 tasks.test {
