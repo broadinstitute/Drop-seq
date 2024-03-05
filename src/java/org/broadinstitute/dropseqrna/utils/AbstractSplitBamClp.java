@@ -103,9 +103,9 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
     // Starts out empty, gets expanded to NUM_OUTPUTS writers
     private final List<SAMFileInfo> writerInfoList = new ArrayList<>();
 
-    static final String BAM_EXTENSION = ".bam";
-    static final String BAM_LIST_EXTENSION = ".bam_list";
-    static final String BAM_REPORT_EXTENSION =".split_bam_report";
+    public static final String BAM_EXTENSION = ".bam";
+    public static final String BAM_LIST_EXTENSION = ".bam_list";
+    public static final String BAM_REPORT_EXTENSION =".split_bam_report";
 
     protected void writeRecord(final int writerIdx, final SAMRecord rec) {
         writerInfoList.get(writerIdx).addRecord(rec);
