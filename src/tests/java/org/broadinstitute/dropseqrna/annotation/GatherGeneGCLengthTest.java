@@ -30,6 +30,9 @@ import java.util.List;
 
 import org.broadinstitute.dropseqrna.annotation.GatherGeneGCLength.GCIsoformSummary;
 import org.broadinstitute.dropseqrna.annotation.GatherGeneGCLength.GCResult;
+import org.broadinstitute.dropseqrna.utils.FileUtils;
+import org.broadinstitute.dropseqrna.utils.TestUtils;
+import org.broadinstitute.dropseqrna.utils.referencetools.ReferenceUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -143,9 +146,10 @@ public class GatherGeneGCLengthTest {
 	@Test
 	public void testBasic() throws IOException {
 		final GatherGeneGCLength clp = new GatherGeneGCLength();
-        final File outputFile = File.createTempFile("GatherGeneGCLengthTest.", ".gc_length_metrics");
-        final File outputTranscriptSequencesFile = File.createTempFile("GatherGeneGCLengthTest.", ".transcript_sequences.fasta");
-        final File outputTranscriptLevelFile = File.createTempFile("GatherGeneGCLengthTest.", ".transcript_level");
+        final File outputFile = TestUtils.getTempReportFile("GatherGeneGCLengthTest.", ".gc_length_metrics");
+        final File outputTranscriptSequencesFile = TestUtils.getTempReportFile("GatherGeneGCLengthTest.", ".transcript_sequences.fasta", "fai");
+		FileUtils.replaceExtension(outputTranscriptSequencesFile, "fasta", ReferenceUtils.FASTA_DICT_EXTENSION).deleteOnExit();
+        final File outputTranscriptLevelFile = TestUtils.getTempReportFile("GatherGeneGCLengthTest.", ".transcript_level");
         outputFile.deleteOnExit();
         outputTranscriptSequencesFile.deleteOnExit();
         outputTranscriptLevelFile.deleteOnExit();

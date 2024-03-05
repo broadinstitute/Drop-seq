@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
+import org.broadinstitute.dropseqrna.utils.FileUtils;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
 import org.broadinstitute.dropseqrna.utils.VariantContextSingletonFilter;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
@@ -128,6 +129,7 @@ public class CensusSeqUtils {
 		try {
 			outTempVCF=File.createTempFile("tmp_vcf_", ".txt.gz", tempDir);
 			outTempVCF.deleteOnExit();
+			FileUtils.addExension(outTempVCF, "tbi").deleteOnExit();
 			log.info("Writing temp VCF to " + outTempVCF.getAbsolutePath());
 			
 		} catch (IOException e) {

@@ -223,12 +223,22 @@ public class TestUtils {
 		}
 	}
 
-    public static File getTempReportFile (final String prefix, final String suffix) {
+	/**
+	 * Get a unique temporary file via File.createTempFile, and mark it deleteOnExit
+	 * @param prefix passed to File.createTempFile
+	 * @param suffix passed to File.createTempFile
+	 * @param periodlessExtensions Each of these is appended to the return value (with a period) and marked deleteOnExit
+	 * @return the temporary file
+	 */
+	public static File getTempReportFile (final String prefix, final String suffix, final String... periodlessExtensions) {
         File tempFile;
 
         try {
             tempFile = File.createTempFile(prefix, suffix);
             tempFile.deleteOnExit();
+			for (final String extension : periodlessExtensions) {
+				new File(tempFile.getParentFile(), tempFile.getName() + "." + extension).deleteOnExit();
+			}
         } catch (IOException ex) {
             throw new RuntimeException("Error creating a temp file", ex);
         }
