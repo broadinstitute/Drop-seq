@@ -35,6 +35,7 @@ import htsjdk.samtools.util.*;
 
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
 import org.broadinstitute.dropseqrna.censusseq.CensusSeqUtils;
+import org.broadinstitute.dropseqrna.utils.FileUtils;
 import org.broadinstitute.dropseqrna.utils.VariantContextProgressLoggerIterator;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
 
@@ -106,6 +107,7 @@ public class FindMonomorphicSitesInDonorPool {
 		try {
 			this.outputVCF = File.createTempFile("tmp_vcf_", ".txt.gz", tmpDir);
 			this.outputVCF.deleteOnExit();
+			FileUtils.addExension(this.outputVCF, "tbi").deleteOnExit();
 		} catch (IOException e) {
 			throw new RuntimeIOException("Exception creating temp file in " + tmpDir.getAbsolutePath(), e);
 		}

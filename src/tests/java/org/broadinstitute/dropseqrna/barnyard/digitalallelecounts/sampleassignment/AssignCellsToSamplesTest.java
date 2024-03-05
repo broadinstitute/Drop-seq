@@ -98,7 +98,7 @@ public class AssignCellsToSamplesTest {
 		assigner.INPUT_BAM=Collections.singletonList(this.ONE_READ_TWO_SNPS_BAM);
 		assigner.VCF=this.MULTI_SNP_TEST_VCF;
 		assigner.NUM_BARCODES=10; // more than enough
-		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);
 		
@@ -120,7 +120,7 @@ public class AssignCellsToSamplesTest {
 		assigner.INPUT_BAM=Collections.singletonList(this.ONE_UMI_TWO_SNPS_BAM);
 		assigner.VCF=this.MULTI_SNP_TEST_VCF;
 		assigner.NUM_BARCODES=10; // more than enough
-		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
+		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);
 		
@@ -147,11 +147,11 @@ public class AssignCellsToSamplesTest {
 		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
 		assigner.VCF=this.VCF_NON_CANONICAL;
 		assigner.NUM_BARCODES=10; // more than enough
-		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
-		assigner.VCF_OUTPUT=File.createTempFile("AssignCellsToSamples", ".vcf");
-		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
-		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
-		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
+		assigner.VCF_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".vcf", "idx");
+		assigner.BAM_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".best_verbose.gz");
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);
 		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));
@@ -181,11 +181,11 @@ public class AssignCellsToSamplesTest {
 		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
 		assigner.VCF=this.VCFC;
 		assigner.NUM_BARCODES=10; // more than enough
-		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
-		assigner.VCF_OUTPUT=File.createTempFile("AssignCellsToSamples", ".vcf");
-		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
-		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
-		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
+		assigner.VCF_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".vcf", "idx");
+		assigner.BAM_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".best_verbose.gz");
 		
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);
@@ -207,11 +207,11 @@ public class AssignCellsToSamplesTest {
 		assigner.VCF=this.VCFC;
 		assigner.SAMPLE_FILE=WRONG_SAMPLE_LIST;
 		assigner.NUM_BARCODES=10; // more than enough
-		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
-		assigner.VCF_OUTPUT=File.createTempFile("AssignCellsToSamples", ".vcf");
-		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
-		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
-		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
+		assigner.VCF_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".vcf", "idx");
+		assigner.BAM_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".best_verbose.gz");
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);		
 	}	
@@ -228,11 +228,11 @@ public class AssignCellsToSamplesTest {
 		assigner.VCF=this.VCFC;
 		assigner.SAMPLE_FILE=DUPLICATE_SAMPLE_LIST;
 		assigner.NUM_BARCODES=10; // more than enough
-		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
-		assigner.VCF_OUTPUT=File.createTempFile("AssignCellsToSamples", ".vcf");
-		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
-		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
-		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
+		assigner.VCF_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".vcf", "idx");
+		assigner.BAM_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".best_verbose.gz");
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);		
 	}
@@ -250,11 +250,11 @@ public class AssignCellsToSamplesTest {
 		assigner.VCF=this.VCF_FAIL_FAST;
 		assigner.TRANSCRIBED_SNP_FAIL_FAST_THRESHOLD=5;		
 		assigner.NUM_BARCODES=10; // more than enough
-		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
-		assigner.VCF_OUTPUT=File.createTempFile("AssignCellsToSamples", ".vcf");
-		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
-		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
-		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
+		assigner.VCF_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".vcf", "idx");
+		assigner.BAM_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".best_verbose.gz");
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);		
 	}
@@ -267,10 +267,10 @@ public class AssignCellsToSamplesTest {
 		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
 		assigner.VCF=this.VCFC;
 		assigner.NUM_BARCODES=10; // more than enough
-		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
-		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
-		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
-		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
+		assigner.BAM_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".best_verbose.gz");
 		assigner.ANSWER_KEY_FILE=ANSWER_KEY;
 		
 		int result = assigner.doWork();
@@ -288,10 +288,10 @@ public class AssignCellsToSamplesTest {
 		assigner.VCF=this.VCFC;
 		assigner.NUM_BARCODES=10; // more than enough
 		assigner.MAX_ERROR_RATE=0.1; // -1 per UMI when the donor is homozygous with the wrong allele is the "max" score.
-		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
-		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
-		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
-		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
+		assigner.BAM_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".best_verbose.gz");
 		int result = assigner.doWork();
 		Assert.assertEquals(result, 0);
 		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_MAXLIKE_OUTPUT, assigner.OUTPUT));
@@ -306,10 +306,10 @@ public class AssignCellsToSamplesTest {
 		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
 		assigner.VCF=this.VCFC;
 		assigner.NUM_BARCODES=10; // more than enough
-		assigner.OUTPUT=File.createTempFile("AssignCellsToSamples", ".output");
-		assigner.BAM_OUTPUT=File.createTempFile("AssignCellsToSamples", ".informative.bam");
-		assigner.VERBOSE_OUTPUT=File.createTempFile("AssignCellsToSamples", ".verbose.gz");
-		assigner.VERBOSE_BEST_DONOR_OUTPUT=File.createTempFile("AssignCellsToSamples", ".best_verbose.gz");
+		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
+		assigner.BAM_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".informative.bam");
+		assigner.VERBOSE_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".verbose.gz");
+		assigner.VERBOSE_BEST_DONOR_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".best_verbose.gz");
 		assigner.CELL_CONTAMINATION_ESTIMATE_FILE=CONTAMINATION_FILE;
 		assigner.ALLELE_FREQUENCY_ESTIMATE_FILE=MAF_ESIMATE_FILE;
 		

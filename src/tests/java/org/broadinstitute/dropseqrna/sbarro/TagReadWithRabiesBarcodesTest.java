@@ -38,15 +38,13 @@ public class TagReadWithRabiesBarcodesTest {
 	
 	
 	@Test
-	public void doWorkTest() throws IOException {
+	public void doWorkTest() {
 		TagReadWithRabiesBarcodes t = new TagReadWithRabiesBarcodes();
 		t.INPUT=TEST_BAM;
-		t.OUTPUT=File.createTempFile("TagReadWithRabiesBarcodesTest", ".bam");
-		t.OUTPUT.deleteOnExit();
-		t.REPORT=File.createTempFile("TagReadWithRabiesBarcodesTest", ".report.txt");
-		t.REPORT.deleteOnExit();
+		t.OUTPUT=TestUtils.getTempReportFile("TagReadWithRabiesBarcodesTest", ".bam");
+		t.REPORT=TestUtils.getTempReportFile("TagReadWithRabiesBarcodesTest", ".report.txt");
 		t.GFP_ANCHOR_SEQUENCE="CGGCATGGACGAGCTGTACAAGTAAGCTA";  //the default, but important that the data uses the default.
-		t.BASE_QUALITY_REPORT=File.createTempFile("TagReadWithRabiesBarcodesTest", ".bq_report.txt");
+		t.BASE_QUALITY_REPORT=TestUtils.getTempReportFile("TagReadWithRabiesBarcodesTest", ".bq_report.txt");
 		
 		int result = t.doWork();
 		Assert.assertEquals(result, 0);
@@ -56,13 +54,11 @@ public class TagReadWithRabiesBarcodesTest {
 	}
 		
 	@Test
-	public void doWorkConsensusTest() throws IOException {
+	public void doWorkConsensusTest() {
 		TagReadWithRabiesBarcodes t = new TagReadWithRabiesBarcodes();
 		t.INPUT=TEST_BAM_CONSENSUS;
-		t.OUTPUT=File.createTempFile("TagReadWithRabiesBarcodesTest", ".consensus.bam");
-		t.OUTPUT.deleteOnExit();
-		t.REPORT=File.createTempFile("TagReadWithRabiesBarcodesTest", ".consensus.report.txt");
-		t.REPORT.deleteOnExit();
+		t.OUTPUT=TestUtils.getTempReportFile("TagReadWithRabiesBarcodesTest", ".consensus.bam");
+		t.REPORT=TestUtils.getTempReportFile("TagReadWithRabiesBarcodesTest", ".consensus.report.txt");
 		t.GENERATE_CONSENSUS=true;
 		t.GFP_ANCHOR_SEQUENCE="CGGCATGGACGAGCTGTACAAGTAAGCTA";  //the default, but important that the data uses the default.
 		

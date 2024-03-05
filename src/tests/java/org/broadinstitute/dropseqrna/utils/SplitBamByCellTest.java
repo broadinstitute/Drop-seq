@@ -51,6 +51,14 @@ public class SplitBamByCellTest {
     private static final File QUERYNAME_SORTED_BAM = new File("testdata/org/broadinstitute/dropseq/metrics/compute_umi_sharing.unmapped.sam");
     private static final String GENE_FUNCTION_TAG = "gf";
 
+    private void markBamsDeleteOnExit(final File fileWithSlug, final String slug, final int count) {
+        final File dir = fileWithSlug.getParentFile();
+        final String filename = fileWithSlug.getName();
+        for (int i = 0; i < count; ++i) {
+            new File(dir, filename.replace(slug, Integer.toString(i))).deleteOnExit();
+        }
+    }
+
     @Test
 	public void testDoWork() {
         final SplitBamByCell bamSplitter = new SplitBamByCell();
@@ -65,6 +73,7 @@ public class SplitBamByCellTest {
         bamSplitter.OUTPUT=TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST=outputBAMList;
         bamSplitter.NUM_OUTPUTS = 3;
+        markBamsDeleteOnExit(bamSplitter.OUTPUT, bamSplitter.OUTPUT_SLUG, bamSplitter.NUM_OUTPUTS);
         bamSplitter.DELETE_INPUTS = false;
         bamSplitter.OVERWRITE_EXISTING = true;
         bamSplitter.REPORT = report;
@@ -134,6 +143,7 @@ public class SplitBamByCellTest {
     @Test
     public void testTargetSplitSizeAndOverwrite() throws IOException {
         SplitBamByCell bamSplitter;
+        final int expectedBams = 3;
 
         File inputBam = TestUtils.getTempReportFile("SplitBamByCell.", ".bam");
         File outputBAMList = TestUtils.getTempReportFile("SplitBamByCell.", ".list");
@@ -144,6 +154,7 @@ public class SplitBamByCellTest {
         bamSplitter = new SplitBamByCell();
         bamSplitter.INPUT = Collections.singletonList(inputBam);
         bamSplitter.OUTPUT = TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
+        markBamsDeleteOnExit(bamSplitter.OUTPUT, bamSplitter.OUTPUT_SLUG, expectedBams);
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.REPORT = reportFile;
         bamSplitter.TARGET_BAM_SIZE = "150K";
@@ -151,7 +162,7 @@ public class SplitBamByCellTest {
         Assert.assertEquals(bamSplitter.doWork(), 0);
 
         List<File> splitBAMFileList = FileListParsingUtils.readFileList(outputBAMList);
-        Assert.assertEquals(splitBAMFileList.size(), 3);
+        Assert.assertEquals(splitBAMFileList.size(), expectedBams);
         for (File f : splitBAMFileList) {
             f.deleteOnExit();
         }

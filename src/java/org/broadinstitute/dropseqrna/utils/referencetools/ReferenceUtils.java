@@ -26,13 +26,17 @@ package org.broadinstitute.dropseqrna.utils.referencetools;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.StringUtil;
+import org.broadinstitute.dropseqrna.utils.FileUtils;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class ReferenceUtils {
 
+	public static final String[] FASTA_EXTENSIONS = {"fasta", "fa"};
+	public static final String FASTA_DICT_EXTENSION = "dict";
 	public static String getSequence (final byte [] fastaRefBases, final Interval interval) {
 		int startBase=interval.getStart();
 		int endBase=interval.getEnd();
@@ -68,5 +72,15 @@ public class ReferenceUtils {
 			}
 		}
 		return (result);
+	}
+
+	public static File getDictForFasta(final File fasta) {
+		String extensionFound;
+		for (final String fastaExtension : FASTA_EXTENSIONS) {
+			if (FileUtils.hasExtension(fasta, fastaExtension)) {
+				return FileUtils.replaceExtension(fasta, fastaExtension, FASTA_DICT_EXTENSION);
+			}
+		}
+		throw new IllegalArgumentException(fasta + " does not end with one of the expected extensions");
 	}
 }
