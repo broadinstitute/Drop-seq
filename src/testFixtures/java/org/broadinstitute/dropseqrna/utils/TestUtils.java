@@ -269,4 +269,12 @@ public class TestUtils {
 		}
 		return true;
 	}
+
+	public static void markBamsDeleteOnExit(final File fileWithSlug, final String slug, final int count) {
+		final File dir = fileWithSlug.getParentFile();
+		final String filename = fileWithSlug.getName();
+		for (int i = 0; i < count; ++i) {
+			new File(dir, filename.replace(slug, Integer.toString(i))).deleteOnExit();
+		}
+	}
 }

@@ -51,14 +51,6 @@ public class SplitBamByCellTest {
     private static final File QUERYNAME_SORTED_BAM = new File("testdata/org/broadinstitute/dropseq/metrics/compute_umi_sharing.unmapped.sam");
     private static final String GENE_FUNCTION_TAG = "gf";
 
-    private void markBamsDeleteOnExit(final File fileWithSlug, final String slug, final int count) {
-        final File dir = fileWithSlug.getParentFile();
-        final String filename = fileWithSlug.getName();
-        for (int i = 0; i < count; ++i) {
-            new File(dir, filename.replace(slug, Integer.toString(i))).deleteOnExit();
-        }
-    }
-
     @Test
 	public void testDoWork() {
         final SplitBamByCell bamSplitter = new SplitBamByCell();
@@ -73,7 +65,7 @@ public class SplitBamByCellTest {
         bamSplitter.OUTPUT=TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST=outputBAMList;
         bamSplitter.NUM_OUTPUTS = 3;
-        markBamsDeleteOnExit(bamSplitter.OUTPUT, bamSplitter.OUTPUT_SLUG, bamSplitter.NUM_OUTPUTS);
+        TestUtils.markBamsDeleteOnExit(bamSplitter.OUTPUT, bamSplitter.OUTPUT_SLUG, bamSplitter.NUM_OUTPUTS);
         bamSplitter.DELETE_INPUTS = false;
         bamSplitter.OVERWRITE_EXISTING = true;
         bamSplitter.REPORT = report;
@@ -154,7 +146,7 @@ public class SplitBamByCellTest {
         bamSplitter = new SplitBamByCell();
         bamSplitter.INPUT = Collections.singletonList(inputBam);
         bamSplitter.OUTPUT = TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
-        markBamsDeleteOnExit(bamSplitter.OUTPUT, bamSplitter.OUTPUT_SLUG, expectedBams);
+        TestUtils.markBamsDeleteOnExit(bamSplitter.OUTPUT, bamSplitter.OUTPUT_SLUG, expectedBams);
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.REPORT = reportFile;
         bamSplitter.TARGET_BAM_SIZE = "150K";
@@ -346,7 +338,7 @@ public class SplitBamByCellTest {
         bamSplitter.INPUT = Collections.singletonList(TEST_BAM);
         bamSplitter.OUTPUT =
                 TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
-        markBamsDeleteOnExit(bamSplitter.OUTPUT, bamSplitter.OUTPUT_SLUG, numOutputs);
+        TestUtils.markBamsDeleteOnExit(bamSplitter.OUTPUT, bamSplitter.OUTPUT_SLUG, numOutputs);
         bamSplitter.OUTPUT_LIST = TestUtils.getTempReportFile("SplitBamByCell.", ".list");
         bamSplitter.NUM_OUTPUTS = numOutputs;
         bamSplitter.DELETE_INPUTS = false;
