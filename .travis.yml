@@ -21,6 +21,7 @@ jobs:
       warnings_are_errors: true
     - language: r
       r: 4.1.0
+      r_github_packages: broadinstitute/Drop-seq/src/R/packages/DropSeq.utilities
       before_install:
         # This needs to happen early because install step loads dependencies from DESCRIPTION
         # The directory is sticky so no need to cd in before_script
