@@ -527,7 +527,7 @@ generateMetaCells<-function (cellDonorMap, dgeFile, outMetaCellFile, selectedCel
 	if (dim (cellDonorMap)[1]==0)
 		return (NULL)
     
-    a=DropSeq.util::read_dge_txt(dgeFile)
+    a=DropSeq.utilities::read_dge_txt(dgeFile)
     donors=sort(unique(cellDonorMap$bestSample))
     r=lapply(donors, makeMetaCell, cellDonorMap, a)
     r=do.call(cbind, r)
