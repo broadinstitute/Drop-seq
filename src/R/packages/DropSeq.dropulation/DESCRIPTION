@@ -1,0 +1,14 @@
+Package: DropSeq.dropulation
+Type: Package
+Title: Tools for analyzing Dropulation data
+Version: 1.0
+Date: 2018-04-09
+Imports: graphics, utils, stats, data.table,RColorBrewer,DropSeq.util,vegan, gridExtra,
+    ggplot2,ggrepel,purrr,stringr,scales
+Remotes: github::broadinstitute/Drop-seq/src/R/packages/DropSeq.utilities
+Author: Jim Nemesh
+Maintainer: McCarroll Lab <dropseq@gmail.com>
+Description: Dropulation and Dropulation census functions.
+License: MIT + file LICENSE
+RoxygenNote: 7.3.1
+Encoding: UTF-8
