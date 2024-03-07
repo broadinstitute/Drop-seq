@@ -19,3 +19,10 @@ jobs:
         # The directory is sticky so no need to cd in before_script
         - cd src/R/packages/DropSeq.utilities
       warnings_are_errors: true
+    - language: r
+      r: 4.1.0
+      before_install:
+        # This needs to happen early because install step loads dependencies from DESCRIPTION
+        # The directory is sticky so no need to cd in before_script
+        - cd src/R/packages/DropSeq.dropulation
+      warnings_are_errors: true
