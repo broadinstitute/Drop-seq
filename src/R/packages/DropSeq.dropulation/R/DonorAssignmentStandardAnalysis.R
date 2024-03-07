@@ -592,7 +592,7 @@ writeSummaryStats<-function (summaryStats, outSummaryStatsFile) {
 #' of cells. (optional)
 #' @param selectedCellsForMetaCellFile Limits meta cell expression to a subset of donors.
 #' @param outCellBarcodesFile cell barcodes for donors in the experiment (optional)
-#' @import grDevices graphics utils stats data.table RColorBrewer DropSeq.util vegan
+#' @import grDevices graphics utils stats data.table RColorBrewer DropSeq.utilities vegan
 #' @export
 donorAssignmentQC<-function (expName="", likelihoodSummaryFile, doubletLikelihoodFile, dgeSummaryFile=NULL, dgeRawSummaryFile=NULL,
 readsPerCellFile=NULL, censusFile=NULL, expectedSamplesFile, outFileLikelyDonors=NULL, outDonorToCellMap=NULL, outPDF=NULL,
