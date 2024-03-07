@@ -25,5 +25,5 @@ jobs:
         # This needs to happen early because install step loads dependencies from DESCRIPTION
         # The directory is sticky so no need to cd in before_script
         - cd src/R/packages/DropSeq.dropulation
-        - Rscript -e 'install.packages("devtools");remotes::install_github("broadinstitute/Drop-seq", subdir="src/R/packages/DropSeq.utilities"))
+        - Rscript -e 'install.packages("devtools");remotes::install_github("broadinstitute/Drop-seq", subdir="src/R/packages/DropSeq.utilities")'
       warnings_are_errors: true
