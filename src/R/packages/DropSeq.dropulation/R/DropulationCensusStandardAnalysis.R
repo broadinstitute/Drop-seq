@@ -78,6 +78,7 @@ plotCensusRollCall<-function (rollCallFile, censusFile, donorListFile, expName) 
 		
 	
 	#add census converged info.
+	strTitle2=""
 	strTitle3=""
 	if (h$V3=="CONVERGED=false") strTitle2="Census did not converge"
 	#if roll call didn't ascertain all individuals
