@@ -89,11 +89,15 @@ plotDoubletProbability<-function (df, expName="", summaryStats, doubletPvalueThr
     pctSinglets=round (numSinglets/dim (df)[1]*100,1)
     
     # Create the histogram
+    
+    # There's a error with the new ggplot2 code (V 3.5) where this produces a warning if you use geom_segment directly.
+    # This is similar to: https://github.com/tidyverse/ggplot2/issues/5762
+    # Using hacky fix for now.
     p=ggplot(df, aes(x = doublet_pval)) +
     	geom_histogram(bins = 100, fill = "skyblue", color = "black", show.legend = FALSE) +
     	labs(x = "Doublet Probability", y = "Frequency") +
     	ggtitle(paste(expName, "\nCells remaining [", numSinglets, "] [", pctSinglets, "%]")) +
-    	geom_segment(aes(x =doubletPvalueThreshold , y = 0, xend = doubletPvalueThreshold, yend = Inf), col='red') +
+    	annotate("segment", x =doubletPvalueThreshold , y = 0, xend = doubletPvalueThreshold, yend = Inf, colour = "red") + 
     	annotate("text", x = 0.5, y = Inf, label = paste("Confident doublet rate", round(summaryStats$pct_confident_doublets, 2), "%"),hjust = 0.5, vjust = 2, size = 7) +
     	theme(plot.title = element_text(size = 14, hjust = 0.5, face="bold"), axis.text = element_text(size = 12), axis.title = element_text(size = 12))
     
