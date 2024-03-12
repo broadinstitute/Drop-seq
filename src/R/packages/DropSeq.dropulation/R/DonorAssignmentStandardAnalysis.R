@@ -176,19 +176,23 @@ plotCommonDonorAssignmentsWithUnexpected<-function (donors, es, expName) {
 	plotOne<-function (d2, expName="") {
 		d=vegan::diversity(d2$count)
 		eq=d/log(dim(d2)[1])
-		strTitle=paste (expName, "\n", "SW Div: ", sprintf("%.2f",round(d,2)), "; SW Eq: ", sprintf("%.2f", round (eq,2)), sep="")
+		strTitle=paste (expName, "\n", "SW Div: ", sprintf("%.2f",round(d,2)), "; SW Eq: ", sprintf("%.2f", round (eq,3)), sep="")
 		d2$index=1:dim(d2)[1]
+		maxY=max(d2$count)*1.1
 		p=ggplot(d2, aes(x = index, y = count, color = expected)) +
 			geom_line(linetype = "dashed", color = "black") +   # Add lines
 			geom_point(data = d2, aes(color = expected), size = 4) +
 			labs(x = "", y = "Number of cells assigned to donor", color = "Expected") +
 			scale_x_continuous(breaks = seq(from = 1, to = dim(d2)[1]), labels = d2$donor, minor_breaks = NULL) +
+			scale_y_continuous(expand = c(0, 0), limits = c(0, maxY)) +
 			ggtitle(strTitle) +
 			theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 10), 
 				  axis.text.y = element_text(size = 10),
 				  axis.title = element_text(size = 12),
 				  plot.title = element_text(size = 14),
 				  legend.position = c(0.8, 0.8)) +
+				  # This is for ggplot 3.5, which we don't want to force yet.
+#				  legend.position = "inside", legend.position.inside = c(0.8, 0.8)) +
 			theme(panel.background = element_rect(colour = "black")) +
 			scale_color_manual(values = c("black", "red"), 
 							   breaks = c(TRUE, FALSE),
@@ -385,8 +389,8 @@ calculateMeanUMIsPerDonor<-function (expName, cellDF, dgeSummaryFile=NULL, donor
     	print (p)
     }
     
-    plotOne(df, expName)
-    plotOne(df, expName, maxY=2*max(unlist(medianUMisPerDonor)))
+    #plotOne(df, expName)
+    #plotOne(df, expName, maxY=2*max(unlist(medianUMisPerDonor)))
     
     #donor UMI distribution
     d=vegan::diversity(donors$totalUMIs)
@@ -395,7 +399,7 @@ calculateMeanUMIsPerDonor<-function (expName, cellDF, dgeSummaryFile=NULL, donor
     donors=donors[order(donors$totalUMIs, decreasing = T),]    
     donors$donor=factor(donors$donor, levels=donors$donor)
     
-    strTitle=paste("Distribution of UMIs across donors\n",dim (donors)[1], " donors; ", round (sum (donors$totalUMIs)/1e6,1), "M UMIs; SW Div: ", sprintf("%.2f",round(d,2)), "; SW Eq: ", sprintf("%.2f", round (eq,2)), sep="")
+    strTitle=paste("Distribution of UMIs across donors\n",dim (donors)[1], " donors; ", round (sum (donors$totalUMIs)/1e6,1), "M UMIs; SW Div: ", sprintf("%.2f",round(d,2)), "; SW Eq: ", sprintf("%.2f", round (eq,3)), sep="")
 
     p=ggplot(donors, aes(x = donor, y = totalUMIs / 1e6, fill = 'light blue')) +
     	geom_bar(stat = "identity", color = "black") +
@@ -459,25 +463,27 @@ plotRatioUMIsCaptuedToCellSize<-function (dgeRawSummaryFile, cellDF, cellsToKeep
     # after_stat(!!str2lang("density")) is a replacement for using ..density.. that doesn't make R CMD check mad.
     # https://stackoverflow.com/questions/74756655/how-to-replace-the-dot-dot-notation-in-ggplot2geom-histogramy-density
     
-    plotHistWithlog10Axis <- function(df, var, xlab, ylab, main) {
+    plotHistWithlog10Axis <- function(df, var, xlab, ylab, main, xLims) {
     	p=ggplot(df, aes(x = !!sym(var))) + 
     		geom_histogram(aes(y = after_stat(!!str2lang("density"))), bins = 100, colour = 1, fill = "white") +
     		geom_density() +
-    		scale_x_log10(labels = scales::trans_format('log10', scales::math_format(10^.x))) +
+    		scale_x_log10(labels = scales::trans_format('log10', scales::math_format(10^.x)), limits=xLims) +
     		labs(x = xlab, y = ylab, title = main) +
     		theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 10), 
     			  axis.text.y = element_text(size = 10),
     			  axis.title = element_text(size = 12),
     			  plot.title = element_text(size = 14))
-    	print (p)
+    	
+    	return (p)
     }
     
-    plotHistWithlog10Axis(dge, var='NUM_TRANSCRIPTS', xlab="number of UMIs per cell [log10]",  ylab="number of cells", main="Number of UMIs per cell [before UMI cleanup]")
-    plotHistWithlog10Axis(df, var='singlet_num_inform_umis', xlab="number of UMIs on SNP per cell [log10]",  ylab="number of cells", main="Number of informative SNP UMIs per cell")
+    maxXLog10=ceiling(log10(max(dge$NUM_TRANSCRIPTS, dge$singlet_num_inform_umis)))+1
+    xLims=c(1, 10^maxXLog10)
+    p1=plotHistWithlog10Axis(dge, var='NUM_TRANSCRIPTS', xlab="UMIs per cell [log10]",  ylab="number of cells", main="Expressed UMIs", xLims=xLims)
+    p2=plotHistWithlog10Axis(df, var='singlet_num_inform_umis', xlab="Informative UMIs per cell [log10]",  ylab="number of cells", main="Informative UMIs", xLims=xLims)
     
     maxY=max(1, max (dge$fractionSNPUMIs)*1.1)
-
-    p=ggplot(dge, aes(x = NUM_TRANSCRIPTS, y = fractionSNPUMIs)) +
+    p3=ggplot(dge, aes(x = NUM_TRANSCRIPTS, y = fractionSNPUMIs)) +
     	geom_point(size = 0.25) +
     	labs(x = "num transcripts", y = "fraction of UMIs that are informative") +
     	coord_cartesian(ylim=c(0, maxY)) +
@@ -486,16 +492,14 @@ plotRatioUMIsCaptuedToCellSize<-function (dgeRawSummaryFile, cellDF, cellsToKeep
     		  axis.text.y = element_text(size = 10),
     		  axis.title = element_text(size = 12),
     		  plot.title = element_text(size = 14)) +
-    	theme(panel.background = element_rect(colour = "black"))
+    	theme(panel.background = element_rect(colour = "black")) +
+    	scale_x_log10(labels = scales::trans_format('log10', scales::math_format(10^.x)))
     
-    
-    
-    print (p)	
     
     sortedDonorNames=names (sort (tapply(dge$fractionSNPUMIs, FUN=median, INDEX=dge$donor)))
     dge$donor=factor(dge$donor, levels=sortedDonorNames)
     
-    p=ggplot(dge, aes(x = donor, y = fractionSNPUMIs)) +
+    p4=ggplot(dge, aes(x = donor, y = fractionSNPUMIs)) +
     	geom_boxplot() +
     	ggtitle("Informative UMIs per donor") +
     	labs(x = "", y = "fraction of UMIs that are informative") +
@@ -504,8 +508,8 @@ plotRatioUMIsCaptuedToCellSize<-function (dgeRawSummaryFile, cellDF, cellsToKeep
     		  axis.title = element_text(size = 12),
     		  plot.title = element_text(size = 14))
     
-    print (p)
-    
+    # the xlimits on the histograms are slightly cranky but work fine.
+    suppressWarnings(gridExtra::grid.arrange(p1, p3, p2, p4, nrow = 2))
     
 }
 
@@ -596,12 +600,14 @@ writeSummaryStats<-function (summaryStats, outSummaryStatsFile) {
 #' of cells. (optional)
 #' @param selectedCellsForMetaCellFile Limits meta cell expression to a subset of donors.
 #' @param outCellBarcodesFile cell barcodes for donors in the experiment (optional)
+#' @param anonymizeDonors If set to true, donor IDs are changed to DONOR_1, DONOR_2, etc.  Purely for sharing 
+#' visualizations of not-yet-public data.
 #' @import grDevices graphics utils stats data.table RColorBrewer DropSeq.utilities vegan
 #' @export
 donorAssignmentQC<-function (expName="", likelihoodSummaryFile, doubletLikelihoodFile, dgeSummaryFile=NULL, dgeRawSummaryFile=NULL,
 readsPerCellFile=NULL, censusFile=NULL, expectedSamplesFile, outFileLikelyDonors=NULL, outDonorToCellMap=NULL, outPDF=NULL,
 outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseDoublets=F, minNumUMIs=0, dgeFile=NULL,
-    outMetaCellFile=NULL, selectedCellsForMetaCellFile=NULL, outCellBarcodesFile=NULL) {
+    outMetaCellFile=NULL, selectedCellsForMetaCellFile=NULL, outCellBarcodesFile=NULL, anonymizeDonors=FALSE) {
 
     validateFilesExist(likelihoodSummaryFile, doubletLikelihoodFile, dgeRawSummaryFile, dgeSummaryFile, censusFile, expectedSamplesFile)
 
@@ -617,9 +623,13 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
 		
     	#all filtering/labeling of doublet/singlet status occurs here.    
     	#note: there's a parameter to convert all diffuse doublet to singlets, but it's not used.
-    	cellDF=getSingletDoubletDF(likelihoodSummaryFile, doubletLikelihoodFile, expectedSamplesFile=expectedSamplesFile, 
+    	z=getSingletDoubletDF(likelihoodSummaryFile, doubletLikelihoodFile, expectedSamplesFile=expectedSamplesFile, 
     							   doubletPvalue=doubletPvalueThreshold, bestPairPvalue=doubletPvalueThreshold, 
-    							   ignoreDiffuseDoublets=FALSE, fdrThreshold=alpha)
+    							   ignoreDiffuseDoublets=FALSE, fdrThreshold=alpha, anonymizeDonors=anonymizeDonors)
+    	
+    	#pull out the dataframe and expected samples, which may have been remapped to anon IDs.
+    	cellDF=z$cellDF
+    	expected_samples=z$expected_samples
     	
     	summaryStats$total_cells=dim(cellDF)[1]
         if (!is.na(minNumUMIs)) {
@@ -656,7 +666,7 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
         plotAverageLikelihood (df=cellDF)
         
         #plot the average likelihood partitioned by donor assignment.
-        plotAverageLikelihoodPerDonor(df=cellDF, minimumFractionDonor)
+        # plotAverageLikelihoodPerDonor(df=cellDF, minimumFractionDonor)
     }
 
     r=plotCommonDonors(df=cellDF, minimumFractionDonor)
@@ -674,12 +684,8 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
     cellEquitability = getCellEquitability(cellDonorMap)
     summaryStats$cell_equitability=cellEquitability
     
-    #this could probably be nicer by not re-reading the expected samples file.
-    if (!is.null(expectedSamplesFile)) {
-        es=read.table(expectedSamplesFile, header=F, stringsAsFactors=F)
-        plotCommonDonorAssignmentsWithUnexpected(donors, es, expName)
-    }
-
+    plotCommonDonorAssignmentsWithUnexpected(donors, expected_samples, expName)
+    
     cellsToKeep=cellDonorMap$cell
     zz=calculateMeanUMIsPerDonor(expName, cellDF, dgeSummaryFile, donors, cellsToKeep=cellsToKeep)
     
@@ -702,6 +708,8 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
 }
 
 
+
+
 #' Plot the average penality per UMI for each cell
 #' 
 #' Color cells by their class.
@@ -720,6 +728,8 @@ plotAverageLikelihood<-function (df) {
 	factorOrder=intersect(factorOrder, df2$label)
 	df2$label=factor(df2$label, levels=factorOrder)
 	
+	cols=c('single pass FDR'='green', 'single fail FDR'='blue', 'confident doublet'='red', 'diffuse contamination'='purple')
+	
 	p1=ggplot(df2, aes(x = singlet_num_inform_umis, y = normalizedBestLikelihood, color=label)) +
 		geom_point(alpha=0.5, size=0.5) +
 		scale_x_continuous(trans='log10') +
@@ -728,8 +738,8 @@ plotAverageLikelihood<-function (df) {
 		ggtitle("Donor assignment normalized likelihood") +
 		theme_grey(base_size = 10) +
 		guides(colour = guide_legend(override.aes = list(size=3))) +
-		scale_color_discrete(name="") 
-	
+		scale_colour_manual(values=cols, name="")
+		
 	#calculate the average penalty by class.
 	avg=tapply(X=df2$normalizedBestLikelihood, INDEX = df2$label, FUN = median)
 	
@@ -737,12 +747,13 @@ plotAverageLikelihood<-function (df) {
 	avg$label=factor(avg$label, levels=factorOrder)
 	
 	p2=ggplot(data=avg, aes(x=label, y=value, fill=label)) + 
-		geom_bar(position = 'dodge', stat='identity') +
+		geom_bar(position = 'dodge', stat='identity', alpha=0.5) +
 		geom_text(aes(label=value), position=position_dodge(width=0.9), vjust=-0.25, size=4) +
 		theme_grey(base_size = 10) +
 		theme(legend.position="none") +
 		ylab("Median Score") +
-		xlab("")
+		xlab("") +
+		scale_fill_label_pretty()
 	
 	gridExtra::grid.arrange(p1, p2, nrow = 2, heights=c(0.7, 0.3))
 	
@@ -846,21 +857,30 @@ plotFractionImpossibleAllelesFromDoublets<-function (df, expName, fdrThreshold=0
     idx=which( (x$label=="single_pass_FDR") | x$label_simple!="singlet")
     x=x[idx,]
     
-    strTitle=paste("Singlets (FDR<=", fdrThreshold, ") + doublets", sep="")
-    p1 <- ggplot2::ggplot(data=x, aes(x=frac_s1_wrong, group=label, fill=label)) +
+    df2=data.table::copy(x)
+    df2$label=gsub("_", " ", df2$label)
+    factorOrder=c("single pass FDR", "single fail FDR", "diffuse contamination","confident doublet")
+    factorOrder=intersect(factorOrder, df2$label)
+    df2$label=factor(df2$label, levels=factorOrder)
+    
+    singletErrorRateString=paste(round (median (x[x$label=="single_pass_FDR",]$frac_s1_wrong)*100,2), "%", sep="")
+    
+    strTitle=paste("Singlets (FDR<=", fdrThreshold, ") + doublets", "\nSinglet Error Rate ", singletErrorRateString, sep="")
+    p1 <- ggplot2::ggplot(data=df2, aes(x=frac_s1_wrong, group=label, fill=label)) +
         ggplot2::geom_density(adjust=1.5, alpha=.2) +
         ggplot2::ggtitle (paste(expName, strTitle, sep="\n")) +
-        xlab("fraction donor one observed alleles in error")
-
-    singletErrorRateString=paste(round (median (x[x$label=="single_pass_FDR",]$frac_s1_wrong)*100,2), "%", sep="")
+        xlab("fraction of alleles that could not be generated by donor one") +
+    	scale_fill_label_pretty()
 
     p2 <- ggplot2::ggplot(data=x, aes(x=frac_s1_wrong, y=frac_s2_wrong, group=label, col=label)) +
         ggplot2::geom_point(alpha=0.2, size=1) +
         ggplot2::ggtitle (paste("Singlet Error Rate", singletErrorRateString)) +
         xlab("fraction donor one allele errors") +
-        ylab("fraction donor two allele errors")
+        ylab("fraction donor two allele errors") +
+    	scale_fill_label_pretty()
 
-    gridExtra::grid.arrange(p1, p2, nrow=2)
+    #gridExtra::grid.arrange(p1, p2, nrow=2)
+    gridExtra::grid.arrange(p1, nrow=1)
 
 }
 
@@ -900,7 +920,8 @@ evaluateDoubletRateSimple<-function (df, fdrThreshold=0.05) {
 #reads in the singlets and doublets, return the median likelihood and best likelihood scores.  Flag cells as doublets based on the pvalue
 #bin data by either some set number of qualtiles or a number of fixed bin sizes.
 getSingletDoubletDF<-function (likelihoodSummaryFile, doubletLikelihoodFile, expectedSamplesFile=NULL, 
-							   doubletPvalue=0.9, bestPairPvalue=0.9, ignoreDiffuseDoublets=FALSE, fdrThreshold=0.05) {
+							   doubletPvalue=0.9, bestPairPvalue=0.9, ignoreDiffuseDoublets=FALSE, 
+							   fdrThreshold=0.05, anonymizeDonors=FALSE) {
 	a=read.table(likelihoodSummaryFile, header=T, stringsAsFactors = F, sep="\t")
 	b=read.table(doubletLikelihoodFile, header=T, stringsAsFactors = F, sep="\t")
 	
@@ -946,7 +967,19 @@ getSingletDoubletDF<-function (likelihoodSummaryFile, doubletLikelihoodFile, exp
 	#label each singlet with if it passes the current FDR.
 	#important later when the FDR threshold for the subset of diffuse doublets that are rescued
 	df=labelSinglets(df, fdrThreshold = fdrThreshold)
-	return (df)
+	
+	
+	#end early if no need to change donor names.
+	if (!anonymizeDonors)
+		return (list(cellDF=df, expected_samples=e))
+		
+	
+	#Anonymize donors if requested.
+	allDonorNames=unique (c(e$V1, df$donor))
+	anonDonorNames <- paste("DONOR", as.numeric(factor(allDonorNames)), sep="_")
+	df$donor=anonDonorNames[match(df$donor, allDonorNames)]
+	e$V1=anonDonorNames[match(e$V1, allDonorNames)]
+	return (list(cellDF=df, expected_samples=e))
 }
 
 labelSinglets<-function (x, fdrThreshold=0.05) {
@@ -994,6 +1027,26 @@ labelDoublets<-function (x, doubletPvalue=0.9, bestPairPvalue=0.9, ignoreDiffuse
 	
 	return (x)
 }
+
+# A unified color scheme for doublet/singlet labels
+scale_fill_label <- function(...){
+	ggplot2:::manual_scale(
+		'fill', 
+		values = setNames(c('green', 'blue', 'red', 'purple'), c('single_pass_FDR', 'single_fail_FDR', 'confident_doublet', 'diffuse_contamination')), 
+		...
+	)
+}
+
+scale_fill_label_pretty <- function(...){
+	ggplot2:::manual_scale(
+		'fill', 
+		values = setNames(c('green', 'blue', 'red', 'purple'), c('single pass FDR', 'single fail FDR', 'confident doublet', 'diffuse contamination')), 
+		...
+	)
+}
+
+
+
 
 #FDR threshold only applies to doublets.
 calculateFractionImpossibleSingleDonors<-function (df, fdrThreshold=0.05) {

@@ -8,3 +8,5 @@ jacoco_reports
 
 .idea
 
+.Rproj.user
+.Rhistory
