@@ -24,7 +24,8 @@ donorAssignmentQC(
   dgeFile = NULL,
   outMetaCellFile = NULL,
   selectedCellsForMetaCellFile = NULL,
-  outCellBarcodesFile = NULL
+  outCellBarcodesFile = NULL,
+  anonymizeDonors = FALSE
 )
 }
 \arguments{
@@ -88,6 +89,9 @@ of cells. (optional)}
 \item{selectedCellsForMetaCellFile}{Limits meta cell expression to a subset of donors.}
 
 \item{outCellBarcodesFile}{cell barcodes for donors in the experiment (optional)}
+
+\item{anonymizeDonors}{If set to true, donor IDs are changed to DONOR_1, DONOR_2, etc.  Purely for sharing 
+visualizations of not-yet-public data.}
 }
 \description{
 This generates a QC report with a number of useful plots, along with optional
