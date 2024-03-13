@@ -20,21 +20,17 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        r-version: ['4.1.1']
-
+    runs-on: ubuntu-latest
+    container:
+      image: rocker/r2u:latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up R ${{ matrix.r-version }}
-        uses: r-lib/actions/setup-r@f57f1301a053485946083d7a45022b278929a78a
-        with:
-          r-version: ${{ matrix.r-version }}
+      - name: SessionInfo
+        run: R -q -e 'sessionInfo()'
       - name: Install dependencies
         run: |
           setwd("src/R/packages/DropSeq.utilities")
-          install.packages(c("remotes", "rcmdcheck"))
+          install.packages(c("rcmdcheck"))
           remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
       - name: Check
