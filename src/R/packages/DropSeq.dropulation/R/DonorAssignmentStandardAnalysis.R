@@ -602,7 +602,8 @@ writeSummaryStats<-function (summaryStats, outSummaryStatsFile) {
 #' @param outCellBarcodesFile cell barcodes for donors in the experiment (optional)
 #' @param anonymizeDonors If set to true, donor IDs are changed to DONOR_1, DONOR_2, etc.  Purely for sharing 
 #' visualizations of not-yet-public data.
-#' @import grDevices graphics utils stats data.table RColorBrewer DropSeq.utilities vegan
+#' @import grDevices graphics utils stats data.table RColorBrewer  vegan
+#' @suggest DropSeq.utilities
 #' @export
 donorAssignmentQC<-function (expName="", likelihoodSummaryFile, doubletLikelihoodFile, dgeSummaryFile=NULL, dgeRawSummaryFile=NULL,
 readsPerCellFile=NULL, censusFile=NULL, expectedSamplesFile, outFileLikelyDonors=NULL, outDonorToCellMap=NULL, outPDF=NULL,

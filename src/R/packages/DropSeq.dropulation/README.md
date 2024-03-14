@@ -19,3 +19,7 @@ It is not recommended to install the latest version of DropSeq.dropulation from
 # install.packages("devtools")
 devtools::install_github("broadinstitute/Drop-seq", subdir="src/R/packages/DropSeq.dropulation")
 ```
+
+Note that dependent package DropSeq.utilities is Suggests: rather than Imports: in order
+to make it less likely that a user will install a possibly-unstable version of that package
+rather than a released version.
