@@ -24,8 +24,8 @@
 
 xmx=4g
 
-progname=`basename $0`
-thisdir=`dirname $0`
+progname=$(basename "$0")
+thisdir=$(dirname "$0")
 verbose=0
 
 USAGE=$(cat << EOF
@@ -37,9 +37,9 @@ Program options:
 EOF
 )
 
-function usage () {
+usage () {
     echo "$USAGE" >&2
-    $thisdir/bin/dropseq $progname -h
+    "$thisdir"/bin/dropseq "$progname" -h
 }
 
 set -e
@@ -56,11 +56,11 @@ while getopts ":m:vh" options; do
 
   esac
 done
-shift $(($OPTIND - 1))
+shift $((OPTIND - 1))
 
 broad_tmpdir_root=/broad/hptmp
-if [ -z "$TMPDIR" -a -d $broad_tmpdir_root ]
-then export TMPDIR=$broad_tmpdir_root/$USER
+if [ -z "$TMPDIR" ] && [ -d $broad_tmpdir_root ]
+then export TMPDIR="$broad_tmpdir_root/$USER"
 fi
 
 
@@ -69,8 +69,8 @@ if [ -n "$TMPDIR" ]
 then JAVA_OPTS="$JAVA_OPTS -Djava.io.tmpdir=$TMPDIR"
 fi
 
-if (( $verbose ))
+if [ "$verbose" -eq 1 ]
 then set -x
 fi
 
-JAVA_OPTS="$JAVA_OPTS" $thisdir/bin/dropseq $progname "$@"
+JAVA_OPTS="$JAVA_OPTS" "$thisdir"/bin/dropseq "$progname" "$@"
