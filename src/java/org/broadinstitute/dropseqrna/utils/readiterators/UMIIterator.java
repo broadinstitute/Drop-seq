@@ -166,6 +166,9 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		Iterator<SAMRecord> filteringIterator =
                 new MissingTagFilteringIterator(headerAndIterator.iterator, cellBarcodeTag, geneTag, molecularBarcodeTag);
 
+		// Filter out reads that STARsolo has marked as chimeric
+		filteringIterator = new STARSoloChimericReadFilteringIterator(filteringIterator, molecularBarcodeTag);
+
 		// Filter reads on map quality.  Optionally keep non-primary reads at low map quality.
 		boolean rejectNonPrimaryReads = readMQ>3;
 		if (!rejectNonPrimaryReads)

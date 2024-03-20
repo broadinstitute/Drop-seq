@@ -38,13 +38,7 @@ import org.broadinstitute.dropseqrna.utils.MultiComparator;
 import org.broadinstitute.dropseqrna.utils.ProgressLoggingIterator;
 import org.broadinstitute.dropseqrna.utils.SamWriterSink;
 import org.broadinstitute.dropseqrna.utils.StringTagComparator;
-import org.broadinstitute.dropseqrna.utils.readiterators.ChromosomeFilteringIterator;
-import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionIteratorWrapper;
-import org.broadinstitute.dropseqrna.utils.readiterators.MapQualityFilteredIterator;
-import org.broadinstitute.dropseqrna.utils.readiterators.MissingTagFilteringIterator;
-import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
-import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
-import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
+import org.broadinstitute.dropseqrna.utils.readiterators.*;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -103,11 +97,12 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 		final ProgressLogger logger = new ProgressLogger(LOG);
 
         // add a progress logger.
-        ProgressLoggingIterator loggingIterator = new ProgressLoggingIterator (headerAndIter.iterator, logger);
+        final ProgressLoggingIterator loggingIterator = new ProgressLoggingIterator (headerAndIter.iterator, logger);
+		final STARSoloChimericReadFilteringIterator chimericReadFilteringIterator = new STARSoloChimericReadFilteringIterator(loggingIterator, molecularBarcodeTag);
 
         // filter out to contigs in the interval list.
         Set<String> contigsToFilter = snpIntervals.getIntervals().stream().map(x -> x.getContig()).collect(Collectors.toSet());
-        ChromosomeFilteringIterator cfi = new ChromosomeFilteringIterator(loggingIterator, contigsToFilter, false);
+        ChromosomeFilteringIterator cfi = new ChromosomeFilteringIterator(chimericReadFilteringIterator, contigsToFilter, false);
         
         // Filter reads on map quality
      	MapQualityFilteredIterator filteringIterator = new MapQualityFilteredIterator(cfi, readMQ, true);
