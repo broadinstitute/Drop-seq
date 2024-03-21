@@ -21,9 +21,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-source $(dirname $0)/defs.sh
+source "$(dirname "$0")"/defs.sh
 
-progname=`basename $0`
+progname=$(basename "$0")
 function usage () {
     cat >&2 <<EOF
 USAGE: $progname [options]
@@ -53,16 +53,16 @@ unset species
 unset gtf
 filtered_gene_biotypes=
 outdir=.
-star_executable=`which STAR 2> /dev/null`
-samtools_executable=`which samtools 2> /dev/null`
-bgzip_executable=`which bgzip 2> /dev/null`
+star_executable=$(which STAR 2> /dev/null)
+samtools_executable=$(which samtools 2> /dev/null)
+bgzip_executable=$(which bgzip 2> /dev/null)
 set -e
 # Fail if any of the commands in a pipeline fails
 set -o pipefail
 
 
 
-while getopts ":n:r:s:g:f:o:a:i:b:ev" options; do
+while getopts ":n:r:s:g:f:o:a:i:b:evh" options; do
   case $options in
     n ) reference_name=$OPTARG;;
     r ) reference_fasta=$OPTARG;;
@@ -73,7 +73,7 @@ while getopts ":n:r:s:g:f:o:a:i:b:ev" options; do
     a ) star_executable=$OPTARG;;
     i ) samtools_executable=$OPTARG;;
     b ) bgzip_executable=$OPTARG;;
-    e ) ECHO=echo;;
+    e ) ECHO='echo';;
     v ) verbose=1;;
     h ) usage
           exit 1;;
@@ -83,17 +83,17 @@ while getopts ":n:r:s:g:f:o:a:i:b:ev" options; do
           exit 1;;
   esac
 done
-shift $(($OPTIND - 1))
+shift $((OPTIND - 1))
 
 check_TMPDIR
 
-: ${reference_name:?"ERROR: -n is required"}
-: ${reference_fasta:?"ERROR: -r is required"}
-: ${species:?"ERROR: -s is required"}
-: ${gtf:?"ERROR: -g is required"}
-: ${star_executable:?"ERROR: -s is required if STAR is not on PATH"}
-: ${samtools_executable:?"ERROR: -i is required if samtools is not on PATH"}
-: ${bgzip_executable:?"ERROR: -b is required if bgzip is not on PATH"}
+: "${reference_name:?"ERROR: -n is required"}"
+: "${reference_fasta:?"ERROR: -r is required"}"
+: "${species:?"ERROR: -s is required"}"
+: "${gtf:?"ERROR: -g is required"}"
+: "${star_executable:?"ERROR: -s is required if STAR is not on PATH"}"
+: "${samtools_executable:?"ERROR: -i is required if samtools is not on PATH"}"
+: "${bgzip_executable:?"ERROR: -b is required if bgzip is not on PATH"}"
 
 
 output_fasta=$outdir/$reference_name.fasta
@@ -101,21 +101,21 @@ sequence_dictionary=$outdir/$reference_name.dict
 output_gtf=$outdir/$reference_name.gtf
 reduced_gtf=$outdir/$reference_name.reduced.gtf
 
-invoke_picard NormalizeFasta INPUT=$reference_fasta OUTPUT=$output_fasta
-if [ -e $sequence_dictionary ]
-then $ECHO rm $sequence_dictionary
+invoke_picard NormalizeFasta INPUT="$reference_fasta" OUTPUT="$output_fasta"
+if [ -e "$sequence_dictionary" ]
+then $ECHO rm "$sequence_dictionary"
 fi
-invoke_picard CreateSequenceDictionary REFERENCE=$output_fasta OUTPUT=$sequence_dictionary SPECIES=$species
-invoke_dropseq FilterGtf GTF=$gtf SEQUENCE_DICTIONARY=$sequence_dictionary OUTPUT=$output_gtf $filtered_gene_biotypes
-invoke_dropseq ConvertToRefFlat ANNOTATIONS_FILE=$output_gtf SEQUENCE_DICTIONARY=$sequence_dictionary OUTPUT=$outdir/$reference_name.refFlat
-invoke_dropseq ReduceGtf GTF=$output_gtf SEQUENCE_DICTIONARY=$sequence_dictionary OUTPUT=$reduced_gtf
-invoke_dropseq CreateIntervalsFiles SEQUENCE_DICTIONARY=$sequence_dictionary REDUCED_GTF=$reduced_gtf PREFIX=$reference_name \
-           OUTPUT=$outdir
-$ECHO mkdir -p $outdir/STAR
-check_invoke $star_executable --runMode genomeGenerate --genomeDir $outdir/STAR --genomeFastaFiles $output_fasta \
-           --sjdbGTFfile $output_gtf --sjdbOverhang 100
-check_invoke $bgzip_executable $output_fasta
-check_invoke $samtools_executable faidx $output_fasta.gz
+invoke_picard CreateSequenceDictionary REFERENCE="$output_fasta" OUTPUT="$sequence_dictionary" SPECIES="$species"
+invoke_dropseq FilterGtf GTF="$gtf" SEQUENCE_DICTIONARY="$sequence_dictionary" OUTPUT="$output_gtf $filtered_gene_biotypes"
+invoke_dropseq ConvertToRefFlat ANNOTATIONS_FILE="$output_gtf" SEQUENCE_DICTIONARY="$sequence_dictionary" OUTPUT="$outdir/$reference_name".refFlat
+invoke_dropseq ReduceGtf GTF="$output_gtf" SEQUENCE_DICTIONARY="$sequence_dictionary" OUTPUT="$reduced_gtf"
+invoke_dropseq CreateIntervalsFiles SEQUENCE_DICTIONARY="$sequence_dictionary" REDUCED_GTF="$reduced_gtf" PREFIX="$reference_name" \
+           OUTPUT="$outdir"
+$ECHO mkdir -p "$outdir"/STAR
+check_invoke "$star_executable" --runMode genomeGenerate --genomeDir "$outdir"/STAR --genomeFastaFiles "$output_fasta" \
+           --sjdbGTFfile "$output_gtf" --sjdbOverhang 100
+check_invoke "$bgzip_executable" "$output_fasta"
+check_invoke "$samtools_executable" faidx "$output_fasta".gz
 
 echo "Reference metadata created sucessfully"
 

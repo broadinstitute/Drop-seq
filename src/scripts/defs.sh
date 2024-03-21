@@ -22,63 +22,66 @@
 
 # Shared definitions to be sourced by other scripts
 
-thisdir=$(dirname $0)
+thisdir=$(dirname "$0")
 
 
-function error_exit() {
-    echo "ERROR: $@
+error_exit() {
+    echo "ERROR: $*
     " >&2
     exit 1
 }
 
-if [[ -z "$verbose" ]]
+if [ -z "$verbose" ]
 then verbose=0
 fi
 
-if [[ -z "$ECHO" ]]
+if [ -z "$ECHO" ]
 then ECHO=
 fi
 
-function check_invoke() {
-    if (( $verbose ))
-    then echo $@
+check_invoke() {
+    if [ "$verbose" -eq 1 ]
+    then echo "$@"
     fi
-    if $ECHO $@
+    if $ECHO "$@"
     then :
-    else error_exit "non-zero exit status " $? " executing $@"
+    else error_exit "non-zero exit status " $? " executing $*"
     fi
 }
 
-picard_jar=$(find $thisdir -name picard\*.jar)
+picard_jar=$(find "$thisdir" -name picard\*.jar)
 
-num_picard_jars=$(wc -w <<< "$picard_jar")
+num_picard_jars=$(wc -w << EOF
+$picard_jar
+EOF
+)
 
-if (($num_picard_jars != 1))
+if [ "$num_picard_jars" -ne 1 ]
 then error_exit "Could not find one and only one picard.jar in deployment."
 fi
 
-function invoke_picard() {
-    check_invoke java -Xmx4g -Djava.io.tmpdir=$TMPDIR -jar $picard_jar "$@"
+invoke_picard() {
+    check_invoke java -Xmx4g -Djava.io.tmpdir="$TMPDIR" -jar "$picard_jar" "$@"
 }
 
-function invoke_dropseq() {
+invoke_dropseq() {
     dropseq_program=$1
     shift
-    check_invoke $thisdir/$dropseq_program "$@"
+    check_invoke "$thisdir/$dropseq_program" "$@"
 }
 
-function check_set() {
+check_set() {
     value=$1
     name=$2
     flag=$3
 
-    if [[ -z "$value" ]]
+    if [ -z "$value" ]
     then error_exit "$name has not been specified.  $flag flag is required"
     fi
 }
 
-function check_TMPDIR() {
-  if [[ -z "$TMPDIR" ]]
+check_TMPDIR() {
+  if [ -z "$TMPDIR" ]
   then error_exit "TMPDIR environment variable must be set."
   fi
 }
