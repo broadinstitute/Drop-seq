@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # MIT License
 #
 # Copyright 2018 Broad Institute
@@ -21,10 +21,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-source "$(dirname "$0")"/defs.sh
+. "$(dirname "$0")"/defs.sh
 
 progname=$(basename "$0")
-function usage () {
+usage () {
     cat >&2 <<EOF
 USAGE: $progname [options]
 Create Drop-seq reference metadata bundle
@@ -57,8 +57,6 @@ star_executable=$(which STAR 2> /dev/null)
 samtools_executable=$(which samtools 2> /dev/null)
 bgzip_executable=$(which bgzip 2> /dev/null)
 set -e
-# Fail if any of the commands in a pipeline fails
-set -o pipefail
 
 
 
