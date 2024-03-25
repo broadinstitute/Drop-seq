@@ -10,6 +10,8 @@ See [Drop-seq alignment cookbook](doc/Drop-seq_Alignment_Cookbook.pdf) for detai
 
 See [Census-seq computational protocols](doc/Census-seq_Computational_Protcools.pdf) for detailed usage of Census-Seq tools.
 
+See [Donor Assignment cookbook](doc/Donor_Assignment_Computational_Cookbook.pdf) for detailed usage of donor assignment and doublet detection tools.
+
 # Building from source and installing
 
 Download source:

@@ -127,6 +127,8 @@ distributions {
         contents {
             from("../src/scripts")
             from("../doc/Drop-seq_Alignment_Cookbook.pdf")
+	    from("../doc/Census-seq_Computational_Protcools.pdf")
+            from("../doc/Donor_Assignment_Computational_Cookbook.pdf")
             from("build/tmp/wrappers")
         }
     }
