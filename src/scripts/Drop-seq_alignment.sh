@@ -27,6 +27,7 @@ outdir=$(pwd)
 genomedir=
 reference=
 star_executable=STAR
+ncores=1
 keep_intermediates=0
 bead_repair=0
 progname=$(basename "$0")
@@ -40,6 +41,7 @@ Perform Drop-seq tagging, trimming and alignment
 -r <referencefasta> : Reference fasta of the Drop-seq reference metadata bundle.  Required.
 -o <outputdir>      : Where to write output bam.  Default: current directory.
 -s <STAR_path>      : Full path of STAR.  Default: STAR is found via PATH environment variable.
+-n <ncores>         : Number of cores to run. Default: 1
 -b                  : Do bead repair.  Not needed for 10X libraries, but recommended for Drop-seq chemistry.  Default: disabled.
 -e                  : Echo commands instead of executing them.
 -k                  : Keep intermediate files
@@ -49,12 +51,13 @@ EOF
 
 set -e
 
-while getopts ":o:g:r:es:kvbh" options; do
+while getopts ":o:g:r:es:n:kvbh" options; do
   case $options in
     o ) outdir=$OPTARG;;
     g ) genomedir=$OPTARG;;
     r ) reference=$OPTARG;;
     s ) star_executable=$OPTARG;;
+    n ) ncores=$OPTARG;;
     e ) ECHO="echo";;
     b ) bead_repair=1;;
     k ) keep_intermediates=1;;
@@ -162,7 +165,7 @@ invoke_picard SamToFastq INPUT="${TMPDIR}"/unaligned_mc_tagged_polyA_filtered.ba
   mark_file_as_intermediate "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
 
 $ECHO "$star_executable" --genomeDir "${genomedir}" --outFileNamePrefix "${TMPDIR}"/star. \
-  --readFilesIn "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
+  --readFilesIn "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq --runThreadN $ncores
   mark_file_as_intermediate "${aligned_sam}"
 
 # Stage 3: sort aligned reads (STAR does not necessarily emit reads in the same order as the input)
