@@ -165,6 +165,8 @@ $ECHO "$star_executable" --genomeDir "${genomedir}" --outFileNamePrefix "${TMPDI
   --readFilesIn "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
   mark_file_as_intermediate "${aligned_sam}"
 
+$ECHO mv "$TMPDIR"/star.Log.final.out "$outdir"
+
 # Stage 3: sort aligned reads (STAR does not necessarily emit reads in the same order as the input)
 invoke_picard \
   SortSam INPUT="${aligned_sam}" OUTPUT="${aligned_sorted_bam}" SORT_ORDER=queryname TMP_DIR="${TMPDIR}"
