@@ -44,7 +44,7 @@ usage () {
 
 set -e
 
-while getopts ":m:vh" options; do
+while getopts ':m:vh' options; do
   case $options in
     m ) xmx=$OPTARG;;
     v ) verbose=1;;
