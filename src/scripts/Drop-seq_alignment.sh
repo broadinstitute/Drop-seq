@@ -135,55 +135,55 @@ trap 'cleanup_intermediates "$@"' EXIT
 invoke_dropseq TagBamWithReadSequenceExtended SUMMARY="$outdir"/unaligned_tagged_Cellular.bam_summary.txt \
   BASE_RANGE=1-12 BASE_QUALITY=10 BARCODED_READ=1 DISCARD_READ=false TAG_NAME=XC NUM_BASES_BELOW_QUALITY=1 \
   INPUT="$unmapped_bam" OUTPUT="$TMPDIR"/unaligned_tagged_Cell.bam
-  mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_Cell.bam
+mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_Cell.bam
 
 # molecular tag
 invoke_dropseq TagBamWithReadSequenceExtended SUMMARY="$outdir"/unaligned_tagged_Molecular.bam_summary.txt \
   BASE_RANGE=13-20 BASE_QUALITY=10 BARCODED_READ=1 DISCARD_READ=true TAG_NAME=XM NUM_BASES_BELOW_QUALITY=1 \
   INPUT="$TMPDIR"/unaligned_tagged_Cell.bam OUTPUT="$TMPDIR"/unaligned_tagged_CellMolecular.bam
-  mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_CellMolecular.bam
+mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_CellMolecular.bam
 
 # quality filter
 invoke_dropseq FilterBam TAG_REJECT=XQ INPUT="$TMPDIR"/unaligned_tagged_CellMolecular.bam \
   OUTPUT="$TMPDIR"/unaligned_tagged_filtered.bam
-  mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_filtered.bam
+mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_filtered.bam
 
 # read trimming
 invoke_dropseq TrimStartingSequence OUTPUT_SUMMARY="$outdir"/adapter_trimming_report.txt \
   SEQUENCE=AAGCAGTGGTATCAACGCAGAGTGAATGGG MISMATCHES=0 NUM_BASES=5 INPUT="$TMPDIR"/unaligned_tagged_filtered.bam \
   OUTPUT="$TMPDIR"/unaligned_tagged_trimmed_smart.bam
-  mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_trimmed_smart.bam
+mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_trimmed_smart.bam
 
 invoke_dropseq PolyATrimmer OUTPUT="$tagged_unmapped_bam" OUTPUT_SUMMARY="$outdir"/polyA_trimming_report.txt \
   MISMATCHES=0 NUM_BASES=6 NEW=true INPUT="$TMPDIR"/unaligned_tagged_trimmed_smart.bam
-  mark_file_as_intermediate "$tagged_unmapped_bam"
+mark_file_as_intermediate "$tagged_unmapped_bam"
 
 
 # Stage 2: alignment
 invoke_picard SamToFastq INPUT="$TMPDIR"/unaligned_mc_tagged_polyA_filtered.bam \
   FASTQ="$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
-  mark_file_as_intermediate "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
+mark_file_as_intermediate "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
 
 $ECHO "$star_executable" --genomeDir "$genomedir" --outFileNamePrefix "$TMPDIR"/star. \
   --readFilesIn "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq --runThreadN "$ncores"
-  mark_file_as_intermediate "$aligned_sam"
+mark_file_as_intermediate "$aligned_sam"
 
 $ECHO mv "$TMPDIR"/star.Log.final.out "$outdir"
 
 # Stage 3: sort aligned reads (STAR does not necessarily emit reads in the same order as the input)
 invoke_picard \
   SortSam INPUT="$aligned_sam" OUTPUT="$aligned_sorted_bam" SORT_ORDER=queryname TMP_DIR="$TMPDIR"
-  mark_file_as_intermediate "$aligned_sorted_bam"
+mark_file_as_intermediate "$aligned_sorted_bam"
 
 # Stage 4: merge and tag aligned reads
 invoke_picard MergeBamAlignment REFERENCE_SEQUENCE="$reference" UNMAPPED_BAM="$tagged_unmapped_bam" \
   ALIGNED_BAM="$aligned_sorted_bam" INCLUDE_SECONDARY_ALIGNMENTS=false PAIRED_RUN=false CLIP_ADAPTERS=false \
   TMP_DIR="$TMPDIR" OUTPUT="$TMPDIR"/merged.bam
-  mark_file_as_intermediate "$TMPDIR"/merged.bam
+mark_file_as_intermediate "$TMPDIR"/merged.bam
 
 invoke_dropseq TagReadWithInterval I="$TMPDIR"/merged.bam O="$TMPDIR"/gene_tagged.bam TMP_DIR="$TMPDIR" \
   INTERVALS="$gene_intervals" TAG=XG
-  mark_file_as_intermediate "$TMPDIR"/gene_tagged.bam
+mark_file_as_intermediate "$TMPDIR"/gene_tagged.bam
 
 invoke_dropseq TagReadWithGeneFunction O="$TMPDIR"/function_tagged.bam ANNOTATIONS_FILE="$refflat" \
   INPUT="$TMPDIR"/gene_tagged.bam
