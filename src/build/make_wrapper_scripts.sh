@@ -54,11 +54,11 @@ check_set() {
 
 set -e
 
-while getopts ':d:t:c:m:h' options; do
+while getopts ':t:c:d:m:h' options; do
   case $options in
-    d ) outdir=$OPTARG;;
     t ) template=$OPTARG;;
     c ) classpath=$OPTARG;;
+    d ) outdir=$OPTARG;;
     m ) main_class=$OPTARG;;
     h ) usage
           exit 1;;

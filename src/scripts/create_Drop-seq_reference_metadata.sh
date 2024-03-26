@@ -55,7 +55,7 @@ set -e
 
 
 
-while getopts ':n:r:s:g:f:o:a:i:b:evh' options; do
+while getopts ':n:r:s:g:f:o:a:b:i:veh' options; do
   case $options in
     n ) reference_name=$OPTARG;;
     r ) reference_fasta=$OPTARG;;
@@ -64,10 +64,10 @@ while getopts ':n:r:s:g:f:o:a:i:b:evh' options; do
     f ) filtered_gene_biotypes="G=$OPTARG";;
     o ) outdir=$OPTARG;;
     a ) star_executable=$OPTARG;;
-    i ) samtools_executable=$OPTARG;;
     b ) bgzip_executable=$OPTARG;;
-    e ) ECHO='echo';;
+    i ) samtools_executable=$OPTARG;;
     v ) verbose=1;;
+    e ) ECHO='echo';;
     h ) usage
           exit 1;;
     \? ) usage
