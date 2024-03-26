@@ -51,7 +51,7 @@ EOF
 
 set -e
 
-while getopts ":o:g:r:es:n:kvbh" options; do
+while getopts ":o:g:r:s:n:ebkvh" options; do
   case $options in
     o ) outdir=$OPTARG;;
     g ) genomedir=$OPTARG;;
