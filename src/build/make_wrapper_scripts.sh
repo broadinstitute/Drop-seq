@@ -54,7 +54,7 @@ check_set() {
 
 set -e
 
-while getopts ":d:t:c:m:h" options; do
+while getopts ':d:t:c:m:h' options; do
   case $options in
     d ) outdir=$OPTARG;;
     t ) template=$OPTARG;;
@@ -70,20 +70,20 @@ while getopts ":d:t:c:m:h" options; do
 done
 shift $((OPTIND - 1))
 
-check_set "$outdir" "output directory" "-d"
-check_set "$template" "wrapper script template" "-t"
-check_set "$classpath" "classpath" "-c"
+check_set "$outdir" 'output directory' '-d'
+check_set "$template" 'wrapper script template' '-t'
+check_set "$classpath" 'classpath' '-c'
 
 main_class_args="$*"
 mkdir -p "$outdir"
 clp_names=
 clp_names=$(java -cp "$classpath" "$main_class" "$main_class_args" || echo > /dev/null)
 if [ -z "$clp_names" ]
-then echo "There was a problem getting CLP names."
+then echo 'There was a problem getting CLP names.'
      exit 1
 fi
 for clp_name in $clp_names
 do cp -p "$template" "$outdir/$clp_name"
 done
 
-echo Created wrapper scripts
+echo 'Created wrapper scripts'

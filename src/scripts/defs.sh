@@ -45,7 +45,7 @@ check_invoke() {
     fi
     if $ECHO "$@"
     then :
-    else error_exit "non-zero exit status " $? " executing $*"
+    else error_exit 'non-zero exit status ' $? " executing $*"
     fi
 }
 
@@ -62,7 +62,7 @@ EOF
 )
 
 if [ "$num_picard_jars" -ne 1 ]
-then error_exit "Could not find one and only one picard.jar in deployment."
+then error_exit 'Could not find one and only one picard.jar in deployment.'
 fi
 
 invoke_picard() {
@@ -87,6 +87,6 @@ check_set() {
 
 check_TMPDIR() {
   if [ -z "$TMPDIR" ]
-  then error_exit "TMPDIR environment variable must be set."
+  then error_exit 'TMPDIR environment variable must be set.'
   fi
 }

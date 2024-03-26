@@ -60,7 +60,7 @@ set -e
 
 
 
-while getopts ":n:r:s:g:f:o:a:i:b:evh" options; do
+while getopts ':n:r:s:g:f:o:a:i:b:evh' options; do
   case $options in
     n ) reference_name=$OPTARG;;
     r ) reference_fasta=$OPTARG;;
@@ -85,13 +85,13 @@ shift $((OPTIND - 1))
 
 check_TMPDIR
 
-: "${reference_name:?"ERROR: -n is required"}"
-: "${reference_fasta:?"ERROR: -r is required"}"
-: "${species:?"ERROR: -s is required"}"
-: "${gtf:?"ERROR: -g is required"}"
-: "${star_executable:?"ERROR: -s is required if STAR is not on PATH"}"
-: "${samtools_executable:?"ERROR: -i is required if samtools is not on PATH"}"
-: "${bgzip_executable:?"ERROR: -b is required if bgzip is not on PATH"}"
+: "${reference_name:?'ERROR: -n is required'}"
+: "${reference_fasta:?'ERROR: -r is required'}"
+: "${species:?'ERROR: -s is required'}"
+: "${gtf:?'ERROR: -g is required'}"
+: "${star_executable:?'ERROR: -s is required if STAR is not on PATH'}"
+: "${samtools_executable:?'ERROR: -i is required if samtools is not on PATH'}"
+: "${bgzip_executable:?'ERROR: -b is required if bgzip is not on PATH'}"
 
 
 output_fasta=$outdir/$reference_name.fasta
@@ -115,5 +115,5 @@ check_invoke "$star_executable" --runMode genomeGenerate --genomeDir "$outdir"/S
 check_invoke "$bgzip_executable" "$output_fasta"
 check_invoke "$samtools_executable" faidx "$output_fasta".gz
 
-echo "Reference metadata created sucessfully"
+echo 'Reference metadata created sucessfully'
 

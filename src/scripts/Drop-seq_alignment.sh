@@ -51,14 +51,14 @@ EOF
 
 set -e
 
-while getopts ":o:g:r:s:n:ebkvh" options; do
+while getopts ':o:g:r:s:n:ebkvh' options; do
   case $options in
     o ) outdir=$OPTARG;;
     g ) genomedir=$OPTARG;;
     r ) reference=$OPTARG;;
     s ) star_executable=$OPTARG;;
     n ) ncores=$OPTARG;;
-    e ) ECHO="echo";;
+    e ) ECHO='echo';;
     b ) bead_repair=1;;
     k ) keep_intermediates=1;;
     v ) verbose=1;;
@@ -72,8 +72,8 @@ while getopts ":o:g:r:s:n:ebkvh" options; do
 done
 shift $((OPTIND - 1))
 
-check_set "$genomedir" "Genome directory" "-g"
-check_set "$reference" "Reference fasta"  "-r"
+check_set "$genomedir" 'Genome directory' '-g'
+check_set "$reference" 'Reference fasta'  '-r'
 
 check_TMPDIR
 
@@ -81,17 +81,17 @@ TMPDIR=$(mktemp -d)
 echo "Writing temporary files to $TMPDIR" 
 
 if [ "$#" -ne 1 ]
-then error_exit "Incorrect number of arguments"
+then error_exit 'Incorrect number of arguments'
 fi
 
 
-if [ "$star_executable" != "STAR" ]
+if [ "$star_executable" != 'STAR' ]
 then if [ ! -x "$star_executable" ] || [ ! -f "$star_executable" ]
      then error_exit "STAR executable $star_executable passed via -s does not exist or is not executable"
      fi
 elif which STAR > /dev/null
 then echo > /dev/null
-else error_exit "STAR executable must be on the path"
+else error_exit 'STAR executable must be on the path'
 fi
 
 reference_basename=$(basename "$(basename "$reference" .gz)" .fasta)
@@ -113,15 +113,15 @@ cleanup_intermediates() {
     exit_code=$?
     if [ "$keep_intermediates" -eq 1 ]
     then
-      [ "$verbose" -ne 1 ] || echo "Keeping intermediate files."
+      [ "$verbose" -ne 1 ] || echo 'Keeping intermediate files.'
       exit "$exit_code"
     fi
     if [ "$exit_code" -ne 0 ]
     then
-      [ "$verbose" -ne 1 ] || echo "An error occurred...keeping intermediate files."
+      [ "$verbose" -ne 1 ] || echo 'An error occurred...keeping intermediate files.'
       exit "$exit_code"
     fi
-    [ "$verbose" -ne 1 ] || echo "Finished successfully...removing intermediate files..."
+    [ "$verbose" -ne 1 ] || echo 'Finished successfully...removing intermediate files...'
     for intermediate_file do
       [ "$verbose" -ne 1 ] || echo "...removing intermediate file '$intermediate_file'."
       rm -- "$intermediate_file"
@@ -204,5 +204,5 @@ else
   $ECHO mv "$TMPDIR"/function_tagged.bam "$outdir"/final.bam
 fi
 
-echo "Completed successfully."
+echo 'Completed successfully.'
 
