@@ -84,13 +84,13 @@ shift $((OPTIND - 1))
 
 check_TMPDIR
 
-: "${reference_name:?'ERROR: -n is required'}"
-: "${reference_fasta:?'ERROR: -r is required'}"
-: "${species:?'ERROR: -s is required'}"
-: "${gtf:?'ERROR: -g is required'}"
-: "${star_executable:?'ERROR: -s is required if STAR is not on PATH'}"
-: "${samtools_executable:?'ERROR: -i is required if samtools is not on PATH'}"
-: "${bgzip_executable:?'ERROR: -b is required if bgzip is not on PATH'}"
+check_set "$reference_name" 'Reference name' '-n'
+check_set "$reference_fasta" 'Reference fasta' '-r'
+check_set "$species" 'Species' '-s'
+check_set "$gtf" 'Gene annotation file' '-g'
+check_set "$star_executable" 'STAR path' '-s' 'if STAR is not on PATH'
+check_set "$samtools_executable" 'samtools path' '-i' 'if samtools is not on PATH'
+check_set "$bgzip_executable" 'bgzip path' '-b' 'if bgzip is not on PATH'
 
 
 output_fasta=$outdir/$reference_name.fasta
