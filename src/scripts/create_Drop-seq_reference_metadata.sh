@@ -65,7 +65,7 @@ while getopts ':n:r:s:g:f:o:a:i:b:evh' options; do
     r ) reference_fasta=$OPTARG;;
     s ) species=$OPTARG;;
     g ) gtf=$OPTARG;;
-    f ) filtered_gene_biotypes="$filtered_gene_biotypes G=$OPTARG";;
+    f ) filtered_gene_biotypes="G=$OPTARG";;
     o ) outdir=$OPTARG;;
     a ) star_executable=$OPTARG;;
     i ) samtools_executable=$OPTARG;;
