@@ -64,7 +64,7 @@ then export TMPDIR="$broad_tmpdir_root/$USER"
 fi
 
 
-JAVA_OPTS="$JAVA_OPTS -Xmx${xmx}"
+JAVA_OPTS="$JAVA_OPTS -Xmx$xmx"
 if [ -n "$TMPDIR" ]
 then JAVA_OPTS="$JAVA_OPTS -Djava.io.tmpdir=$TMPDIR"
 fi
