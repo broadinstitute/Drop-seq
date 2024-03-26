@@ -47,10 +47,6 @@ EOF
 }
 
 
-unset reference_name
-unset reference_fasta
-unset species
-unset gtf
 outdir=.
 star_executable=$(which STAR 2> /dev/null)
 samtools_executable=$(which samtools 2> /dev/null)
