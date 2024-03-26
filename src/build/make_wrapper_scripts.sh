@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # MIT License
 #
 # Copyright 2023 Broad Institute
@@ -20,10 +20,9 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-thisdir=`dirname ${BASH_SOURCE[0]}`
-progname=`basename $0`
+progname=$(basename "$0")
 main_class=org.broadinstitute.dropseqrna.cmdline.DropSeqMain
-function usage () {
+usage () {
     cat >&2 <<EOF
 USAGE: $progname -t <template-file> -c <classpath> -d <output-directory> -m <main-class> [main-class-args...]
 Create wrapper scripts for Java command-line programs
@@ -36,28 +35,26 @@ Create wrapper scripts for Java command-line programs
 EOF
 }
 
-function error_exit() {
+error_exit() {
     echo "ERROR: $1
     " >&2
     usage
     exit 1
 }
 
-function check_set() {
+check_set() {
     value=$1
     name=$2
     flag=$3
 
-    if [[ -z "$value" ]]
+    if [ -z "$value" ]
     then error_exit "$name has not been specified.  $flag flag is required"
     fi
 }
 
 set -e
-# Fail if any of the commands in a pipeline fails
-set -o pipefail
 
-while getopts ":d:t:c:m:" options; do
+while getopts ":d:t:c:m:h" options; do
   case $options in
     d ) outdir=$OPTARG;;
     t ) template=$OPTARG;;
@@ -71,22 +68,22 @@ while getopts ":d:t:c:m:" options; do
           exit 1;;
   esac
 done
-shift $(($OPTIND - 1))
+shift $((OPTIND - 1))
 
 check_set "$outdir" "output directory" "-d"
 check_set "$template" "wrapper script template" "-t"
 check_set "$classpath" "classpath" "-c"
 
 main_class_args="$*"
-mkdir -p $outdir
+mkdir -p "$outdir"
 clp_names=
-clp_names=$(java -cp $classpath $main_class $main_class_args || echo > /dev/null)
+clp_names=$(java -cp "$classpath" "$main_class" "$main_class_args" || echo > /dev/null)
 if [ -z "$clp_names" ]
 then echo "There was a problem getting CLP names."
      exit 1
 fi
 for clp_name in $clp_names
-do cp -p $template $outdir/$clp_name
+do cp -p "$template" "$outdir/$clp_name"
 done
 
 echo Created wrapper scripts
