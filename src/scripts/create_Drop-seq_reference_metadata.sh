@@ -51,7 +51,6 @@ unset reference_name
 unset reference_fasta
 unset species
 unset gtf
-filtered_gene_biotypes=
 outdir=.
 star_executable=$(which STAR 2> /dev/null)
 samtools_executable=$(which samtools 2> /dev/null)
