@@ -76,7 +76,6 @@ check_set "$classpath" 'classpath' '-c'
 
 main_class_args="$*"
 mkdir -p "$outdir"
-clp_names=
 clp_names=$(java -cp "$classpath" "$main_class" "$main_class_args" || echo > /dev/null)
 if [ -z "$clp_names" ]
 then echo 'There was a problem getting CLP names.'

@@ -24,8 +24,6 @@
 . "$(dirname "$0")"/defs.sh
 
 outdir=$(pwd)
-genomedir=
-reference=
 star_executable=STAR
 ncores=1
 keep_intermediates=0
