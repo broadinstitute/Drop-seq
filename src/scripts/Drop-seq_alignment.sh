@@ -165,7 +165,7 @@ invoke_picard SamToFastq INPUT="${TMPDIR}"/unaligned_mc_tagged_polyA_filtered.ba
   mark_file_as_intermediate "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
 
 $ECHO "$star_executable" --genomeDir "${genomedir}" --outFileNamePrefix "${TMPDIR}"/star. \
-  --readFilesIn "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq --runThreadN $ncores
+  --readFilesIn "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq --runThreadN "$ncores"
   mark_file_as_intermediate "${aligned_sam}"
 
 $ECHO mv "$TMPDIR"/star.Log.final.out "$outdir"
