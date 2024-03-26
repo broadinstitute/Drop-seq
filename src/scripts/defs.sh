@@ -79,9 +79,10 @@ check_set() {
     value=$1
     name=$2
     flag=$3
+    suffix=${4+" $4"}
 
     if [ -z "$value" ]
-    then error_exit "$name has not been specified.  $flag flag is required"
+    then error_exit "$name has not been specified.  $flag flag is required$suffix."
     fi
 }
 
