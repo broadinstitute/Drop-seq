@@ -49,15 +49,15 @@ EOF
 
 set -e
 
-while getopts ':o:g:r:s:n:ebkvh' options; do
+while getopts ':g:r:o:s:n:bekvh' options; do
   case $options in
-    o ) outdir=$OPTARG;;
     g ) genomedir=$OPTARG;;
     r ) reference=$OPTARG;;
+    o ) outdir=$OPTARG;;
     s ) star_executable=$OPTARG;;
     n ) ncores=$OPTARG;;
-    e ) ECHO='echo';;
     b ) bead_repair=1;;
+    e ) ECHO='echo';;
     k ) keep_intermediates=1;;
     v ) verbose=1;;
     h ) usage
