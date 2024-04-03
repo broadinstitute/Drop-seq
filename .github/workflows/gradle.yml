@@ -12,7 +12,9 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-    paths: 'src/java/**'
+    paths:
+      - 'src/java/**'
+      - 'src/tests/java/**'
 
 jobs:
   build:
