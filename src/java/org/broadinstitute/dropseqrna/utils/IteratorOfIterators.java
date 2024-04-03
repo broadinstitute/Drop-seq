@@ -23,14 +23,17 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.util.Collections;
-import java.util.Iterator;
+import htsjdk.samtools.util.CloseableIterator;
+
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.StreamSupport;
 
 /**
  * Converts an iterator of iterators of T into an iterator of T
  */
 public class IteratorOfIterators<T>
-implements Iterator<T> {
+        implements CloseableIterator<T> {
     private final Iterator<Iterator<T>> iteratorIt;
     private Iterator<T> currentIt;
 
@@ -46,9 +49,14 @@ implements Iterator<T> {
     @Override
     public boolean hasNext() {
         while (!currentIt.hasNext()) {
+            if (currentIt instanceof CloseableIterator<T>) {
+                ((CloseableIterator<T>) currentIt).close();
+            }
+
             if (iteratorIt.hasNext()) {
                 currentIt = iteratorIt.next();
             } else {
+                currentIt = Collections.emptyIterator();
                 return false;
             }
         }
@@ -63,4 +71,25 @@ implements Iterator<T> {
         return currentIt.next();
     }
 
+    @Override
+    public void close() {
+        if (currentIt instanceof CloseableIterator<T>) {
+            ((CloseableIterator<T>) currentIt).close();
+        }
+        while (iteratorIt.hasNext()) {
+            final Iterator<T> it = iteratorIt.next();
+            if (it instanceof CloseableIterator<T>) {
+                ((CloseableIterator<T>) it).close();
+            }
+        }
+    }
+
+    public static <T, S> IteratorOfIterators<T> fromIterator(Iterator<S> outerIter, Function<S, Iterator<T>> mapIter) {
+        final Iterator<Iterator<T>> iteratorIt =
+                StreamSupport
+                        .stream(Spliterators.spliteratorUnknownSize(outerIter, Spliterator.ORDERED), false)
+                        .map(mapIter)
+                        .iterator();
+        return new IteratorOfIterators<>(iteratorIt);
+    }
 }
