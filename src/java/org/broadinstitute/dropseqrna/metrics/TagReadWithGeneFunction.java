@@ -33,7 +33,10 @@ import org.broadinstitute.dropseqrna.annotation.AnnotationUtils;
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
 import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import picard.annotation.Gene;
 import picard.annotation.LocusFunction;
 import picard.cmdline.CommandLineProgram;
@@ -54,8 +57,8 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
 	private final Log log = Log.getInstance(TagReadWithGeneFunction.class);
 	private ProgressLogger pl = new ProgressLogger(log);
 
-	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze")
-	public File INPUT;
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
+	public List<File> INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM, written with new Gene/Exon tag")
 	public File OUTPUT;
@@ -109,31 +112,29 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
 
 	@Override
 	protected int doWork() {
-		IOUtil.assertFileIsReadable(this.INPUT);
+		this.INPUT = FileListParsingUtils.expandFileList(INPUT);
+
 		IOUtil.assertFileIsReadable(this.ANNOTATIONS_FILE);
 		if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(this.SUMMARY);
 		IOUtil.assertFileIsWritable(this.OUTPUT);
 
-		SamReader inputSam = SamReaderFactory.makeDefault().open(INPUT);
-
-		SAMFileHeader header = inputSam.getFileHeader();
+		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputs(this.INPUT, true, SamReaderFactory.makeDefault());
+		SAMFileHeader header = headerAndIter.header;
 		SamHeaderUtil.addPgRecord(header, this);
 		SAMSequenceDictionary bamDict = header.getSequenceDictionary();
 
         final OverlapDetector<Gene> geneOverlapDetector = GeneAnnotationReader.loadAnnotationsFile(ANNOTATIONS_FILE, bamDict,
 				VALIDATION_STRINGENCY);
         SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(header, true, OUTPUT);
-
-        for (SAMRecord r: inputSam) {
-        	pl.record(r);
-
-        	if (!r.getReadUnmappedFlag())
+		while (headerAndIter.iterator.hasNext()) {
+			SAMRecord r = headerAndIter.iterator.next();
+			pl.record(r);
+			if (!r.getReadUnmappedFlag())
 				// r=	setGeneExons(r, geneOverlapDetector, this.ALLOW_MULTI_GENE_READS);
-        		r= setAnnotations(r, geneOverlapDetector, this.ALLOW_MULTI_GENE_READS);
-        	writer.addAlignment(r);
-        }
+				r= setAnnotations(r, geneOverlapDetector, this.ALLOW_MULTI_GENE_READS);
+			writer.addAlignment(r);
+		}
 
-		CloserUtil.close(inputSam);
 		writer.close();
 		// if (this.USE_STRAND_INFO) log.info(this.metrics.toString());
 		if (SUMMARY==null) return 0;
@@ -146,42 +147,6 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
 
 	}
 
-	/*
-	public SAMRecord setGeneExons (final SAMRecord r, final OverlapDetector<Gene> geneOverlapDetector, final boolean allowMultiGeneReads) {
-		Map<Gene, LocusFunction> map = AnnotationUtils.getInstance().getLocusFunctionForReadByGene(r, geneOverlapDetector);
-		Set<Gene> exonsForRead = AnnotationUtils.getInstance().getConsistentExons (r, map.keySet(), allowMultiGeneReads);
-
-		List<Gene> genes = new ArrayList<Gene>();
-
- 		for (Gene g: exonsForRead) {
-
-			LocusFunction f = map.get(g);
-			if (f==LocusFunction.CODING || f==LocusFunction.UTR)
-				genes.add(g);
-		}
-		LocusFunction f = AnnotationUtils.getInstance().getLocusFunction(map.values());
-
-		if (USE_STRAND_INFO)
-			genes = getGenesConsistentWithReadStrand(genes, r);
-
-		if (genes.size()>1 && this.ALLOW_MULTI_GENE_READS==false)
-			log.error("There should only be 1 gene assigned to a read for DGE purposes.");
-
-		String finalGeneName = getCompoundName(genes);
-		String finalGeneStrand = getCompoundStrand(genes);
-
-		if (f!=null)
-			r.setAttribute(this.FUNCTION_TAG, f.toString());
-		if (finalGeneName!=null && finalGeneStrand!=null) {
-			r.setAttribute(this.TAG, finalGeneName);
-			r.setAttribute(this.STRAND_TAG, finalGeneStrand);
-		} else {
-			r.setAttribute(this.TAG, null);
-			r.setAttribute(this.STRAND_TAG, null);
-		}
-		return (r);
-	}
-	*/
 	/**
 	 * Add functional annotations for this read.
 	 * @param r

@@ -37,12 +37,12 @@ public class TagReadWithGeneFunctionTest {
 		File tempSummary=File.createTempFile("TagReadWithGeneFunctionTest", ".summary");
 		tempSummary.deleteOnExit();
 
-		t.INPUT=testBAMFile;
+		t.INPUT=Collections.singletonList(testBAMFile);
 		t.OUTPUT=tempBAM;
 		t.ANNOTATIONS_FILE=annotationsFile;
 		t.SUMMARY=tempSummary;
 		int returnVal = t.doWork();
-		Assert.assertTrue(returnVal==0);
+        Assert.assertEquals(returnVal, 0);
 
 		// test output BAM
 		CompareBAMTagValues cbtv = new CompareBAMTagValues();
@@ -51,7 +51,7 @@ public class TagReadWithGeneFunctionTest {
 		List<String> tags = new ArrayList<>(Arrays.asList("XC", "gn", "gs", "gf", "XF"));
 		cbtv.TAGS=tags;
 		int r = cbtv.doWork();
-		Assert.assertTrue(r==0);
+        Assert.assertEquals(r, 0);
 
 	}
 
