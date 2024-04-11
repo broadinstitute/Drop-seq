@@ -43,7 +43,7 @@ public class SpermSeqMarkDuplicatesTest {
 
 
 	File INPUT = new File ("testdata/org/broadinstitute/spermseq/metrics/duplicates/test_sorted.bam");
-
+	File INPUT_SIMPLE= new File ("testdata/org/broadinstitute/spermseq/metrics/duplicates/test_overlap.bam");
 	@Test
 	// tests which reads are marked as duplicates by the read position strategy.
 	public void testDetectDuplicatesByReadPositionStrategy() throws IOException {
@@ -102,6 +102,29 @@ public class SpermSeqMarkDuplicatesTest {
 		Assert.assertEquals(1, f2.NUM_DUPLICATES);
 
 
+	}
+
+	/**
+	 * Test the simple case where the reads overlap.
+	 */
+	@Test
+	public void testSimpleOverlap () throws IOException {
+		// there should be no dupes in this file.
+		Set<String> dupes = new HashSet<String>();
+
+		SpermSeqMarkDuplicates d = new SpermSeqMarkDuplicates();
+		d.INPUT= Collections.singletonList(INPUT_SIMPLE);
+		d.OUTPUT=File.createTempFile("testDetectDuplicatesByReadPositionStrategy.", ".bam");
+		d.OUTPUT.deleteOnExit();
+		d.OUTPUT_STATS=File.createTempFile("testDetectDuplicatesByReadPositionStrategy.", ".pcr_duplicate_metrics");
+		d.OUTPUT_STATS.deleteOnExit();
+		Assert.assertEquals(0, d.doWork());
+
+		SamReader inputSam = SamReaderFactory.makeDefault().open(d.OUTPUT);
+		for (SAMRecord r: inputSam) {
+			boolean duplicateReadFlag = r.getDuplicateReadFlag();
+			Assert.assertFalse(duplicateReadFlag);
+		}
 	}
 
 
