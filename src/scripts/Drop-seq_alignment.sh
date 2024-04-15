@@ -33,17 +33,17 @@ progname=$(basename "$0")
 usage () {
     cat >&2 <<EOF
 USAGE: $progname [options] <unmapped-queryname-sorted.bam>
-Perform Drop-seq tagging, trimming and alignment
+Perform Drop-seq tagging, trimming and alignment.
 
 -g <genomedir>      : Directory of STAR genome directory.  Required.
 -r <referencefasta> : Reference fasta of the Drop-seq reference metadata bundle.  Required.
 -o <outputdir>      : Where to write output bam.  Default: current directory.
 -s <STAR_path>      : Full path of STAR.  Default: STAR is found via PATH environment variable.
--n <ncores>         : Number of cores to run. Default: 1
+-n <ncores>         : Number of cores to run.  Default: 1.
 -b                  : Do bead repair.  Not needed for 10X libraries, but recommended for Drop-seq chemistry.  Default: disabled.
 -e                  : Echo commands instead of executing them.
--k                  : Keep intermediate files
--v                  : verbose
+-k                  : Keep intermediate files.
+-v                  : Run in verbose mode.
 -h                  : Print usage and exit.
 EOF
 }

@@ -25,14 +25,14 @@ main_class=org.broadinstitute.dropseqrna.cmdline.DropSeqMain
 usage () {
     cat >&2 <<EOF
 USAGE: $progname -t <template-file> -c <classpath> -d <output-directory> -m <main-class> [main-class-args...]
-Create wrapper scripts for Java command-line programs
+Create wrapper scripts for Java command-line programs.
 
--t <template-file>  : File to be copied to make the wrapper.  Required.
--c <classpath>      : Classpath for running the CLP lister.  Required.
--d <output-directory>  : Where to write the wrappers.  Required.
--m <main-class>     : Class to invoke to list CLPs.  Default: $main_class.
--h                  : Print usage and exit.
-[main-class-args]   : Passed to main-class
+-t <template-file>    : File to be copied to make the wrapper.  Required.
+-c <classpath>        : Classpath for running the CLP lister.  Required.
+-d <output-directory> : Where to write the wrappers.  Required.
+-m <main-class>       : Class to invoke to list CLPs.  Default: $main_class.
+-h                    : Print usage and exit.
+[main-class-args]     : Argument to pass to main class.
 EOF
 }
 
