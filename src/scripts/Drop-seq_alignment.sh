@@ -44,6 +44,7 @@ Perform Drop-seq tagging, trimming and alignment
 -e                  : Echo commands instead of executing them.
 -k                  : Keep intermediate files
 -v                  : verbose
+-h                  : Print usage and exit.
 EOF
 }
 

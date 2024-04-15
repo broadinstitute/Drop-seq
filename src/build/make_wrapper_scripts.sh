@@ -31,6 +31,7 @@ Create wrapper scripts for Java command-line programs
 -c <classpath>      : Classpath for running the CLP lister.  Required.
 -d <output-directory>  : Where to write the wrappers.  Required.
 -m <main-class>     : Class to invoke to list CLPs.  Default: $main_class.
+-h                  : Print usage and exit.
 [main-class-args]   : Passed to main-class
 EOF
 }
