@@ -27,23 +27,27 @@ progname=$(basename "$0")
 usage () {
     cat >&2 <<EOF
 USAGE: $progname [options]
-Create Drop-seq reference metadata bundle
+Create Drop-seq reference metadata bundle.
 
--n <name>           : Name for reference metadata set to be created.  Required.
--r <referencefasta> : Reference fasta of the Drop-seq reference metadata bundle.  Required.
--s <species>        : Species.  Required.
--g <gtf>            : Gene annotation file.  Required.
--f <filtered-gene-biotype>: Annotations with the given gene_biotype will be filtered. Multiple values may be
-                      specified by using this argument more than once, and/or by providing a comma-separated list.
-                      Use ValidateReference command to see the gene_biotypes in your GTF in order to decide what to
-                      exclude.  Default: not gene biotypes are filtered.
--o <outputdir>      : Where to write output bam.  Default: current directory.
--a <STAR_path>      : Full path of STAR.  Default: STAR is found via PATH environment variable.
--b <bgzip_path>     : Full path of bgzip: Default: bgzip is found via PATH environment variable.
--i <samtools_path>  : Full path of samtools.  Default: samtools is found via PATH environment variable.
--v                  : verbose
--e                  : merely echo commands instead of executing
--h                  : Print usage and exit.
+-n <name>                  : Name for reference metadata set to be created.  Required.
+-r <referencefasta>        : Reference fasta of the Drop-seq reference metadata bundle.  Required.
+-s <species>               : Species.  Required.
+-g <gtf>                   : Gene annotation file.  Required.
+-f <filtered-gene-biotype> : Annotations with the given gene biotype will be filtered.  Multiple
+                             values may be specified by using this argument more than once, and/or
+                             by providing a comma-separated list.  Use ValidateReference command to
+                             see the gene biotypes in your GTF in order to decide what to exclude.
+                             Default: No gene biotypes are filtered.
+-o <outputdir>             : Where to write output bam.  Default: Current directory.
+-a <STAR_path>             : Full path of STAR.  Default: STAR is found via PATH environment
+                             variable.
+-b <bgzip_path>            : Full path of bgzip.  Default: bgzip is found via PATH environment
+                             variable.
+-i <samtools_path>         : Full path of samtools.  Default: samtools is found via PATH environment
+                             variable.
+-v                         : Run in verbose mode.
+-e                         : Merely echo commands instead of executing.
+-h                         : Print usage and exit.
 EOF
 }
 
