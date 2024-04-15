@@ -70,7 +70,7 @@ while getopts ':n:r:s:g:f:o:a:b:i:veh' options; do
     v ) verbose=1;;
     e ) ECHO='echo';;
     h ) usage
-          exit 1;;
+          exit 0;;
     \? ) usage
          exit 1;;
     * ) usage

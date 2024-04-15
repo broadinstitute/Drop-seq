@@ -62,7 +62,7 @@ while getopts ':g:r:o:s:n:bekvh' options; do
     k ) keep_intermediates=1;;
     v ) verbose=1;;
     h ) usage
-          exit 1;;
+          exit 0;;
     \? ) usage
          exit 1;;
     * ) usage
