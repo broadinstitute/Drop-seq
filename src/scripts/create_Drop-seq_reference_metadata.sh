@@ -43,6 +43,7 @@ Create Drop-seq reference metadata bundle
 -i <samtools_path>  : Full path of samtools.  Default: samtools is found via PATH environment variable.
 -v                  : verbose
 -e                  : merely echo commands instead of executing
+-h                  : Print usage and exit.
 EOF
 }
 

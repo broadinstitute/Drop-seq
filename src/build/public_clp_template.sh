@@ -32,6 +32,7 @@ USAGE=$(cat << EOF
 USAGE: $0 [-m <jvm_heap_size>] [-v] program args...
        -m <jvm_heap_size> (default $xmx)
        -v echo final command line before executing
+       -h print usage and exit
 
 Program options:
 EOF
