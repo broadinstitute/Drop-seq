@@ -50,7 +50,7 @@ while getopts ':m:vh' options; do
     m ) xmx=$OPTARG;;
     v ) verbose=1;;
     h ) usage
-          exit 1;;
+          exit 0;;
     \? ) break;; # exit option parsing at unrecognized option, so new-style Picard CLP args will survive.
     * ) usage
           exit 1;;

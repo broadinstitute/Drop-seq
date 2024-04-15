@@ -62,7 +62,7 @@ while getopts ':t:c:d:m:h' options; do
     d ) outdir=$OPTARG;;
     m ) main_class=$OPTARG;;
     h ) usage
-          exit 1;;
+          exit 0;;
     \? ) usage
          exit 1;;
     * ) usage
