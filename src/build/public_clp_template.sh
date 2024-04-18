@@ -1,4 +1,5 @@
 #!/bin/sh
+
 # MIT License
 #
 # Copyright 2023 Broad Institute
@@ -22,14 +23,16 @@
 # SOFTWARE.
 
 
-xmx=4g
-
 progname=$(basename "$0")
 thisdir=$(dirname "$0")
+
+xmx=4g
 verbose=0
 
-USAGE=$(cat << EOF
-USAGE: $0 [-m <jvm_heap_size>] [-v] program args...
+
+usage () {
+    cat >&2 <<EOF
+USAGE: $progname [-m <jvm_heap_size>] [-v] program args...
 
 -m <jvm_heap_size> : Heap size to allocate for the JVM.  Default: $xmx.
 -v                 : Echo final command line before executing.
@@ -37,12 +40,9 @@ USAGE: $0 [-m <jvm_heap_size>] [-v] program args...
 
 Program options:
 EOF
-)
-
-usage () {
-    echo "$USAGE" >&2
     "$thisdir"/bin/dropseq "$progname" -h
 }
+
 
 set -e
 
@@ -68,11 +68,11 @@ while getopts ':m:vh' options; do
 done
 shift $((OPTIND - 1))
 
+
 broad_tmpdir_root=/broad/hptmp
 if [ -z "$TMPDIR" ] && [ -d $broad_tmpdir_root ]
 then export TMPDIR="$broad_tmpdir_root/$USER"
 fi
-
 
 JAVA_OPTS="$JAVA_OPTS -Xmx$xmx"
 if [ -n "$TMPDIR" ]
@@ -82,5 +82,6 @@ fi
 if [ "$verbose" -eq 1 ]
 then set -x
 fi
+
 
 JAVA_OPTS="$JAVA_OPTS" "$thisdir"/bin/dropseq "$progname" "$@"

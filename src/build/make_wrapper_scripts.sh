@@ -1,4 +1,5 @@
 #!/bin/sh
+
 # MIT License
 #
 # Copyright 2023 Broad Institute
@@ -20,8 +21,13 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+
+
 progname=$(basename "$0")
+
 main_class=org.broadinstitute.dropseqrna.cmdline.DropSeqMain
+
+
 usage () {
     cat >&2 <<EOF
 USAGE: $progname -t <template-file> -c <classpath> -d <output-directory> -m <main-class> [main-class-args...]
@@ -30,7 +36,7 @@ Create wrapper scripts for Java command-line programs.
 -t <template-file>    : File to be copied to make the wrapper.  Required.
 -c <classpath>        : Classpath for running the CLP lister.  Required.
 -d <output-directory> : Where to write the wrappers.  Required.
--m <main-class>       : Class to invoke to list CLPs.  Default: $main_class.
+-m <main-class>       : Class to invoke to list CLPs.  Default: '$main_class'.
 -h                    : Print usage and exit.
 [main-class-args]     : Argument to pass to main class.
 EOF
@@ -52,6 +58,7 @@ check_set() {
     then error_exit "$name has not been specified.  $flag flag is required"
     fi
 }
+
 
 set -e
 
@@ -85,9 +92,13 @@ check_set "$outdir" 'output directory' '-d'
 check_set "$template" 'wrapper script template' '-t'
 check_set "$classpath" 'classpath' '-c'
 
+
 main_class_args="$*"
-mkdir -p "$outdir"
 clp_names=$(java -cp "$classpath" "$main_class" "$main_class_args" || echo > /dev/null)
+
+
+mkdir -p "$outdir"
+
 if [ -z "$clp_names" ]
 then echo 'There was a problem getting CLP names.'
      exit 1
@@ -96,4 +107,5 @@ for clp_name in $clp_names
 do cp -p "$template" "$outdir/$clp_name"
 done
 
-echo 'Created wrapper scripts'
+
+echo 'Created wrapper scripts.'

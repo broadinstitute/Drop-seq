@@ -1,4 +1,5 @@
 #!/bin/sh
+
 # MIT License
 #
 # Copyright 2018 Broad Institute
@@ -21,9 +22,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+
 . "$(dirname "$0")"/defs.sh
 
 progname=$(basename "$0")
+
+outdir=$(pwd)
+star_executable=$(which STAR 2> /dev/null)
+bgzip_executable=$(which bgzip 2> /dev/null)
+samtools_executable=$(which samtools 2> /dev/null)
+
+
 usage () {
     cat >&2 <<EOF
 USAGE: $progname [options]
@@ -38,13 +47,10 @@ Create Drop-seq reference metadata bundle.
                              by providing a comma-separated list.  Use ValidateReference command to
                              see the gene biotypes in your GTF in order to decide what to exclude.
                              Default: No gene biotypes are filtered.
--o <outputdir>             : Where to write output bam.  Default: Current directory.
--a <STAR_path>             : Full path of STAR.  Default: STAR is found via PATH environment
-                             variable.
--b <bgzip_path>            : Full path of bgzip.  Default: bgzip is found via PATH environment
-                             variable.
--i <samtools_path>         : Full path of samtools.  Default: samtools is found via PATH environment
-                             variable.
+-o <outputdir>             : Where to write output bam.  Default: '$outdir'.
+-a <STAR_path>             : Full path of STAR.  Default: '$star_executable'.
+-b <bgzip_path>            : Full path of bgzip.  Default: '$bgzip_executable'.
+-i <samtools_path>         : Full path of samtools.  Default: '$samtools_executable'.
 -v                         : Run in verbose mode.
 -e                         : Merely echo commands instead of executing.
 -h                         : Print usage and exit.
@@ -52,12 +58,7 @@ EOF
 }
 
 
-outdir=.
-star_executable=$(which STAR 2> /dev/null)
-samtools_executable=$(which samtools 2> /dev/null)
-bgzip_executable=$(which bgzip 2> /dev/null)
 set -e
-
 
 # Unset all variables to be set based on parameters that have not been
 # initialized previously in this script (or a script sourced above) 'in order
@@ -112,6 +113,7 @@ sequence_dictionary=$outdir/$reference_name.dict
 output_gtf=$outdir/$reference_name.gtf
 reduced_gtf=$outdir/$reference_name.reduced.gtf
 
+
 invoke_picard NormalizeFasta INPUT="$reference_fasta" OUTPUT="$output_fasta"
 if [ -e "$sequence_dictionary" ]
 then $ECHO rm "$sequence_dictionary"
@@ -128,5 +130,5 @@ check_invoke "$star_executable" --runMode genomeGenerate --genomeDir "$outdir"/S
 check_invoke "$bgzip_executable" "$output_fasta"
 check_invoke "$samtools_executable" faidx "$output_fasta".gz
 
-echo 'Reference metadata created sucessfully'
 
+echo 'Reference metadata created sucessfully.'

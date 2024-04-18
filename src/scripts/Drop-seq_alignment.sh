@@ -1,4 +1,5 @@
 #!/bin/sh
+
 # MIT License
 #
 # Copyright 2018 Broad Institute
@@ -21,14 +22,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+
 . "$(dirname "$0")"/defs.sh
 
-outdir=$(pwd)
-star_executable=STAR
-ncores=1
-keep_intermediates=0
-bead_repair=0
 progname=$(basename "$0")
+
+outdir=$(pwd)
+star_executable=$(which STAR 2> /dev/null)
+ncores=1
+bead_repair=0
+keep_intermediates=0
+
 
 usage () {
     cat >&2 <<EOF
@@ -37,16 +41,17 @@ Perform Drop-seq tagging, trimming and alignment.
 
 -g <genomedir>      : Directory of STAR genome directory.  Required.
 -r <referencefasta> : Reference fasta of the Drop-seq reference metadata bundle.  Required.
--o <outputdir>      : Where to write output bam.  Default: current directory.
--s <STAR_path>      : Full path of STAR.  Default: STAR is found via PATH environment variable.
--n <ncores>         : Number of cores to run.  Default: 1.
--b                  : Do bead repair.  Not needed for 10X libraries, but recommended for Drop-seq chemistry.  Default: disabled.
+-o <outputdir>      : Where to write output bam.  Default: '$outdir'.
+-s <STAR_path>      : Full path of STAR.  Default: '$star_executable'.
+-n <ncores>         : Number of cores to run.  Default: $ncores.
+-b                  : Do bead repair.  Not needed for 10X libraries, but recommended for Drop-seq chemistry.
 -e                  : Echo commands instead of executing them.
 -k                  : Keep intermediate files.
 -v                  : Run in verbose mode.
 -h                  : Print usage and exit.
 EOF
 }
+
 
 set -e
 
@@ -94,7 +99,6 @@ if [ "$#" -ne 1 ]
 then error_exit 'Incorrect number of arguments'
 fi
 
-
 if [ "$star_executable" != 'STAR' ]
 then if [ ! -x "$star_executable" ] || [ ! -f "$star_executable" ]
      then error_exit "STAR executable $star_executable passed via -s does not exist or is not executable"
@@ -112,6 +116,7 @@ unmapped_bam=$1
 tagged_unmapped_bam=$TMPDIR/unaligned_mc_tagged_polyA_filtered.bam
 aligned_sam=$TMPDIR/star.Aligned.out.sam
 aligned_sorted_bam=$TMPDIR/aligned.sorted.bam
+
 
 # Setup intermediate file cleanup
 
@@ -138,6 +143,7 @@ cleanup_intermediates() {
     done
 }
 trap 'cleanup_intermediates "$@"' EXIT
+
 
 # Stage 1: pre-alignment tag and trim
 
@@ -170,6 +176,7 @@ mark_file_as_intermediate "$tagged_unmapped_bam"
 
 
 # Stage 2: alignment
+
 invoke_picard SamToFastq INPUT="$TMPDIR"/unaligned_mc_tagged_polyA_filtered.bam \
   FASTQ="$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
 mark_file_as_intermediate "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
@@ -180,12 +187,16 @@ mark_file_as_intermediate "$aligned_sam"
 
 $ECHO mv "$TMPDIR"/star.Log.final.out "$outdir"
 
+
 # Stage 3: sort aligned reads (STAR does not necessarily emit reads in the same order as the input)
+
 invoke_picard \
   SortSam INPUT="$aligned_sam" OUTPUT="$aligned_sorted_bam" SORT_ORDER=queryname TMP_DIR="$TMPDIR"
 mark_file_as_intermediate "$aligned_sorted_bam"
 
+
 # Stage 4: merge and tag aligned reads
+
 invoke_picard MergeBamAlignment REFERENCE_SEQUENCE="$reference" UNMAPPED_BAM="$tagged_unmapped_bam" \
   ALIGNED_BAM="$aligned_sorted_bam" INCLUDE_SECONDARY_ALIGNMENTS=false PAIRED_RUN=false CLIP_ADAPTERS=false \
   TMP_DIR="$TMPDIR" OUTPUT="$TMPDIR"/merged.bam
@@ -198,11 +209,13 @@ mark_file_as_intermediate "$TMPDIR"/gene_tagged.bam
 invoke_dropseq TagReadWithGeneFunction O="$TMPDIR"/function_tagged.bam ANNOTATIONS_FILE="$refflat" \
   INPUT="$TMPDIR"/gene_tagged.bam
 
+
+# Stage 5: bead repair
+
 if [ "$bead_repair" -ne 0 ]
 then
   mark_file_as_intermediate "$TMPDIR"/function_tagged.bam
 
-  # Stage 5: bead repair
   invoke_dropseq DetectBeadSubstitutionErrors INPUT="$TMPDIR"/function_tagged.bam OUTPUT="$TMPDIR"/substitution_repaired.bam \
     TMP_DIR="$TMPDIR" MIN_UMIS_PER_CELL=20 OUTPUT_REPORT="$outdir"/substitution_error_report.txt
   mark_file_as_intermediate "$TMPDIR"/substitution_repaired.bam
@@ -214,5 +227,5 @@ else
   $ECHO mv "$TMPDIR"/function_tagged.bam "$outdir"/final.bam
 fi
 
-echo 'Completed successfully.'
 
+echo 'Completed successfully.'
