@@ -50,6 +50,17 @@ EOF
 
 set -e
 
+# Unset all variables to be set based on parameters that have not been
+# initialized previously in this script (or a script sourced above) 'in order
+# to ensure they're passed on command line rather than inherited from
+# somewhere'.
+# See https://github.com/broadinstitute/Drop-seq/pull/412#discussion_r1569231368
+# for the corresponding discussion.
+unset \
+  genomedir \
+  reference \
+  verbose
+
 while getopts ':g:r:o:s:n:bekvh' options; do
   case $options in
     g ) genomedir=$OPTARG;;
