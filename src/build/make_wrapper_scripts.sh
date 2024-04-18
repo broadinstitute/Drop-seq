@@ -55,6 +55,16 @@ check_set() {
 
 set -e
 
+# Unset all variables to be set based on parameters that have not been
+# initialized previously in this script 'in order to ensure they're passed on
+# command line rather than inherited from somewhere'.
+# See https://github.com/broadinstitute/Drop-seq/pull/412#discussion_r1569231368
+# for the corresponding discussion.
+unset \
+  template \
+  classpath \
+  outdir
+
 while getopts ':t:c:d:m:h' options; do
   case $options in
     t ) template=$OPTARG;;
