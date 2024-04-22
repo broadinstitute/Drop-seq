@@ -63,8 +63,7 @@ set -e
 # for the corresponding discussion.
 unset \
   genomedir \
-  reference \
-  verbose
+  reference
 
 while getopts ':g:r:o:s:n:bekvh' options; do
   case $options in
