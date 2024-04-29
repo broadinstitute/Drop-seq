@@ -32,6 +32,7 @@ star_executable=$(which STAR 2> /dev/null)
 ncores=1
 bead_repair=0
 keep_intermediates=0
+pipeline=0
 
 
 usage () {
@@ -47,6 +48,7 @@ Perform Drop-seq tagging, trimming and alignment.
 -b                  : Do bead repair.  Not needed for 10X libraries, but recommended for Drop-seq chemistry.
 -e                  : Echo commands instead of executing them.
 -k                  : Keep intermediate files.
+-p                  : Run in pipeline mode.
 -v                  : Run in verbose mode.
 -h                  : Print usage and exit.
 EOF
@@ -72,7 +74,7 @@ unset \
   genomedir \
   reference
 
-while getopts ':g:r:o:s:n:bekvh' options; do
+while getopts ':g:r:o:s:n:bekpvh' options; do
   case $options in
     g ) genomedir=$OPTARG;;
     r ) reference=$OPTARG;;
@@ -82,6 +84,7 @@ while getopts ':g:r:o:s:n:bekvh' options; do
     b ) bead_repair=1;;
     e ) ECHO='echo';;
     k ) keep_intermediates=1;;
+    p ) pipeline=1;;
     v ) verbose=1;;
     h ) usage
           exit 0;;
@@ -112,6 +115,14 @@ then if [ ! -x "$star_executable" ] || [ ! -f "$star_executable" ]
 elif which STAR > /dev/null
 then echo > /dev/null
 else error_exit 'STAR executable must be on the path'
+fi
+
+if [ "$pipeline" -ne 0 ]
+then if [ -n "$ECHO" ]
+     then error_exit 'Pipeline mode (-p flag) not supported in combination with echo mode (-e flag).'
+     elif [ "$verbose" -ne 0 ]
+     then error_exit 'Pipeline mode (-p flag) not supported in combination with verbose mode (-v flag).'
+     fi
 fi
 
 reference_basename=$(basename "$(basename "$reference" .gz)" .fasta)
@@ -196,27 +207,54 @@ alias trim_polya='invoke_dropseq \
     OUTPUT="$tagged_unmapped_bam" \
     OUTPUT_SUMMARY="$outdir"/polyA_trimming_report.txt'
 
-tag_cells \
-  OUTPUT="$TMPDIR"/unaligned_tagged_Cell.bam
-mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_Cell.bam
+if [ "$pipeline" -ne 0 ]
+then
+  trap '{ exit 1; }' USR1
+  pipe_fail () { kill -s USR1 "$$"; }
+  { tag_cells \
+      COMPRESSION_LEVEL=0 \
+      OUTPUT=/dev/stdout \
+    || pipe_fail; } \
+  | { tag_molecules \
+        COMPRESSION_LEVEL=0 \
+        INPUT=/dev/stdin \
+        OUTPUT=/dev/stdout \
+    || pipe_fail; } \
+  | { filter_bam \
+        COMPRESSION_LEVEL=0 \
+        INPUT=/dev/stdin \
+        OUTPUT=/dev/stdout \
+    || pipe_fail; } \
+  | { trim_start \
+        COMPRESSION_LEVEL=0 \
+        INPUT=/dev/stdin \
+        OUTPUT=/dev/stdout \
+    || pipe_fail; } \
+  | trim_polya \
+      INPUT=/dev/stdin
+else
+  tag_cells \
+    OUTPUT="$TMPDIR"/unaligned_tagged_Cell.bam
+  mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_Cell.bam
 
-tag_molecules \
-  INPUT="$TMPDIR"/unaligned_tagged_Cell.bam \
-  OUTPUT="$TMPDIR"/unaligned_tagged_CellMolecular.bam
-mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_CellMolecular.bam
+  tag_molecules \
+    INPUT="$TMPDIR"/unaligned_tagged_Cell.bam \
+    OUTPUT="$TMPDIR"/unaligned_tagged_CellMolecular.bam
+  mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_CellMolecular.bam
 
-filter_bam \
-  INPUT="$TMPDIR"/unaligned_tagged_CellMolecular.bam \
-  OUTPUT="$TMPDIR"/unaligned_tagged_filtered.bam
-mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_filtered.bam
+  filter_bam \
+    INPUT="$TMPDIR"/unaligned_tagged_CellMolecular.bam \
+    OUTPUT="$TMPDIR"/unaligned_tagged_filtered.bam
+  mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_filtered.bam
 
-trim_start \
-  INPUT="$TMPDIR"/unaligned_tagged_filtered.bam \
-  OUTPUT="$TMPDIR"/unaligned_tagged_trimmed_smart.bam
-mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_trimmed_smart.bam
+  trim_start \
+    INPUT="$TMPDIR"/unaligned_tagged_filtered.bam \
+    OUTPUT="$TMPDIR"/unaligned_tagged_trimmed_smart.bam
+  mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_trimmed_smart.bam
 
-trim_polya \
-  INPUT="$TMPDIR"/unaligned_tagged_trimmed_smart.bam
+  trim_polya \
+    INPUT="$TMPDIR"/unaligned_tagged_trimmed_smart.bam
+fi
 mark_file_as_intermediate "$tagged_unmapped_bam"
 
 
@@ -232,12 +270,22 @@ alias star_align='$ECHO \
     --outFileNamePrefix "$TMPDIR"/star. \
     --runThreadN $ncores'
 
-sam_to_fastq \
-  FASTQ="$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
-mark_file_as_intermediate "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
+if [ "$pipeline" -ne 0 ]
+then
+  { sam_to_fastq \
+      COMPRESSION_LEVEL=0 \
+      FASTQ=/dev/stdout \
+    || pipe_fail; } \
+  | star_align \
+      --readFilesIn /dev/stdin
+else
+  sam_to_fastq \
+    FASTQ="$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
+  mark_file_as_intermediate "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
 
-star_align \
-  --readFilesIn "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
+  star_align \
+    --readFilesIn "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
+fi
 mark_file_as_intermediate "$aligned_sam"
 
 $ECHO mv "$TMPDIR"/star.Log.final.out "$outdir"
@@ -279,17 +327,32 @@ alias tag_with_gene='invoke_dropseq \
     ANNOTATIONS_FILE="$refflat" \
     OUTPUT="$TMPDIR"/function_tagged.bam'
 
-merge_bam \
-  OUTPUT="$TMPDIR"/merged.bam
-mark_file_as_intermediate "$TMPDIR"/merged.bam
+if [ "$pipeline" -ne 0 ]
+then
+  { merge_bam \
+      COMPRESSION_LEVEL=0 \
+      OUTPUT=/dev/stdout \
+    || pipe_fail; } \
+  | { tag_with_interval \
+        COMPRESSION_LEVEL=0 \
+        INPUT=/dev/stdin \
+        OUTPUT=/dev/stdout \
+      || pipe_fail; } \
+  | tag_with_gene \
+      INPUT=/dev/stdin
+else
+  merge_bam \
+    OUTPUT="$TMPDIR"/merged.bam
+  mark_file_as_intermediate "$TMPDIR"/merged.bam
 
-tag_with_interval \
-  INPUT="$TMPDIR"/merged.bam \
-  OUTPUT="$TMPDIR"/gene_tagged.bam
-mark_file_as_intermediate "$TMPDIR"/gene_tagged.bam
+  tag_with_interval \
+    INPUT="$TMPDIR"/merged.bam \
+    OUTPUT="$TMPDIR"/gene_tagged.bam
+  mark_file_as_intermediate "$TMPDIR"/gene_tagged.bam
 
-tag_with_gene \
-  INPUT="$TMPDIR"/gene_tagged.bam
+  tag_with_gene \
+    INPUT="$TMPDIR"/gene_tagged.bam
+fi
 
 
 # Stage 5: bead repair
@@ -315,6 +378,9 @@ if [ "$bead_repair" -ne 0 ]
 then
   mark_file_as_intermediate "$TMPDIR"/function_tagged.bam
 
+  # Note: For some reason, piping the output of the fist command to the second
+  # results in an empty BAM file. Thus, at least for the time being, pipeline
+  # mode does not affect this stage.
   detect_subs_errors \
     OUTPUT="$TMPDIR"/substitution_repaired.bam
   mark_file_as_intermediate "$TMPDIR"/substitution_repaired.bam
