@@ -55,6 +55,13 @@ EOF
 
 set -e
 
+# Note: This script uses aliases to define commands containing quoted
+# parameters for later use. By default, Bash only expands these in interactive
+# shells. The following command enables that feature for the script, if
+# necessary.
+# shellcheck disable=SC3044 # `shopt` is only called for non-POSIX shells.
+! command -v shopt > /dev/null || shopt -s expand_aliases
+
 # Unset all variables to be set based on parameters that have not been
 # initialized previously in this script (or a script sourced above) 'in order
 # to ensure they're passed on command line rather than inherited from
@@ -147,41 +154,90 @@ trap 'cleanup_intermediates "$@"' EXIT
 # Stage 1: pre-alignment tag and trim
 
 # cellular tag
-invoke_dropseq TagBamWithReadSequenceExtended SUMMARY="$outdir"/unaligned_tagged_Cellular.bam_summary.txt \
-  BASE_RANGE=1-12 BASE_QUALITY=10 BARCODED_READ=1 DISCARD_READ=false TAG_NAME=XC NUM_BASES_BELOW_QUALITY=1 \
-  INPUT="$unmapped_bam" OUTPUT="$TMPDIR"/unaligned_tagged_Cell.bam
-mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_Cell.bam
+alias tag_cells='invoke_dropseq \
+  TagBamWithReadSequenceExtended \
+    BARCODED_READ=1 \
+    BASE_QUALITY=10 \
+    BASE_RANGE=1-12 \
+    DISCARD_READ=false \
+    INPUT="$unmapped_bam" \
+    NUM_BASES_BELOW_QUALITY=1 \
+    SUMMARY="$outdir"/unaligned_tagged_Cellular.bam_summary.txt \
+    TAG_NAME=XC'
 
 # molecular tag
-invoke_dropseq TagBamWithReadSequenceExtended SUMMARY="$outdir"/unaligned_tagged_Molecular.bam_summary.txt \
-  BASE_RANGE=13-20 BASE_QUALITY=10 BARCODED_READ=1 DISCARD_READ=true TAG_NAME=XM NUM_BASES_BELOW_QUALITY=1 \
-  INPUT="$TMPDIR"/unaligned_tagged_Cell.bam OUTPUT="$TMPDIR"/unaligned_tagged_CellMolecular.bam
-mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_CellMolecular.bam
+alias tag_molecules='invoke_dropseq \
+  TagBamWithReadSequenceExtended \
+    BARCODED_READ=1 \
+    BASE_QUALITY=10 \
+    BASE_RANGE=13-20 \
+    DISCARD_READ=true \
+    NUM_BASES_BELOW_QUALITY=1 \
+    SUMMARY="$outdir"/unaligned_tagged_Molecular.bam_summary.txt \
+    TAG_NAME=XM'
 
 # quality filter
-invoke_dropseq FilterBam TAG_REJECT=XQ INPUT="$TMPDIR"/unaligned_tagged_CellMolecular.bam \
+alias filter_bam='invoke_dropseq \
+  FilterBam \
+    TAG_REJECT=XQ'
+
+# read trimming
+alias trim_start='invoke_dropseq \
+  TrimStartingSequence \
+    MISMATCHES=0 \
+    NUM_BASES=5 \
+    OUTPUT_SUMMARY="$outdir"/adapter_trimming_report.txt \
+    SEQUENCE=AAGCAGTGGTATCAACGCAGAGTGAATGGG'
+
+alias trim_polya='invoke_dropseq \
+  PolyATrimmer \
+    MISMATCHES=0 NUM_BASES=6 \
+    NEW=true \
+    OUTPUT="$tagged_unmapped_bam" \
+    OUTPUT_SUMMARY="$outdir"/polyA_trimming_report.txt'
+
+tag_cells \
+  OUTPUT="$TMPDIR"/unaligned_tagged_Cell.bam
+mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_Cell.bam
+
+tag_molecules \
+  INPUT="$TMPDIR"/unaligned_tagged_Cell.bam \
+  OUTPUT="$TMPDIR"/unaligned_tagged_CellMolecular.bam
+mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_CellMolecular.bam
+
+filter_bam \
+  INPUT="$TMPDIR"/unaligned_tagged_CellMolecular.bam \
   OUTPUT="$TMPDIR"/unaligned_tagged_filtered.bam
 mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_filtered.bam
 
-# read trimming
-invoke_dropseq TrimStartingSequence OUTPUT_SUMMARY="$outdir"/adapter_trimming_report.txt \
-  SEQUENCE=AAGCAGTGGTATCAACGCAGAGTGAATGGG MISMATCHES=0 NUM_BASES=5 INPUT="$TMPDIR"/unaligned_tagged_filtered.bam \
+trim_start \
+  INPUT="$TMPDIR"/unaligned_tagged_filtered.bam \
   OUTPUT="$TMPDIR"/unaligned_tagged_trimmed_smart.bam
 mark_file_as_intermediate "$TMPDIR"/unaligned_tagged_trimmed_smart.bam
 
-invoke_dropseq PolyATrimmer OUTPUT="$tagged_unmapped_bam" OUTPUT_SUMMARY="$outdir"/polyA_trimming_report.txt \
-  MISMATCHES=0 NUM_BASES=6 NEW=true INPUT="$TMPDIR"/unaligned_tagged_trimmed_smart.bam
+trim_polya \
+  INPUT="$TMPDIR"/unaligned_tagged_trimmed_smart.bam
 mark_file_as_intermediate "$tagged_unmapped_bam"
 
 
 # Stage 2: alignment
 
-invoke_picard SamToFastq INPUT="$TMPDIR"/unaligned_mc_tagged_polyA_filtered.bam \
+alias sam_to_fastq='invoke_picard \
+  SamToFastq \
+    INPUT="$TMPDIR"/unaligned_mc_tagged_polyA_filtered.bam'
+
+alias star_align='$ECHO \
+  $star_executable \
+    --genomeDir "$genomedir" \
+    --outFileNamePrefix "$TMPDIR"/star. \
+    --runThreadN $ncores'
+
+sam_to_fastq \
   FASTQ="$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
 mark_file_as_intermediate "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
 
-$ECHO "$star_executable" --genomeDir "$genomedir" --outFileNamePrefix "$TMPDIR"/star. \
-  --readFilesIn "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq --runThreadN "$ncores"
+star_align \
+  --readFilesIn "$TMPDIR"/unaligned_mc_tagged_polyA_filtered.fastq
 mark_file_as_intermediate "$aligned_sam"
 
 $ECHO mv "$TMPDIR"/star.Log.final.out "$outdir"
@@ -189,39 +245,82 @@ $ECHO mv "$TMPDIR"/star.Log.final.out "$outdir"
 
 # Stage 3: sort aligned reads (STAR does not necessarily emit reads in the same order as the input)
 
-invoke_picard \
-  SortSam INPUT="$aligned_sam" OUTPUT="$aligned_sorted_bam" SORT_ORDER=queryname TMP_DIR="$TMPDIR"
+alias sort_star='invoke_picard \
+  SortSam \
+    SORT_ORDER=queryname \
+    INPUT="$aligned_sam" \
+    OUTPUT="$aligned_sorted_bam" \
+    TMP_DIR="$TMPDIR"'
+
+sort_star
 mark_file_as_intermediate "$aligned_sorted_bam"
 
 
 # Stage 4: merge and tag aligned reads
 
-invoke_picard MergeBamAlignment REFERENCE_SEQUENCE="$reference" UNMAPPED_BAM="$tagged_unmapped_bam" \
-  ALIGNED_BAM="$aligned_sorted_bam" INCLUDE_SECONDARY_ALIGNMENTS=false PAIRED_RUN=false CLIP_ADAPTERS=false \
-  TMP_DIR="$TMPDIR" OUTPUT="$TMPDIR"/merged.bam
+alias merge_bam='invoke_picard \
+  MergeBamAlignment \
+    ALIGNED_BAM="$aligned_sorted_bam" \
+    CLIP_ADAPTERS=false \
+    INCLUDE_SECONDARY_ALIGNMENTS=false \
+    PAIRED_RUN=false \
+    REFERENCE_SEQUENCE="$reference" \
+    TMP_DIR="$TMPDIR" \
+    UNMAPPED_BAM="$tagged_unmapped_bam"'
+
+alias tag_with_interval='invoke_dropseq \
+  TagReadWithInterval \
+    INTERVALS="$gene_intervals" \
+    TAG=XG \
+    TMP_DIR="$TMPDIR"'
+
+alias tag_with_gene='invoke_dropseq \
+  TagReadWithGeneFunction \
+    ANNOTATIONS_FILE="$refflat" \
+    OUTPUT="$TMPDIR"/function_tagged.bam'
+
+merge_bam \
+  OUTPUT="$TMPDIR"/merged.bam
 mark_file_as_intermediate "$TMPDIR"/merged.bam
 
-invoke_dropseq TagReadWithInterval I="$TMPDIR"/merged.bam O="$TMPDIR"/gene_tagged.bam TMP_DIR="$TMPDIR" \
-  INTERVALS="$gene_intervals" TAG=XG
+tag_with_interval \
+  INPUT="$TMPDIR"/merged.bam \
+  OUTPUT="$TMPDIR"/gene_tagged.bam
 mark_file_as_intermediate "$TMPDIR"/gene_tagged.bam
 
-invoke_dropseq TagReadWithGeneFunction O="$TMPDIR"/function_tagged.bam ANNOTATIONS_FILE="$refflat" \
+tag_with_gene \
   INPUT="$TMPDIR"/gene_tagged.bam
 
 
 # Stage 5: bead repair
 
+alias detect_subs_errors='invoke_dropseq \
+  DetectBeadSubstitutionErrors \
+    INPUT="$TMPDIR"/function_tagged.bam \
+    MIN_UMIS_PER_CELL=20 \
+    OUTPUT_REPORT="$outdir"/substitution_error_report.txt \
+    TMP_DIR="$TMPDIR"'
+
+alias detect_synthesis_errors='invoke_dropseq \
+  DetectBeadSynthesisErrors \
+    CREATE_INDEX=true \
+    MIN_UMIS_PER_CELL=20 \
+    OUTPUT="$outdir"/final.bam \
+    OUTPUT_STATS="$outdir"/synthesis_error_stats.txt \
+    REPORT="$outdir"/synthesis_error_report.txt \
+    SUMMARY="$outdir"/synthesis_error_summary.txt \
+    TMP_DIR="$TMPDIR"'
+
 if [ "$bead_repair" -ne 0 ]
 then
   mark_file_as_intermediate "$TMPDIR"/function_tagged.bam
 
-  invoke_dropseq DetectBeadSubstitutionErrors INPUT="$TMPDIR"/function_tagged.bam OUTPUT="$TMPDIR"/substitution_repaired.bam \
-    TMP_DIR="$TMPDIR" MIN_UMIS_PER_CELL=20 OUTPUT_REPORT="$outdir"/substitution_error_report.txt
+  detect_subs_errors \
+    OUTPUT="$TMPDIR"/substitution_repaired.bam
   mark_file_as_intermediate "$TMPDIR"/substitution_repaired.bam
 
-  invoke_dropseq DetectBeadSynthesisErrors INPUT="$TMPDIR"/substitution_repaired.bam MIN_UMIS_PER_CELL=20 \
-    OUTPUT_STATS="$outdir"/synthesis_error_stats.txt SUMMARY="$outdir"/synthesis_error_summary.txt \
-    REPORT="$outdir"/synthesis_error_report.txt CREATE_INDEX=true TMP_DIR="$TMPDIR" OUTPUT="$outdir"/final.bam
+  detect_synthesis_errors \
+    INPUT="$TMPDIR"/substitution_repaired.bam
 else
   $ECHO mv "$TMPDIR"/function_tagged.bam "$outdir"/final.bam
 fi
