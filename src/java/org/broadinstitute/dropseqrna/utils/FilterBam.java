@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import htsjdk.samtools.util.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.DigitalExpression;
@@ -50,10 +51,8 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
@@ -69,8 +68,8 @@ import picard.cmdline.StandardOptionDefinitions;
 public class FilterBam extends CommandLineProgram{
 	private final Log log = Log.getInstance(FilterBam.class);
 
-	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
-	public File INPUT;
+	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM, BAM or bam_list file to analyze.")
+	public List<File> INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
 	public File OUTPUT;
@@ -143,22 +142,22 @@ public class FilterBam extends CommandLineProgram{
 	
 	@Override
 	protected int doWork() {
-		IOUtil.assertFileIsReadable(INPUT);
+		INPUT = FileListParsingUtils.expandFileList(INPUT);
+		INPUT.forEach(IOUtil::assertFileIsReadable);
 		IOUtil.assertFileIsWritable(OUTPUT);
 		buildPatterns();
+		SamHeaderAndIterator samHeaderAndIterator = SamFileMergeUtil.mergeInputs(INPUT, true);
 
-		SamReader in = SamReaderFactory.makeDefault().open(INPUT);
-
-		SAMFileHeader fileHeader = editSequenceDictionary(in.getFileHeader().clone());
+		SAMFileHeader fileHeader = editSequenceDictionary(samHeaderAndIterator.header.clone());
 		SamHeaderUtil.addPgRecord(fileHeader, this);
 		SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(fileHeader, true, OUTPUT);
 		ProgressLogger progLog=new ProgressLogger(log);
 
-		final boolean sequencesRemoved = fileHeader.getSequenceDictionary().getSequences().size() != in.getFileHeader().getSequenceDictionary().getSequences().size();
+		final boolean sequencesRemoved = fileHeader.getSequenceDictionary().getSequences().size() != samHeaderAndIterator.header.getSequenceDictionary().getSequences().size();
 		
 		FilteredReadsMetric m = new FilteredReadsMetric();
 		
-		for (final SAMRecord r : in) {
+		for (final SAMRecord r : new IterableAdapter<SAMRecord>(samHeaderAndIterator.iterator)) {
 			progLog.record(r);
 			if (!filterRead(r)) {
                 String sequenceName = stripReferencePrefix(r.getReferenceName());
@@ -193,7 +192,7 @@ public class FilterBam extends CommandLineProgram{
 		}
 		// write the summary if the summary file is not null.
 		writeSummary(this.SUMMARY, m);
-        CloserUtil.close(in);
+        CloserUtil.close(samHeaderAndIterator.iterator);
         out.close();
         FilterProgramUtils.reportAndCheckFilterResults("reads", m.READS_ACCEPTED, m.READS_REJECTED,
 				PASSING_READ_THRESHOLD, log);
