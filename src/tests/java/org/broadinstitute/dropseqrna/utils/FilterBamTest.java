@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.utils;
 import htsjdk.samtools.*;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
+import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.zip.DeflaterFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -38,6 +39,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 // Note that there is some weirdness with IntelDeflater on Mac OS that sometimes causes SEGV.  This test therefore
@@ -47,7 +49,13 @@ public class FilterBamTest {
 
 	// TO GENERATE COUNTS OF CONTIGS FOR HUMAN/MOUSE...
 	// samtools view human_mouse_smaller.bam |cut -f 3 |sort |uniq -c > human_mouse_smaller.contig_counts.txt
-	private static File ORGANISM_INPUT_FILE=new File ("testdata/org/broadinstitute/dropseq/utils/human_mouse_smaller.bam");
+	private static File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/utils");
+	private static File ORGANISM_INPUT_FILE=new File (TEST_DATA_DIR,"human_mouse_smaller.bam");
+	private static File BAM_LIST = new File(TEST_DATA_DIR, "human_mouse_x.bam_list");
+	private static List<File> BAM_FILES = Arrays.asList(
+			new File(TEST_DATA_DIR, "human_mouse_x.1.sam"),
+			new File(TEST_DATA_DIR, "human_mouse_x.2.sam")
+	);
 
 	private static final long NUM_HUMAN_READS = 136859;
 	public static final long NUM_MOUSE_READS = 76036;
@@ -56,7 +64,7 @@ public class FilterBamTest {
 	@Test
 	public void testOrganismFiltering () throws IOException {
 		FilterBam f = new FilterBam();
-		f.INPUT=ORGANISM_INPUT_FILE;
+		f.INPUT= Collections.singletonList(ORGANISM_INPUT_FILE);
 		f.SUMMARY=File.createTempFile("paired_input", ".summary.txt");
 		f.OUTPUT=File.createTempFile("paired_input", ".bam");
 		f.OUTPUT.deleteOnExit();
@@ -90,7 +98,7 @@ public class FilterBamTest {
 	}
 	private void filterWithThreshold(final double threshold) throws IOException {
 		FilterBam f = new FilterBam();
-		f.INPUT=ORGANISM_INPUT_FILE;
+		f.INPUT=Collections.singletonList(ORGANISM_INPUT_FILE);;
 		f.OUTPUT=File.createTempFile("paired_input", ".bam");
 		f.OUTPUT.deleteOnExit();
 		f.REF_SOFT_MATCHED_RETAINED=Arrays.asList("HUMAN");
@@ -401,6 +409,40 @@ public class FilterBamTest {
 						ret.add(new Object[]{"HUMAN_", "MOUSE_", stripPrefix, dropSequences, soft, retain});
         return ret.toArray(new Object[ret.size()][]);
     }
+
+	@Test(dataProvider = "testMultipleBamInputDataProvider")
+	public void testMultipleBamInput(final List<File> inputBamsOrBamList) throws IOException {
+		FilterBam f = new FilterBam();
+		f.INPUT= inputBamsOrBamList;
+		f.SUMMARY=TestUtils.getTempReportFile("human_mouse.x", ".summary.txt");
+		f.OUTPUT=TestUtils.getTempReportFile("paired_input", ".bam");
+		f.REF_SOFT_MATCHED_RETAINED=Arrays.asList("HUMAN");
+		// need to set this to an empty list, as that's what the constructor for FilterBam would do.
+		f.STRIP_REF_PREFIX=new ArrayList<>();
+		Assert.assertEquals(f.doWork(), 0);
+		// Just count the reads in the input files because we know no reads are filtered out
+		int numReads = BAM_FILES.stream().mapToInt(this::countSamRecords).sum();
+		List<FilteredReadsMetric> metrics = MetricsFile.readBeans(f.SUMMARY);
+		Assert.assertEquals(numReads, metrics.get(0).READS_ACCEPTED);
+	}
+	@DataProvider(name="testMultipleBamInputDataProvider")
+	public Object[][] testMultipleBamInputDataProvider() {
+		return new Object[][] {
+				{BAM_FILES},
+				{Collections.singletonList(BAM_LIST)}
+		};
+	}
+
+	private int countSamRecords(final File f) {
+		SamReaderFactory factory = SamReaderFactory.makeDefault();
+		SamReader reader = factory.open(f);
+		int count=0;
+		for (SAMRecord r: reader) {
+			count++;
+		}
+		CloserUtil.close(reader);
+		return count;
+	}
 
     private DeflaterFactory deflaterFactory;
     @BeforeMethod
