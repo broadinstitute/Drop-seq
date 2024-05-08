@@ -24,10 +24,7 @@
 
 package org.broadinstitute.dropseqrna.utils;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecordIterator;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.*;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
 import htsjdk.samtools.util.zip.DeflaterFactory;
@@ -277,4 +274,15 @@ public class TestUtils {
 			new File(dir, filename.replace(slug, Integer.toString(i))).deleteOnExit();
 		}
 	}
+
+    static long countSamRecords(final File f) {
+        SamReaderFactory factory = SamReaderFactory.makeDefault();
+        SamReader reader = factory.open(f);
+        long count=0;
+        for (SAMRecord r: reader) {
+            count++;
+        }
+        CloserUtil.close(reader);
+        return count;
+    }
 }
