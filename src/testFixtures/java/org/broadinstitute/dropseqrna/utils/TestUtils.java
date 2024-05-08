@@ -275,7 +275,7 @@ public class TestUtils {
 		}
 	}
 
-    static long countSamRecords(final File f) {
+    public static long countSamRecords(final File f) {
         SamReaderFactory factory = SamReaderFactory.makeDefault();
         SamReader reader = factory.open(f);
         long count=0;
