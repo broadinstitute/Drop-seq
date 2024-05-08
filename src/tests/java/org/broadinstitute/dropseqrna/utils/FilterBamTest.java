@@ -26,7 +26,6 @@ package org.broadinstitute.dropseqrna.utils;
 import htsjdk.samtools.*;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
-import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.zip.DeflaterFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -421,7 +420,7 @@ public class FilterBamTest {
 		f.STRIP_REF_PREFIX=new ArrayList<>();
 		Assert.assertEquals(f.doWork(), 0);
 		// Just count the reads in the input files because we know no reads are filtered out
-		int numReads = BAM_FILES.stream().mapToInt(this::countSamRecords).sum();
+		long numReads = BAM_FILES.stream().mapToLong(TestUtils::countSamRecords).sum();
 		List<FilteredReadsMetric> metrics = MetricsFile.readBeans(f.SUMMARY);
 		Assert.assertEquals(numReads, metrics.get(0).READS_ACCEPTED);
 	}
@@ -433,18 +432,7 @@ public class FilterBamTest {
 		};
 	}
 
-	private int countSamRecords(final File f) {
-		SamReaderFactory factory = SamReaderFactory.makeDefault();
-		SamReader reader = factory.open(f);
-		int count=0;
-		for (SAMRecord r: reader) {
-			count++;
-		}
-		CloserUtil.close(reader);
-		return count;
-	}
-
-    private DeflaterFactory deflaterFactory;
+	private DeflaterFactory deflaterFactory;
     @BeforeMethod
 	public void setDeflaterFactory() {
     	if (TestUtils.isMacOs()) {
