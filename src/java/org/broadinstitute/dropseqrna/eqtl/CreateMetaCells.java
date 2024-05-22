@@ -24,24 +24,15 @@
 
 package org.broadinstitute.dropseqrna.eqtl;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.PrintStream;
+import java.io.*;
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
+import htsjdk.samtools.util.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeader;
@@ -50,9 +41,6 @@ import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.RetainRemoveList;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 import picard.util.TabbedInputParser;
@@ -125,13 +113,16 @@ public class CreateMetaCells extends CommandLineProgram {
 	@Argument(doc="Column label for metacell column in DONOR_MAP.", mutex = {"SINGLE_METACELL_LABEL"})
 	public String METACELL_COLUMN = "bestSample";
 
+	@Argument(doc="Validate order of genes in the input, or sort (alphanumeric), or emit in input order without sorting.")
+	public GeneSort GENE_SORT=GeneSort.ALLOW_UNSORTED;
+
 	private final String GENE_HEADER="GENE";
 	private final int PROGRESS_INTERVAL=1000;
 	
 	private void validateClusterAssignmentArguments () {
 		if (this.CLUSTER_ASSIGNMENTS_FILE!=null) {
 			IOUtil.assertFileIsReadable(this.CLUSTER_ASSIGNMENTS_FILE);
-			if (CLUSTER_ASSIGNMENT==null || CLUSTER_ASSIGNMENT.size()==0)
+			if (CLUSTER_ASSIGNMENT==null || CLUSTER_ASSIGNMENT.isEmpty())
 				throw new IllegalArgumentException("If CLUSTER_ASSIGNMENTS_FILE is set, then the CLUSTER_ASSIGNMENT must have at least one value.");
 			if (MERGED_DGE_HEADER_FILE==null && PREFIX==null)
 				throw new IllegalArgumentException("If CLUSTER_ASSIGNMENTS_FILE is set, then must set either MERGED_DGE_HEADER_FILE or PREFIX");
@@ -156,7 +147,7 @@ public class CreateMetaCells extends CommandLineProgram {
 		TabbedInputParser parser = new TabbedInputParser(false, in);
 		if (!parser.hasNext()) {
 			log.error("No lines in input file" + this.INPUT);
-			parser.close();
+			CloserUtil.close(parser);
 			CloserUtil.close(out);
 			return 1;
 		}
@@ -199,23 +190,30 @@ public class CreateMetaCells extends CommandLineProgram {
 		// write the header for the output file.
 		writeHeader(out, donors);
 
+		final MetacellRowWriter rowWriter = new MetacellRowWriter(out, 1 + donors.size());
+
 		// parse through the DGE and write out the meta-cell file.
 		int counter=0;
+		String prevGene = null;
 		while (parser.hasNext()) {
 			String [] line = parser.next();
 			String gene = line[0];
+			if (GENE_SORT == GeneSort.REQUIRE_SORTED && prevGene != null && gene.compareTo(prevGene) <= 0) {
+				throw new IllegalArgumentException("Genes are not sorted in input file.  Gene '" + gene + "' is out of order.");
+			}
+			prevGene = gene;
 			Map<String, Double> umis = getUMIsPerDonor (header, line, donorMap, this.STRATEGY);
 			metrics = addUMIsPerDonor(metrics, umis);
 			List<String> lineParsed = buildBodyLine(gene, umis, donors, this.INTEGER_FORMAT);
 			if (lineParsed!=null)
-				writeLine(lineParsed, out, false);
+				rowWriter.writeRow(lineParsed);
 			if (counter > 0 && counter%PROGRESS_INTERVAL==0) log.info("Processed [" + counter +"] lines");
 			counter++;
 		}
 		log.info("Processed [" + counter +"] lines in total");
 		// cleanup.
-		parser.close();
-		out.close();
+		CloserUtil.close(parser);
+		rowWriter.close();
 		
 		// write metrics output if requested
 		if (this.METRICS!=null) metrics.writeMetrics(this.METRICS, this.INTEGER_FORMAT); 			
@@ -265,7 +263,7 @@ public class CreateMetaCells extends CommandLineProgram {
 	private Map<String, String> filterDonorMapByClusterLabels (String prefix, Collection<String> clusterLabels, final File clusterAssignmentFile, final Map<String,String> donorMap) {
 		// no op if prefix is unset or cluster assignment is null.
 		if (prefix==null || clusterAssignmentFile==null) return (donorMap);
-		if (clusterLabels==null || clusterLabels.size()==0) return (donorMap);
+		if (clusterLabels==null || clusterLabels.isEmpty()) return (donorMap);
 		
 		Set<String> labels=new HashSet<>(clusterLabels);		
 		Set<String> cb = new HashSet<> (getCellBarcodesInClusters(prefix, labels, clusterAssignmentFile));
@@ -343,12 +341,8 @@ public class CreateMetaCells extends CommandLineProgram {
 			double count = Double.parseDouble(line[i]);
 			String donor = donorMap.get(cell);			
 			if (donor!=null) {
-				List<Double> vals = umiListPerDonor.get(donor); 
-				if (vals==null) {
-					vals= new ArrayList<>();
-					umiListPerDonor.put(donor, vals);
-				}
-				vals.add(count);					
+                List<Double> vals = umiListPerDonor.computeIfAbsent(donor, k -> new ArrayList<>());
+                vals.add(count);
 			}				
 		}		
 		
@@ -407,7 +401,7 @@ public class CreateMetaCells extends CommandLineProgram {
 		Set <String> toRetain = getRetainRemoveSet(retain);
 
 		// in the case where the input retain file is not null, but has 0 entries, there is nothing to retain. 
-		if (retain!=null & toRetain.size()==0) 
+		if (retain!=null & toRetain.isEmpty())
 			return Collections.emptySet();		
 
 		RetainRemoveList<String> rrl = new RetainRemoveList<>();
@@ -427,7 +421,7 @@ public class CreateMetaCells extends CommandLineProgram {
 		List<String> lineOut = new ArrayList<>();
 
 		// short-circuit: only write the gene header if there is at least one donor.
-		if (donors.size()==0) return;
+		if (donors.isEmpty()) return;
 		
 		lineOut.add(this.GENE_HEADER);
 		lineOut.addAll(donors);
@@ -435,10 +429,8 @@ public class CreateMetaCells extends CommandLineProgram {
 		out.println(b);
 	}
 	
-	private void writeLine (final List<String> line, final PrintStream out, final boolean addGeneHeader) {
+	private void writeLine (final List<String> line, final PrintStream out) {
 		List<String> lineOut = new ArrayList<>(line);
-		if (addGeneHeader)
-			lineOut.add(0, this.GENE_HEADER);
 		String b = StringUtils.join(lineOut, "\t");
 		out.println(b);
 	}
@@ -473,5 +465,122 @@ public class CreateMetaCells extends CommandLineProgram {
 		System.exit(new CreateMetaCells().instanceMain(args));
 	}
 
+	public enum GeneSort implements CommandLineParser.ClpEnum {
+		ALLOW_UNSORTED("Emit genes in the order they appear in the input file."),
+		REQUIRE_SORTED("Fail if the input file is not sorted by gene name."),
+		SORT("Sort genes by name before writing (uses SortingCollection).");
 
+		private final String description;
+
+		GeneSort(final String description) {
+			this.description = description;
+		}
+
+		public String getHelpDoc() {
+			return this.description;
+		}
+	}
+
+	private static class StringListCodec implements SortingCollection.Codec<List<String>> {
+		final int numElements;
+		private ObjectOutputStream outputStream = null;
+		private ObjectInputStream inputReader = null;
+
+		public StringListCodec(int numElements) {
+			this.numElements = numElements;
+		}
+
+		@Override
+		public void setOutputStream(OutputStream outputStream) {
+			try {
+				this.outputStream = new ObjectOutputStream(outputStream);
+			} catch (IOException e) {
+				throw new RuntimeIOException(e);
+			}
+		}
+
+		@Override
+		public void setInputStream(InputStream inputStream) {
+			try {
+				this.inputReader = new ObjectInputStream(inputStream);
+			} catch (IOException e) {
+				throw new RuntimeIOException(e);
+			}
+		}
+
+		@Override
+		public void encode(List<String> strings) {
+			if (strings.size() != this.numElements) {
+				throw new IllegalArgumentException("Expected " + this.numElements + " elements, but got " + strings.size());
+			}
+			strings.stream().forEach(s -> {
+				try {
+					this.outputStream.writeObject(s);
+				} catch (IOException e) {
+					throw new RuntimeIOException(e);
+				}
+			});
+		}
+
+		@Override
+		public List<String> decode() {
+			List<String> ret = new ArrayList<>(this.numElements);
+			for (int i = 0; i < this.numElements; ++i) {
+				try {
+					ret.add((String) this.inputReader.readObject());
+				} catch (EOFException e) {
+					return null;
+				} catch (IOException | ClassNotFoundException e) {
+					throw new RuntimeIOException(e);
+				}
+			}
+			return ret;
+		}
+
+		@Override
+		public SortingCollection.Codec<List<String>> clone() {
+			return new StringListCodec(numElements);
+		}
+	}
+
+	private static class StringListComparator implements Comparator<List<String>> {
+		@Override
+		public int compare(List<String> o1, List<String> o2) {
+			return o1.getFirst().compareTo(o2.getFirst());
+		}
+	}
+
+	private class MetacellRowWriter{
+		private final PrintStream out;
+		private final SortingCollection<List<String>> sortingCollection;
+		public MetacellRowWriter(PrintStream out, int numElements) {
+			this.out = out;
+			if (GENE_SORT == GeneSort.SORT) {
+				final Class c = List.class;
+				this.sortingCollection = SortingCollection.newInstance(
+						c,
+						new StringListCodec(numElements),
+						new StringListComparator(),
+						MAX_RECORDS_IN_RAM);
+			} else {
+				this.sortingCollection = null;
+			}
+		}
+
+		public void writeRow(List<String> row) {
+			if (GENE_SORT == GeneSort.SORT) {
+				this.sortingCollection.add(row);
+			} else {
+				writeLine(row, out);
+			}
+		}
+
+		public void close() {
+			if (GENE_SORT == GeneSort.SORT) {
+				this.sortingCollection.doneAdding();
+				this.sortingCollection.iterator().forEachRemaining(l -> writeLine(l, out));
+			}
+			out.close();
+		}
+	}
 }

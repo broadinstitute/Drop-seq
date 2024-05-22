@@ -2,6 +2,7 @@ package org.broadinstitute.dropseqrna.eqtl;
 
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -20,6 +21,7 @@ public class CreateMetaCellsTest {
 	private final File EXPECTED_SINGLE_METACELL = new File(TEST_DATA_DIR, "single_metacell.txt.gz");
 	private final File DGE = new File("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/test_with_header3.unpaired.dge.txt.gz");
 	private final File EXPECTED_METACELLS_BY_CLUSTER= new File (TEST_DATA_DIR, "cluster_1_2.meta_cells.txt");
+	private final File EXPECTED_METACELLS_BY_CLUSTER_SORTED= new File (TEST_DATA_DIR, "cluster_1_2.meta_cells.sorted.txt");
 	private final File MERGED_DGE_HEADER_FILE=new File(TEST_DATA_DIR, "test_with_header3.unpaired.dge.dge_header.txt");
 	private final File CLUSTER_ASSIGNMENT_FILE=new File(TEST_DATA_DIR, "test_with_header3.unpaired.dge.assign.txt");
 	
@@ -27,6 +29,13 @@ public class CreateMetaCellsTest {
 	
 	@Test ()
 	public void testMetacellsWithICAClusters() throws IOException {
+		final CreateMetaCells clp = makeBasicTestClp();
+		Assert.assertEquals(clp.doWork(), 0);
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_METACELLS_BY_CLUSTER, clp.OUTPUT));
+		
+	}
+
+	private CreateMetaCells makeBasicTestClp() throws IOException {
 		final CreateMetaCells clp = new CreateMetaCells();
 		clp.INPUT = DGE;
 		clp.DONOR_MAP = DONOR_MAP;
@@ -34,13 +43,37 @@ public class CreateMetaCellsTest {
 		clp.CLUSTER_ASSIGNMENT=Arrays.asList("Cluster_1", "Cluster_2");
 		clp.MERGED_DGE_HEADER_FILE=MERGED_DGE_HEADER_FILE;
 		clp.OUTPUT = File.createTempFile("testMetacellsWithICAClusters.",".metacells.txt.gz");
-		clp.OUTPUT.deleteOnExit();	
-		Assert.assertEquals(clp.doWork(), 0);
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_METACELLS_BY_CLUSTER, clp.OUTPUT));
-		
+		clp.OUTPUT.deleteOnExit();
+		return clp;
 	}
-	
-	
+
+	@Test(expectedExceptions = IllegalArgumentException.class)
+	public void testInputSortRequirement() throws IOException {
+		final CreateMetaCells clp = makeBasicTestClp();
+		clp.GENE_SORT = CreateMetaCells.GeneSort.REQUIRE_SORTED;
+		clp.doWork();
+
+	}
+	@Test(dataProvider = "testMetacellsWithGeneSortDataProvider")
+	public void testMetacellsWithGeneSort(Integer maxRecordsInRam) throws IOException {
+		final CreateMetaCells clp = makeBasicTestClp();
+		clp.GENE_SORT = CreateMetaCells.GeneSort.SORT;
+		if (maxRecordsInRam != null) {
+			clp.MAX_RECORDS_IN_RAM = maxRecordsInRam;
+		}
+		Assert.assertEquals(clp.doWork(), 0);
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_METACELLS_BY_CLUSTER_SORTED, clp.OUTPUT));
+	}
+
+	// One invocation that is small enough that SortingCollection spills to disk.
+	@DataProvider(name = "testMetacellsWithGeneSortDataProvider")
+	public Object[][] testMetacellsWithGeneSortDataProvider() {
+		return new Object[][]{
+				{null},
+				{3}
+		};
+	}
+
 	@Test
 	public void testGetCellBarcodesInClusters() {
 		final CreateMetaCells clp = new CreateMetaCells();
