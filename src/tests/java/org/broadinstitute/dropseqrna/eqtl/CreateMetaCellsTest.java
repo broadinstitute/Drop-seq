@@ -20,6 +20,7 @@ public class CreateMetaCellsTest {
 	private final File EXPECTED_METACELLS_METRICS = new File (TEST_DATA_DIR, "meta_cell_metrics");
 	private final File EXPECTED_SINGLE_METACELL = new File(TEST_DATA_DIR, "single_metacell.txt.gz");
 	private final File DGE = new File("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/test_with_header3.unpaired.dge.txt.gz");
+	private final File SORTED_DGE = new File("testdata/org/broadinstitute/transcriptome/barnyard/digitalexpression/test_with_header3.unpaired.sorted.dge.txt.gz");
 	private final File EXPECTED_METACELLS_BY_CLUSTER= new File (TEST_DATA_DIR, "cluster_1_2.meta_cells.txt");
 	private final File EXPECTED_METACELLS_BY_CLUSTER_SORTED= new File (TEST_DATA_DIR, "cluster_1_2.meta_cells.sorted.txt");
 	private final File MERGED_DGE_HEADER_FILE=new File(TEST_DATA_DIR, "test_with_header3.unpaired.dge.dge_header.txt");
@@ -48,12 +49,23 @@ public class CreateMetaCellsTest {
 	}
 
 	@Test(expectedExceptions = IllegalArgumentException.class)
-	public void testInputSortRequirement() throws IOException {
+	public void testInputSortRequirementNegative() throws IOException {
 		final CreateMetaCells clp = makeBasicTestClp();
 		clp.GENE_SORT = CreateMetaCells.GeneSort.REQUIRE_SORTED;
 		clp.doWork();
 
 	}
+
+	@Test
+	public void testInputSortRequirementPositive() throws IOException {
+		final CreateMetaCells clp = makeBasicTestClp();
+		clp.GENE_SORT = CreateMetaCells.GeneSort.REQUIRE_SORTED;
+		clp.INPUT = SORTED_DGE;
+		Assert.assertEquals(clp.doWork(), 0);
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_METACELLS_BY_CLUSTER_SORTED, clp.OUTPUT));
+	}
+
+
 	@Test(dataProvider = "testMetacellsWithGeneSortDataProvider")
 	public void testMetacellsWithGeneSort(Integer maxRecordsInRam) throws IOException {
 		final CreateMetaCells clp = makeBasicTestClp();
