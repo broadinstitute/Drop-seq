@@ -89,7 +89,26 @@ public class SNPUMIBasePileupIteratorTest {
 		}
 		Assert.assertEquals(expectedPileups, count);
 	}
-	
+
+	@Test
+	public void testMissingUMITag() {
+		List<String> cellBarcodes = ParseBarcodeFile.readCellBarcodeFile(cellBCFile);
+		IntervalList snpIntervals = IntervalList.fromFile(snpIntervalsFile);
+
+		// all SNPs equal quality.  No SNPs overlap on UMIs so all pileups are seen.
+		Map<Interval, Double> meanGenotypeQuality = new HashMap<Interval, Double>();
+		for (Interval i: snpIntervals) {
+			meanGenotypeQuality.put(i, 30d);
+		}
+
+		SNPUMIBasePileupIterator sbpi = new SNPUMIBasePileupIterator(
+				new SamHeaderAndIterator(smallBAMFile), snpIntervals, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+				LOCUS_FUNCTION_LIST, STRAND_STRATEGY, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY, cellBarcodeTag,
+				"XQ", snpTag, functionTag, readMQ, assignReadsToAllGenes, cellBarcodes, meanGenotypeQuality,
+				SortOrder.SNP_GENE);
+		Assert.assertFalse(sbpi.hasNext());
+
+	}
 	
 	// for reads that have more than 1 SNP in the data, filter the SNPs tagging the read to a single SNP.
 	// This means the read only contributes to a single pileup.
