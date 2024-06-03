@@ -98,11 +98,10 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
 
         // add a progress logger.
         final ProgressLoggingIterator loggingIterator = new ProgressLoggingIterator (headerAndIter.iterator, logger);
-		final STARSoloChimericReadFilteringIterator chimericReadFilteringIterator = new STARSoloChimericReadFilteringIterator(loggingIterator, molecularBarcodeTag);
 
         // filter out to contigs in the interval list.
         Set<String> contigsToFilter = snpIntervals.getIntervals().stream().map(x -> x.getContig()).collect(Collectors.toSet());
-        ChromosomeFilteringIterator cfi = new ChromosomeFilteringIterator(chimericReadFilteringIterator, contigsToFilter, false);
+        ChromosomeFilteringIterator cfi = new ChromosomeFilteringIterator(loggingIterator, contigsToFilter, false);
         
         // Filter reads on map quality
      	MapQualityFilteredIterator filteringIterator = new MapQualityFilteredIterator(cfi, readMQ, true);
@@ -110,9 +109,10 @@ public class SNPUMIBasePileupIterator implements CloseableIterator<SNPUMIBasePil
         // Filter records before sorting, to reduce I/O
         final MissingTagFilteringIterator filteringIterator2 =
                 new MissingTagFilteringIterator(filteringIterator, geneTag, cellBarcodeTag, molecularBarcodeTag);
-        
+
+		final STARSoloChimericReadFilteringIterator chimericReadFilteringIterator = new STARSoloChimericReadFilteringIterator(filteringIterator2, molecularBarcodeTag);
      	// Filter/assign reads based on functional annotations
-     	GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(filteringIterator2, geneTag, geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions, functionStrategy);
+     	GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(chimericReadFilteringIterator, geneTag, geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions, functionStrategy);
      	
      	/**
      	 * In this section, data is sorted into the standard cell / gene / umi order and grouped so that all reads for a single UMI can be evaluated at once.
