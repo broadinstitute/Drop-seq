@@ -85,7 +85,8 @@ import picard.cmdline.StandardOptionDefinitions;
 public class DigitalExpression extends DGECommandLineBase {
 
     private static final Log log = Log.getInstance(DigitalExpression.class);
-    
+    public static final String GENE_COLUMN = "GENE";
+
     @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
     public File INPUT;
         
@@ -370,7 +371,7 @@ public class DigitalExpression extends DGECommandLineBase {
 
     private void writeHeader(final PrintStream out, final List<String> cellBarcodes) {
         List<String> header = new ArrayList<>(cellBarcodes.size()+1);
-        header.add("GENE");
+        header.add(GENE_COLUMN);
         header.addAll(cellBarcodes);
         String h = StringUtils.join(header, "\t");
         out.println(h);
