@@ -79,11 +79,26 @@ extends AbstractSplitBamClp {
     public String BARCODE_QUALS_TAG;
 
     private Map<String, Double> allowedBarcodeNormalizedOccurences;
-    private final Map<String, List<String>> ed1MatchCache = new HashMap<>();
+
+    private final ResourceLimitedMap<String, List<String>> ed1MatchCache =
+            new ResourceLimitedMap<>(
+                    1_000_000,
+                    new ResourceLimitedMapFunctor<>() {
+                        @Override
+                        public List<String> makeValue(final String key) {
+                            return CorrectAndSplitScrnaReadPairs.this.getEd1Matches(key);
+                        }
+
+                        @Override
+                        public void finalizeValue(final String key, final List<String> strings) {
+                        }
+                    }
+            );
+
     private List<BaseRange> baseRanges;
 
-    private BarcodeCorrectionMetrics metrics = new BarcodeCorrectionMetrics();
-    private Histogram<Integer> numCandidatesHist = new Histogram<>("NUM_ED1_CANDIDATES", "NUM_READS");
+    private final BarcodeCorrectionMetrics metrics = new BarcodeCorrectionMetrics();
+    private final Histogram<Integer> numCandidatesHist = new Histogram<>("NUM_ED1_CANDIDATES", "NUM_READS");
 
     @Override
     protected void splitBAMs() {
@@ -146,7 +161,7 @@ extends AbstractSplitBamClp {
             exactMatchBarcodes.add(cellBarcode);
             return cellBarcode;
         } else {
-            List<String> ed1Matches = ed1MatchCache.computeIfAbsent(cellBarcode, this::getEd1Matches);
+            List<String> ed1Matches = ed1MatchCache.get(cellBarcode);
             if (ed1Matches.isEmpty()) {
                 if (VERBOSITY == Log.LogLevel.DEBUG && metrics.NUM_READS_UNCORRECTABLE_NO_ED1_BARCODES == 0) {
                     log.debug("UNCORRECTABLE_NO_ED1 " + readWithBarcode);
@@ -267,4 +282,9 @@ extends AbstractSplitBamClp {
         public long NUM_BARCODES_UNCORRECTABLE_NO_ED1_BARCODES;
         public long NUM_BARCODES_UNCORRECTED_AMBIGUOUS;
     }
+
+	/** Stock main method. */
+	public static void main(final String[] args) {
+		System.exit(new CorrectAndSplitScrnaReadPairs().instanceMain(args));
+	}
 }
