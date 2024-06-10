@@ -34,6 +34,7 @@ import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.AbstractSplitBamClp;
 import org.broadinstitute.dropseqrna.utils.BaseRange;
 import org.broadinstitute.dropseqrna.utils.PairedSamRecordIterator;
+import org.broadinstitute.dropseqrna.utils.StringInterner;
 import org.broadinstitute.dropseqrna.utils.readpairs.ReadPair;
 import picard.cmdline.StandardOptionDefinitions;
 
@@ -79,6 +80,8 @@ extends AbstractSplitBamClp {
     public String BARCODE_QUALS_TAG;
 
     private Map<String, Double> allowedBarcodeNormalizedOccurences;
+    // Don't store many copies of the same allowed barcode in ed1MatchCache
+    private final StringInterner allowedBarcodeInterner = new StringInterner();
 
     private final ResourceLimitedMap<String, List<String>> ed1MatchCache =
             new ResourceLimitedMap<>(
@@ -145,7 +148,7 @@ extends AbstractSplitBamClp {
         double allowedBarcodeOccurenceCount = allowedBarcodeHistogram.getSumOfValues();
         final Map<String, Double> ret = new HashMap<>(allowedBarcodeHistogram.size());
         for (final String allowedBarcode: allowedBarcodeHistogram.keySet()) {
-            ret.put(allowedBarcode, allowedBarcodeHistogram.get(allowedBarcode).getValue()/allowedBarcodeOccurenceCount);
+            ret.put(allowedBarcodeInterner.intern(allowedBarcode), allowedBarcodeHistogram.get(allowedBarcode).getValue()/allowedBarcodeOccurenceCount);
         }
         return ret;
     }
@@ -230,7 +233,7 @@ extends AbstractSplitBamClp {
                 cellBarcodeBytes[i] = b;
                 final String candidate = StringUtil.bytesToString(cellBarcodeBytes);
                 if (allowedBarcodeNormalizedOccurences.containsKey(candidate)) {
-                    ret.add(candidate);
+                    ret.add(allowedBarcodeInterner.intern(candidate));
                 }
             }
             cellBarcodeBytes[i] = original;
