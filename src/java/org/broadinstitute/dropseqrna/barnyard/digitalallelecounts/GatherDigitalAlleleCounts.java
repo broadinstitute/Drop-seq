@@ -118,7 +118,7 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 	@Argument(doc = "At least <FRACTION_SAMPLES_PASSING> samples must have genotype scores >= GQ_THRESHOLD for the variant in the VCF to be included in the analysis.")
 	public double FRACTION_SAMPLES_PASSING = 0.5;
 
-	@Argument(doc = "A list of chromosomes to omit from the analysis.  The default is to omit the sex chromosomes.")
+	@Argument(doc = "A list of chromosomes to omit from the analysis.")
 	public List<String> IGNORED_CHROMOSOMES = null;
 
 	@Argument(doc = "Only output heterozygous SNPs for these samples.  All samples must be heterozygous for the SNP to be analyzed.")
