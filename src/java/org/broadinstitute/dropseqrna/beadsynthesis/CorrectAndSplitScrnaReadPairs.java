@@ -130,11 +130,6 @@ extends AbstractSplitBamClp {
 
         if (METRICS != null) {
             final MetricsFile<BarcodeCorrectionMetrics, Integer> metricsFile = getMetricsFile();
-            metrics.NUM_BARCODES_EXACT_MATCH = exactMatchBarcodes.size();
-            metrics.NUM_BARCODES_CORRECTED_SINGLE_ED1 = singleEd1Barcodes.size();
-            metrics.NUM_BARCODES_UNCORRECTABLE_NO_ED1_BARCODES = noEd1Barcodes.size();
-            metrics.NUM_BARCODES_CORRECTED_MULTI_ED1 = multiEd1Barcodes.size();
-            metrics.NUM_BARCODES_UNCORRECTED_AMBIGUOUS = ambiguousBarcodes.size();
             metricsFile.addMetric(metrics);
             metricsFile.addHistogram(numCandidatesHist);
             metricsFile.write(METRICS);
@@ -161,7 +156,6 @@ extends AbstractSplitBamClp {
                 log.debug("EXACT_MATCH " + readWithBarcode);
             }
             ++metrics.NUM_READS_EXACT_MATCH;
-            exactMatchBarcodes.add(cellBarcode);
             return cellBarcode;
         } else {
             List<String> ed1Matches = ed1MatchCache.get(cellBarcode);
@@ -170,14 +164,12 @@ extends AbstractSplitBamClp {
                     log.debug("UNCORRECTABLE_NO_ED1 " + readWithBarcode);
                 }
                 ++metrics.NUM_READS_UNCORRECTABLE_NO_ED1_BARCODES;
-                noEd1Barcodes.add(cellBarcode);
                 return cellBarcode;
             } else if (ed1Matches.size() == 1) {
                 if (VERBOSITY == Log.LogLevel.DEBUG && metrics.NUM_READS_CORRECTED_SINGLE_ED1 == 0) {
                     log.debug("CORRECTED_SINGLE_ED1 " + readWithBarcode);
                 }
                 ++metrics.NUM_READS_CORRECTED_SINGLE_ED1;
-                singleEd1Barcodes.add(cellBarcode);
                 numCandidatesHist.increment(1);
                 return ed1Matches.getFirst();
             } else {
@@ -199,7 +191,6 @@ extends AbstractSplitBamClp {
                         log.debug("CORRECTED_MULTI_ED1 " + readWithBarcode);
                     }
                     ++metrics.NUM_READS_CORRECTED_MULTI_ED1;
-                    multiEd1Barcodes.add(cellBarcode);
                     numCandidatesHist.increment(ed1Matches.size());
                     return bestBarcode;
                 } else {
@@ -207,7 +198,6 @@ extends AbstractSplitBamClp {
                         log.debug("UNCORRECTED_AMBIGUOUS " + readWithBarcode);
                     }
                     ++metrics.NUM_READS_UNCORRECTED_AMBIGUOUS;
-                    ambiguousBarcodes.add(cellBarcode);
                     return cellBarcode;
                 }
             }
@@ -267,23 +257,12 @@ extends AbstractSplitBamClp {
         return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
     }
 
-    // Sets for counting number of unique barcodes in each category
-    private final Set<String> exactMatchBarcodes = new HashSet<>();
-    private final Set<String> singleEd1Barcodes = new HashSet<>();
-    private final Set<String> multiEd1Barcodes = new HashSet<>();
-    private final Set<String> noEd1Barcodes = new HashSet<>();
-    private final Set<String> ambiguousBarcodes = new HashSet<>();
     public static class BarcodeCorrectionMetrics extends MetricBase {
         public long NUM_READS_EXACT_MATCH;
         public long NUM_READS_CORRECTED_SINGLE_ED1;
         public long NUM_READS_CORRECTED_MULTI_ED1;
         public long NUM_READS_UNCORRECTABLE_NO_ED1_BARCODES;
         public long NUM_READS_UNCORRECTED_AMBIGUOUS;
-        public long NUM_BARCODES_EXACT_MATCH;
-        public long NUM_BARCODES_CORRECTED_SINGLE_ED1;
-        public long NUM_BARCODES_CORRECTED_MULTI_ED1;
-        public long NUM_BARCODES_UNCORRECTABLE_NO_ED1_BARCODES;
-        public long NUM_BARCODES_UNCORRECTED_AMBIGUOUS;
     }
 
 	/** Stock main method. */
