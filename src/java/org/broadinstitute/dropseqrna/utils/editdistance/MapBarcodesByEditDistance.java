@@ -239,7 +239,7 @@ public class MapBarcodesByEditDistance {
 	 * @param barcodes
 	 * @param findIndels
 	 * @param editDistance
-	 * @return
+	 * @return map from the core barcode to the list of barcodes that are collapsed into it.
 	 */
 	public Map<String, List<String>> collapseBarcodes (final ObjectCounter<String> barcodes, final boolean findIndels, final int editDistance) {
 		List<String> coreBarcodes = barcodes.getKeysOrderedByCount(true);

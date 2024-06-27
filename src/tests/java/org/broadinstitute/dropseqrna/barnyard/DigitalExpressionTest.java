@@ -54,28 +54,29 @@ public class DigitalExpressionTest {
 	// expected results for standard coding strand specific DGE
 	private static final File EXPECTED_OUTFILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.dge.txt");
 	private static final File EXPECTED_OUTFILE_SUMMARY = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.dge_summary.txt");
-	private static final File EXPECTED_OUTFILE_LONG = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.dge_long.txt");
+	public static final File EXPECTED_OUTFILE_LONG = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene.dge_long.txt");
 
 	private static final File EXPECTED_OUTPUT_SINGLE_CELL=new File("testdata/org/broadinstitute/transcriptome/barnyard/1_cell.dge.txt");
 	//
 
-	private String GENE_NAME_TAG="gn";
-	private String GENE_STRAND_TAG="gs";
-	private String GENE_FUNCTION_TAG="gf";
-	private StrandStrategy STRAND_STRATEGY = StrandStrategy.SENSE;
-	private List<LocusFunction> LOCUS_FUNCTION_LIST=new ArrayList<>(Arrays.asList(LocusFunction.CODING, LocusFunction.UTR));
-	private String CELL_BARCODE_TAG="ZC";
-	private String MOLECULAR_BARCODE_TAG = "XM";
-	private int READ_MQ=10;
-	private Boolean USE_STRAND_INFO=true;
+	public static final String GENE_NAME_TAG="gn";
+	public static final String GENE_STRAND_TAG="gs";
+	public static final String GENE_FUNCTION_TAG="gf";
+	public static final StrandStrategy STRAND_STRATEGY = StrandStrategy.SENSE;
+	public static final List<LocusFunction> LOCUS_FUNCTION_LIST=new ArrayList<>(Arrays.asList(LocusFunction.CODING, LocusFunction.UTR));
+	public static final String CELL_BARCODE_TAG="ZC";
+	public static final String MOLECULAR_BARCODE_TAG = "XM";
+	public static final int READ_MQ=10;
+	private static final Boolean USE_STRAND_INFO=true;
 
 
-	private UMIIterator getUMIIterator (final File inFile) {
+	private static UMIIterator getUMIIterator (final File inFile) {
 		List<String> cellBarcodes = Arrays.asList(DigitalExpressionTestUtil.barcodes);
 
 		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(inFile), false), GENE_NAME_TAG,
-				GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,
-				this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ, true, cellBarcodes);
+				GENE_STRAND_TAG, GENE_FUNCTION_TAG, STRAND_STRATEGY, LOCUS_FUNCTION_LIST, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,
+				CELL_BARCODE_TAG, MOLECULAR_BARCODE_TAG, READ_MQ, true, cellBarcodes, false, false,
+				false, null);
 
 		return (umiIterator);
 	}

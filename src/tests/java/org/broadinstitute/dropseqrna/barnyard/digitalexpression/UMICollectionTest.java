@@ -23,15 +23,20 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
+import htsjdk.samtools.util.IterableAdapter;
+import org.broadinstitute.dropseqrna.barnyard.DigitalExpressionTest;
+import org.broadinstitute.dropseqrna.barnyard.DigitalExpressionTestUtil;
+import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.sam.util.Pair;
+import picard.util.TabbedTextFileWithHeaderParser;
 
 import java.io.File;
-import java.util.Collection;
-import java.util.Random;
-
-
+import java.util.*;
 
 
 public class UMICollectionTest {
@@ -130,4 +135,31 @@ public class UMICollectionTest {
         testDownsampleRate(0.001, 1000000.0, 0.0005);
     }
 
+	// Do UMI collapse and confirm that the UMI counts are the same as DigitalExpressionTest.doWork()
+	@Test
+	public void testEditDistanceCollapse() {
+		final UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(DigitalExpressionTestUtil.IN_FILE), false),
+				DigitalExpressionTest.GENE_NAME_TAG,
+				DigitalExpressionTest.GENE_STRAND_TAG, DigitalExpressionTest.GENE_FUNCTION_TAG, DigitalExpressionTest.STRAND_STRATEGY,
+				DigitalExpressionTest.LOCUS_FUNCTION_LIST, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,
+				"XC", DigitalExpressionTest.MOLECULAR_BARCODE_TAG, DigitalExpressionTest.READ_MQ,
+				false, Arrays.asList(DigitalExpressionTestUtil.barcodes), false, false,
+				true, null);
+
+		final Map<Pair<String, String>, Integer> umiCounts = new HashMap<>();
+		for (final UMICollection c : new IterableAdapter<UMICollection>(umiIterator)) {
+			c.collapseThisByEditDistance(1, DigitalExpressionTest.MOLECULAR_BARCODE_TAG);
+			final Pair<String, String> key = new Pair<>(c.getCellBarcode(), c.getGeneName());
+			umiCounts.put(key, c.getMolecularBarcodeCounts().getSize());
+		}
+		final Map<Pair<String, String>, Integer> expectedUmiCounts = new HashMap<>();
+		final TabbedTextFileWithHeaderParser parser = new TabbedTextFileWithHeaderParser(DigitalExpressionTest.EXPECTED_OUTFILE_LONG);
+		for (final TabbedTextFileWithHeaderParser.Row row: parser) {
+			final String cellBarcode = row.getField("CELL");
+			final String geneName = row.getField("GENE");
+			final int umiCount = row.getIntegerField("UMI_COUNT");
+			expectedUmiCounts.put(new Pair<>(cellBarcode, geneName), umiCount);
+		}
+		Assert.assertEquals(umiCounts, expectedUmiCounts);
+	}
 }
