@@ -111,7 +111,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 					   final boolean recordCellsInInput) {
 		
 		this(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy, acceptedLociFunctions, functionStrategy,
-				cellBarcodeTag, molecularBarcodeTag, readMQ, assignReadsToAllGenes, cellBarcodes, cellFirstSort, recordCellsInInput, false);
+				cellBarcodeTag, molecularBarcodeTag, readMQ, assignReadsToAllGenes, cellBarcodes, cellFirstSort, recordCellsInInput, false,
+				null);
 		
 	}
 	/**
@@ -148,7 +149,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final Collection<String> cellBarcodes,
                        final boolean cellFirstSort,
 					   final boolean recordCellsInInput, 
-					   final boolean retainReads) {
+					   final boolean retainReads,
+					   final IntervalList intervals) {
 		
 		this.retainReads=retainReads;
         this.geneTag=geneTag;
@@ -187,6 +189,9 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		if (cellBarcodes != null) {
 			filteringIterator =
 					new TagValueFilteringIterator<>(filteringIterator, this.cellBarcodeTag, cellBarcodes);
+		}
+		if (intervals != null) {
+			filteringIterator = new IntervalFilteringIterator(filteringIterator, intervals, true);
 		}
 
 		// Filter/assign reads based on functional annotations

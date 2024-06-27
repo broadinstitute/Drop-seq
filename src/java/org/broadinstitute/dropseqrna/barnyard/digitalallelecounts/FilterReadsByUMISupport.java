@@ -88,7 +88,7 @@ public class FilterReadsByUMISupport extends GeneFunctionCommandLineBase {
     	    	
     	UMIIterator umiIterator = new UMIIterator(headerAndIter,GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, 
     			this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-    			this.READ_MQ, false, cellBarcodes, false, false, true);
+    			this.READ_MQ, false, cellBarcodes, false, false, true, null);
         
     	while (umiIterator.hasNext()) {
     		UMICollection c = umiIterator.next();
