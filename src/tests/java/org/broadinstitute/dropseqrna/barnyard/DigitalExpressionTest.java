@@ -201,22 +201,6 @@ public class DigitalExpressionTest {
 		Assert.assertNotEquals(count,0);
 	}
 
-	@Test
-	public void testTwoGenesOnSameStrand () {
-		List barcodes = Collections.singletonList("FOO");
-		File inFile = new File ("");
-
-		UMIIterator umiIterator = new UMIIterator.UMIIteratorBuilder(
-				SamFileMergeUtil.mergeInputs(Collections.singletonList(inFile), false), GENE_NAME_TAG,
-				GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
-				GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG,
-				this.MOLECULAR_BARCODE_TAG, this.READ_MQ).setAssignReadsToAllGenes(true).setCellBarcodes(barcodes).build();
-	}
-
-
-
-
-
 	//GET COUNTS OF READS
 	// ~/samtools view -q 10 5cell3gene.bam |grep ZC:Z:ATCAGGGACAGA |grep HUMAN_3:42642106-42690227:NKTR  | sed -E 's/.*XM
 	private int getReadCounts (final String gene, final String cell) {
