@@ -24,13 +24,7 @@
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 import org.broadinstitute.dropseqrna.barnyard.GatherMolecularBarcodeDistributionByGene;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
@@ -158,12 +152,43 @@ public class UMICollection {
 	 * For a list of molecular barcodes, collapse them by edit distance.
 	 * @param counts
 	 * @param editDistance
-	 * @param threshold
-	 * @return
+	 * @return A new object counter with the molecular barcodes collapsed by edit distance.
 	 */
 	private ObjectCounter<String> collapseByEditDistance (final ObjectCounter<String> counts, final int editDistance) {
 		ObjectCounter<String> result = mbed.collapseAndMergeBarcodes(counts, false, editDistance);
 		return (result);
+	}
+
+	/**
+	 * Collapse the molecular barcodes in this collection by edit distance.  This only makes sense if reads != null,
+	 * because otherwise, one could just call getMolecularBarcodeCountsCollapsed to get collapsed read counts.
+	 * The reads are re-tagged with the collapsed molecular barcode, and re-grouped, and the molecular barcode counts are updated.
+	 * @param editDistance
+	 * @param molecularBarcodeTag
+	 */
+	public void collapseThisByEditDistance(final int editDistance, final String molecularBarcodeTag) {
+		if (reads == null) {
+			throw new IllegalStateException("It doesn't make sense to collapse in place without reads");
+		}
+		if (editDistance < 1) {
+			throw new IllegalArgumentException("Edit distance must be at least 1");
+		}
+		Map<String, List<String>> collapsedToUncollapsed = mbed.collapseBarcodes(this.molecularBarcodeCounts, false, editDistance);
+		for (Map.Entry<String, List<String>> entry: collapsedToUncollapsed.entrySet()) {
+			final String goodUmi = entry.getKey();
+			final List<String> umisToBeCollapsed = entry.getValue();
+			final List<SAMRecord> readsForGoodUmi = reads.get(goodUmi);
+			for (final String umiToBeCollapsed : umisToBeCollapsed) {
+				final List<SAMRecord> readsToBeCollapsed = reads.get(umiToBeCollapsed);
+				readsToBeCollapsed.stream().forEach(r -> r.setAttribute(molecularBarcodeTag, goodUmi));
+				readsForGoodUmi.addAll(readsToBeCollapsed);
+				reads.remove(umiToBeCollapsed);
+			}
+		}
+		molecularBarcodeCounts = new ObjectCounter<>();
+		for (Map.Entry<String, List<SAMRecord>> entry: this.reads.entrySet()) {
+			molecularBarcodeCounts.setCount(entry.getKey(), entry.getValue().size());
+		}
 	}
 
 	public static Collection<UMICollection> parseUMICollectionFile (final File input) {

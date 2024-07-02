@@ -224,10 +224,10 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
         final Set<String> cellBarcodes=getCellBarcodes();       
         
         PeekableIterator<UMICollection> umiIterator = new PeekableIterator<>(
-                new UMIIterator(SamFileMergeUtil.mergeInputs(this.INPUT, false),
+                new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputs(this.INPUT, false),
                         GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
                         this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-                        this.READ_MQ, false, cellBarcodes, true, false));
+                        this.READ_MQ).setCellBarcodes(cellBarcodes).setCellFirstSort(true).build());
 
         // Remember {CBC, UMI, Gene} pairs to be marked chimeric
         final Map<String, ChimericUmiCollection> chimerics = new HashMap<>();
