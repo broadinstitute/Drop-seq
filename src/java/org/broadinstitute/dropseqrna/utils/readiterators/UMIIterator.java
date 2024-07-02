@@ -49,72 +49,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
     private final StringInterner stringCache = new StringInterner();
     private final Set<String> cellBarcodesSeen;
     private final boolean retainReads;
-	/**
-	 * Construct an object that generates UMI objects from a BAM file
-     * @param headerAndIterator The BAM records to extract UMIs from
-	 * @param geneTag The gene tag on BAM records
-	 * @param cellBarcodeTag The cell barcode tag on BAM records
-	 * @param molecularBarcodeTag The molecular barcode tag on BAM records
-	 * @param geneStrandTag The strand tag on BAM records
-	 * @param readMQ The minimum map quality of the reads
-	 * @param assignReadsToAllGenes Should records tagged with multiple genes be double counted, once for each gene?
-	 * @param strandStrategy should the gene and read strand match for the read to be accepted
-	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.
-     *                     Only reads with these values will be used.  If set to null, all cell barcodes are used.
-	 */
-	public UMIIterator(final SamHeaderAndIterator headerAndIterator,
-                       final String geneTag,
-                       final String geneStrandTag,
-                       final String geneFunctionTag,
-                       final StrandStrategy strandStrategy,
-                       final Collection <LocusFunction> acceptedLociFunctions,
-					   FunctionalDataProcessorStrategy functionStrategy,
-                       final String cellBarcodeTag,
-                       final String molecularBarcodeTag,
-                       final int readMQ,
-                       final boolean assignReadsToAllGenes,
-                       final Collection<String> cellBarcodes) {
-		this(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy, acceptedLociFunctions, functionStrategy,
-				cellBarcodeTag, molecularBarcodeTag, readMQ, assignReadsToAllGenes, cellBarcodes, false, false);
-	}
 
-	/**
-	 * Construct an object that generates UMI objects from a BAM file
-	 * @param headerAndIterator The BAM records to extract UMIs from
-	 * @param geneTag The geneExon tag on BAM records
-	 * @param cellBarcodeTag The cell barcode tag on BAM records
-	 * @param molecularBarcodeTag The molecular barcode tag on BAM records
-	 * @param geneStrandTag The strand tag on BAM records
-	 * @param readMQ The minimum map quality of the reads
-	 * @param assignReadsToAllGenes Should records tagged with multiple genes be double counted, once for each gene?
-	 * @param strandStrategy should the gene and read strand match for the read to be accepted
-	 * @param cellBarcodes The list of cell barcode tag values that match the <cellBarcodeTag> tag on the BAM records.
-     *                     Only reads with these values will be used.  If set to null, all cell barcodes are used.
-	 * @param cellFirstSort if true, then cell barcodes are sorted first, followed by gene/exon tags.
-     *                      If false, then gene/exon tags are sorted first, followed by cells.  false is the default and used in the other constructor.
-	 * @param recordCellsInInput While sorting the input, keep track of what cells appear in the input.  This record
-	 *                           is not complete until iteration is started.
-	 */
-	public UMIIterator(final SamHeaderAndIterator headerAndIterator,
-					   final String geneTag,
-                       final String geneStrandTag,
-                       final String geneFunctionTag,
-                       final StrandStrategy strandStrategy,
-                       final Collection <LocusFunction> acceptedLociFunctions,
-					   FunctionalDataProcessorStrategy functionStrategy,
-                       final String cellBarcodeTag,
-                       final String molecularBarcodeTag,
-                       final int readMQ,
-                       final boolean assignReadsToAllGenes,
-                       final Collection<String> cellBarcodes,
-                       final boolean cellFirstSort,
-					   final boolean recordCellsInInput) {
-		
-		this(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy, acceptedLociFunctions, functionStrategy,
-				cellBarcodeTag, molecularBarcodeTag, readMQ, assignReadsToAllGenes, cellBarcodes, cellFirstSort, recordCellsInInput, false,
-				null);
-		
-	}
 	/**
 	 * Construct an object that generates UMI objects from a BAM file
 	 * @param headerAndIterator The BAM records to extract UMIs from
@@ -135,7 +70,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	 * This is false in other method signatures by default.  If false, reads can be simplified for faster serialization.
 	 * 
 	 */
-	public UMIIterator(final SamHeaderAndIterator headerAndIterator,
+	private UMIIterator(final SamHeaderAndIterator headerAndIterator,
 					   final String geneTag,
                        final String geneStrandTag,
                        final String geneFunctionTag,
@@ -374,6 +309,107 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		@Override
 		public int compare(SAMRecord o1, SAMRecord o2) {
 			return comp.fileOrderCompare(o1, o2);
+		}
+	}
+
+	public static class UMIIteratorBuilder {
+		// required parameters
+		private final SamHeaderAndIterator headerAndIterator;
+		private final String geneTag;
+		private final String geneStrandTag;
+		private final String geneFunctionTag;
+		private final StrandStrategy strandStrategy;
+		private final Collection <LocusFunction> acceptedLociFunctions;
+		private final FunctionalDataProcessorStrategy functionStrategy;
+		private final String cellBarcodeTag;
+		private final String molecularBarcodeTag;
+		private final int readMQ;
+
+		// parameters with default values
+		private boolean assignReadsToAllGenes=false;
+		private boolean cellFirstSort=false;
+		private boolean recordCellsInInput=false;
+		private boolean retainReads=false;
+
+		// nullable parameters
+		private Collection<String> cellBarcodes;
+		private IntervalList intervals;
+
+		public UMIIteratorBuilder(SamHeaderAndIterator headerAndIterator, String geneTag, String geneStrandTag,
+								  String geneFunctionTag, StrandStrategy strandStrategy,
+								  Collection<LocusFunction> acceptedLociFunctions,
+								  FunctionalDataProcessorStrategy functionStrategy, String cellBarcodeTag,
+								  String molecularBarcodeTag, int readMQ) {
+			this.headerAndIterator = headerAndIterator;
+			this.geneTag = geneTag;
+			this.geneStrandTag = geneStrandTag;
+			this.geneFunctionTag = geneFunctionTag;
+			this.strandStrategy = strandStrategy;
+			this.acceptedLociFunctions = acceptedLociFunctions;
+			this.functionStrategy = functionStrategy;
+			this.cellBarcodeTag = cellBarcodeTag;
+			this.molecularBarcodeTag = molecularBarcodeTag;
+			this.readMQ = readMQ;
+		}
+
+		public boolean isAssignReadsToAllGenes() {
+			return assignReadsToAllGenes;
+		}
+
+		public UMIIteratorBuilder assignReadsToAllGenes(boolean assignReadsToAllGenes) {
+			this.assignReadsToAllGenes = assignReadsToAllGenes;
+			return this;
+		}
+
+		public boolean isCellFirstSort() {
+			return cellFirstSort;
+		}
+
+		public UMIIteratorBuilder cellFirstSort(boolean cellFirstSort) {
+			this.cellFirstSort = cellFirstSort;
+			return this;
+		}
+
+		public boolean isRecordCellsInInput() {
+			return recordCellsInInput;
+		}
+
+		public UMIIteratorBuilder recordCellsInInput(boolean recordCellsInInput) {
+			this.recordCellsInInput = recordCellsInInput;
+			return this;
+		}
+
+		public boolean isRetainReads() {
+			return retainReads;
+		}
+
+		public UMIIteratorBuilder retainReads(boolean retainReads) {
+			this.retainReads = retainReads;
+			return this;
+		}
+
+		public Collection<String> getCellBarcodes() {
+			return cellBarcodes;
+		}
+
+		public UMIIteratorBuilder setCellBarcodes(Collection<String> cellBarcodes) {
+			this.cellBarcodes = cellBarcodes;
+			return this;
+		}
+
+		public IntervalList getIntervals() {
+			return intervals;
+		}
+
+		public UMIIteratorBuilder setIntervals(IntervalList intervals) {
+			this.intervals = intervals;
+			return this;
+		}
+
+		public UMIIterator build() {
+			return new UMIIterator(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy,
+					acceptedLociFunctions, functionStrategy, cellBarcodeTag, molecularBarcodeTag, readMQ,
+					assignReadsToAllGenes, cellBarcodes, cellFirstSort, recordCellsInInput, retainReads, intervals);
 		}
 	}
 }

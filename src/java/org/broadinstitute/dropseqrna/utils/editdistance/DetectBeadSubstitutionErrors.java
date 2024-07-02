@@ -140,12 +140,12 @@ public class DetectBeadSubstitutionErrors extends CommandLineProgram{
 
         // build up the UMI per cell data set.
         Collection <String> cellBarcodes = null;
-        UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(this.INPUT, false),
+        UMIIterator umiIterator = new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputs(this.INPUT, false),
 				GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG,
                 GeneFunctionCommandLineBase.DEFAULT_GENE_FUNCTION_TAG, GeneFunctionCommandLineBase.DEFAULT_STRAND_STRATEGY,
                 GeneFunctionCommandLineBase.DEFAULT_LOCUS_FUNCTION_LIST, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,
 				this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-                this.READ_MQ, false, cellBarcodes, true, false);
+                this.READ_MQ).setCellBarcodes(cellBarcodes).cellFirstSort(true).build();
 
         // get list of barcodes that have enough UMIs, and are not polyT biased.
         UMIsPerCellResult umiResult=getUMIsPerCell(umiIterator, this.MIN_UMIS_PER_CELL, this.UMI_BIAS_BASE, this.UMI_BIAS_THRESHOLD, null);

@@ -186,10 +186,10 @@ public class DigitalExpression extends DGECommandLineBase {
 			writeDgeHeader(out);
 
         // TODO should the ambiguous reads handling be a parameter?  It's set to false by default for DGE to get rid of ambiguous gene assignments on reads
-        UMIIterator realUMIIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
+        UMIIterator realUMIIterator = new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
                 GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY,
-                this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ, false, cellBarcodes,
-                false, OMIT_MISSING_CELLS);
+                this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ).setCellBarcodes(cellBarcodes).
+                recordCellsInInput(OMIT_MISSING_CELLS).build();
         CloseableIterator<UMICollection> umiIterator = realUMIIterator;
 
         if (OMIT_MISSING_CELLS) {

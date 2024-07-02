@@ -53,11 +53,11 @@ public class BiasedBarcodeCollectionFactory {
 	public UMIIterator prepareUMIIterator(final List<File> inputFiles, final String geneExonTag, final String cellBarcodeTag, final String molBCTag, final String strandTag,
 			final int readMQ, final List<String> cellBarcodes) {
 
-		return new UMIIterator(SamFileMergeUtil.mergeInputs(inputFiles, false, samReaderFactory),
+		return new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputs(inputFiles, false, samReaderFactory),
 				GeneFunctionCommandLineBase.DEFAULT_GENE_NAME_TAG, GeneFunctionCommandLineBase.DEFAULT_GENE_STRAND_TAG,
 				GeneFunctionCommandLineBase.DEFAULT_GENE_FUNCTION_TAG, GeneFunctionCommandLineBase.DEFAULT_STRAND_STRATEGY,
 				GeneFunctionCommandLineBase.DEFAULT_LOCUS_FUNCTION_LIST, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,
-				cellBarcodeTag, molBCTag, readMQ, false, cellBarcodes, true, false);
+				cellBarcodeTag, molBCTag, readMQ).setCellBarcodes(cellBarcodes).cellFirstSort(true).build();
 
 	}
 

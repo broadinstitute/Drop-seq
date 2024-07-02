@@ -96,10 +96,10 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
                 this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
                 this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD));
 
-		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(this.INPUT, false),
+		UMIIterator umiIterator = new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputs(this.INPUT, false),
 				GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
         		this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-        		this.READ_MQ, false, cellBarcodes, true, false);
+        		this.READ_MQ).setCellBarcodes(cellBarcodes).cellFirstSort(true).build();
 
 		UMICollection batch;
 
@@ -163,10 +163,10 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 		SamReaderFactory factory= SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);		
 		SamHeaderAndIterator headerIterator= SamFileMergeUtil.mergeInputs(bamFile, false, factory);
 		
-		UMIIterator umiIterator = new UMIIterator(headerIterator,
+		UMIIterator umiIterator = new UMIIterator.UMIIteratorBuilder(headerIterator,
 				geneNameTag, strandTag, geneFunctionTag,
 				strategy, locusFunctionList,  functionStrategy, cellBarcodeTag, molecularBarcodeTag,
-				mapQuality, false, cellBarcodes);
+				mapQuality).setCellBarcodes(cellBarcodes).build();
 
 		ObjectCounter<String> transcriptsPerCell = new ObjectCounter<>();
 
