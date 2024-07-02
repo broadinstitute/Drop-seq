@@ -73,10 +73,9 @@ public class DigitalExpressionTest {
 	private static UMIIterator getUMIIterator (final File inFile) {
 		List<String> cellBarcodes = Arrays.asList(DigitalExpressionTestUtil.barcodes);
 
-		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(inFile), false), GENE_NAME_TAG,
+		UMIIterator umiIterator = new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputs(Collections.singletonList(inFile), false), GENE_NAME_TAG,
 				GENE_STRAND_TAG, GENE_FUNCTION_TAG, STRAND_STRATEGY, LOCUS_FUNCTION_LIST, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,
-				CELL_BARCODE_TAG, MOLECULAR_BARCODE_TAG, READ_MQ, true, cellBarcodes, false, false,
-				false, null);
+				CELL_BARCODE_TAG, MOLECULAR_BARCODE_TAG, READ_MQ).assignReadsToAllGenes(true).setCellBarcodes(cellBarcodes).build();
 
 		return (umiIterator);
 	}
@@ -202,13 +201,16 @@ public class DigitalExpressionTest {
 		Assert.assertNotEquals(count,0);
 	}
 
+	@Test
 	public void testTwoGenesOnSameStrand () {
 		List barcodes = Collections.singletonList("FOO");
 		File inFile = new File ("");
 
-		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(Collections.singletonList(inFile), false), GENE_NAME_TAG,
-				GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,
-				this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ, true, barcodes);
+		UMIIterator umiIterator = new UMIIterator.UMIIteratorBuilder(
+				SamFileMergeUtil.mergeInputs(Collections.singletonList(inFile), false), GENE_NAME_TAG,
+				GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
+				GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG,
+				this.MOLECULAR_BARCODE_TAG, this.READ_MQ).setAssignReadsToAllGenes(true).setCellBarcodes(barcodes).build();
 	}
 
 

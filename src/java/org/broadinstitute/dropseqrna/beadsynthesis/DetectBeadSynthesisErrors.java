@@ -588,10 +588,10 @@ public class DetectBeadSynthesisErrors extends GeneFunctionCommandLineBase {
 	public UMIIterator prepareUMIIterator() {
 		List<String> barcodes=getCellBarcodes();
 
-		UMIIterator umiIterator = new UMIIterator(SamFileMergeUtil.mergeInputs(INPUT, false, samReaderFactory),
+		UMIIterator umiIterator = new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputs(INPUT, false, samReaderFactory),
 				GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
         		this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-        		this.READ_MQ, false, barcodes, true, false);
+        		this.READ_MQ).setCellBarcodes(barcodes).cellFirstSort(true).build();
 
 				return (umiIterator);
 	}

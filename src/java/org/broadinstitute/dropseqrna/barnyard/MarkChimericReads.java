@@ -46,10 +46,8 @@ import org.broadinstitute.dropseqrna.utils.StringInterner;
 import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionProcessor;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
-import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 import picard.cmdline.StandardOptionDefinitions;
-import picard.illumina.BarcodeMetric;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -224,10 +222,10 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
         final Set<String> cellBarcodes=getCellBarcodes();       
         
         PeekableIterator<UMICollection> umiIterator = new PeekableIterator<>(
-                new UMIIterator(SamFileMergeUtil.mergeInputs(this.INPUT, false),
+                new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputs(this.INPUT, false),
                         GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
                         this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-                        this.READ_MQ, false, cellBarcodes, true, false));
+                        this.READ_MQ).setCellBarcodes(cellBarcodes).cellFirstSort(true).build());
 
         // Remember {CBC, UMI, Gene} pairs to be marked chimeric
         final Map<String, ChimericUmiCollection> chimerics = new HashMap<>();
