@@ -37,6 +37,19 @@ public class SimpleDiploidVariantContextTest {
 	private final static String rootDir="testdata/org/broadinstitute/dropseq/barnyard/digitalallelecounts/sampleassignment";
 	
 	private final File vcfFile = new File(rootDir+ "/test.vcf.gz");
+	private final File symbolicAllelesVCFFile = new File(rootDir+ "/symbolic_alleles.vcf.gz");
+
+	@Test
+	public void testSymbolicAllelesFiltered() {
+		VCFFileReader reader = new VCFFileReader(this.symbolicAllelesVCFFile, false);
+		PeekableIterator<VariantContext> vcfIterator = new PeekableIterator<VariantContext>(reader.iterator());
+		SimpleDiploidVariantContextFilter filter = new SimpleDiploidVariantContextFilter(vcfIterator);
+		while (vcfIterator.hasNext()) {
+			VariantContext data = vcfIterator.next();
+			Assert.assertTrue(filter.filterOut(data));
+		}
+		reader.close();
+	}
 
 	@Test
 	public void testFilter() {
