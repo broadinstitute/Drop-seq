@@ -24,6 +24,7 @@
 
 thisdir=$(dirname "$0")
 
+all_classpath=$(echo "$thisdir"/lib/*.jar|tr ' ' ':')
 
 error_exit() {
     echo "ERROR: $*
@@ -66,7 +67,7 @@ then error_exit 'Could not find one and only one picard.jar in deployment.'
 fi
 
 invoke_picard() {
-    check_invoke java -Xmx4g -Djava.io.tmpdir="$TMPDIR" -jar "$picard_jar" "$@"
+    check_invoke java -classpath "$all_classpath" -Xmx4g -Djava.io.tmpdir="$TMPDIR" picard.cmdline.PicardCommandLine "$@"
 }
 
 invoke_dropseq() {
