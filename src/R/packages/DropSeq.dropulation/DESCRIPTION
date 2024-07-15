@@ -1,8 +1,8 @@
 Package: DropSeq.dropulation
 Type: Package
 Title: Tools for analyzing Dropulation data
-Version: 3.0.1
-Date: 2024-05-07
+Version: 3.0.2
+Date: 2024-07-15
 Imports: graphics, utils, stats, data.table,RColorBrewer,vegan, gridExtra,
     ggplot2,ggrepel,purrr,stringr,scales
 Suggests: DropSeq.utilities

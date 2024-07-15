@@ -1,8 +1,8 @@
 Package: DropSeq.utilities
 Type: Package
 Title: Generic Drop-seq utilities
-Version: 3.0.1
-Date: 2024-05-07
+Version: 3.0.2
+Date: 2024-07-15
 Imports: data.table
 Author: Alec Wysoker
 Maintainer: McCarroll Lab <dropseq@gmail.com>
