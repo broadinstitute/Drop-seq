@@ -4,7 +4,7 @@ Title: Tools for analyzing Dropulation data
 Version: 3.0.2
 Date: 2024-07-15
 Imports: graphics, utils, stats, data.table,RColorBrewer,vegan, gridExtra,
-    ggplot2,ggrepel,purrr,stringr,scales
+    ggplot2,ggrepel,purrr,stringr,scales, cobs
 Suggests: DropSeq.utilities
 Remotes: github::broadinstitute/Drop-seq/src/R/packages/DropSeq.utilities
 Author: Jim Nemesh
