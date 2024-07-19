@@ -89,7 +89,7 @@ fastReadBigGz<-function(inFile, ...) {
 #' @export
 #' @import data.table
 read_dge_gz<-function(file, decreasing_order_by_size=TRUE) {
-  dge = fastRead(file, comment_regexp = '^#')
+  dge <- fastRead(file, comment_regexp = '^#', header = TRUE)
   setkey(dge,GENE)
   gene_names = dge$GENE
   GENE <- NULL # Silence R CMD check warning https://www.r-bloggers.com/2019/08/no-visible-binding-for-global-variable/
