@@ -626,7 +626,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 			log.info("Running with a fixed error rate of " + this.FIXED_ERROR_RATE);
 
 		if (this.MAX_ERROR_RATE != null && this.CELL_CONTAMINATION_ESTIMATE_FILE == null && this.ALLELE_FREQUENCY_ESTIMATE_FILE == null)
-			log.info("Running with a maximum cap on error rate of " + this.FIXED_ERROR_RATE);
+			log.info("Running with a maximum cap on error rate of " + this.MAX_ERROR_RATE);
 
 		if (FRACTION_SAMPLES_PASSING < 0 | FRACTION_SAMPLES_PASSING > 1)
 			list.add("FRACTION_SAMPLES_PASSING must be between 0 and 1, value was " + Double.toString(this.FRACTION_SAMPLES_PASSING));
