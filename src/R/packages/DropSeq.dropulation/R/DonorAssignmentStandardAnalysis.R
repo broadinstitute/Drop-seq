@@ -1118,9 +1118,19 @@ evaluateDoubletRateSimple<-function (df, fdrThreshold=0.05) {
 ########################################################
 #reads in the singlets and doublets, return the median likelihood and best likelihood scores.  Flag cells as doublets based on the pvalue
 #bin data by either some set number of qualtiles or a number of fixed bin sizes.
+
+#' Evaluate Donor Assignment
+#'
+#' Given the donor assignment and doublet results, construct a data frame of cell barcodes 
+#' and their donor assignments, along with classification of each cell barcode
+#' as a singlet, doublet, or diffuse doublet.
+#' @inheritParams donorAssignmentQC
+#' @return A dataframe containing the cell barcodes, donor assignments, and classification of each cell barcode
+#' @export
 getSingletDoubletDF<-function (likelihoodSummaryFile, doubletLikelihoodFile, expectedSamplesFile=NULL, 
 							   doubletPvalue=0.9, bestPairPvalue=0.9, ignoreDiffuseDoublets=FALSE, 
 							   fdrThreshold=0.05, anonymizeDonors=FALSE) {
+	
 	a=read.table(likelihoodSummaryFile, header=T, stringsAsFactors = F, sep="\t")
 	b=read.table(doubletLikelihoodFile, header=T, stringsAsFactors = F, sep="\t")
 	
@@ -1158,6 +1168,8 @@ getSingletDoubletDF<-function (likelihoodSummaryFile, doubletLikelihoodFile, exp
 		df$expected_donor=df$donor %in% e$V1
 		#making this a factor makes life easier later!
 		df$expected_donor=factor(df$expected_donor)
+	} else {
+		e=c() #empty list.
 	}
 	
 	#label each cell with it's singlet/doublet status.
@@ -1172,11 +1184,11 @@ getSingletDoubletDF<-function (likelihoodSummaryFile, doubletLikelihoodFile, exp
 	if (!anonymizeDonors)
 		return (list(cellDF=df, expected_samples=e))
 		
-	
 	#Anonymize donors if requested.
 	allDonorNames=unique (c(e$V1, df$donor))
 	anonDonorNames <- paste("DONOR", as.numeric(factor(allDonorNames)), sep="_")
 	df$donor=anonDonorNames[match(df$donor, allDonorNames)]
+	
 	e$V1=anonDonorNames[match(e$V1, allDonorNames)]
 	return (list(cellDF=df, expected_samples=e))
 }
