@@ -265,6 +265,16 @@ public class SampleAssignmentVCFUtils {
 	}
 
 	/**
+	 * Validate that all samples in the sampleFile appear in the vcf
+	 * @see #validateSampleNamesInVCF(VCFFileReader, List, Log)
+	 * @param vcf
+	 * @param sampleFile
+	 */
+	public static void validateSampleNamesInVCF (final File vcf, final File sampleFile) {
+		validateSampleNamesInVCF(new VCFFileReader(vcf, false), ParseBarcodeFile.readCellBarcodeFile(sampleFile), null);
+	}
+
+	/**
 	 * Runs subContextFromSamples on each VariantContext record to filter a VariantContext record
 	 * to only contain data for the samples supplied to this iterator.
 	 * @author nemesh
