@@ -29,6 +29,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
 import htsjdk.samtools.util.zip.DeflaterFactory;
 import htsjdk.samtools.util.zip.InflaterFactory;
+import org.broadinstitute.dropseqrna.barnyard.digitalexpression.tools.DGEMatrix;
 import org.testng.Assert;
 import picard.util.TabbedInputParser;
 import picard.util.TabbedTextFileWithHeaderParser;
@@ -38,10 +39,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 /**
@@ -312,4 +310,42 @@ public class TestUtils {
 
         return splitBAMFileList;
     }
+
+	public static boolean dgeMatricesAreEqual(File matrixFile1, File matrixFile2) {
+		return dgeMatricesAreEqual(DGEMatrix.parseFile(matrixFile1), DGEMatrix.parseFile(matrixFile2));
+	}
+
+	public static boolean dgeMatricesAreEqual(final DGEMatrix matrix1, DGEMatrix matrix2) {
+
+		if (!matrix2.getGenes().equals(matrix1.getGenes()))
+			return false;
+
+		if (matrix2.getCellBarcodes().size() != matrix1.getCellBarcodes().size())
+			return false;
+
+		Map<String, Integer> indexMap = new HashMap<>();
+		for (int idx=0; idx<matrix1.getCellBarcodes().size(); idx++) {
+			indexMap.put(matrix1.getCellBarcodes().get(idx), idx);
+		}
+
+		int[] indexLookup = new int[matrix1.getCellBarcodes().size()];
+		for (int idx2=0; idx2<matrix2.getCellBarcodes().size(); idx2++) {
+			Integer idx1 = indexMap.get(matrix2.getCellBarcodes().get(idx2));
+			if (idx1 == null)
+				return false;
+
+			indexLookup[idx2] = idx1;
+		}
+
+		for (String gene : matrix1.getGenes()) {
+			double[] expression1 = matrix1.getExpression(gene);
+			double[] expression2 = matrix2.getExpression(gene);
+			for (int idx2=0; idx2<matrix2.getCellBarcodes().size(); idx2++) {
+				if (expression2[idx2] != expression1[indexLookup[idx2]])
+					return false;
+			}
+		}
+
+		return true;
+	}
 }
