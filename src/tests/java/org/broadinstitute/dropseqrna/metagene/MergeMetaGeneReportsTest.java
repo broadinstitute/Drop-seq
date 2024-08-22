@@ -57,7 +57,7 @@ public class MergeMetaGeneReportsTest {
         UMIMetaGeneAggregation expectedAggregation = DiscoverMetaGenes.readReport(expectedMetaGenesReport);
         UMIMetaGeneAggregation mergedAggregation = DiscoverMetaGenes.readReport(mergedMetaGenesReport);
 
-        Assert.assertTrue(mergedAggregation.equals(expectedAggregation));
+        Assert.assertEquals(expectedAggregation, mergedAggregation);
     }
 
     private void discoverMetaGenes(final File inputBAM, final File metaGenesReport) {

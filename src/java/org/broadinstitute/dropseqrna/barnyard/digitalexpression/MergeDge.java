@@ -25,12 +25,8 @@ package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.AbstractTripletDgeWriterClp;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeader;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderMerger;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.tools.DGEMatrix;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
@@ -38,8 +34,8 @@ import picard.cmdline.StandardOptionDefinitions;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
         summary = "Merges multiple Digital Gene Expression files into a single file",
@@ -88,19 +84,17 @@ public class MergeDge
 		} else {
 			final ArrayList<String> list = new ArrayList<>(1);
 			if (superErrors != null) {
-				for (final String msg: superErrors) {
-					list.add(msg);
-				}
+                Collections.addAll(list, superErrors);
 			}
 			list.add("OUTPUT_HEADER==true is not supported if OUTPUT_FORMAT!=DENSE");
-			return list.toArray(new String[list.size()]);
+			return list.toArray(new String[0]);
 		}
 	}
 
 	@Override
 	protected int doWork() {
         if (PREFIX == null)
-            PREFIX = new ArrayList<String>();
+            PREFIX = new ArrayList<>();
 
         INPUT = FileListParsingUtils.expandFileList(INPUT);
 
@@ -112,7 +106,7 @@ public class MergeDge
 			IOUtil.assertFileIsReadable(f);
 		IOUtil.assertFileIsWritable(OUTPUT);
 
-		if (INPUT.size()==0) return 0;
+		if (INPUT.isEmpty()) return 0;
 
 		mergeSparseMatrix();
 

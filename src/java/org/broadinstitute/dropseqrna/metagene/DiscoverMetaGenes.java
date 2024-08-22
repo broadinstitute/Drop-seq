@@ -225,7 +225,9 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 			writeMetaGenesToBAM(c, metaGenes, writer, this.WRITE_ALL_READS);
 		}		
 		pl.close();
-		writer.close();						
+		if (writer!=null) {
+			writer.close();
+		}
 		return 0;
 	}
 
@@ -239,27 +241,25 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 		// this runs on only the selected cell barcodes.
 		Collection <ReadGroupResult> rgr =  c.getResultsPerRead();
 		// filter to read groups that are unambiguous and write them out.
-		List<ReadGroupResult> metaGeneGroups= rgr.stream().filter(x -> x.getType()==ReadGroupResult.MetaGeneTypeEnum.UNAMBIGIOUS).collect(Collectors.toList());
+		List<ReadGroupResult> metaGeneGroups= rgr.stream().filter(x -> x.getType()==ReadGroupResult.MetaGeneTypeEnum.UNAMBIGIOUS).toList();
 		// process metaGenes.  MetaGene has to be on the "approved" list to be tagged.
 		for (ReadGroupResult r: metaGeneGroups) {
-			Iterator<SAMRecord> recs = r.getReads().iterator();
 
-			// pick the first read and add the metagene tag if it's in the approved list.
-			while (recs.hasNext()) {
-				SAMRecord rec = recs.next();
-				MetaGene m = r.getMetaGene();
-				m=getMetaGeneInKnownModel(m, approvedMetaGenes);
-				if (m!=null)				
-					rec = tagMetaGene(rec, m);				
-				writer.addAlignment(rec);
-			}
+            // pick the first read and add the metagene tag if it's in the approved list.
+            for (SAMRecord rec : r.getReads()) {
+                MetaGene m = r.getMetaGene();
+                m = getMetaGeneInKnownModel(m, approvedMetaGenes);
+                if (m != null)
+                    rec = tagMetaGene(rec, m);
+                writer.addAlignment(rec);
+            }
 		}
 
 		// all other read groups that are not meta genes.
 		if (writeAllReads) {
-			List<ReadGroupResult> other= rgr.stream().filter(x -> x.getType()!=ReadGroupResult.MetaGeneTypeEnum.UNAMBIGIOUS).collect(Collectors.toList());
+			List<ReadGroupResult> other= rgr.stream().filter(x -> x.getType()!=ReadGroupResult.MetaGeneTypeEnum.UNAMBIGIOUS).toList();
 			for (ReadGroupResult r: other)
-				r.getReads().stream().forEach(x -> writer.addAlignment(x));			
+				r.getReads().stream().forEach(writer::addAlignment);
 		}
 
 	}
@@ -319,7 +319,7 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 	 */
 	private List<LocusFunction> getLocusFunctionsForMetaGene (MetaGene m, SAMRecord rec ) {				
 		String function = rec.getStringAttribute(this.GENE_FUNCTION_TAG);
-		List<LocusFunction> funcs = Arrays.asList(function.split(BAM_TAG_DELIMITER)).stream().map(x -> LocusFunction.valueOf(x)).collect(Collectors.toList());		
+		List<LocusFunction> funcs = Arrays.stream(function.split(BAM_TAG_DELIMITER)).map(LocusFunction::valueOf).toList();
 		String []  genes = rec.getStringAttribute(this.GENE_NAME_TAG).split(this.BAM_TAG_DELIMITER);
 		
 		List<LocusFunction> result = new ArrayList<>();
@@ -413,8 +413,8 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
         for (MetaGene mg: metaGenes) {
         	Set<String> genes = mg.getGeneNames();
         	String metaGeneName = mg.getMetaGeneName(sep);
-        	String [] uniqueCountsString = genes.stream().mapToInt(x -> unique.getCountForKey(x)).mapToObj(Integer::toString).toArray(String[]::new);
-        	int totalUniqueCounts = genes.stream().mapToInt(x->unique.getCountForKey(x)).sum();
+        	String [] uniqueCountsString = genes.stream().mapToInt(unique::getCountForKey).mapToObj(Integer::toString).toArray(String[]::new);
+        	int totalUniqueCounts = genes.stream().mapToInt(unique::getCountForKey).sum();
         	String uniqueCounts= StringUtils.join(uniqueCountsString, sep);
         	int ambigCount = ambig.getCountForKey(mg);
         	int unambigCount = unambig.getCountForKey(mg);
@@ -427,10 +427,10 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 
 	private class ProgressLoggingIterator extends FilteredIterator<UMIMetaGeneCollection> {
 		private final Log log;
-		private Set<String> cells;
+		private final Set<String> cells;
 		private String currentCell;
-		private int interval;
-		private int numCellsExpected;
+		private final int interval;
+		private final int numCellsExpected;
 		public ProgressLoggingIterator (final Iterator<UMIMetaGeneCollection> underlyingIterator, final Log log, final int interval, final int numCellsExpected) {
 			super(underlyingIterator);
 			this.log=log;
@@ -447,7 +447,7 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 				log.info("STOP");
 			if (!newCell.equals(currentCell)) {
 				cells.add(newCell);
-				if (cells.size()%this.interval==0 || cells.size()==this.numCellsExpected) log.info("Cells processed [" + Integer.toString(cells.size()) + "/" +  numCellsExpected+"]");
+				if (cells.size()%this.interval==0 || cells.size()==this.numCellsExpected) log.info("Cells processed [" + cells.size() + "/" +  numCellsExpected+"]");
 			}
 			currentCell=newCell;
 			return false;

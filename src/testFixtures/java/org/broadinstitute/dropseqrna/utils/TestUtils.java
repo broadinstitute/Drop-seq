@@ -75,10 +75,8 @@ public class TestUtils {
 		CloserUtil.close(e);
 		CloserUtil.close(a);
 		// one of the files is incomplete.
-		if (e.hasNext() || a.hasNext())
-			return false;
-		return true;
-	}
+        return !e.hasNext() && !a.hasNext();
+    }
 
 	/**
 	 * File comparison for files with values that may jiggle a little.
@@ -145,15 +143,13 @@ public class TestUtils {
 		CloserUtil.close(e);
 		CloserUtil.close(a);
 		// one of the files is incomplete.
-		if (e.hasNext() || a.hasNext())
-			return false;
-		return true;
-	}
+        return !e.hasNext() && !a.hasNext();
+    }
 
 	// Copied roughly from Picard CompareMetrics
 	public static boolean testMetricsFilesEqual(final File expected, final File actual) throws FileNotFoundException {
-		final MetricsFile<?, ?> metricsA = new MetricsFile();
-		final MetricsFile<?, ?> metricsB = new MetricsFile();
+		final MetricsFile<?, ?> metricsA = new MetricsFile<>();
+		final MetricsFile<?, ?> metricsB = new MetricsFile<>();
 		metricsA.read(new FileReader(expected));
 		metricsB.read(new FileReader(actual));
 		return metricsA.areMetricsEqual(metricsB) && metricsA.areHistogramsEqual(metricsB);
@@ -279,7 +275,7 @@ public class TestUtils {
         SamReaderFactory factory = SamReaderFactory.makeDefault();
         SamReader reader = factory.open(f);
         long count=0;
-        for (SAMRecord r: reader) {
+        for (SAMRecord ignored : reader) {
             count++;
         }
         CloserUtil.close(reader);
@@ -291,7 +287,7 @@ public class TestUtils {
 
         File outputBAM = getTempReportFile("SplitBamByCell.", bamSplitter.OUTPUT_SLUG + ".bam");
         File outputBAMList = getTempReportFile("SplitBamByCell.", ".list");
-        bamSplitter.INPUT = Arrays.asList(inputBAM);
+        bamSplitter.INPUT = Collections.singletonList(inputBAM);
         bamSplitter.OUTPUT = outputBAM;
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.NUM_OUTPUTS = numOutputs;

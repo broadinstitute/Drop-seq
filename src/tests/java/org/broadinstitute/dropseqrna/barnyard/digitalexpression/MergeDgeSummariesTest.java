@@ -25,7 +25,6 @@ package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
 import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.dropseqrna.barnyard.DigitalExpression;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.MergeDgeSummaries;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -50,7 +49,7 @@ public class MergeDgeSummariesTest {
     public void testNonOverlapping() {
         List<DigitalExpression.DESummary> merged = doMerge(GENE_SUMMARY, ONE_CELL_GENE_SUMMARY, false);
         List<DigitalExpression.DESummary> geneSummaries = readMetrics(GENE_SUMMARY);
-        DigitalExpression.DESummary oneCellSummary = readMetrics(ONE_CELL_GENE_SUMMARY).get(0);
+        DigitalExpression.DESummary oneCellSummary = readMetrics(ONE_CELL_GENE_SUMMARY).getFirst();
         Assert.assertEquals(merged.size(), geneSummaries.size() + 1);
         final DigitalExpression.DESummary oneCellMerged = findMetricForCbc(merged, oneCellSummary.CELL_BARCODE);
         Assert.assertEquals(oneCellMerged, oneCellSummary);

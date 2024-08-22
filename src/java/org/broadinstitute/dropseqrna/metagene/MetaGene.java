@@ -95,12 +95,9 @@ public class MetaGene implements Comparable<MetaGene> {
 			return false;
 		MetaGene other = (MetaGene) obj;
 		if (geneSet == null) {
-			if (other.geneSet != null)
-				return false;
-		} else if (!geneSet.equals(other.geneSet))
-			return false;
-		return true;
-	}
+            return other.geneSet == null;
+		} else return geneSet.equals(other.geneSet);
+    }
 
 	@Override
 	public int hashCode() {

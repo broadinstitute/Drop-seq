@@ -24,9 +24,7 @@
 package org.broadinstitute.dropseqrna.metrics;
 
 import htsjdk.samtools.metrics.MetricsFile;
-
 import org.broadinstitute.dropseqrna.barnyard.MarkChimericReads;
-import org.broadinstitute.dropseqrna.metrics.MergeChimericReadMetrics;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -55,8 +53,8 @@ public class MergeChimericReadMetricsTest {
   for (final File f : TEST_FILES) {
    List<MarkChimericReads.MarkChimericReadMetrics> beans = MetricsFile.readBeans(f);
    Assert.assertEquals(beans.size(), 1);
-   expectNumUmis += beans.get(0).NUM_UMIS;
+   expectNumUmis += beans.getFirst().NUM_UMIS;
   }
-  Assert.assertEquals(outputBeans.get(0).NUM_UMIS, expectNumUmis);
+  Assert.assertEquals(outputBeans.getFirst().NUM_UMIS, expectNumUmis);
  }
 }

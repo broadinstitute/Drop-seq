@@ -27,7 +27,6 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordQueryNameComparator;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Log;
-import org.broadinstitute.dropseqrna.metagene.MetaGene;
 import org.broadinstitute.dropseqrna.metagene.ReadGroupResult.MetaGeneTypeEnum;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.ReadNameComparator;
@@ -92,14 +91,14 @@ public class UMIMetaGeneCollection {
 		this.molBCTag=molBCTag;
 		this.cellBCTag=cellBCTag;
 		List<SAMRecord> infRecs = new ArrayList<>(informativeReads);
-		Collections.sort(infRecs, new SAMRecordQueryNameComparator());
+		infRecs.sort(new SAMRecordQueryNameComparator());
 		this.informativeReads=infRecs;		
 		this.uniqueGenes=null;
 		this.ambiguousMetaGenes=null;
 		this.unambiguousMetaGenes=null;
-		if (informativeReads.size()>0) {
-			this.cellBarcode=infRecs.get(0).getStringAttribute(cellBCTag);
-			this.molecularBarcode=infRecs.get(0).getStringAttribute(molBCTag);
+		if (!informativeReads.isEmpty()) {
+			this.cellBarcode=infRecs.getFirst().getStringAttribute(cellBCTag);
+			this.molecularBarcode=infRecs.getFirst().getStringAttribute(molBCTag);
 		} else {
 			this.cellBarcode=null;
 			this.molecularBarcode=null;
@@ -185,7 +184,7 @@ public class UMIMetaGeneCollection {
 			List<SAMRecord> recs = gIter.next();
 			List<SAMRecord> recsUnique = new ArrayList<>(getBestReadsByEditDistance(recs));
 			if (recsUnique.size()==1) {
-				SAMRecord r = recsUnique.get(0);
+				SAMRecord r = recsUnique.getFirst();
 				String gene = r.getStringAttribute(this.geneTag);
 				this.uniqueGenes.add(gene);
 			}
@@ -200,7 +199,7 @@ public class UMIMetaGeneCollection {
 	 */
 	void populateGeneSets () {
 		
-		Set<String> uniqueGenes = this.getUniquelyMappedGenes();
+		this.getUniquelyMappedGenes();
 		Set<MetaGene> ambiguous = new HashSet<>();
 		Set<MetaGene> unambiguous = new HashSet<>();
 
@@ -243,7 +242,7 @@ public class UMIMetaGeneCollection {
 	 * @return
 	 */
 	public ReadGroupResult getMetaGeneType (final List<SAMRecord> list) {
-		String readName = list.get(0).getReadName();
+		String readName = list.getFirst().getReadName();
 		Set<String> readGenes = new HashSet<>();
 
 		for (SAMRecord r: list) {
@@ -256,10 +255,11 @@ public class UMIMetaGeneCollection {
 
 		// if there's a single read, the read is unmapped or unique, or I'm dumb and missed something (OTHER)
 		if (list.size()<2) {
-			int readMQ = list.get(0).getMappingQuality();
+			int readMQ = list.getFirst().getMappingQuality();
 			if (readMQ==0) return new ReadGroupResult(orderedReadGenes, MetaGeneTypeEnum.UNMAPPED, list);
 			if (readMQ<this.mapQualityUnique) return new ReadGroupResult(orderedReadGenes, MetaGeneTypeEnum.LOW_MQ, list);
-			if (readMQ>=this.mapQualityUnique) return new ReadGroupResult(orderedReadGenes, MetaGeneTypeEnum.UNIQUE, list);;
+			if (readMQ>=this.mapQualityUnique) return new ReadGroupResult(orderedReadGenes, MetaGeneTypeEnum.UNIQUE, list);
+			// TODO: Looks like a bug, because this code is never reached.
 			return new ReadGroupResult(orderedReadGenes, MetaGeneTypeEnum.OTHER, list);
 		}
 
@@ -274,7 +274,7 @@ public class UMIMetaGeneCollection {
 			return new ReadGroupResult(intersect, MetaGeneTypeEnum.UNIQUE, list);
 
 		// unambiguous meta gene - no unique mappings of the genes.
-		if (readGenes.size()>1 & intersect.size()==0)
+		if (readGenes.size()>1 & intersect.isEmpty())
 			return new ReadGroupResult(readGenes, MetaGeneTypeEnum.UNAMBIGIOUS, list);
 
 		// ambiguous meta gene - both genes have unique mappings, and this read group shares both mappings.
@@ -362,15 +362,16 @@ public class UMIMetaGeneCollection {
 		// do the ambiguous meta genes and unambigous meta genes overlap?
 		Set<MetaGene> test1 = new HashSet<>(this.unambiguousMetaGenes);
 		test1.retainAll(this.ambiguousMetaGenes);
-		if (test1.size()>0) {
-			log.error("UMI contains genes that are both ambiguous and unambiguous meta genes "+ this.toString());
+		if (!test1.isEmpty()) {
+			log.error("UMI contains genes that are both ambiguous and unambiguous meta genes "+ this);
 			return false;
 		}
 		// are any unique genes assigned to unambigous meta genes for this UMI?
 		Set<MetaGene> test2 = new HashSet<>(this.unambiguousMetaGenes);
+		// TODO: test2 contains MetaGene object, but uniqueGenes is a set of Strings.  This is a bug.
 		test2.retainAll(this.uniqueGenes);
-		if (test2.size()>0) {
-			log.error("UMI contains genes that are both unambiguous and unique " + this.toString());
+		if (!test2.isEmpty()) {
+			log.error("UMI contains genes that are both unambiguous and unique " + this);
 			return false;
 		}
 		return true;

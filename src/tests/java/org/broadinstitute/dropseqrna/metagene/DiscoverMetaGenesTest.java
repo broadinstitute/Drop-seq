@@ -1,16 +1,15 @@
 package org.broadinstitute.dropseqrna.metagene;
 
+import org.broadinstitute.dropseqrna.barnyard.DigitalExpression;
+import org.broadinstitute.dropseqrna.utils.TestUtils;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
-
-import org.broadinstitute.dropseqrna.barnyard.DigitalExpression;
-import org.broadinstitute.dropseqrna.metagene.DiscoverMetaGenes;
-import org.broadinstitute.dropseqrna.metagene.MetaGene;
-import org.broadinstitute.dropseqrna.utils.TestUtils;
-import org.testng.Assert;
-import org.testng.annotations.Test;
+import java.util.List;
 
 public class DiscoverMetaGenesTest {
 
@@ -24,7 +23,7 @@ public class DiscoverMetaGenesTest {
      *  
      *  Additionally there's one read that is mapped at MQ=3, and resolves to an additional metaGene UMI on AAGACAATCCGCAACG.
 	 */
-	private static File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/metagene");
+	private static final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/metagene");
 	private static final File IN_SMN_FILE = new File(TEST_DATA_DIR, "SMN.bam");
 	private static final File IN_SMN_CELL_BARCODE_FILE = new File(TEST_DATA_DIR, "SMN_cellbarcodes.txt");
 	private static final File EXPECTED_SMN_REPORT = new File(TEST_DATA_DIR, "SMN_expected_report.txt");
@@ -38,7 +37,7 @@ public class DiscoverMetaGenesTest {
 	private static final File IN_SMN_CELL_BARCODE_FILE_BIG = new File(TEST_DATA_DIR, "BA46_downsampled_SMN.selectedCellBarcodes.txt");
 	private static final File EXPECTED_SMN_REPORT_BIG = new File(TEST_DATA_DIR, "BA46_downsampled_SMN.metagene_report.txt");
 		
-	@Test(enabled=true)
+	@Test
 	public void testDetectSMN() throws IOException {		
 		DiscoverMetaGenes dmg = new DiscoverMetaGenes();
 		dmg.CELL_BC_FILE=IN_SMN_CELL_BARCODE_FILE;
@@ -60,7 +59,7 @@ public class DiscoverMetaGenesTest {
 		// Extract DGE for the meta gene.  Should be AAGACAATCCGCAACG=1, AACAACCAGTTACGGG=0		
 		File dgeOutput =File.createTempFile("SMN", ".digital_expression.txt");		
 		dgeOutput.deleteOnExit();
-		String [] dgeArgs = {"INPUT="+dmg.OUTPUT, "CELL_BC_FILE="+this.IN_SMN_CELL_BARCODE_FILE, "READ_MQ=2", "GENE_NAME_TAG="+dmg.METAGENE_NAME, 
+		String [] dgeArgs = {"INPUT="+dmg.OUTPUT, "CELL_BC_FILE="+IN_SMN_CELL_BARCODE_FILE, "READ_MQ=2", "GENE_NAME_TAG="+dmg.METAGENE_NAME,
 				"GENE_STRAND_TAG="+dmg.METAGENE_STRAND, "GENE_FUNCTION_TAG="+dmg.METAGENE_FUNCTION, "OUTPUT="+dgeOutput};
 											
 		int dgeReturn = new DigitalExpression().instanceMain(dgeArgs);
@@ -71,7 +70,7 @@ public class DiscoverMetaGenesTest {
 		// Extract DGE for the unique genes.  
 		File dgeOutputUnique =File.createTempFile("SMN", ".digital_expression.txt");		
 		dgeOutputUnique.deleteOnExit();
-		String [] dgeArgs2 = {"INPUT="+dmg.OUTPUT, "CELL_BC_FILE="+this.IN_SMN_CELL_BARCODE_FILE, "READ_MQ=10", "OUTPUT="+dgeOutputUnique};					
+		String [] dgeArgs2 = {"INPUT="+dmg.OUTPUT, "CELL_BC_FILE="+IN_SMN_CELL_BARCODE_FILE, "READ_MQ=10", "OUTPUT="+dgeOutputUnique};					
 		int dgeReturn2 = new DigitalExpression().instanceMain(dgeArgs2);
 		Assert.assertEquals(0, dgeReturn2);
 		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_SMN_DGE, dgeOutputUnique));
@@ -82,7 +81,7 @@ public class DiscoverMetaGenesTest {
 	 * Don't discover metagenes, use a known gene file instead.
 	 * @throws IOException
 	 */
-	@Test(enabled=true)
+	@Test
 	public void testSMNKnownGenes() throws IOException {		
 		DiscoverMetaGenes dmg = new DiscoverMetaGenes();
 		dmg.CELL_BC_FILE=IN_SMN_CELL_BARCODE_FILE;
@@ -102,7 +101,7 @@ public class DiscoverMetaGenesTest {
 		// Extract DGE for the meta gene.  Should be AAGACAATCCGCAACG=1, AACAACCAGTTACGGG=0		
 		File dgeOutput =File.createTempFile("SMN", ".digital_expression.txt");		
 		dgeOutput.deleteOnExit();
-		String [] dgeArgs = {"INPUT="+dmg.OUTPUT, "CELL_BC_FILE="+this.IN_SMN_CELL_BARCODE_FILE, "READ_MQ=2", "GENE_NAME_TAG="+dmg.METAGENE_NAME, 
+		String [] dgeArgs = {"INPUT="+dmg.OUTPUT, "CELL_BC_FILE="+IN_SMN_CELL_BARCODE_FILE, "READ_MQ=2", "GENE_NAME_TAG="+dmg.METAGENE_NAME, 
 				"GENE_STRAND_TAG="+dmg.METAGENE_STRAND, "GENE_FUNCTION_TAG="+dmg.METAGENE_FUNCTION, "OUTPUT="+dgeOutput};
 											
 		int dgeReturn = new DigitalExpression().instanceMain(dgeArgs);
@@ -113,7 +112,7 @@ public class DiscoverMetaGenesTest {
 		// Extract DGE for the unique genes.  
 		File dgeOutputUnique =File.createTempFile("SMN", ".digital_expression.txt");		
 		dgeOutputUnique.deleteOnExit();
-		String [] dgeArgs2 = {"INPUT="+dmg.OUTPUT, "CELL_BC_FILE="+this.IN_SMN_CELL_BARCODE_FILE, "READ_MQ=10", "OUTPUT="+dgeOutputUnique};					
+		String [] dgeArgs2 = {"INPUT="+dmg.OUTPUT, "CELL_BC_FILE="+IN_SMN_CELL_BARCODE_FILE, "READ_MQ=10", "OUTPUT="+dgeOutputUnique};					
 		int dgeReturn2 = new DigitalExpression().instanceMain(dgeArgs2);
 		Assert.assertEquals(0, dgeReturn2);
 		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_SMN_DGE, dgeOutputUnique));
@@ -124,7 +123,7 @@ public class DiscoverMetaGenesTest {
 	 * Use a metagene model that has more genes in the grouping than discovered here, output should report the metagene model not the discovered one.
 	 * @throws IOException
 	 */
-	@Test(enabled=true)
+	@Test
 	public void testSMNExtendedModel() throws IOException {		
 		DiscoverMetaGenes dmg = new DiscoverMetaGenes();
 		dmg.CELL_BC_FILE=IN_SMN_CELL_BARCODE_FILE;
@@ -144,7 +143,7 @@ public class DiscoverMetaGenesTest {
 		// Extract DGE for the meta gene.  Should be AAGACAATCCGCAACG=1, AACAACCAGTTACGGG=0		
 		File dgeOutput =File.createTempFile("SMN", ".digital_expression.txt");		
 		dgeOutput.deleteOnExit();
-		String [] dgeArgs = {"INPUT="+dmg.OUTPUT, "CELL_BC_FILE="+this.IN_SMN_CELL_BARCODE_FILE, "READ_MQ=2", "GENE_NAME_TAG="+dmg.METAGENE_NAME, 
+		String [] dgeArgs = {"INPUT="+dmg.OUTPUT, "CELL_BC_FILE="+IN_SMN_CELL_BARCODE_FILE, "READ_MQ=2", "GENE_NAME_TAG="+dmg.METAGENE_NAME, 
 				"GENE_STRAND_TAG="+dmg.METAGENE_STRAND, "GENE_FUNCTION_TAG="+dmg.METAGENE_FUNCTION, "OUTPUT="+dgeOutput};
 											
 		int dgeReturn = new DigitalExpression().instanceMain(dgeArgs);
@@ -160,13 +159,13 @@ public class DiscoverMetaGenesTest {
 		MetaGene m = new MetaGene(Arrays.asList("SMN1", "SMN2"));
 		
 		// exact match
-		Collection <MetaGene> approvedMetaGenes = Arrays.asList(m);				
+		Collection <MetaGene> approvedMetaGenes = List.of(m);
 		MetaGene result = dmg.getMetaGeneInKnownModel(m, approvedMetaGenes);
 		Assert.assertNotNull(result);
 		
 		// test contains match
 		MetaGene k = new MetaGene(Arrays.asList("SMN1", "SMN2", "FOO"));
-		approvedMetaGenes = Arrays.asList(k);		
+		approvedMetaGenes = List.of(k);
 		result = dmg.getMetaGeneInKnownModel(m, approvedMetaGenes);
 		Assert.assertNotNull(result);
 		

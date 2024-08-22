@@ -23,15 +23,13 @@
  */
 package org.broadinstitute.dropseqrna.metagene;
 
+import htsjdk.samtools.SAMRecord;
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-
-import org.apache.commons.lang3.StringUtils;
-
-import htsjdk.samtools.SAMRecord;
-import org.broadinstitute.dropseqrna.metagene.MetaGene;
 
 /**
  * For one or more mappings of a read, what genes is the read mapped to, and what type of meta gene (if any) is this?
@@ -41,7 +39,7 @@ import org.broadinstitute.dropseqrna.metagene.MetaGene;
 public class ReadGroupResult {
 
 	private final List<String> genes;
-	private MetaGene metaGene;
+	private final MetaGene metaGene;
 	
 	private final MetaGeneTypeEnum type;
 	private final List<SAMRecord> reads;
@@ -115,10 +113,8 @@ public class ReadGroupResult {
 				return false;
 		} else if (!genes.equals(other.genes))
 			return false;
-		if (type != other.type)
-			return false;
-		return true;
-	}
+        return type == other.type;
+    }
 
 	public List<SAMRecord> getReads() {
 		return reads;

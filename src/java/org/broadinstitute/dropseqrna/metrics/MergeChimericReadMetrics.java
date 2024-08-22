@@ -27,7 +27,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.MarkChimericReads;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.FilteredReadsMetric;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 

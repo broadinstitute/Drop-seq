@@ -23,14 +23,13 @@
  */
 package org.broadinstitute.dropseqrna.metrics;
 
-import org.broadinstitute.dropseqrna.metrics.GatherUMIReadIntervals;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.Arrays;
+import java.util.List;
 
 public class GatherUMIReadIntervalsTest {
  static final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/metrics/GatherUMIReadIntervals");
@@ -44,7 +43,7 @@ public class GatherUMIReadIntervalsTest {
  @Test(dataProvider = "testBasicDataProvider")
  public void testBasic(final int editDistance, final File expectedReport) {
   final GatherUMIReadIntervals clp = new GatherUMIReadIntervals();
-  clp.INPUT = Arrays.asList(INPUT);
+  clp.INPUT = List.of(INPUT);
   clp.CELL_BC_FILE = SELECTED_CELLS;
   clp.OUTPUT = TestUtils.getTempReportFile("GatherUMIReadIntervalsTest.", ".tsv");
   clp.EDIT_DISTANCE = editDistance;
