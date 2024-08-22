@@ -27,7 +27,6 @@ import htsjdk.samtools.util.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.metrics.GatherUMIReadIntervals;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 import picard.util.TabbedTextFileWithHeaderParser;
@@ -63,12 +62,12 @@ public class MergeUMIReadIntervals
     @Override
     protected int doWork() {
         IOUtil.assertFileIsWritable(OUTPUT);
-        final MergingIterator it = new MergingIterator(new UMIReadIntervalComparator(),
+        final MergingIterator<GatherUMIReadIntervals.UmiReadInterval> it = new MergingIterator<>(new UMIReadIntervalComparator(),
                 INPUT.stream().map(UMIReadIntervalIterator::new).collect(Collectors.toList()));
         BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT);
         GatherUMIReadIntervals.writePerUMIStatsHeader(out);
         ProgressLogger prog = new ProgressLogger(log);
-        for (final GatherUMIReadIntervals.UmiReadInterval interval : new IterableAdapter<GatherUMIReadIntervals.UmiReadInterval>(it)) {
+        for (final GatherUMIReadIntervals.UmiReadInterval interval : new IterableAdapter<>(it)) {
             prog.record(interval.CONTIG, interval.POSITION_MIN);
             GatherUMIReadIntervals.writePerUMIStats(interval, out);
         }

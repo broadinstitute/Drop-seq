@@ -28,13 +28,9 @@ import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.RuntimeIOException;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.barnyard.GatherMolecularBarcodeDistributionByGene;
-import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
-import org.broadinstitute.dropseqrna.barnyard.UMICollectionByCellParser;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
@@ -99,7 +95,7 @@ public class ChimericReportEditDistanceCollapse
 
         final UMICollectionByCellParser parser = new UMICollectionByCellParser(INPUT, IGNORE_CHIMERIC);
         for (final List<UMICollection> umiCollections : parser) {
-            if (selectedCellBarcodes != null && !selectedCellBarcodes.contains(umiCollections.get(0).getCellBarcode())) {
+            if (selectedCellBarcodes != null && !selectedCellBarcodes.contains(umiCollections.getFirst().getCellBarcode())) {
                 continue;
             }
             for (final UMICollection umiCollection : umiCollections) {

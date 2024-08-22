@@ -23,26 +23,20 @@
  */
 package org.broadinstitute.dropseqrna.metagene;
 
-import java.io.File;
-import java.util.List;
-
+import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.Log;
-import org.broadinstitute.dropseqrna.metagene.DiscoverMetaGenes;
-import org.broadinstitute.dropseqrna.metagene.UMIMetaGeneAggregation;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
+
+import java.io.File;
+import java.util.List;
 
 @CommandLineProgramProperties(summary = "Merges metagene reports.",
         oneLineSummary = "Merges metagene reports.",
         programGroup = DropSeq.class)
 public class MergeMetaGeneReports extends CommandLineProgram {
-
-	private static final Log log = Log.getInstance(MergeMetaGeneReports.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input metagene reports to be merged.", minElements = 1)
 	public List<File> INPUT;

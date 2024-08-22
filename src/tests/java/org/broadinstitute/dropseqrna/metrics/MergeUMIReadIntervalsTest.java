@@ -24,8 +24,6 @@
 package org.broadinstitute.dropseqrna.metrics;
 
 import htsjdk.samtools.util.RuntimeIOException;
-import org.broadinstitute.dropseqrna.metrics.GatherUMIReadIntervalsTest;
-import org.broadinstitute.dropseqrna.metrics.MergeUMIReadIntervals;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;

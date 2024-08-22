@@ -65,7 +65,7 @@ public class  MergeMetricsHelper<METRIC_CLASS extends MetricBase> {
     for (Header header : metricsFile.getHeaders()) {
      outputMetricsFile.addHeader(header);
     }
-    final METRIC_CLASS inMetric = metricsFile.getMetrics().get(0);
+    final METRIC_CLASS inMetric = metricsFile.getMetrics().getFirst();
     merge.accept(outMetric, inMetric);
    }
 

@@ -27,9 +27,6 @@ import htsjdk.samtools.util.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.DigitalExpression;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeader;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderCodec;
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.DgeHeaderMerger;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
 import picard.cmdline.CommandLineProgram;
@@ -237,7 +234,7 @@ extends CommandLineProgram {
         }
 
         @Override
-        public void close() throws IOException {
+        public void close() {
             parser.close();
         }
     }

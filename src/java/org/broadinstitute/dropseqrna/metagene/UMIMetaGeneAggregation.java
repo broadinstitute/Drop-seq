@@ -23,7 +23,6 @@
  */
 package org.broadinstitute.dropseqrna.metagene;
 
-import org.broadinstitute.dropseqrna.metagene.MetaGene;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 import java.util.HashSet;
@@ -43,15 +42,9 @@ import java.util.Set;
  */
 public class UMIMetaGeneAggregation {
 
-	private ObjectCounter<String> uniqueGenes;
-	private ObjectCounter<MetaGene> ambiguousGenes;
-	private ObjectCounter<MetaGene> unAmbiguousGenes;
-
-	public UMIMetaGeneAggregation() {
-		uniqueGenes = new ObjectCounter<>();
-		ambiguousGenes = new ObjectCounter<>();
-		unAmbiguousGenes = new ObjectCounter<>();
-	}
+	private final ObjectCounter<String> uniqueGenes = new ObjectCounter<>();
+	private final ObjectCounter<MetaGene> ambiguousGenes = new ObjectCounter<>();
+	private final ObjectCounter<MetaGene> unAmbiguousGenes = new ObjectCounter<>();
 
     public void add(final UMIMetaGeneAggregation otherAggregator) {
         uniqueGenes.increment(otherAggregator.getUniqueGenes());
@@ -60,9 +53,9 @@ public class UMIMetaGeneAggregation {
     }
 
 	public void add(final UMIMetaGeneCollection c, final boolean useEditDistance) {
-		c.getUnambiguousMetaGenes().forEach(mg -> unAmbiguousGenes.increment(mg));
-		c.getAmbiguousMetaGenes().forEach(mg -> ambiguousGenes.increment(mg));
-		c.getUniquelyMappedGenes().forEach(g -> uniqueGenes.increment(g));
+		c.getUnambiguousMetaGenes().forEach(unAmbiguousGenes::increment);
+		c.getAmbiguousMetaGenes().forEach(ambiguousGenes::increment);
+		c.getUniquelyMappedGenes().forEach(uniqueGenes::increment);
 	}
 
 	public ObjectCounter<String> getUniqueGenes() {
@@ -101,7 +94,6 @@ public class UMIMetaGeneAggregation {
 	/**
 	 * Based on the experiment wide data (this object), select a set of meta genes
 	 * where the ratio of unambiguous UMIs : unique UMIs is greater than the provided threshold
-	 * @param threshold the ratio of unambiguous UMIs to unique UMIs must be greater than this.
 	 * @return A copy of this object, filtered to the subset of metagenes
 	 */
 	public UMIMetaGeneAggregation filterDataByMetaGenes (Set<MetaGene> metaGenes) {
@@ -134,7 +126,7 @@ public class UMIMetaGeneAggregation {
         return Objects.hash(uniqueGenes, ambiguousGenes, unAmbiguousGenes);
     }
 
-/**
+/*
 	 * Probably want a mapping from each gene to meta genes that it's involved with.
 	 * Or a way to iterate across unambiguous meta genes and get counts of ambiguous meta gene evidence.
 	 */

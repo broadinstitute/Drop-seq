@@ -125,7 +125,7 @@ public class UMIMetaGeneCollectionIterator implements CloseableIterator<UMIMetaG
 		final StringTagComparator molBarcodeTagComparator = new StringTagComparator(molecularBarcodeTag);
 		final MultiComparator<SAMRecord> multiComparator = new MultiComparator<>(cellBarcodeTagComparator, molBarcodeTagComparator);
 
-		ProgressLogger pl = new ProgressLogger(this.log);
+		ProgressLogger pl = new ProgressLogger(log);
 
 		CloseableIterator<SAMRecord> sortedAlignmentIterator;
 
@@ -158,9 +158,9 @@ public class UMIMetaGeneCollectionIterator implements CloseableIterator<UMIMetaG
 			allReads.removeAll(informativeReads);
 			
 			// sink uninformative reads to the writer if it isn't null
-			if (sink!=null) allReads.stream().forEach(x -> sink.add(x));
+			if (sink!=null) allReads.stream().forEach(sink::add);
 			// informative reads found!
-			if (informativeReads.size()>0) {
+			if (!informativeReads.isEmpty()) {
 				UMIMetaGeneCollection c = new UMIMetaGeneCollection(this.geneTag, this.molecularBarcodeTag, this.cellBarcodeTag, informativeReads, this.mapQualityUnique);
 				c.populateGeneSets();
 				return (c);						
@@ -173,7 +173,7 @@ public class UMIMetaGeneCollectionIterator implements CloseableIterator<UMIMetaG
 
 	private Set<SAMRecord> getRecordsPassingFilters (final Collection <SAMRecord> recs) {		
 		Set<SAMRecord> result = recs.stream()				
-				.map(x -> this.gfteratorWrapper.processRead(x))
+				.map(this.gfteratorWrapper::processRead)
 				.flatMap(list -> list.stream())
 				.collect(Collectors.toSet());
 						

@@ -23,7 +23,6 @@
  */
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
-import org.broadinstitute.dropseqrna.barnyard.digitalexpression.MergeSplitDges;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -74,7 +73,7 @@ public class MergeSplitDgesTest {
  @Test(expectedExceptions = IllegalArgumentException.class)
  void testOutOfOrderGenes() {
   final MergeSplitDges clp = new MergeSplitDges();
-  clp.INPUT = Arrays.asList(new File(TEST_DATA_DIR, "MergeSplitDge.wrongOrder.digital_expression.txt.gz"));
+  clp.INPUT = List.of(new File(TEST_DATA_DIR, "MergeSplitDge.wrongOrder.digital_expression.txt.gz"));
   clp.PREFIX = Collections.EMPTY_LIST;
   clp.OUTPUT = TestUtils.getTempReportFile("MergeDge", ".txt.gz");
   clp.doWork();

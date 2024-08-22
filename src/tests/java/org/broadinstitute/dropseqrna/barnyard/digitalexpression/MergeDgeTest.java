@@ -113,8 +113,8 @@ public class MergeDgeTest {
     @Test
     public void testDropSeqSparse() {
         MergeDge dgeMatrixMerger = new MergeDge();
-        dgeMatrixMerger.INPUT = Arrays.asList(TEST_DGE);
-        dgeMatrixMerger.OUTPUT = TestUtils.getTempReportFile("MergeDge", ".DropSeqSparse.txt.gz");;
+        dgeMatrixMerger.INPUT = List.of(TEST_DGE);
+        dgeMatrixMerger.OUTPUT = TestUtils.getTempReportFile("MergeDge", ".DropSeqSparse.txt.gz");
         dgeMatrixMerger.OUTPUT_HEADER = false;
         dgeMatrixMerger.OUTPUT_FORMAT = DGEMatrix.FileFormat.MM_SPARSE;
         Assert.assertEquals(dgeMatrixMerger.doWork(), 0);
@@ -127,8 +127,8 @@ public class MergeDgeTest {
     @Test
     public void TestMMSparse10XWithGenes() {
         MergeDge dgeMatrixMerger = new MergeDge();
-        dgeMatrixMerger.INPUT = Arrays.asList(TEST_DGE);
-        dgeMatrixMerger.OUTPUT = TestUtils.getTempReportFile("MergeDge", ".matrix.txt.gz");;
+        dgeMatrixMerger.INPUT = List.of(TEST_DGE);
+        dgeMatrixMerger.OUTPUT = TestUtils.getTempReportFile("MergeDge", ".matrix.txt.gz");
         dgeMatrixMerger.OUTPUT_GENES = TestUtils.getTempReportFile("MergeDge", ".genes.tsv");
         dgeMatrixMerger.OUTPUT_CELLS = TestUtils.getTempReportFile("MergeDge", ".barcodes.tsv");
         dgeMatrixMerger.OUTPUT_HEADER = false;
@@ -144,8 +144,8 @@ public class MergeDgeTest {
     @Test
     public void TestMMSparse10XWithFeatures() {
         MergeDge dgeMatrixMerger = new MergeDge();
-        dgeMatrixMerger.INPUT = Arrays.asList(TEST_DGE);
-        dgeMatrixMerger.OUTPUT = TestUtils.getTempReportFile("MergeDge", ".matrix.txt.gz");;
+        dgeMatrixMerger.INPUT = List.of(TEST_DGE);
+        dgeMatrixMerger.OUTPUT = TestUtils.getTempReportFile("MergeDge", ".matrix.txt.gz");
         dgeMatrixMerger.OUTPUT_FEATURES = TestUtils.getTempReportFile("MergeDge", ".features.tsv.gz");
         dgeMatrixMerger.OUTPUT_CELLS = TestUtils.getTempReportFile("MergeDge", ".barcodes.tsv.gz");
         dgeMatrixMerger.OUTPUT_HEADER = false;
