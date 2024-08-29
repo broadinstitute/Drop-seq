@@ -7,7 +7,7 @@ import tables
 import numpy as np
 import scipy.sparse as sp
 from typing import Dict
-
+import anndata
 
 def dict_from_h5(file: str) -> Dict[str, np.ndarray]:
     """Read in everything from an h5 file and put into a dictionary."""
