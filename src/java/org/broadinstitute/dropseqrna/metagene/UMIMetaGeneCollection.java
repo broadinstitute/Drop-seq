@@ -257,10 +257,8 @@ public class UMIMetaGeneCollection {
 		if (list.size()<2) {
 			int readMQ = list.getFirst().getMappingQuality();
 			if (readMQ==0) return new ReadGroupResult(orderedReadGenes, MetaGeneTypeEnum.UNMAPPED, list);
-			if (readMQ<this.mapQualityUnique) return new ReadGroupResult(orderedReadGenes, MetaGeneTypeEnum.LOW_MQ, list);
-			if (readMQ>=this.mapQualityUnique) return new ReadGroupResult(orderedReadGenes, MetaGeneTypeEnum.UNIQUE, list);
-			// TODO: Looks like a bug, because this code is never reached.
-			return new ReadGroupResult(orderedReadGenes, MetaGeneTypeEnum.OTHER, list);
+			else if (readMQ<this.mapQualityUnique) return new ReadGroupResult(orderedReadGenes, MetaGeneTypeEnum.LOW_MQ, list);
+			else return new ReadGroupResult(orderedReadGenes, MetaGeneTypeEnum.UNIQUE, list);
 		}
 
 
