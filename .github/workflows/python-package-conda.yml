@@ -40,4 +40,4 @@ jobs:
     - name: Test with unittest
       run: |
         cd src/python
-        python -m unittest discover -s tests
+        PYTHONPATH=src python -m unittest discover -s tests
