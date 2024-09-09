@@ -119,7 +119,7 @@ if [ -e "$sequence_dictionary" ]
 then $ECHO rm "$sequence_dictionary"
 fi
 invoke_picard CreateSequenceDictionary REFERENCE="$output_fasta" OUTPUT="$sequence_dictionary" SPECIES="$species"
-invoke_dropseq FilterGtf GTF="$gtf" SEQUENCE_DICTIONARY="$sequence_dictionary" OUTPUT="$output_gtf $filtered_gene_biotypes"
+invoke_dropseq FilterGtf GTF="$gtf" SEQUENCE_DICTIONARY="$sequence_dictionary" OUTPUT="$output_gtf" $filtered_gene_biotypes
 invoke_dropseq ConvertToRefFlat ANNOTATIONS_FILE="$output_gtf" SEQUENCE_DICTIONARY="$sequence_dictionary" OUTPUT="$outdir/$reference_name".refFlat
 invoke_dropseq ReduceGtf GTF="$output_gtf" SEQUENCE_DICTIONARY="$sequence_dictionary" OUTPUT="$reduced_gtf"
 invoke_dropseq CreateIntervalsFiles SEQUENCE_DICTIONARY="$sequence_dictionary" REDUCED_GTF="$reduced_gtf" PREFIX="$reference_name" \
