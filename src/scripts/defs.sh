@@ -50,22 +50,6 @@ check_invoke() {
     fi
 }
 
-# Note: `"$thisdir"` might be a symbolic link to a directory. Appending a final
-# `/` ensures the link to be resolved in such a case and is a no-op otherwise.
-# Without this (or instructng `find` to follow symbolic links by passing the
-# `-L` flag), `find` would fail to detect the Picard `*.jar` file if this
-# script is called via a directory symlink.
-picard_jar=$(find "$thisdir"/ -name picard\*.jar)
-
-num_picard_jars=$(wc -w << EOF
-$picard_jar
-EOF
-)
-
-if [ "$num_picard_jars" -ne 1 ]
-then error_exit 'Could not find one and only one picard.jar in deployment.'
-fi
-
 invoke_picard() {
     check_invoke java -classpath "$all_classpath" -Xmx4g -Djava.io.tmpdir="$TMPDIR" picard.cmdline.PicardCommandLine "$@"
 }
