@@ -46,12 +46,13 @@ def add_subparser(subparsers):
                                             "If .gz extension, will be gzipped.")
     parser.add_argument("--summary", type=argparse.FileType(mode="w"),
                         help="Output a tab-separated DGE summary text file with columns CELL_BARCODE, NUM_GENIC_READS, "
-                             "NUM_TRANSCRIPTS, NUM_GENES")
+                             "NUM_TRANSCRIPTS, NUM_GENES.")
     parser.add_argument("--reads-per-cell",
-                        help="Output a tab-separated text file with columns num_reads, cell_names")
+                        help="Output a tab-separated text file with columns num_reads, cell_names.")
     parser.add_argument("--read-quality-metrics", type=argparse.FileType(mode="w"),
-                        help="Output a tab-separated ReadQualityMetrics text file")
+                        help="Output a tab-separated ReadQualityMetrics text file.")
     parser.add_argument("--cell-selection-report", help="Output a table of per-cell-barcode metrics.")
+    parser.add_argument("--cell-barcodes", help="Output a list of cell barcodes.")
 
 
 def main(options):
@@ -76,10 +77,9 @@ def main(options):
     # add additional columns with names that are expected by the downstream tools
     obs = adata.obs.copy()
     total_reads = obs['n_reads']
-    mapped_reads = obs['reads_mapped_exonic'] + obs['reads_mapped_intergenic'] + obs['reads_mapped_intronic'] + obs[
-        'reads_mapped_mitochondrial']
+    mapped_reads = obs['reads_mapped_uniquely']
     obs['NUM_GENES'] = obs['n_genes']
-    obs['NUM_GENIC_READS'] = obs['reads_mapped_exonic']
+    obs['NUM_GENIC_READS'] = obs['reads_mapped_exonic'] + + obs['reads_mapped_exonic_as']
     obs['NUM_TRANSCRIPTS'] = obs['n_molecules']
     obs['num_transcripts'] = obs['n_molecules']
     obs['num_reads'] = mapped_reads
@@ -87,10 +87,10 @@ def main(options):
     obs['mappedReads'] = mapped_reads
     obs['hqMappedReads'] = mapped_reads
     obs['hqMappedReadsNoPCRDupes'] = mapped_reads
-    obs['pct_coding'] = obs['reads_mapped_exonic'] / mapped_reads
-    obs['pct_intronic'] = obs['reads_mapped_intronic'] / mapped_reads
+    obs['pct_coding'] = (obs['reads_mapped_exonic'] + obs['reads_mapped_exonic_as']) / mapped_reads
+    obs['pct_intronic'] = (obs['reads_mapped_intronic'] + obs['reads_mapped_intronic_as']) / mapped_reads
     obs['pct_intergenic'] = obs['reads_mapped_intergenic'] / mapped_reads
-    obs['pct_mt'] = obs['n_mitochondrial_molecules'] / mapped_reads
+    obs['pct_mt'] = obs['reads_mapped_mitochondrial'] / mapped_reads
     obs['pct_genic'] = obs['pct_coding']
     obs['pct_ribosomal'] = 0
     obs['pct_utr'] = 0
@@ -127,6 +127,12 @@ def main(options):
         cell_selection_report.index.name = 'cell_barcode'
         cell_selection_report = cell_selection_report.sort_values(by='num_transcripts', ascending=False)
         cell_selection_report.to_csv(options.cell_selection_report, sep='\t')
+
+    if options.cell_barcodes is not None:
+        cli.logger.info("generating cell barcodes")
+        cell_barcodes = obs[['cell_names']]
+        cell_barcodes = cell_barcodes.sort_values(by='cell_names', ascending=True)
+        cell_barcodes.to_csv(options.cell_barcodes, sep='\t', header=False, index=False)
 
     cli.logger.info("Done")
     return 0
