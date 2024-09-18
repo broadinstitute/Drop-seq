@@ -86,6 +86,14 @@ public class DgeIterator implements CloseableIterator <DgeLine>{
 
 	}
 
+	/**
+	 * Sometimes a DGE can be empty, so there is not even a header line.
+	 * @return true if there is nothing but comments in the file.
+	 */
+	public boolean isEmpty() {
+		return this.identifierMap.isEmpty();
+	}
+
 	public DgeHeader getDgeHeader () {
 		return this.dgeHeader;
 	}
