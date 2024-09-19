@@ -93,15 +93,17 @@ plotDoubletProbability<-function (df, expName="", summaryStats, doubletPvalueThr
     # There's a error with the new ggplot2 code (V 3.5) where this produces a warning if you use geom_segment directly.
     # This is similar to: https://github.com/tidyverse/ggplot2/issues/5762
     # Using hacky fix for now.
+    strTitle=paste(expName, "\nCells remaining [", numSinglets, "] [", pctSinglets, "%]\n", "Confident doublet rate", round(summaryStats$pct_confident_doublets, 2))
+    
     p=ggplot(df, aes(x = doublet_pval)) +
     	geom_histogram(bins = 100, fill = "skyblue", color = "black", show.legend = FALSE) +
     	labs(x = "Doublet Probability", y = "Frequency") +
-    	ggtitle(paste(expName, "\nCells remaining [", numSinglets, "] [", pctSinglets, "%]")) +
+    	ggtitle(strTitle) +
     	annotate("segment", x =doubletPvalueThreshold , y = 0, xend = doubletPvalueThreshold, yend = Inf, colour = "red") + 
-    	annotate("text", x = 0.5, y = Inf, label = paste("Confident doublet rate", round(summaryStats$pct_confident_doublets, 2), "%"),hjust = 0.5, vjust = 2, size = 7) +
+    	#annotate("text", x = 0.5, y = Inf, label = paste("Confident doublet rate", round(summaryStats$pct_confident_doublets, 2), "%"),hjust = 0.5, vjust = 2, size = 7) +
     	theme(plot.title = element_text(size = 14, hjust = 0.5, face="bold"), axis.text = element_text(size = 12), axis.title = element_text(size = 12))
     
-    print (p)
+    return (p)
 }
 
 plotCommonDonors<-function (df, minimumFractionDonor=0.005) {
@@ -179,9 +181,13 @@ plotCommonDonorAssignmentsWithUnexpected<-function (donors, es, expName) {
 		strTitle=paste (expName, "\n", "SW Div: ", sprintf("%.2f",round(d,2)), "; SW Eq: ", sprintf("%.2f", round (eq,3)), sep="")
 		d2$index=1:dim(d2)[1]
 		maxY=max(d2$count)*1.1
-		p=ggplot(d2, aes(x = index, y = count, color = expected)) +
+		
+		totalCount=sum (d2$count)
+		strTitle=paste(strTitle, "\nTotal cells: ", totalCount, sep="")
+
+		p <- ggplot(d2, aes(x = index, y = count)) +
 			geom_line(linetype = "dashed", color = "black") +   # Add lines
-			geom_point(data = d2, aes(color = expected), size = 4) +
+			geom_point(aes(color = expected), size = 4) +       # Fixed size for points
 			labs(x = "", y = "Number of cells assigned to donor", color = "Expected") +
 			scale_x_continuous(breaks = seq(from = 1, to = dim(d2)[1]), labels = d2$donor, minor_breaks = NULL) +
 			scale_y_continuous(expand = c(0, 0), limits = c(0, maxY)) +
@@ -191,17 +197,20 @@ plotCommonDonorAssignmentsWithUnexpected<-function (donors, es, expName) {
 				  axis.title = element_text(size = 12),
 				  plot.title = element_text(size = 14),
 				  legend.position = c(0.8, 0.8)) +
-				  # This is for ggplot 3.5, which we don't want to force yet.
-#				  legend.position = "inside", legend.position.inside = c(0.8, 0.8)) +
-			theme(panel.background = element_rect(colour = "black")) +
+			theme(panel.background = element_rect(colour = "black"),
+				  legend.background = element_rect(fill = "transparent", color = NA),
+				  legend.key = element_rect(fill = "transparent", color = NA)) +
 			scale_color_manual(values = c("black", "red"), 
 							   breaks = c(TRUE, FALSE),
 							   labels = c("EXPECTED", "UNEXPECTED"),
-							   name="Donor Status")	
-		print (p)	
+							   name = "Donor Status")
+			
+		
+		return (p)	
 	}
 	
-	plotOne(d2, expName)
+	plot=plotOne(d2, expName)
+	return (plot)
 	
 }
 
@@ -353,7 +362,8 @@ calculateMeanUMIsPerDonor<-function (expName, cellDF, dgeSummaryFile=NULL, donor
     donors$donor=factor(donors$donor, levels=donors$donor)
     maxY=max(donors$medianUMIs)*1.1
     
-    p=ggplot(donors, aes(x = donor, y = medianUMIs)) +
+    #Save for later!
+    medianUmiPerDonorPlot=ggplot(donors, aes(x = donor, y = medianUMIs)) +
     	geom_point(size = 4) +
     	scale_y_continuous(expand = c(0, 0), limits = c(0, maxY)) +
     	labs(x = "", y = "median UMIs per donor") +
@@ -364,8 +374,6 @@ calculateMeanUMIsPerDonor<-function (expName, cellDF, dgeSummaryFile=NULL, donor
     		  plot.title = element_text(size = 14),
     		  legend.position = c(0.8, 0.8)) +
     	theme(panel.background = element_rect(colour = "black"))
-	print (p)
-    
 	
 	#stack up the UMIs per donor into a dataframe suitable for ggplot2
     df=stack(umisPerDonor)
@@ -386,7 +394,6 @@ calculateMeanUMIsPerDonor<-function (expName, cellDF, dgeSummaryFile=NULL, donor
     			  axis.text.y = element_text(size = 10),
     			  axis.title = element_text(size = 12),
     			  plot.title = element_text(size = 14))
-    	print (p)
     }
     
     #plotOne(df, expName)
@@ -401,7 +408,8 @@ calculateMeanUMIsPerDonor<-function (expName, cellDF, dgeSummaryFile=NULL, donor
     
     strTitle=paste("Distribution of UMIs across donors\n",dim (donors)[1], " donors; ", round (sum (donors$totalUMIs)/1e6,1), "M UMIs; SW Div: ", sprintf("%.2f",round(d,2)), "; SW Eq: ", sprintf("%.2f", round (eq,3)), sep="")
 
-    p=ggplot(donors, aes(x = donor, y = totalUMIs / 1e6, fill = 'light blue')) +
+    #save for later!
+    totalUmiDistributionPlot=ggplot(donors, aes(x = donor, y = totalUMIs / 1e6, fill = 'light blue')) +
     	geom_bar(stat = "identity", color = "black") +
     	labs(y = "Total UMIs [millions]", x = "", fill = "") +
     	ggtitle(strTitle) +
@@ -411,9 +419,7 @@ calculateMeanUMIsPerDonor<-function (expName, cellDF, dgeSummaryFile=NULL, donor
     		  axis.title = element_text(size = 12),
     		  plot.title = element_text(size = 14))
     
-    print (p)
-    
-    p=ggplot(donors, aes(x = count, y = medianUMIs)) +
+    umisAndCellsPerDonorPlot=ggplot(donors, aes(x = count, y = medianUMIs)) +
     	geom_point(size = 4) +
     	labs(x = "number of cels per donor", y = "median UMIs per donor") +
     	coord_cartesian(ylim=c(0, max (donors$medianUMIs)*1.1)) +
@@ -424,9 +430,8 @@ calculateMeanUMIsPerDonor<-function (expName, cellDF, dgeSummaryFile=NULL, donor
     		  plot.title = element_text(size = 14)) +
     	theme(panel.background = element_rect(colour = "black"))
     
-    print (p)	
-        
-    r=list(stats=data.frame(diversity=d, equitability=eq), donors=donors)
+    plotList=list(medianUmiPerDonorPlot=medianUmiPerDonorPlot, totalUmiDistributionPlot=totalUmiDistributionPlot, umisAndCellsPerDonorPlot=umisAndCellsPerDonorPlot)
+    r=list(stats=data.frame(diversity=d, equitability=eq), donors=donors, plotList=plotList)
     return (r)
 }
 
@@ -617,7 +622,9 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
     doubletPvalueThreshold=0.9
 
     if (!is.null(outPDF)) pdf(outPDF)
-
+	
+    tearSheetPlotList=list()
+    
     if (is.null(doubletLikelihoodFile)) {
         # plotCellsByProbabilityNew(likelihoodSummaryFile, cellsToKeep=NULL, fdrThreshold=alpha)
     } else {
@@ -650,7 +657,10 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
     	names(pctDS)=c("pct_all_doublets", "pct_diffuse_contam_doublets", "pct_confident_doublets", "pct_impossible_donors", "pct_fdr_impossible_donors", "pct_doublet_filtered_impossible_donors")
         summaryStats=cbind (summaryStats, pctDS)
         
-        plotDoubletProbability(df=cellDF, expName = expName, summaryStats=summaryStats, doubletPvalueThreshold=doubletPvalueThreshold)
+        #Gather for tear sheet PDF
+        doubletProbPlot=plotDoubletProbability(df=cellDF, expName = expName, summaryStats=summaryStats, doubletPvalueThreshold=doubletPvalueThreshold)
+        print (doubletProbPlot)
+        tearSheetPlotList$doubletProbPlot=doubletProbPlot
         
         #add the number of singlets
         singlets=cellDF[cellDF$label_simple=="singlet",]$cell_barcode
@@ -664,7 +674,10 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
         plotFractionImpossibleAllelesFromDoublets (df=cellDF, expName, fdrThreshold=alpha)
         
         #plot the average likelihood per UMI of singlets, doublets, etc.
-        plotAverageLikelihood (df=cellDF)
+        #Gather for tear sheet.
+        averageLikelihoodPlot=plotAverageLikelihood (df=cellDF)
+        plot_grid(averageLikelihoodPlot$scatterPlot, averageLikelihoodPlot$barPlot, nrow = 2, rel_heights = c(0.7, 0.3))
+        tearSheetPlotList$averageLikelihoodPlot=averageLikelihoodPlot
         
         plotFractionConfidentDoubletsFromSingleLikelihoodFit(cellDF)
         
@@ -677,7 +690,7 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
         plotCensusComparison(censusFile, r$summary, expName)
     }
 	
-    plotCommonDonorsFdrDistribution(df=cellDF, minimumFractionDonor)
+    #plotCommonDonorsFdrDistribution(df=cellDF, minimumFractionDonor)
     
     donors=r$summary
     cellDonorMap=r$cellDonorMap
@@ -687,7 +700,11 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
     cellEquitability = getCellEquitability(cellDonorMap)
     summaryStats$cell_equitability=cellEquitability
     
-    plotCommonDonorAssignmentsWithUnexpected(donors, expected_samples, expName)
+    #Gather up for tear sheet
+    commonDonorPlot=plotCommonDonorAssignmentsWithUnexpected(r$summary, expected_samples, expName)
+    print (commonDonorPlot)
+    tearSheetPlotList$commonDonorPlot=commonDonorPlot
+    
     
     cellsToKeep=cellDonorMap$cell
     zz=calculateMeanUMIsPerDonor(expName, cellDF, dgeSummaryFile, donors, cellsToKeep=cellsToKeep)
@@ -695,11 +712,21 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
     donors=zz$donors
     summaryStats=cbind(summaryStats, zz$stats)
     summaryStats$totalUMIs=sum (donors$totalUMIs)
+    #emit the plots to the main report.  Sink the outputs.
+    sink=sapply(zz$plotList, print)
+    
+    #save plots for the tear sheet
+    tearSheetPlotList$totalUmiDistributionPlot=zz$plotList$totalUmiDistributionPlot
+    tearSheetPlotList$medianUmiPerDonorPlot=zz$plotList$medianUmiPerDonorPlot
+    tearSheetPlotList$umisAndCellsPerDonorPlot=zz$plotList$umisAndCellsPerDonorPlot
     
     plotRatioUMIsCaptuedToCellSize(dgeRawSummaryFile, cellDF, cellsToKeep=cellDonorMap$cell)
     summaryStats$reads_per_umi=calculateReadsPerUMI(readsPerCellFile, dgeSummaryFile, cellDonorMap)
     if (!is.null(outSummaryStatsFile)) writeSummaryStats(summaryStats, outSummaryStatsFile)
     if (!is.null(outPDF)) dev.off()
+    
+    #TODO: render the tear sheet to a PDF via: printTearSheetToPDF(tearSheetPlotList, outTearSheetPDF)
+    
     if (!is.null(outFileLikelyDonors)) write.table(donors, outFileLikelyDonors, row.names=F, col.names=T, quote=F, sep="\t")
     if (!is.null(cellDonorMap)) write.table(cellDonorMap, outDonorToCellMap, row.names=F, col.names=T, quote=F, sep="\t")
     if (!is.null(dgeFile) && !is.null(outMetaCellFile)) {
@@ -708,6 +735,59 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
     if (!is.null(outCellBarcodesFile)) {
         write.table(cellDonorMap$cell, outCellBarcodesFile, row.names=F, col.names=F, quote=F)
     }
+}
+
+# A custom theme for ggplot2 plots to make the text size appropriate when all plots are put together on a single page.
+custom_theme <- function(title_size = 6, axis_title_size = 7, axis_text_size = 6, legend_title_size = 4, legend_text_size = 4) {
+	theme(
+		plot.title = element_text(size = title_size, face = "bold"),
+		axis.title = element_text(size = axis_title_size),
+		axis.text.x = element_text(size = axis_text_size),
+		axis.text.y = element_text(size = axis_text_size),
+		legend.title = element_text(size = legend_title_size),
+		legend.text = element_text(size = legend_text_size)
+	) 
+}
+
+printTearSheetToPDF<-function (tearSheetPlotList, outTearSheetPDF) {
+	
+	applyTheme<-function (plot) {
+		if (any(class(plot)=="ggplot"))
+			plot + custom_theme() 
+		else
+			plot
+	}
+	
+	tearSheetPlotListModified <- lapply(tearSheetPlotList, applyTheme)
+
+	#modify specific plots
+	
+	#Warning: black magic.  If the structure of the plots change, this will break
+	
+	#apply the custom themes to the plot list for plot 2.
+	tearSheetPlotListModified[[2]]=lapply(tearSheetPlotList[[2]], applyTheme)
+	tearSheetPlotListModified[[2]]$scatterPlot=tearSheetPlotListModified[[2]]$scatterPlot+guides(color = guide_legend(override.aes = list(size = 1.5)))
+	#update the text size of the bar plot.  Remove the layer, then readd it.
+	tearSheetPlotListModified[[2]]$barPlot$layers[[2]] <- NULL
+	tearSheetPlotListModified[[2]]$barPlot <- tearSheetPlotListModified[[2]]$barPlot +
+		geom_text(aes(label = value), position = position_dodge(width = 0.9), vjust = -0.25, size = 2)
+	
+	tearSheetPlotListModified[[2]]=plot_grid(tearSheetPlotListModified[[2]]$scatterPlot, tearSheetPlotListModified[[2]]$barPlot, nrow = 2, rel_heights = c(0.7, 0.3))
+	
+	#modify the point size of some plots.
+	pointSize=2
+	tearSheetPlotListModified[[3]]$layers[[2]]<-NULL
+	tearSheetPlotListModified[[3]]=tearSheetPlotListModified[[3]]+geom_point(aes(color = expected), size = pointSize)
+	
+	tearSheetPlotListModified[[5]]$layers[[1]]<-NULL
+	tearSheetPlotListModified[[5]]=tearSheetPlotListModified[[5]]+geom_point(col='black', size=pointSize)
+	
+	tearSheetPlotListModified[[6]]$layers[[1]]<-NULL
+	tearSheetPlotListModified[[6]]=tearSheetPlotListModified[[6]]+geom_point(col='black', size=pointSize)
+	
+    pdf(outTearSheetPDF)
+    cowplot::plot_grid(plotlist=tearSheetPlotListModified, nrow=3, ncol=2)
+    dev.off()
 }
 
 
@@ -954,7 +1034,9 @@ plotAverageLikelihood<-function (df) {
 		xlab("") +
 		scale_fill_manual(values=getLabelColors(), name="")
 	
-	gridExtra::grid.arrange(p1, p2, nrow = 2, heights=c(0.7, 0.3))
+	result=list(scatterPlot=p1, barPlot=p2)
+	#plotFinal <- plot_grid(p1, p2, nrow = 2, rel_heights = c(0.7, 0.3))
+	return (result)
 	
 }
 
