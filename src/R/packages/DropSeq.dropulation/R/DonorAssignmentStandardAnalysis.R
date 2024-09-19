@@ -679,7 +679,7 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
         #plot the average likelihood per UMI of singlets, doublets, etc.
         #Gather for tear sheet.
         averageLikelihoodPlot=plotAverageLikelihood (df=cellDF)
-        plot_grid(averageLikelihoodPlot$scatterPlot, averageLikelihoodPlot$barPlot, nrow = 2, rel_heights = c(0.7, 0.3))
+        cowplot::plot_grid(averageLikelihoodPlot$scatterPlot, averageLikelihoodPlot$barPlot, nrow = 2, rel_heights = c(0.7, 0.3))
         tearSheetPlotList$averageLikelihoodPlot=averageLikelihoodPlot
         
         plotFractionConfidentDoubletsFromSingleLikelihoodFit(cellDF)
@@ -777,7 +777,7 @@ printTearSheetToPDF<-function (tearSheetPlotList, outTearSheetPDF) {
 	tearSheetPlotListModified[[2]]$barPlot <- tearSheetPlotListModified[[2]]$barPlot +
 		geom_text(aes(label = value), position = position_dodge(width = 0.9), vjust = -0.25, size = 2)
 	
-	tearSheetPlotListModified[[2]]=plot_grid(tearSheetPlotListModified[[2]]$scatterPlot, tearSheetPlotListModified[[2]]$barPlot, nrow = 2, rel_heights = c(0.7, 0.3))
+	tearSheetPlotListModified[[2]]=cowplot::plot_grid(tearSheetPlotListModified[[2]]$scatterPlot, tearSheetPlotListModified[[2]]$barPlot, nrow = 2, rel_heights = c(0.7, 0.3))
 	
 	#modify the point size of some plots.
 	pointSize=2
@@ -1040,7 +1040,7 @@ plotAverageLikelihood<-function (df) {
 		scale_fill_manual(values=getLabelColors(), name="")
 	
 	result=list(scatterPlot=p1, barPlot=p2)
-	#plotFinal <- plot_grid(p1, p2, nrow = 2, rel_heights = c(0.7, 0.3))
+	#plotFinal <- cowplot::plot_grid(p1, p2, nrow = 2, rel_heights = c(0.7, 0.3))
 	return (result)
 	
 }
