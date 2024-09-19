@@ -679,8 +679,11 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
         #plot the average likelihood per UMI of singlets, doublets, etc.
         #Gather for tear sheet.
         averageLikelihoodPlot=plotAverageLikelihood (df=cellDF)
-        cowplot::plot_grid(averageLikelihoodPlot$scatterPlot, averageLikelihoodPlot$barPlot, nrow = 2, rel_heights = c(0.7, 0.3))
         tearSheetPlotList$averageLikelihoodPlot=averageLikelihoodPlot
+        
+        p=cowplot::plot_grid(averageLikelihoodPlot$scatterPlot, averageLikelihoodPlot$barPlot, nrow = 2, rel_heights = c(0.7, 0.3))
+        print (p)
+        
         
         plotFractionConfidentDoubletsFromSingleLikelihoodFit(cellDF)
         
@@ -791,7 +794,8 @@ printTearSheetToPDF<-function (tearSheetPlotList, outTearSheetPDF) {
 	tearSheetPlotListModified[[6]]=tearSheetPlotListModified[[6]]+geom_point(col='black', size=pointSize)
 	
     pdf(outTearSheetPDF)
-    cowplot::plot_grid(plotlist=tearSheetPlotListModified, nrow=3, ncol=2)
+    p=cowplot::plot_grid(plotlist=tearSheetPlotListModified, nrow=3, ncol=2)
+    print (p)
     dev.off()
 }
 
