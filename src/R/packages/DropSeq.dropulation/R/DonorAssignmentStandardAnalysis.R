@@ -607,13 +607,16 @@ writeSummaryStats<-function (summaryStats, outSummaryStatsFile) {
 #' @param outCellBarcodesFile cell barcodes for donors in the experiment (optional)
 #' @param anonymizeDonors If set to true, donor IDs are changed to DONOR_1, DONOR_2, etc.  Purely for sharing 
 #' visualizations of not-yet-public data.
+#' @param outTearSheetPDF The output PDF file for the tear sheet. (optional)
 #' @import grDevices graphics utils stats data.table RColorBrewer  vegan
 #' @suggest DropSeq.utilities
 #' @export
 donorAssignmentQC<-function (expName="", likelihoodSummaryFile, doubletLikelihoodFile, dgeSummaryFile=NULL, dgeRawSummaryFile=NULL,
 readsPerCellFile=NULL, censusFile=NULL, expectedSamplesFile, outFileLikelyDonors=NULL, outDonorToCellMap=NULL, outPDF=NULL,
 outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseDoublets=F, minNumUMIs=0, dgeFile=NULL,
-    outMetaCellFile=NULL, selectedCellsForMetaCellFile=NULL, outCellBarcodesFile=NULL, anonymizeDonors=FALSE) {
+    outMetaCellFile=NULL, selectedCellsForMetaCellFile=NULL, outCellBarcodesFile=NULL, anonymizeDonors=FALSE,
+                             outTearSheetPDF=NULL
+) {
 
     validateFilesExist(likelihoodSummaryFile, doubletLikelihoodFile, dgeRawSummaryFile, dgeSummaryFile, censusFile, expectedSamplesFile)
 
@@ -724,8 +727,10 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
     summaryStats$reads_per_umi=calculateReadsPerUMI(readsPerCellFile, dgeSummaryFile, cellDonorMap)
     if (!is.null(outSummaryStatsFile)) writeSummaryStats(summaryStats, outSummaryStatsFile)
     if (!is.null(outPDF)) dev.off()
-    
-    #TODO: render the tear sheet to a PDF via: printTearSheetToPDF(tearSheetPlotList, outTearSheetPDF)
+
+    if (!is.null(outTearSheetPDF)) {
+      printTearSheetToPDF(tearSheetPlotList, outTearSheetPDF)
+    }
     
     if (!is.null(outFileLikelyDonors)) write.table(donors, outFileLikelyDonors, row.names=F, col.names=T, quote=F, sep="\t")
     if (!is.null(cellDonorMap)) write.table(cellDonorMap, outDonorToCellMap, row.names=F, col.names=T, quote=F, sep="\t")
