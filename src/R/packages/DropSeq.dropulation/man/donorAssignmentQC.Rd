@@ -25,7 +25,8 @@ donorAssignmentQC(
   outMetaCellFile = NULL,
   selectedCellsForMetaCellFile = NULL,
   outCellBarcodesFile = NULL,
-  anonymizeDonors = FALSE
+  anonymizeDonors = FALSE,
+  outTearSheetPDF = NULL
 )
 }
 \arguments{
@@ -92,6 +93,8 @@ of cells. (optional)}
 
 \item{anonymizeDonors}{If set to true, donor IDs are changed to DONOR_1, DONOR_2, etc.  Purely for sharing 
 visualizations of not-yet-public data.}
+
+\item{outTearSheetPDF}{The output PDF file for the tear sheet. (optional)}
 }
 \description{
 This generates a QC report with a number of useful plots, along with optional
