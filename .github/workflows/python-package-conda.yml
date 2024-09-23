@@ -2,7 +2,7 @@ name: Python Package using Conda
 
 on:
   push:
-    branches: [ "master", "ks_conda_updates" ]
+    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
     paths:
