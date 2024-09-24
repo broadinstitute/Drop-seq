@@ -79,7 +79,8 @@ def main(options):
     total_reads = obs['n_reads']
     mapped_reads = obs['reads_mapped_uniquely']
     obs['NUM_GENES'] = obs['n_genes']
-    obs['NUM_GENIC_READS'] = obs['reads_mapped_exonic'] + + obs['reads_mapped_exonic_as']
+    obs['NUM_GENIC_READS'] = obs['reads_mapped_exonic'] + + obs['reads_mapped_exonic_as'] + \
+                             obs['reads_mapped_intronic'] + obs['reads_mapped_intronic_as']
     obs['NUM_TRANSCRIPTS'] = obs['n_molecules']
     obs['num_transcripts'] = obs['n_molecules']
     obs['num_reads'] = mapped_reads
@@ -91,8 +92,12 @@ def main(options):
     obs['pct_intronic'] = (obs['reads_mapped_intronic'] + obs['reads_mapped_intronic_as']) / mapped_reads
     obs['pct_intergenic'] = obs['reads_mapped_intergenic'] / mapped_reads
     obs['pct_mt'] = obs['reads_mapped_mitochondrial'] / mapped_reads
-    obs['pct_genic'] = obs['pct_coding']
+    obs['pct_genic'] = obs['pct_coding'] + obs['pct_intronic']
     obs['pct_ribosomal'] = 0
+    # NOTE: Unlike Drop-seq, Optimus does not generate separate UTR counts from coding counts.
+    # Thus Optimus[reads_mapped_exonic + reads_mapped_exonic_as] == Drop-seq[coding + UTR]
+    # It may be more correct to generate pct_utr in the cell_selection_report as NA values,
+    # but that might require changes to the downstream tools.
     obs['pct_utr'] = 0
 
     if options.summary is not None:
