@@ -93,7 +93,8 @@ plotDoubletProbability<-function (df, expName="", summaryStats, doubletPvalueThr
     # There's a error with the new ggplot2 code (V 3.5) where this produces a warning if you use geom_segment directly.
     # This is similar to: https://github.com/tidyverse/ggplot2/issues/5762
     # Using hacky fix for now.
-    strTitle=paste(expName, "\nCells remaining [", numSinglets, "] [", pctSinglets, "%]\n", "Confident doublet rate", round(summaryStats$pct_confident_doublets, 2))
+    strTitle=paste(expName, "\nCells remaining [", numSinglets, "] [", pctSinglets, "%]\n", "Confident doublet rate",
+                   sprintf("%s%%", round(summaryStats$pct_confident_doublets, 2)))
     
     p=ggplot(df, aes(x = doublet_pval)) +
     	geom_histogram(bins = 100, fill = "skyblue", color = "black", show.legend = FALSE) +
