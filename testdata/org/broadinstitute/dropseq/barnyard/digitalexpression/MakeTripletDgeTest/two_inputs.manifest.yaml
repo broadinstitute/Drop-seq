@@ -1,0 +1,6 @@
+dges:
+ - dge: ../tools/N701.auto.digital_expression.txt.gz
+   prefix: N701
+ - dge: N702.auto.digital_expression.txt.gz
+   prefix: N702
+   

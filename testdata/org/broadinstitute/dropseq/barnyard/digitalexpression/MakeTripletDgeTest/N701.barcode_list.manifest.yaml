@@ -1,0 +1,4 @@
+dges:
+ - dge: ../tools/N701.auto.digital_expression.txt.gz
+   prefix: N701
+   barcode_list: N701.half.cellBarcodes.txt
