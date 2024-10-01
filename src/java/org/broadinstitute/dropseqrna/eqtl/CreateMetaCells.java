@@ -116,7 +116,7 @@ public class CreateMetaCells extends CommandLineProgram {
 	@Argument(doc="Validate order of genes in the input, or sort (alphanumeric), or emit in input order without sorting.")
 	public GeneSort GENE_SORT=GeneSort.ALLOW_UNSORTED;
 
-	private final String GENE_HEADER="GENE";
+	public static final String GENE_HEADER="GENE";
 	private final int PROGRESS_INTERVAL=1000;
 	
 	private void validateClusterAssignmentArguments () {
