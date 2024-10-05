@@ -29,10 +29,10 @@ import sys
 
 try:
     from . import hdf5_10X_to_text
-    from . import optimus_h5ad_to_dge
+    from . import optimus_h5ad_to_dropseq
 except ImportError:
     import hdf5_10X_to_text
-    import optimus_h5ad_to_dge
+    import optimus_h5ad_to_dropseq
 
 # I cannot believe I need to do this to cause logger to write to stderr.
 logging.basicConfig(
@@ -60,7 +60,7 @@ def main(args=None):
         description="valid commands",
         dest="tool")
     hdf5_10X_to_text.add_subparser(subparsers)
-    optimus_h5ad_to_dge.add_subparser(subparsers)
+    optimus_h5ad_to_dropseq.add_subparser(subparsers)
 
     if args is None:
         args = sys.argv[1:]
@@ -72,8 +72,8 @@ def main(args=None):
         logger.setLevel(dctLogLevel[options.log_level])
         if options.tool == "hdf5_10X_to_text":
             return hdf5_10X_to_text.main(options)
-        elif options.tool == "optimus_h5ad_to_dge":
-            return optimus_h5ad_to_dge.main(options)
+        elif options.tool == "optimus_h5ad_to_dropseq":
+            return optimus_h5ad_to_dropseq.main(options)
         else:
             # should be unpossible because parse_args will complain
             raise ValueError(f"Unrecognized tool: {options.tool}")
