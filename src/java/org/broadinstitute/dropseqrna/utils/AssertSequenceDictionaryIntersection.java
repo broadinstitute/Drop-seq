@@ -30,6 +30,7 @@ import htsjdk.samtools.util.Log;
 import htsjdk.variant.vcf.VCFFileReader;
 
 import java.io.File;
+import java.nio.file.Path;
 
 /**
  * Throw an exception if there is no overlap of sequence names in the two inputs.
@@ -38,9 +39,13 @@ import java.io.File;
 public class AssertSequenceDictionaryIntersection {
 
     public static void assertIntersectionVcfBam(final File vcf, final File bam, final Log log) {
+        assertIntersectionVcfBam(vcf.toPath(), bam.toPath(), log);
+    }
+
+    public static void assertIntersectionVcfBam(final Path vcf, final Path bam, final Log log) {
         final VCFFileReader vcfReader = new VCFFileReader(vcf, false);
         try {
-            assertIntersectionObjectBam(vcfReader, vcf.getName(), bam, log);
+            assertIntersectionObjectBam(vcfReader, vcf.getFileName().toString(), bam, log);
         } finally {
             CloserUtil.close(vcfReader);
         }
@@ -51,9 +56,14 @@ public class AssertSequenceDictionaryIntersection {
      * @param objDescription user-friendly description of obj, or null
      */
     public static void assertIntersectionObjectBam(final Object obj, final String objDescription, final File bam, final Log log) {
+        assertIntersectionObjectBam(obj, objDescription, bam.toPath(), log);
+    }
+
+    public static void assertIntersectionObjectBam(final Object obj, final String objDescription, final Path bam,
+                                                   final Log log) {
         final SamReader samReader = SamReaderFactory.makeDefault().open(bam);
         try {
-            assertIntersection(obj, objDescription, samReader, bam.getName(), log);
+            assertIntersection(obj, objDescription, samReader, bam.getFileName().toString(), log);
         } finally {
             CloserUtil.close(samReader);
         }
@@ -64,9 +74,18 @@ public class AssertSequenceDictionaryIntersection {
      * @param objDescription user-friendly description of obj, or null
      */
     public static void assertIntersectionObjectVcf(final Object obj, final String objDescription, final File vcf, final Log log) {
+        assertIntersectionObjectVcf(obj, objDescription, vcf.toPath(), log);
+    }
+
+    /**
+     * @param obj Some object from which a sequence dictionary can be extracted
+     * @param objDescription user-friendly description of obj, or null
+     */
+    public static void assertIntersectionObjectVcf(final Object obj, final String objDescription, final Path vcf,
+                                                   final Log log) {
         final VCFFileReader vcfReader = new VCFFileReader(vcf, false);
         try {
-            assertIntersection(obj, objDescription, vcfReader, vcf.getName(), log);
+            assertIntersection(obj, objDescription, vcfReader, vcf.getFileName().toString(), log);
         } finally {
             CloserUtil.close(vcfReader);
         }

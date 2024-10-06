@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.barnyard;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -51,6 +52,7 @@ import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import picard.annotation.LocusFunction;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 
 @CommandLineProgramProperties(
         summary = "For each gene, count the number of times each molecular barcode is observed [The UMI]" +
@@ -68,7 +70,7 @@ import picard.cmdline.StandardOptionDefinitions;
 public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase {
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
-	public List<File> INPUT;
+	public List<PicardHtsPath> INPUT;
 	
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="Output file of with 4 columns: CELL, GENE, MOLECULAR BC, #Observations. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
@@ -85,18 +87,20 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	@Override
 	protected int doWork() {
 
-		INPUT = FileListParsingUtils.expandFileList(INPUT);
+		INPUT = FileListParsingUtils.expandPicardHtsPathList(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
 		BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT);
 
 		writePerTranscriptHeader(out, LEGACY_COLUMN_LABELS);
 
-		Set<String> cellBarcodes=new HashSet<>(new BarcodeListRetrieval().getCellBarcodes(this.INPUT, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+		final Set<String> cellBarcodes=new HashSet<>(new BarcodeListRetrieval().getCellBarcodes(
+				PicardHtsPath.toPaths(this.INPUT), this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
                 this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY,
                 this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
                 this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD));
 
-		UMIIterator umiIterator = new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputs(this.INPUT, false),
+		UMIIterator umiIterator = new UMIIterator.UMIIteratorBuilder(
+				SamFileMergeUtil.mergeInputPaths(PicardHtsPath.toPaths(this.INPUT), false),
 				GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
         		this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
         		this.READ_MQ).setCellBarcodes(cellBarcodes).cellFirstSort(true).build();
@@ -156,12 +160,15 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	 * @param mapQuality The minimum map quality for each read to be considered.
 	 * @return
 	 */
-	public ObjectCounter<String> getNumTranscriptsPerCell (final List<File> bamFile, final String cellBarcodeTag, final String molecularBarcodeTag,
-														   final String geneNameTag, final String strandTag, final String geneFunctionTag, final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList,
-														   final FunctionalDataProcessorStrategy functionStrategy, final Integer mapQuality, final int editDistance, final int minNumReadsMolBarcode, final Collection<String> cellBarcodes) {
+	public ObjectCounter<String> getNumTranscriptsPerCell(
+			final List<Path> bamFile, final String cellBarcodeTag, final String molecularBarcodeTag,
+			final String geneNameTag, final String strandTag, final String geneFunctionTag,
+			final StrandStrategy strategy, final Collection<LocusFunction> locusFunctionList,
+			final FunctionalDataProcessorStrategy functionStrategy, final Integer mapQuality,
+			final int editDistance, final int minNumReadsMolBarcode, final Collection<String> cellBarcodes) {
 
-		SamReaderFactory factory= SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);		
-		SamHeaderAndIterator headerIterator= SamFileMergeUtil.mergeInputs(bamFile, false, factory);
+		final SamReaderFactory factory = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);
+		final SamHeaderAndIterator headerIterator = SamFileMergeUtil.mergeInputPaths(bamFile, false, factory);
 		
 		UMIIterator umiIterator = new UMIIterator.UMIIteratorBuilder(headerIterator,
 				geneNameTag, strandTag, geneFunctionTag,

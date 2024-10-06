@@ -24,6 +24,7 @@
 package org.broadinstitute.dropseqrna.vcftools;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -138,8 +139,28 @@ public class SampleAssignmentVCFUtils {
 	 */
 	public static SNPInfoCollection getSNPInfoCollection (final File vcfFile, final List<String> samples, final boolean retainMonomorphicSNPs, final int genotypeGCThreshold, 
 			final double fractionPassing, final List<String> ignoredChromosomes, final VariantContextWriter vcfWriter, final boolean preserveIntervalNames, final Log log) {
-		
-		final VCFFileReader vcfReader = new VCFFileReader(vcfFile, false);
+		return getSNPInfoCollection(vcfFile.toPath(), samples, retainMonomorphicSNPs, genotypeGCThreshold,
+				fractionPassing, ignoredChromosomes, vcfWriter, preserveIntervalNames, log);
+	}
+
+	/**
+	 * Scan the VCF, and build a set of SNP intervals to look at in the BAM.
+	 * This filters out variants not flagged as "PASSED", variants that aren't SNPs, or variants with more than 2 alleles.
+	 * The intervalList generated uses the sequence dictionary from the VCF file.
+	 * This is useful as it enforces how the BAM chromosomes are later sorted when the SampleGenotypeProbabilitiesIterator is created.
+	 * @param vcfPath The VCF Path to parse
+	 * @param samples A list of samples that will subset the VCF.  If empty use all samples in the VCF.
+	 * @param retainMonomorphicSNPs If true, retain sites that do not vary in the population (as defined by samples).
+	 * @param preserveIntervalNames Set to true to use the genotype site ID (via site.getID) as the interval name
+	 * @param vcfWriter (Optional) write the VCF records from the iterator to this file.  Set to null to ignore.
+	 * @return An intervalList of variant locations to examine in the BAM file.
+	 */
+	public static SNPInfoCollection getSNPInfoCollection(
+			final Path vcfPath, final List<String> samples, final boolean retainMonomorphicSNPs,
+			final int genotypeGCThreshold, final double fractionPassing, final List<String> ignoredChromosomes,
+			final VariantContextWriter vcfWriter, final boolean preserveIntervalNames, final Log log) {
+
+		final VCFFileReader vcfReader = new VCFFileReader(vcfPath, false);
 		// List<String> finalSamples=validateSampleNamesInVCF(vcfReader, samples, log);
 		
 		PeekableIterator<VariantContext> vcfIterator = getVCFIterator(vcfReader, samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing, ignoredChromosomes, log);

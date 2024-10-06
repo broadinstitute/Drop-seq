@@ -30,6 +30,7 @@ import org.broadinstitute.dropseqrna.utils.BaseRange;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.nio.PicardHtsPath;
 
 import java.io.File;
 import java.util.Collections;
@@ -62,7 +63,7 @@ public class CorrectAndSplitScrnaReadPairsTest {
 
  private CorrectAndSplitScrnaReadPairs initClp() {
   final CorrectAndSplitScrnaReadPairs clp = new CorrectAndSplitScrnaReadPairs();
-  clp.INPUT = Collections.singletonList(INPUT_SAM);
+  clp.INPUT = Collections.singletonList(new PicardHtsPath(INPUT_SAM));
   clp.ALLOWED_BARCODE_COUNTS = EXPECTED_BARCODES_HIST;
   clp.BARCODED_READ = 1;
   clp.BASE_RANGE = BASE_RANGE;
@@ -102,4 +103,3 @@ public class CorrectAndSplitScrnaReadPairsTest {
   }
  }
 }
-

@@ -63,6 +63,7 @@ import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.samtools.util.SortingCollection;
 import htsjdk.samtools.util.StringUtil;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 
 @CommandLineProgramProperties(
         summary = "Measures the digital expression of a library.  " +
@@ -88,7 +89,7 @@ public class DigitalExpression extends DGECommandLineBase {
     public static final String GENE_COLUMN = "GENE";
 
     @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
-    public File INPUT;
+    public PicardHtsPath INPUT;
         
     @Argument(doc="A summary of the digital expression output, containing 3 columns - the cell barcode, the #genes, and the #transcripts.", optional=true)
     public File SUMMARY=null;
@@ -126,7 +127,7 @@ public class DigitalExpression extends DGECommandLineBase {
      */
     protected int doWork() {
 
-        IOUtil.assertFileIsReadable(INPUT);
+        IOUtil.assertFileIsReadable(INPUT.toPath());
         IOUtil.assertFileIsWritable(OUTPUT);
         if (OUTPUT_LONG_FORMAT!=null) IOUtil.assertFileIsWritable(OUTPUT_LONG_FORMAT);
         if (OUTPUT_HEADER == null)
@@ -134,7 +135,7 @@ public class DigitalExpression extends DGECommandLineBase {
         if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(this.SUMMARY);
 
         if (REFERENCE_SEQUENCE == null && OUTPUT_HEADER) {
-            final SAMFileHeader header = SamReaderFactory.makeDefault().open(INPUT).getFileHeader();
+            final SAMFileHeader header = SamReaderFactory.makeDefault().open(INPUT.toPath()).getFileHeader();
             final SAMSequenceRecord sequence = header.getSequence(0);
             if (sequence != null) {
                 String uri = sequence.getAttribute(SAMSequenceRecord.URI_TAG);
@@ -147,7 +148,8 @@ public class DigitalExpression extends DGECommandLineBase {
             }
         }
 
-        List<String> cellBarcodes=new BarcodeListRetrieval().getCellBarcodes(Collections.singletonList(this.INPUT), this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+        List<String> cellBarcodes=new BarcodeListRetrieval().getCellBarcodes(
+                Collections.singletonList(this.INPUT.toPath()), this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
                 this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY,
                 this.CELL_BC_FILE, this.READ_MQ, this.MIN_NUM_TRANSCRIPTS_PER_CELL,
                 this.MIN_NUM_GENES_PER_CELL, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, this.MIN_BC_READ_THRESHOLD);
@@ -186,7 +188,8 @@ public class DigitalExpression extends DGECommandLineBase {
 			writeDgeHeader(out);
 
         // TODO should the ambiguous reads handling be a parameter?  It's set to false by default for DGE to get rid of ambiguous gene assignments on reads
-        UMIIterator realUMIIterator = new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false),
+        final UMIIterator realUMIIterator = new UMIIterator.UMIIteratorBuilder(
+                SamFileMergeUtil.mergeInputPaths(Collections.singletonList(this.INPUT.toPath()), false),
                 GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY,
                 this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ).setCellBarcodes(cellBarcodes).
                 recordCellsInInput(OMIT_MISSING_CELLS).build();
@@ -303,7 +306,7 @@ public class DigitalExpression extends DGECommandLineBase {
         DgeHeaderLibrary lib = new DgeHeaderLibrary(UNIQUE_EXPERIMENT_ID);
         if (REFERENCE_SEQUENCE != null)
 			lib.setReference(REFERENCE_SEQUENCE.getAbsoluteFile());
-        lib.setInput(INPUT.getAbsoluteFile());
+        lib.setInput(INPUT.toPath().toAbsolutePath());
         setDgeHeaderLibraryField(lib, "OUTPUT_READS_INSTEAD", OUTPUT_READS_INSTEAD);
         setDgeHeaderLibraryField(lib, "MIN_SUM_EXPRESSION", MIN_SUM_EXPRESSION);
         setDgeHeaderLibraryField(lib, "EDIT_DISTANCE", EDIT_DISTANCE);

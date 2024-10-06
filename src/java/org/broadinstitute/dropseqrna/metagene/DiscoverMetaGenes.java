@@ -44,6 +44,7 @@ import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import picard.annotation.LocusFunction;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 import picard.util.TabbedTextFileWithHeaderParser;
 
 import java.io.File;
@@ -65,7 +66,7 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 	private final Log log = Log.getInstance(DiscoverMetaGenes.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze")
-	public File INPUT;
+	public PicardHtsPath INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM, updated with new gene name/strand/function tags for UMIs "
 			+ "that are best explained as metagenes.", optional=true)
@@ -132,7 +133,7 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 	@Override
 	protected int doWork() {
 
-		IOUtil.assertFileIsReadable(this.INPUT);
+		IOUtil.assertFileIsReadable(this.INPUT.toPath());
 		if (this.REPORT!=null) IOUtil.assertFileIsWritable(this.REPORT);
 		if (this.OUTPUT!=null) IOUtil.assertFileIsWritable(this.OUTPUT);
 
@@ -170,7 +171,8 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 	 * @return
 	 */
 	public Set<MetaGene> umiLevelMetaGeneDiscovery(final List<String> cellBarcodes, final File report) {
-		SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false);
+		final SamHeaderAndIterator headerAndIterator =
+				SamFileMergeUtil.mergeInputPaths(Collections.singletonList(this.INPUT.toPath()), false);
 		SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
 
 		UMIMetaGeneAggregation aggregator = new UMIMetaGeneAggregation();
@@ -200,7 +202,8 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 	}
 
 	public int umiLevelMetaGeneTagging (final List<String> cellBarcodes, final Set<MetaGene> metaGenes) {
-		SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(Collections.singletonList(this.INPUT), false);		
+		final SamHeaderAndIterator headerAndIterator =
+				SamFileMergeUtil.mergeInputPaths(Collections.singletonList(this.INPUT.toPath()), false);
 		SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
 		// set up the output writer and the sink.
 		SAMFileWriter writer=null;
@@ -460,5 +463,3 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 		System.exit(new DiscoverMetaGenes().instanceMain(args));
 	}
 }
-
-

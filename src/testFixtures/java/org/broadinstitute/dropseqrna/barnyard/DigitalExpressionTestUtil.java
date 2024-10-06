@@ -25,6 +25,7 @@ package org.broadinstitute.dropseqrna.barnyard;
 
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintWriter;
 import org.testng.Assert;
+import picard.nio.PicardHtsPath;
 
 import java.io.File;
 import java.io.IOException;
@@ -81,7 +82,7 @@ for (final String cellBarcode : barcodes)
             writer.println(cellBarcode);
 writer.close();
 final DigitalExpression de = new DigitalExpression();
-        de.INPUT = new File(basedir, IN_FILE.getPath());
+        de.INPUT = new PicardHtsPath(new File(basedir, IN_FILE.getPath()));
         de.OUTPUT = outFile;
         de.SUMMARY = summaryFile;
 de.CELL_BC_FILE = cellBarcodesFile;

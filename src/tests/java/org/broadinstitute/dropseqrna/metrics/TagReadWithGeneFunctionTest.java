@@ -21,6 +21,7 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.OverlapDetector;
 import picard.annotation.Gene;
 import picard.annotation.LocusFunction;
+import picard.nio.PicardHtsPath;
 
 
 public class TagReadWithGeneFunctionTest {
@@ -37,7 +38,7 @@ public class TagReadWithGeneFunctionTest {
 		File tempSummary=File.createTempFile("TagReadWithGeneFunctionTest", ".summary");
 		tempSummary.deleteOnExit();
 
-		t.INPUT=testBAMFile;
+		t.INPUT=new PicardHtsPath(testBAMFile);
 		t.OUTPUT=tempBAM;
 		t.ANNOTATIONS_FILE=annotationsFile;
 		t.SUMMARY=tempSummary;

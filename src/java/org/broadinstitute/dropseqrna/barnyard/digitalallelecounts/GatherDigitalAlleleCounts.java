@@ -69,6 +69,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
 import picard.annotation.LocusFunction;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 
 @CommandLineProgramProperties(summary = "Measures the digital allele counts of a library.  " + "Method: 1) Order BAM by SNP/GENE/Cell/UMI tags."
 		+ "2) Build per snp/gene/cell/umi pileups of reads" + "3) Filter pileups by base quality, count reads on each UMI"
@@ -82,7 +83,7 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 	private static final Log log = Log.getInstance(GatherDigitalAlleleCounts.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
-	public List<File> INPUT;
+	public List<PicardHtsPath> INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output file of DAC Results.  One SNP/GENE/CELL per row. This supports zipped formats like gz and bz2.", optional = true)
 	public File OUTPUT;
@@ -104,7 +105,7 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 	 */
 
 	@Argument(doc = "The input VCF file to analyze.")
-	public File VCF;
+	public PicardHtsPath VCF;
 
 	@Argument(doc = "A file with a list of samples in the VCF.  This subsets the VCF into a smaller data set containing only the samples listed. The file has 1 column with no header.", optional = true)
 	public File SAMPLE_FILE = null;
@@ -195,7 +196,7 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 	protected String[] customCommandLineValidation() {
 
 		final ArrayList<String> list = new ArrayList<>(1);
-		IOUtil.assertFileIsReadable(this.VCF);
+		IOUtil.assertFileIsReadable(this.VCF.toPath());
 		if (this.SAMPLE_FILE != null)
 			IOUtil.assertFileIsReadable(this.SAMPLE_FILE);
 		if (this.CLUSTER_FILE != null) {
@@ -229,7 +230,7 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 
 	@Override
 	protected int doWork() {
-		this.INPUT = FileListParsingUtils.expandFileList(INPUT);
+		this.INPUT = FileListParsingUtils.expandPicardHtsPathList(INPUT);
 
 		PrintStream outCluster = null;
 		Map<String, Set<String>> clusterMap = null;
@@ -254,13 +255,15 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 			afWriter.writeHeader();
 		}
 
-		List<String> cellBarcodes = new BarcodeListRetrieval().getCellBarcodes(this.INPUT, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+		List<String> cellBarcodes = new BarcodeListRetrieval().getCellBarcodes(
+				PicardHtsPath.toPaths(this.INPUT), this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
 				this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BC_FILE,
 				this.READ_MQ, null, null, this.MIN_NUM_READS_PER_CELL, this.NUM_CORE_BARCODES, this.EDIT_DISTANCE, null);
 
 		log.info("Selected cell barcodes for analysis [" + cellBarcodes.size() + "]");
 
-		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputs(this.INPUT, false, SamReaderFactory.makeDefault());
+		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputPaths(
+				PicardHtsPath.toPaths(this.INPUT), false, SamReaderFactory.makeDefault());
 
 		SNPInfoCollection snpInfo = getSNPInfoCollection();
 
@@ -492,7 +495,7 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 	}
 
 	private SNPInfoCollection getSNPInfoCollection() {
-		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);
+		final VCFFileReader vcfReader = new VCFFileReader(this.VCF.toPath(), false);
 
 		if (!VCFUtils.GQInHeader(vcfReader)) {
 			this.GQ_THRESHOLD = -1;

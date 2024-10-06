@@ -32,6 +32,7 @@ import org.testng.Reporter;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import picard.analysis.CollectAlignmentSummaryMetrics;
+import picard.nio.PicardHtsPath;
 import picard.sam.MergeSamFiles;
 
 import java.io.File;
@@ -61,7 +62,7 @@ public class SplitBamByCellTest {
         File originalMetrics = TestUtils.getTempReportFile("SplitBamByCell.", ".metrics");
         File mergedMetrics = TestUtils.getTempReportFile("SplitBamByCell.", ".metrics");
 
-        bamSplitter.INPUT= Collections.singletonList(TEST_BAM);
+        bamSplitter.INPUT = Collections.singletonList(new PicardHtsPath(TEST_BAM));
         bamSplitter.OUTPUT=TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST=outputBAMList;
         bamSplitter.NUM_OUTPUTS = 3;
@@ -144,7 +145,7 @@ public class SplitBamByCellTest {
         Files.copy(TEST_BAM.toPath(), inputBam.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
         bamSplitter = new SplitBamByCell();
-        bamSplitter.INPUT = Collections.singletonList(inputBam);
+        bamSplitter.INPUT = Collections.singletonList(new PicardHtsPath(inputBam));
         bamSplitter.OUTPUT = TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
         TestUtils.markBamsDeleteOnExit(bamSplitter.OUTPUT, bamSplitter.OUTPUT_SLUG, expectedBams);
         bamSplitter.OUTPUT_LIST = outputBAMList;
@@ -164,7 +165,7 @@ public class SplitBamByCellTest {
         boolean exceptionThrown = false;
         try {
             bamSplitter = new SplitBamByCell();
-            bamSplitter.INPUT = Collections.singletonList(inputBam);
+            bamSplitter.INPUT = Collections.singletonList(new PicardHtsPath(inputBam));
             bamSplitter.OUTPUT = previousOutputTemplate;
             bamSplitter.OUTPUT_LIST = outputBAMList;
             bamSplitter.DELETE_INPUTS = false;
@@ -178,7 +179,7 @@ public class SplitBamByCellTest {
 
         // Now it should overwrite the output BAM files and then delete the input BAM
         bamSplitter = new SplitBamByCell();
-        bamSplitter.INPUT = Collections.singletonList(inputBam);
+        bamSplitter.INPUT = Collections.singletonList(new PicardHtsPath(inputBam));
         bamSplitter.OUTPUT = previousOutputTemplate;
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.REPORT = reportFile;
@@ -221,7 +222,7 @@ public class SplitBamByCellTest {
 
         File mergedOutputBAM = TestUtils.getTempReportFile("SplitBamByCell.", ".sam");
 
-        bamSplitter.INPUT= Collections.singletonList(QUERYNAME_SORTED_BAM);
+        bamSplitter.INPUT = Collections.singletonList(new PicardHtsPath(QUERYNAME_SORTED_BAM));
         bamSplitter.OUTPUT=TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST= TestUtils.getTempReportFile("SplitBamByCell.", ".list");
         bamSplitter.NUM_OUTPUTS = 3;
@@ -259,7 +260,7 @@ public class SplitBamByCellTest {
         mergedOutputBAM.deleteOnExit();
         filterTestBAM.deleteOnExit();
 
-        bamSplitter.INPUT = Collections.singletonList(TEST_BAM);
+        bamSplitter.INPUT = Collections.singletonList(new PicardHtsPath(TEST_BAM));
         bamSplitter.OUTPUT =
                 TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST = TestUtils.getTempReportFile("SplitBamByCell.", ".list");
@@ -308,7 +309,7 @@ public class SplitBamByCellTest {
         final File mergedOutputBAM = TestUtils.getTempReportFile("SplitBamByCell.merged.", ".sam");
         mergedOutputBAM.deleteOnExit();
 
-        bamSplitter.INPUT = Collections.singletonList(TEST_BAM);
+        bamSplitter.INPUT = Collections.singletonList(new PicardHtsPath(TEST_BAM));
         bamSplitter.OUTPUT =
                 TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
         bamSplitter.OUTPUT_LIST = TestUtils.getTempReportFile("SplitBamByCell.", ".list");
@@ -335,7 +336,7 @@ public class SplitBamByCellTest {
         mergedOutputBAM.deleteOnExit();
 
         final int numOutputs = 3;
-        bamSplitter.INPUT = Collections.singletonList(TEST_BAM);
+        bamSplitter.INPUT = Collections.singletonList(new PicardHtsPath(TEST_BAM));
         bamSplitter.OUTPUT =
                 TestUtils.getTempReportFile("SplitBamByCell.", "." + bamSplitter.OUTPUT_SLUG + ".bam");
         TestUtils.markBamsDeleteOnExit(bamSplitter.OUTPUT, bamSplitter.OUTPUT_SLUG, numOutputs);
@@ -402,7 +403,7 @@ public class SplitBamByCellTest {
         }
 
         final SplitBamByCell bamSplitter = new SplitBamByCell();
-        bamSplitter.INPUT= Collections.singletonList(inputSymlink);
+        bamSplitter.INPUT = Collections.singletonList(new PicardHtsPath(inputSymlink));
         final int NUM_OUTPUTS = 3;
         bamSplitter.NUM_OUTPUTS = NUM_OUTPUTS;
         bamSplitter.DELETE_INPUTS = true;

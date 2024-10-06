@@ -24,12 +24,13 @@
 package org.broadinstitute.dropseqrna.barnyard.digitalexpression;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class DgeHeaderLibrary {
-    private File input;
+    private Path input;
     private File inputDge;
     private File reference;
     final private String uei;
@@ -40,11 +41,15 @@ public class DgeHeaderLibrary {
         this.uei = uei;
     }
 
-    public File getInput() {
+    public Path getInput() {
         return input;
     }
 
     public void setInput(File input) {
+        setInput(input == null ? null : input.toPath());
+    }
+
+    public void setInput(final Path input) {
         this.input = input;
     }
 

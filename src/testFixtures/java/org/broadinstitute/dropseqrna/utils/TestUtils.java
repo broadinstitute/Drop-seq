@@ -31,6 +31,7 @@ import htsjdk.samtools.util.zip.DeflaterFactory;
 import htsjdk.samtools.util.zip.InflaterFactory;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.tools.DGEMatrix;
 import org.testng.Assert;
+import picard.nio.PicardHtsPath;
 import picard.util.TabbedInputParser;
 import picard.util.TabbedTextFileWithHeaderParser;
 
@@ -287,7 +288,7 @@ public class TestUtils {
 
         File outputBAM = getTempReportFile("SplitBamByCell.", bamSplitter.OUTPUT_SLUG + ".bam");
         File outputBAMList = getTempReportFile("SplitBamByCell.", ".list");
-        bamSplitter.INPUT = Collections.singletonList(inputBAM);
+        bamSplitter.INPUT = Collections.singletonList(new PicardHtsPath(inputBAM));
         bamSplitter.OUTPUT = outputBAM;
         bamSplitter.OUTPUT_LIST = outputBAMList;
         bamSplitter.NUM_OUTPUTS = numOutputs;

@@ -34,6 +34,7 @@ import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -59,7 +60,7 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
 
 
     @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM files to analyze.  They must all have the same sort order", minElements = 1)
-    public List<File> INPUT;
+    public List<PicardHtsPath> INPUT;
 
     @Argument(shortName="N", doc="Number of output files to create", mutex={"TARGET_BAM_SIZE"})
     public Integer NUM_OUTPUTS;
@@ -179,7 +180,8 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
     // public so it can be called from unit test
     @Override
     public int doWork() {
-        INPUT = FileListParsingUtils.expandFileList(INPUT);
+        INPUT = FileListParsingUtils.expandPicardHtsPathList(INPUT);
+        final List<Path> inputPaths = PicardHtsPath.toPaths(INPUT);
 
         if (OUTPUT != null && !OUTPUT.getPath().contains(OUTPUT_SLUG)) {
             throw new IllegalArgumentException(OUTPUT + " does not contain the replacement token " + OUTPUT_SLUG);
@@ -195,15 +197,15 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
 
         // Check that input BAM files can be deleted
         if (DELETE_INPUTS) {
-            for (File bamFile : INPUT) {
+            for (final Path bamFile : inputPaths) {
                 IOUtil.assertFileIsWritable(bamFile);
             }
         }
 
         if (DELETE_INPUT_INDICES) {
-            for (File bamFile : INPUT) {
-                final File index = SamFiles.findIndex(bamFile);
-                if (index != null && index.exists()) {
+            for (final Path bamFile : inputPaths) {
+                final Path index = SamFiles.findIndex(bamFile);
+                if (index != null && Files.exists(index)) {
                     IOUtil.assertFileIsWritable(index);
                 }
             }
@@ -211,14 +213,14 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
 
         if (TARGET_BAM_SIZE != null) {
             long targetSize = dehumanizeFileSize(TARGET_BAM_SIZE);
-            NUM_OUTPUTS = (int) Math.max(1, Math.round(1.0 * getTotalBamSize(INPUT) / targetSize));
+            NUM_OUTPUTS = (int) Math.max(1, Math.round(1.0 * getTotalBamSize(inputPaths) / targetSize));
         }
 
         checkOutputOverwrites();
 
         samWriterFactory = new SAMFileWriterFactory().setCreateIndex(CREATE_INDEX);
 
-        headerAndIterator = SamFileMergeUtil.mergeInputs(INPUT, true);
+        headerAndIterator = SamFileMergeUtil.mergeInputPaths(inputPaths, true);
         SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
         splitBAMs();
         CloserUtil.close(headerAndIterator.iterator);
@@ -246,7 +248,7 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
             throw new IllegalArgumentException("OUTPUT must be specified when INPUT list contains more than one BAM file");
         }
 
-        File bamFile = INPUT.get(0);
+        final File bamFile = INPUT.getFirst().toPath().toFile();
         if (!bamFile.getName().endsWith(BAM_EXTENSION)) {
             throw new IllegalArgumentException("Input BAM file " + bamFile.getAbsolutePath() + " does not have the extension " + BAM_EXTENSION);
         }
@@ -276,9 +278,10 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
             final File splitBamFile = getActualSplitBamFile(getRelativeSplitBamFile(splitIdx));
             if (splitBamFile.exists()) {
                 // Check that this output BAM is not one of the INPUT BAMs
-                for (File inputBam : INPUT) {
-                    if (splitBamFile.getAbsolutePath().equals(inputBam.getAbsolutePath())) {
-                        throw new IllegalArgumentException("Output BAM file " + splitBamFile.getAbsolutePath() + " is the same as input BAM " + inputBam.getAbsolutePath());
+                for (final Path inputBam : PicardHtsPath.toPaths(INPUT)) {
+                    if (splitBamFile.toPath().toAbsolutePath().equals(inputBam.toAbsolutePath())) {
+                        throw new IllegalArgumentException("Output BAM file " + splitBamFile.getAbsolutePath() +
+                                " is the same as input BAM " + FileUtils.toAbsoluteString(inputBam));
                     }
                 }
 
@@ -398,8 +401,7 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
     }
 
     private void deleteInputBamFiles() {
-        for (File bamFile : INPUT) {
-            Path bamPath = bamFile.toPath();
+        for (Path bamPath : PicardHtsPath.toPaths(INPUT)) {
             try {
                 while (Files.isSymbolicLink(bamPath)) {
                     Path symlinkPath = bamPath;
@@ -444,11 +446,11 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
         return (long) (conversionFactor * size);
     }
 
-    private long getTotalBamSize(List<File> inputList) {
+    private long getTotalBamSize(List<Path> inputList) {
         long size = 0;
         try {
-            for (File file : inputList) {
-                size += Files.size(file.toPath());
+            for (final Path path : inputList) {
+                size += Files.size(path);
             }
         } catch (IOException ex) {
             throw new RuntimeException("Error computing the total BAM file size", ex);

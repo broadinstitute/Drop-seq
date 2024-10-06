@@ -52,6 +52,7 @@ import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.AssertSequenceDictionaryIntersection;
 import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
+import org.broadinstitute.dropseqrna.utils.FileUtils;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.VCFUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
@@ -73,6 +74,7 @@ import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 
 @CommandLineProgramProperties(summary = "Detect Doublets in Dropulation Data.  Uses the outputs of AssignCellsToSamples to make decisions.  It's highly recommended to use the VCF output from AssignCellsToSamples as input, as"
 		+ "the memory usage of a full VCF may be prohibitive compared to the AssignCellsToSamples VCF, which contains only the variants that were observed in the data.  This also greatly speeds up"
@@ -82,10 +84,10 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	private static final Log log = Log.getInstance(DetectDoublets.class); 
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
-	public List<File> INPUT_BAM;
+	public List<PicardHtsPath> INPUT_BAM;
 
 	@Argument(doc = "The input VCF file to analyze.  Use the output VCF from AssignCellsToSamples to save memory.")
-	public File VCF;
+	public PicardHtsPath VCF;
 
 	@Argument(doc = "The output likelihood file from AssignCellsToSamples")
 	public File SINGLE_DONOR_LIKELIHOOD_FILE;
@@ -220,9 +222,11 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		PrintStream writer = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUTPUT));
 		writeAssignmentHeader(writer, pairsToTest, true, false);
 
-		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);
-		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputs(this.INPUT_BAM, false, SamReaderFactory.makeDefault());
-		AssertSequenceDictionaryIntersection.assertIntersectionObjectVcf(headerAndIter.header, "BAM INPUT(S)", this.VCF, log);
+		final VCFFileReader vcfReader = new VCFFileReader(this.VCF.toPath(), false);
+		final SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputPaths(
+				PicardHtsPath.toPaths(this.INPUT_BAM), false, SamReaderFactory.makeDefault());
+		AssertSequenceDictionaryIntersection.assertIntersectionObjectVcf(
+				headerAndIter.header, "BAM INPUT(S)", this.VCF.toPath(), log);
 
 		// extract the sequence dictionary to build the interval list.
 		SAMSequenceDictionary vcfDict = vcfReader.getFileHeader().getSequenceDictionary();
@@ -450,10 +454,11 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	}
 
 	private void writeAssignmentHeader(final PrintStream out, final int pairsToTest, final boolean outputBestPairPvalue, final boolean writeScaledLikelihoods) {
-		List<String> paths = this.INPUT_BAM.stream().map(x -> x.getAbsolutePath()).collect(Collectors.toList());
+		final List<String> paths = FileUtils.toAbsoluteStrings(PicardHtsPath.toPaths(this.INPUT_BAM));
 		String bamList = StringUtils.join(paths, ",");
 
-		List<String> header = new ArrayList<>(Arrays.asList("#INPUT_BAM=" + bamList, "INPUT_VCF=" + this.VCF.getAbsolutePath(),
+		final List<String> header = new ArrayList<>(Arrays.asList(
+				"#INPUT_BAM=" + bamList, "INPUT_VCF=" + FileUtils.toAbsoluteString(this.VCF.toPath()),
 				"DONOR_FILE=" + this.SAMPLE_FILE, "CELL_BC_FILE=" + CELL_BC_FILE, "GQ_THRESHOLD=" + Integer.toString(this.GQ_THRESHOLD),
 				"FRACTION_SAMPLES_PASSING=" + Double.toString(this.FRACTION_SAMPLES_PASSING), "FORCED_RATIO=" + convertNullToString(FORCED_RATIO),
 				"USE_MISSING_DATA=" + USE_MISSING_DATA, "READ_MQ=" + Integer.toString(this.READ_MQ),
@@ -515,7 +520,8 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	public PeekableIterator<List<SampleGenotypeProbabilities>> prepareIterator(final IntervalList snpIntervals, List<String> cellBarcodes, Map<Interval, Double> genotypeQuality) {
 
 		SamReaderFactory factory = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);
-		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputs(this.INPUT_BAM, false, factory);
+		SamHeaderAndIterator headerAndIter =
+				SamFileMergeUtil.mergeInputPaths(PicardHtsPath.toPaths(this.INPUT_BAM), false, factory);
 
 		// override the normal gene annotations with new ones before any other operations.
 		// filter out PCR duplicates.
@@ -601,8 +607,8 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		
 	@Override
 	protected String[] customCommandLineValidation() {
-		IOUtil.assertFileIsReadable(this.VCF);
-		this.INPUT_BAM = FileListParsingUtils.expandFileList(INPUT_BAM);
+		IOUtil.assertFileIsReadable(this.VCF.toPath());
+		this.INPUT_BAM = FileListParsingUtils.expandPicardHtsPathList(INPUT_BAM);
 		IOUtil.assertFileIsWritable(this.OUTPUT);
 		IOUtil.assertFileIsReadable(this.SAMPLE_FILE);
 		IOUtil.assertFileIsReadable(this.SINGLE_DONOR_LIKELIHOOD_FILE);
@@ -613,7 +619,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 		if (OUTPUT_PER_SNP != null)
 			IOUtil.assertFileIsWritable(this.OUTPUT_PER_SNP);
 
-		if (!VCFUtils.hasIndex(this.VCF))
+		if (!VCFUtils.hasIndex(this.VCF.toPath()))
 			list.add("VCF is not indexed!  Please index and retry.");
 
 		if (this.CELL_CONTAMINATION_ESTIMATE_FILE != null && this.ALLELE_FREQUENCY_ESTIMATE_FILE == null)

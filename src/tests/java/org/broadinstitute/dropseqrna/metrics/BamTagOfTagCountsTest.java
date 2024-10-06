@@ -7,6 +7,7 @@ import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.nio.PicardHtsPath;
 
 public class BamTagOfTagCountsTest {
 
@@ -24,7 +25,7 @@ public class BamTagOfTagCountsTest {
 		}
 
 		BamTagOfTagCounts b = new BamTagOfTagCounts();
-		b.INPUT=Collections.singletonList(IN_FILE);
+		b.INPUT = Collections.singletonList(new PicardHtsPath(IN_FILE));
 		b.PRIMARY_TAG="XC";
 		b.MINIMUM_MAPPING_QUALITY=0;
 		b.SECONDARY_TAG="XM";
@@ -51,7 +52,7 @@ public class BamTagOfTagCountsTest {
 		}
 
 		BamTagOfTagCounts b = new BamTagOfTagCounts();
-		b.INPUT=Collections.singletonList(IN_FILE);
+		b.INPUT = Collections.singletonList(new PicardHtsPath(IN_FILE));
 		b.PRIMARY_TAG="XC";
 		b.MINIMUM_MAPPING_QUALITY=0;
 		b.SECONDARY_TAG="NM";
