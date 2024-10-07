@@ -97,6 +97,14 @@ def main(options):
     # but that might require changes to the downstream tools.
     obs['pct_utr'] = 0
 
+    obs['pct_coding'] = obs['pct_coding'].round(4)
+    obs['pct_intronic'] = obs['pct_intronic'].round(4)
+    obs['pct_intergenic'] = obs['pct_intergenic'].round(4)
+    obs['pct_mt'] = obs['pct_mt'].round(4)
+    obs['pct_genic'] = obs['pct_genic'].round(4)
+    obs['pct_ribosomal'] = obs['pct_ribosomal'].round(4)
+    obs['pct_utr'] = obs['pct_utr'].round(4)
+
     if options.h5ad is not None:
         cli.logger.info(f'generating h5ad')
         adata.write(options.h5ad)
