@@ -47,6 +47,12 @@ public class MakeTripletDgeTest {
     }
 
     @Test
+    public void testBarcodeListWithHeader() {
+        final MakeTripletDge makeTripletDge = runIt("N701.barcode_list_with_header.manifest.yaml");
+        testIt(makeTripletDge, "N701.barcode_list.barcodes.tsv.gz", "N701.features.tsv.gz", "N701.barcode_list.matrix.mtx.gz");
+    }
+
+    @Test
     public void testNoPrefix() {
         final MakeTripletDge makeTripletDge = runIt("N701.no_prefix.manifest.yaml");
         testIt(makeTripletDge, "N701.no_prefix.barcodes.tsv.gz", "N701.features.tsv.gz", "N701.matrix.mtx.gz");

@@ -108,7 +108,7 @@ extends AbstractTripletDgeWriterClp {
         for (int i = 0; i < parsedDges.size(); ++i) {
             final ParsedYamlDge parsedYamlDge = parsedDges.get(i);
             final TabularDgeStream tabularDgeStream = new TabularDgeStream(parsedYamlDge.dge, parsedYamlDge.prefix,
-                    parsedYamlDge.barcodeList, i, outputBarcodes.size());
+                    parsedYamlDge.barcodeList, parsedYamlDge.barcodeColumn, i, outputBarcodes.size());
             if (!tabularDgeStream.hasNext()) {
                 throw new IllegalArgumentException("DGE " + parsedYamlDge.dge + " is empty");
             }
@@ -118,6 +118,9 @@ extends AbstractTripletDgeWriterClp {
         final long numUniqueBarcodes = outputBarcodes.stream().distinct().count();
         if (numUniqueBarcodes != outputBarcodes.size()) {
             throw new IllegalArgumentException("Output CBCs are not unique");
+        }
+        if (outputBarcodes.isEmpty()) {
+            throw new IllegalArgumentException("No CBCs to output");
         }
         dgeStreams.forEach(TabularDgeStream::clearBarcodes);
         final PriorityQueue<TabularDgeStream> queue = new PriorityQueue<>(dgeStreams.size(), new TabularDgeStreamComparator());
@@ -186,6 +189,7 @@ extends AbstractTripletDgeWriterClp {
             static final String DGE_KEY = "dge";
             static final String PREFIX_KEY = "prefix";
             static final String BARCODE_LIST_KEY = "barcode_list";
+            static final String BARCODE_COLUMN_KEY = "barcode_column";
         }
     }
 
@@ -193,11 +197,13 @@ extends AbstractTripletDgeWriterClp {
         final File dge;
         final String prefix;
         final File barcodeList;
+        final String barcodeColumn;
 
-        ParsedYamlDge(File dge, String prefix, File barcodeList) {
+        ParsedYamlDge(File dge, String prefix, File barcodeList, String barcodeColumn) {
             this.dge = dge;
             this.prefix = prefix;
             this.barcodeList = barcodeList;
+            this.barcodeColumn = barcodeColumn;
         }
     }
 
@@ -225,7 +231,8 @@ extends AbstractTripletDgeWriterClp {
             final String prefix = (String)dgeMap.get(YamlKeys.DatasetsKeys.PREFIX_KEY);
             final String barcodeListPath = (String)dgeMap.get(YamlKeys.DatasetsKeys.BARCODE_LIST_KEY);
             final File barcodeList = barcodeListPath == null ? null : manifestDirectoryPath.resolve(barcodeListPath).toFile();
-            parsedDges.add(new ParsedYamlDge(dge, prefix, barcodeList));
+            final String barcodeColumn = (String)dgeMap.get(YamlKeys.DatasetsKeys.BARCODE_COLUMN_KEY);
+            parsedDges.add(new ParsedYamlDge(dge, prefix, barcodeList, barcodeColumn));
         }
         return parsedDges;
     }
@@ -263,12 +270,14 @@ extends AbstractTripletDgeWriterClp {
          * @param dgeFile the tabular DGE to be read.
          * @param prefix the prefix to prepend to each CBC, along with PREFIX option, or null if no prefix is to be used.
          * @param barcodeList a file containing list of CBCs to include, or null if all CBCs are to be included.
+         * @param barcodeColumn if non-null, the name of the column in barcodeList containing the CBCs to include.
          * @param ordinal the zero-based index of this DGE in the manifest.  This is used to keep the order of CBCs
          *                consistent when the same gene appears in multiple DGEs
          * @param startColumnIndex the zero-based index of the first CBC from this DGE in the output.  In essence this is
          *                         the number of CBCs from DGEs before this one.
          */
-        TabularDgeStream(final File dgeFile, final String prefix, final File barcodeList, final int ordinal, final int startColumnIndex) {
+        TabularDgeStream(final File dgeFile, final String prefix, final File barcodeList, final String barcodeColumn,
+                         final int ordinal, final int startColumnIndex) {
             this.dgeFile = dgeFile;
             this.ordinal = ordinal;
             this.startColumnIndex = startColumnIndex;
@@ -276,9 +285,23 @@ extends AbstractTripletDgeWriterClp {
             Set<String> barcodeSet;
             if (barcodeList != null) {
                 IOUtil.assertFileIsReadable(barcodeList);
-                // I can't believe how clumsy this syntax is.
-                barcodeSet = StreamSupport.stream(Spliterators.spliteratorUnknownSize(IOUtil.readLines(barcodeList), Spliterator.ORDERED), false).
-                        collect(java.util.stream.Collectors.toSet());
+                if (barcodeColumn == null) {
+                    // I can't believe how clumsy this syntax is.
+                    barcodeSet = StreamSupport.stream(Spliterators.spliteratorUnknownSize(IOUtil.readLines(barcodeList), Spliterator.ORDERED), false).
+                            collect(java.util.stream.Collectors.toSet());
+                } else {
+                    final TabbedTextFileWithHeaderParser barcodeParser = new TabbedTextFileWithHeaderParser(barcodeList);
+                    try {
+                        if (!barcodeParser.hasColumn(barcodeColumn)) {
+                            throw new IllegalArgumentException("Barcode list " + barcodeList + " does not have column " + barcodeColumn);
+                        }
+                        barcodeSet = StreamSupport.stream(Spliterators.spliteratorUnknownSize(barcodeParser.iterator(), Spliterator.ORDERED), false).
+                                map(row -> row.getField(barcodeColumn)).
+                                collect(java.util.stream.Collectors.toSet());
+                    } finally {
+                        CloserUtil.close(barcodeParser);
+                    }
+                }
             } else {
                 barcodeSet = null;
             }
