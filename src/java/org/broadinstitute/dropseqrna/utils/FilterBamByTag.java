@@ -41,7 +41,6 @@ import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
@@ -52,6 +51,7 @@ import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.RuntimeIOException;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 
 @CommandLineProgramProperties(summary = "Filters a BAM file based on a TAG and a file containing a list of values.  This is pretty similar to grepping with a file, but is faster and makes a proper BAM.", oneLineSummary = "Filters a BAM file based on a TAG and a file containing a list of values.", programGroup = DropSeq.class)
 public class FilterBamByTag extends CommandLineProgram {
@@ -59,7 +59,7 @@ public class FilterBamByTag extends CommandLineProgram {
 	private final Log log = Log.getInstance(FilterBamByTag.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
-	public List<File> INPUT;
+	public List<PicardHtsPath> INPUT;
 	
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
 	public File OUTPUT;
@@ -103,7 +103,7 @@ public class FilterBamByTag extends CommandLineProgram {
 			return(1);
 		}
 
-		this.INPUT = FileListParsingUtils.expandFileList(INPUT);
+		INPUT = FileListParsingUtils.expandPicardHtsPathList(INPUT);
 
 		IOUtil.assertFileIsWritable(OUTPUT);
 		if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(this.SUMMARY);
@@ -119,7 +119,8 @@ public class FilterBamByTag extends CommandLineProgram {
 				values.addAll(this.TAG_VALUE);
 		}
 
-		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(this.INPUT, false, SamReaderFactory.makeDefault());
+		final SamHeaderAndIterator headerAndIter =
+				SamFileMergeUtil.mergeInputPaths(PicardHtsPath.toPaths(INPUT), false, SamReaderFactory.makeDefault());
 		SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(headerAndIter.header, true, OUTPUT);
 
 		if (!this.PAIRED_MODE)

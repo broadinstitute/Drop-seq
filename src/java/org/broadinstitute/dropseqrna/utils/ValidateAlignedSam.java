@@ -23,7 +23,7 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.broadinstitute.barclay.argparser.Argument;
@@ -39,6 +39,7 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 
 
 @CommandLineProgramProperties(summary = "Validate BAM file(s)",
@@ -56,7 +57,7 @@ public class ValidateAlignedSam extends CommandLineProgram {
     private static final Log log = Log.getInstance(ValidateAlignedSam.class);
 
     @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file(s) to validate. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
-    public List<File> INPUT_BAM;
+    public List<PicardHtsPath> INPUT_BAM;
 
     @Argument(shortName = StandardOptionDefinitions.SORT_ORDER_SHORT_NAME)
     public SAMFileHeader.SortOrder SORT_ORDER = SAMFileHeader.SortOrder.coordinate;
@@ -66,14 +67,14 @@ public class ValidateAlignedSam extends CommandLineProgram {
 
     @Override
     protected int doWork() {
-        this.INPUT_BAM = FileListParsingUtils.expandFileList(INPUT_BAM);
+        this.INPUT_BAM = FileListParsingUtils.expandPicardHtsPathList(INPUT_BAM);
 
-        File templateBamFile = null;
+        Path templateBamFile = null;
         SAMSequenceDictionary templateDictionary = null;
 
         StringBuilder errorMsg = new StringBuilder();
         SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault();
-        for (File inputBam : INPUT_BAM) {
+        for (final Path inputBam : PicardHtsPath.toPaths(INPUT_BAM)) {
             try {
                 IOUtil.assertFileIsReadable(inputBam);
             } catch (Exception ex) {
@@ -84,15 +85,15 @@ public class ValidateAlignedSam extends CommandLineProgram {
             final SamReader samReader = samReaderFactory.open(inputBam);
             final SAMFileHeader header = samReader.getFileHeader();
             if (header.getSortOrder() != SORT_ORDER) {
-                appendErrorToErrorMessage("The expected BAM sort order is " + SORT_ORDER + ", but sort order in " + inputBam.getAbsolutePath() + " is " + header.getSortOrder(), errorMsg);
+                appendErrorToErrorMessage("The expected BAM sort order is " + SORT_ORDER + ", but sort order in " + FileUtils.toAbsoluteString(inputBam) + " is " + header.getSortOrder(), errorMsg);
             }
             if (header.getSequenceDictionary().size() == 0) {
-                appendErrorToErrorMessage("Sequence dictionary in " + inputBam.getAbsolutePath() + " is empty", errorMsg);
+                appendErrorToErrorMessage("Sequence dictionary in " + FileUtils.toAbsoluteString(inputBam) + " is empty", errorMsg);
             } else if (templateDictionary == null) {
                 templateBamFile = inputBam;
                 templateDictionary = header.getSequenceDictionary();
             } else if (!header.getSequenceDictionary().isSameDictionary(templateDictionary)) {
-                appendErrorToErrorMessage("Sequence dictionary in " + inputBam.getAbsolutePath() + " differs from that in " + templateBamFile.getAbsolutePath(), errorMsg);
+                appendErrorToErrorMessage("Sequence dictionary in " + FileUtils.toAbsoluteString(inputBam) + " differs from that in " + FileUtils.toAbsoluteString(templateBamFile), errorMsg);
             }
 
             boolean bamContainsReads = false;
@@ -110,10 +111,10 @@ public class ValidateAlignedSam extends CommandLineProgram {
             }
 
             if (!bamContainsReads) {
-                appendErrorToErrorMessage("BAM file " + inputBam.getAbsolutePath() + " does not contain any reads", errorMsg);
+                appendErrorToErrorMessage("BAM file " + FileUtils.toAbsoluteString(inputBam) + " does not contain any reads", errorMsg);
             }
             if (CHECK_CONTAINS_PAIRED_READS && !bamContainsPairedReads) {
-                appendErrorToErrorMessage("BAM file " + inputBam.getAbsolutePath() + " does not contain any paired-end reads", errorMsg);
+                appendErrorToErrorMessage("BAM file " + FileUtils.toAbsoluteString(inputBam) + " does not contain any paired-end reads", errorMsg);
             }
         }
 

@@ -38,6 +38,7 @@ import picard.annotation.Gene;
 import picard.annotation.LocusFunction;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 
 import java.io.File;
 import java.util.*;
@@ -55,7 +56,7 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
 	private ProgressLogger pl = new ProgressLogger(log);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze")
-	public File INPUT;
+	public PicardHtsPath INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM, written with new Gene/Exon tag")
 	public File OUTPUT;
@@ -109,12 +110,12 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
 
 	@Override
 	protected int doWork() {
-		IOUtil.assertFileIsReadable(this.INPUT);
+		IOUtil.assertFileIsReadable(this.INPUT.toPath());
 		IOUtil.assertFileIsReadable(this.ANNOTATIONS_FILE);
 		if (this.SUMMARY!=null) IOUtil.assertFileIsWritable(this.SUMMARY);
 		IOUtil.assertFileIsWritable(this.OUTPUT);
 
-		SamReader inputSam = SamReaderFactory.makeDefault().open(INPUT);
+		final SamReader inputSam = SamReaderFactory.makeDefault().open(INPUT.toPath());
 
 		SAMFileHeader header = inputSam.getFileHeader();
 		SamHeaderUtil.addPgRecord(header, this);

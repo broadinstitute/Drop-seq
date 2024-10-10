@@ -40,6 +40,7 @@ import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.nio.PicardHtsPath;
 
 import java.io.File;
 import java.io.IOException;
@@ -95,8 +96,8 @@ public class AssignCellsToSamplesTest {
 	public void testTwoSNPsOnRead() throws IOException {
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.ONE_READ_TWO_SNPS_BAM);
-		assigner.VCF=this.MULTI_SNP_TEST_VCF;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.ONE_READ_TWO_SNPS_BAM));
+		assigner.VCF = new PicardHtsPath(this.MULTI_SNP_TEST_VCF);
 		assigner.NUM_BARCODES=10; // more than enough
 		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
 		int result = assigner.doWork();
@@ -117,8 +118,8 @@ public class AssignCellsToSamplesTest {
 	public void testTwoSNPsOnUMI() throws IOException {
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.ONE_UMI_TWO_SNPS_BAM);
-		assigner.VCF=this.MULTI_SNP_TEST_VCF;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.ONE_UMI_TWO_SNPS_BAM));
+		assigner.VCF = new PicardHtsPath(this.MULTI_SNP_TEST_VCF);
 		assigner.NUM_BARCODES=10; // more than enough
 		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
 		int result = assigner.doWork();
@@ -144,8 +145,8 @@ public class AssignCellsToSamplesTest {
 	public void testNonCannonicalBase() throws IOException {
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCF_NON_CANONICAL;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCF_NON_CANONICAL);
 		assigner.NUM_BARCODES=10; // more than enough
 		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
 		assigner.VCF_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".vcf", "idx");
@@ -178,8 +179,8 @@ public class AssignCellsToSamplesTest {
 	public void testEndToEnd() throws IOException {
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCFC;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCFC);
 		assigner.NUM_BARCODES=10; // more than enough
 		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
 		assigner.VCF_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".vcf", "idx");
@@ -203,8 +204,8 @@ public class AssignCellsToSamplesTest {
 	public void testEndToEndWrongSampleList() throws IOException {
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCFC;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCFC);
 		assigner.SAMPLE_FILE=WRONG_SAMPLE_LIST;
 		assigner.NUM_BARCODES=10; // more than enough
 		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
@@ -224,8 +225,8 @@ public class AssignCellsToSamplesTest {
 	public void testEndToEndDuplicatesInSampleList() throws IOException {
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCFC;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCFC);
 		assigner.SAMPLE_FILE=DUPLICATE_SAMPLE_LIST;
 		assigner.NUM_BARCODES=10; // more than enough
 		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
@@ -246,9 +247,9 @@ public class AssignCellsToSamplesTest {
 	public void testFailFastUMIThreshold() throws IOException {
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCF_FAIL_FAST;
-		assigner.TRANSCRIBED_SNP_FAIL_FAST_THRESHOLD=5;		
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCF_FAIL_FAST);
+		assigner.TRANSCRIBED_SNP_FAIL_FAST_THRESHOLD = 5;
 		assigner.NUM_BARCODES=10; // more than enough
 		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
 		assigner.VCF_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".vcf", "idx");
@@ -264,8 +265,8 @@ public class AssignCellsToSamplesTest {
 	public void testEndToEndAnswerKey() throws IOException {
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCFC;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCFC);
 		assigner.NUM_BARCODES=10; // more than enough
 		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
 		assigner.BAM_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".informative.bam");
@@ -284,8 +285,8 @@ public class AssignCellsToSamplesTest {
 	public void testEndToEndMaxLikelihood() throws IOException {
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCFC;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCFC);
 		assigner.NUM_BARCODES=10; // more than enough
 		assigner.MAX_ERROR_RATE=0.1; // -1 per UMI when the donor is homozygous with the wrong allele is the "max" score.
 		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
@@ -303,8 +304,8 @@ public class AssignCellsToSamplesTest {
 
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCFC;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCFC);
 		assigner.NUM_BARCODES=10; // more than enough
 		assigner.OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
 		assigner.BAM_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".informative.bam");
@@ -356,8 +357,8 @@ public class AssignCellsToSamplesTest {
 
 		AssignCellsToSamples assigner = new AssignCellsToSamples();  
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCF;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCF);
 		assigner.NUM_BARCODES=10;
 
 		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);
@@ -413,8 +414,8 @@ public class AssignCellsToSamplesTest {
 
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCF;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCF);
 		assigner.NUM_BARCODES=10;
 
 		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);

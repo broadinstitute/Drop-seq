@@ -19,6 +19,7 @@ import org.broadinstitute.dropseqrna.utils.readiterators.*;
 
 import picard.annotation.LocusFunction;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 import picard.util.TabbedTextFileWithHeaderParser;
 
 @CommandLineProgramProperties(
@@ -31,7 +32,7 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 	private static final Log log = Log.getInstance(GatherUMIReadIntervals.class);
 	
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
-	public List<File> INPUT;
+	public List<PicardHtsPath> INPUT;
 	
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output file of read intervals per UMI. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
@@ -65,7 +66,7 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 
 	@Override
 	protected int doWork() {
-		this.INPUT = FileListParsingUtils.expandFileList(INPUT);
+		this.INPUT = FileListParsingUtils.expandPicardHtsPathList(INPUT);
 		IOUtil.assertFileIsWritable(this.OUTPUT);
 		if (CELL_BC_FILE!=null) IOUtil.assertFileIsReadable(this.CELL_BC_FILE);
 	
@@ -73,7 +74,8 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 		writePerUMIStatsHeader(out);
 		
 		List<String> cellBarcodes=getCellBarcodes(this.CELL_BC_FILE);
-		SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(this.INPUT, false);
+		final SamHeaderAndIterator headerAndIterator =
+				SamFileMergeUtil.mergeInputPaths(PicardHtsPath.toPaths(this.INPUT), false);
 
 		IntervalList intervals = getInputIntervals(headerAndIterator.header);
 

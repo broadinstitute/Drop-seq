@@ -41,12 +41,13 @@ dependencies {
         exclude(group = "openchart", module ="openchart") //this doesn't exist in maven and wasn't included in the checked in jar
     }
 
+    implementation("commons-io:commons-io:2.17.0")
     implementation("org.biojava:biojava-core:7.0.2")
     implementation("org.la4j:la4j:0.6.0")
     implementation("org.slf4j:slf4j-api:2.0.9")
     implementation("org.yaml:snakeyaml:2.2")
 
-    implementation("com.github.broadinstitute:picard:3.1.1"){
+    implementation("com.github.broadinstitute:picard:3.3.0"){
         attributes{
             attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
         }
@@ -155,4 +156,3 @@ distributions {
 tasks.named("distZip").configure {
     dependsOn("generateWrappers")
 }
-

@@ -37,6 +37,7 @@ import htsjdk.samtools.util.IterableAdapter;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.samtools.util.StringUtil;
+import org.broadinstitute.dropseqrna.utils.FileUtils;
 
 public class DgeHeaderCodec {
 
@@ -92,7 +93,7 @@ public class DgeHeaderCodec {
 
     private String buildLibraryLine(final DgeHeaderLibrary library) {
         final OutputRecordBuilder dgeRecord = new OutputRecordBuilder(LIBRARY_RECORD_LABEL);
-        dgeRecord.addFieldIfNotNull(LibraryRecordTag.INPUT, library.getInput());
+        dgeRecord.addFieldIfNotNull(LibraryRecordTag.INPUT, FileUtils.toPrettyString(library.getInput()));
         dgeRecord.addFieldIfNotNull(LibraryRecordTag.INPUT_DGE, library.getInputDge());
         dgeRecord.addFieldIfNotNull(LibraryRecordTag.REFERENCE, library.getReference());
         dgeRecord.addFieldIfNotNull(LibraryRecordTag.UEI, library.getUei());

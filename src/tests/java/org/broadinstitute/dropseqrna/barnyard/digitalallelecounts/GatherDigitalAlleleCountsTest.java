@@ -12,6 +12,7 @@ import org.testng.annotations.Test;
 
 import htsjdk.samtools.util.TestUtil;
 import org.testng.Assert;
+import picard.nio.PicardHtsPath;
 
 public class GatherDigitalAlleleCountsTest {
 
@@ -44,8 +45,8 @@ public class GatherDigitalAlleleCountsTest {
 	public void testDoWork() throws IOException {
 		GatherDigitalAlleleCounts g = new GatherDigitalAlleleCounts();
 		g.CELL_BC_FILE=cellBCFile;
-		g.INPUT=Collections.singletonList(largeBAMFile);
-		g.VCF=vcfFile;
+		g.INPUT = Collections.singletonList(new PicardHtsPath(largeBAMFile));
+		g.VCF = new PicardHtsPath(vcfFile);
 		g.HET_SNPS_ONLY=true;
 		g.SAMPLE_FILE=sampleFile;
 		g.OUTPUT = File.createTempFile("GatherDigitalAlleleCountsTest.", ".dac.txt");
@@ -67,8 +68,8 @@ public class GatherDigitalAlleleCountsTest {
 	public void testDoWorkCluster() throws IOException {
 		GatherDigitalAlleleCounts g = new GatherDigitalAlleleCounts();
 		g.CELL_BC_FILE=cellBCFile;
-		g.INPUT=Collections.singletonList(largeBAMFile);
-		g.VCF=vcfFile;
+		g.INPUT = Collections.singletonList(new PicardHtsPath(largeBAMFile));
+		g.VCF = new PicardHtsPath(vcfFile);
 		g.HET_SNPS_ONLY=true;
 		g.SAMPLE_FILE=sampleFile;		
 		g.CLUSTER_FILE=clusterFile;
@@ -95,8 +96,8 @@ public class GatherDigitalAlleleCountsTest {
 		// without the new argument, the output is empty because all reads are intergenic.
 		GatherDigitalAlleleCounts g = new GatherDigitalAlleleCounts();
 		g.CELL_BC_FILE=untaggedReadsCellBarcodes;
-		g.INPUT=Collections.singletonList(untaggedReadsBAM);
-		g.VCF=untaggedReadsVCF;
+		g.INPUT = Collections.singletonList(new PicardHtsPath(untaggedReadsBAM));
+		g.VCF = new PicardHtsPath(untaggedReadsVCF);
 		g.HET_SNPS_ONLY=false;
 		g.SAMPLEs=Arrays.asList("AN10162");
 		g.SUMMARY = File.createTempFile("GatherDigitalAlleleCountsTest.", ".dac.summary.txt");
@@ -111,8 +112,8 @@ public class GatherDigitalAlleleCountsTest {
 		// test with intergenic reads, contigs NOT split.
 		GatherDigitalAlleleCounts g = new GatherDigitalAlleleCounts();
 		g.CELL_BC_FILE=untaggedReadsCellBarcodes;
-		g.INPUT=Collections.singletonList(untaggedReadsBAM);
-		g.VCF=untaggedReadsVCF;
+		g.INPUT = Collections.singletonList(new PicardHtsPath(untaggedReadsBAM));
+		g.VCF = new PicardHtsPath(untaggedReadsVCF);
 		g.HET_SNPS_ONLY=false;
 		g.SAMPLEs=Arrays.asList("AN10162");
 		g.SUMMARY = File.createTempFile("GatherDigitalAlleleCountsTest.", ".dac.summary.txt");
@@ -131,8 +132,8 @@ public class GatherDigitalAlleleCountsTest {
 		GatherDigitalAlleleCounts g = new GatherDigitalAlleleCounts();	
 		g = new GatherDigitalAlleleCounts();
 		g.CELL_BC_FILE=untaggedReadsCellBarcodes;
-		g.INPUT=Collections.singletonList(untaggedReadsBAM);
-		g.VCF=untaggedReadsVCF;
+		g.INPUT = Collections.singletonList(new PicardHtsPath(untaggedReadsBAM));
+		g.VCF = new PicardHtsPath(untaggedReadsVCF);
 		g.HET_SNPS_ONLY=false;
 		g.SAMPLEs=Arrays.asList("AN10162");
 		g.SUMMARY = File.createTempFile("GatherDigitalAlleleCountsTest.", ".dac.summary.txt");

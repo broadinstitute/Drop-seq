@@ -4,6 +4,7 @@ import org.broadinstitute.dropseqrna.barnyard.DigitalExpression;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.nio.PicardHtsPath;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,7 +43,7 @@ public class DiscoverMetaGenesTest {
 		DiscoverMetaGenes dmg = new DiscoverMetaGenes();
 		dmg.CELL_BC_FILE=IN_SMN_CELL_BARCODE_FILE;
 		dmg.WRITE_ALL_READS=true;
-		dmg.INPUT=IN_SMN_FILE;
+		dmg.INPUT = new PicardHtsPath(IN_SMN_FILE);
 		dmg.MIN_READ_MQ=2;		
 		dmg.REPORT=File.createTempFile("DiscoverMetaGenes", ".report.txt");
 		dmg.REPORT.deleteOnExit();
@@ -86,7 +87,7 @@ public class DiscoverMetaGenesTest {
 		DiscoverMetaGenes dmg = new DiscoverMetaGenes();
 		dmg.CELL_BC_FILE=IN_SMN_CELL_BARCODE_FILE;
 		dmg.WRITE_ALL_READS=true;
-		dmg.INPUT=IN_SMN_FILE;
+		dmg.INPUT = new PicardHtsPath(IN_SMN_FILE);
 		dmg.MIN_READ_MQ=2;		
 		dmg.KNOWN_META_GENE_FILE=EXPECTED_SMN_REPORT;
 		dmg.OUTPUT=File.createTempFile("DiscoverMetaGenes", ".SMN.bam");
@@ -128,7 +129,7 @@ public class DiscoverMetaGenesTest {
 		DiscoverMetaGenes dmg = new DiscoverMetaGenes();
 		dmg.CELL_BC_FILE=IN_SMN_CELL_BARCODE_FILE;
 		dmg.WRITE_ALL_READS=true;
-		dmg.INPUT=IN_SMN_FILE;
+		dmg.INPUT = new PicardHtsPath(IN_SMN_FILE);
 		dmg.MIN_READ_MQ=2;		
 		dmg.KNOWN_META_GENE_FILE=SMN_EXTENDED_MODEL_NAME_FILE;
 		dmg.OUTPUT=File.createTempFile("DiscoverMetaGenes", ".SMN.bam");
@@ -179,7 +180,7 @@ public class DiscoverMetaGenesTest {
 	public void testSMNManySelectedCells() throws IOException {
 		DiscoverMetaGenes dmg = new DiscoverMetaGenes();
 		dmg.CELL_BC_FILE=IN_SMN_CELL_BARCODE_FILE_BIG;
-		dmg.INPUT=IN_SMN_FILE_BIG;
+		dmg.INPUT = new PicardHtsPath(IN_SMN_FILE_BIG);
 		dmg.MIN_READ_MQ=2;				
 		dmg.REPORT=File.createTempFile("DiscoverMetaGenes", ".report");
 		dmg.REPORT.deleteOnExit();
@@ -197,8 +198,8 @@ public class DiscoverMetaGenesTest {
 	
 	@Test
 	public void testSMNAllCells() throws IOException {
-		DiscoverMetaGenes dmg = new DiscoverMetaGenes();		
-		dmg.INPUT=IN_SMN_FILE_BIG;
+		DiscoverMetaGenes dmg = new DiscoverMetaGenes();
+		dmg.INPUT = new PicardHtsPath(IN_SMN_FILE_BIG);
 		dmg.MIN_READ_MQ=2;				
 		dmg.OUTPUT=File.createTempFile("DiscoverMetaGenes", ".SMN.bam");
 		dmg.OUTPUT.deleteOnExit();

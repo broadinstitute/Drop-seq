@@ -7,6 +7,7 @@ import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.nio.PicardHtsPath;
 
 public class GatherMolecularBarcodeDistributionByGeneTest {
 
@@ -29,7 +30,7 @@ public class GatherMolecularBarcodeDistributionByGeneTest {
 
 		GatherMolecularBarcodeDistributionByGene g = new GatherMolecularBarcodeDistributionByGene();
 		g.CELL_BC_FILE=IN_CELL_BARCODE_FILE;
-		g.INPUT=Collections.singletonList(IN_FILE);
+		g.INPUT = Collections.singletonList(new PicardHtsPath(IN_FILE));
 		g.OUTPUT=outFile;
 		g.LEGACY_COLUMN_LABELS = true;
 

@@ -35,7 +35,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableMap;
-
+import picard.nio.PicardHtsPath;
 
 
 public class DetectDoubletsTest {
@@ -51,8 +51,8 @@ public class DetectDoubletsTest {
 		File EXPECTED_OUTPUT=new File(TESTDATA_DIR, "TEST_TTTGCGCGGAGC:ATTGTTTAGGAG.sampleAssignments.txt.single_donor.txt");
 
 		// OUTPUT_PER_SNP
-		assigner.INPUT_BAM=Collections.singletonList(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam"));
-		assigner.VCF=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.vcf");
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam")));
+		assigner.VCF = new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.vcf"));
 		assigner.SINGLE_DONOR_LIKELIHOOD_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.sampleAssignments.txt");
 		assigner.CELL_BC_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.cellBarcodes.txt");
 		assigner.SAMPLE_FILE=new File(TESTDATA_DIR, "donors_single_entry.txt");
@@ -115,8 +115,8 @@ public class DetectDoubletsTest {
 		File EXPECTED_PER_SNP_OUTPUT=new File(TESTDATA_DIR, "TEST_TTTGCGCGGAGC:ATTGTTTAGGAG.sampleAssignments.unguided.perSNP.txt.gz");
 
 		// OUTPUT_PER_SNP
-		assigner.INPUT_BAM=Collections.singletonList(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam"));
-		assigner.VCF=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.vcf");
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam")));
+		assigner.VCF = new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.vcf"));
 		assigner.SINGLE_DONOR_LIKELIHOOD_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.sampleAssignments.txt");
 		assigner.CELL_BC_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.cellBarcodes.txt");
 		assigner.SAMPLE_FILE=new File(TESTDATA_DIR, "donors.txt");
@@ -146,8 +146,8 @@ public class DetectDoubletsTest {
 		File EXPECTED_PER_SNP_OUTPUT=new File(TESTDATA_DIR, "TEST_TTTGCGCGGAGC:ATTGTTTAGGAG.sampleAssignments.unguided.perSNP.txt.gz");
 
 		// OUTPUT_PER_SNP
-		assigner.INPUT_BAM=Collections.singletonList(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam"));
-		assigner.VCF=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.vcf");
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam")));
+		assigner.VCF = new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.vcf"));
 		assigner.SINGLE_DONOR_LIKELIHOOD_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.sampleAssignments.txt");
 		assigner.CELL_BC_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.cellBarcodes.txt");
 		assigner.SAMPLE_FILE=new File(TESTDATA_DIR, "donors.txt");
@@ -177,8 +177,8 @@ public class DetectDoubletsTest {
 		File EXPECTED_PER_SNP_OUTPUT=new File(TESTDATA_DIR, "TEST_TTTGCGCGGAGC:ATTGTTTAGGAG.contamination.sampleAssignments.perSNP.txt.gz");
 
 		// OUTPUT_PER_SNP
-		assigner.INPUT_BAM=Collections.singletonList(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam"));
-		assigner.VCF=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.vcf");
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam")));
+		assigner.VCF = new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.vcf"));
 		assigner.SINGLE_DONOR_LIKELIHOOD_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.sampleAssignments.txt");
 		assigner.CELL_BC_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.cellBarcodes.txt");
 		assigner.SAMPLE_FILE=new File(TESTDATA_DIR, "donors.txt");
@@ -210,8 +210,8 @@ public class DetectDoubletsTest {
 		File EXPECTED_PER_SNP_OUTPUT=new File(TESTDATA_DIR, "TEST_TTTGCGCGGAGC:ATTGTTTAGGAG.contamination.sampleAssignments.perSNP.txt.gz");
 
 		// OUTPUT_PER_SNP
-		assigner.INPUT_BAM=Collections.singletonList(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam"));
-		assigner.VCF=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.vcf");
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam")));
+		assigner.VCF = new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.vcf"));
 		assigner.SINGLE_DONOR_LIKELIHOOD_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG.sampleAssignments.txt");
 		assigner.CELL_BC_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.cellBarcodes.txt");
 		assigner.SAMPLE_FILE=new File(TESTDATA_DIR, "donors.txt");
@@ -241,8 +241,8 @@ public class DetectDoubletsTest {
 		File EXPECTED_PAIR_OUTPUT=new File(TESTDATA_DIR, "TEST_TTTGCGCGGAGC:ATTGTTTAGGAG2.sampleAssignments.unguided.perDonor.txt");
 
 		DetectDoublets assigner = new DetectDoublets();
-		assigner.INPUT_BAM=Collections.singletonList(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2_retagged.bam"));
-		assigner.VCF=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2.vcf");
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2_retagged.bam")));
+		assigner.VCF = new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2.vcf"));
 		assigner.SINGLE_DONOR_LIKELIHOOD_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2.sampleAssignments.txt");
 		assigner.CELL_BC_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2_retagged.cellBarcodes.txt");
 		assigner.SAMPLE_FILE=new File(TESTDATA_DIR, "donors.txt");
@@ -267,8 +267,8 @@ public class DetectDoubletsTest {
 		File EXPECTED_PAIR_OUTPUT=new File(TESTDATA_DIR, "TEST_TTTGCGCGGAGC:ATTGTTTAGGAG2.sampleAssignments.unguided.scaledlikes.perDonor.txt");
 
 		DetectDoublets assigner = new DetectDoublets();
-		assigner.INPUT_BAM=Collections.singletonList(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2_retagged.bam"));
-		assigner.VCF=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2.vcf");
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2_retagged.bam")));
+		assigner.VCF = new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2.vcf"));
 		assigner.SINGLE_DONOR_LIKELIHOOD_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2.sampleAssignments.txt");
 		assigner.CELL_BC_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2_retagged.cellBarcodes.txt");
 		assigner.SAMPLE_FILE=new File(TESTDATA_DIR, "donors.txt");
@@ -296,8 +296,8 @@ public class DetectDoubletsTest {
 		File EXPECTED_PAIR_OUTPUT=new File(TESTDATA_DIR, "empty.sampleAssignments.unguided.perDonor.txt");
 
 		DetectDoublets assigner = new DetectDoublets();
-		assigner.INPUT_BAM=Collections.singletonList(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2_retagged.bam"));
-		assigner.VCF=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2.vcf");
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2_retagged.bam")));
+		assigner.VCF = new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2.vcf"));
 		assigner.SINGLE_DONOR_LIKELIHOOD_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2.sampleAssignments.txt");
 		assigner.CELL_BC_FILE=new File(TESTDATA_DIR, "matches_nothing.cellBarcodes.txt");
 		assigner.SAMPLE_FILE=new File(TESTDATA_DIR, "donors.txt");
@@ -321,8 +321,8 @@ public class DetectDoubletsTest {
 		File EXPECTED_PAIR_OUTPUT=new File(TESTDATA_DIR, "empty.sampleAssignments.unguided.perDonor.txt");
 
 		DetectDoublets assigner = new DetectDoublets();
-		assigner.INPUT_BAM=Collections.singletonList(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2_retagged.bam"));
-		assigner.VCF=new File(TESTDATA_DIR, "empty.vcf");
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2_retagged.bam")));
+		assigner.VCF = new PicardHtsPath(new File(TESTDATA_DIR, "empty.vcf"));
 		assigner.SINGLE_DONOR_LIKELIHOOD_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2.sampleAssignments.txt");
 		assigner.CELL_BC_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2_retagged.cellBarcodes.txt");
 		assigner.SAMPLE_FILE=new File(TESTDATA_DIR, "donors.txt");

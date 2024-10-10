@@ -39,6 +39,7 @@ import org.testng.annotations.Test;
 import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
+import picard.nio.PicardHtsPath;
 
 public class VariantDataFactoryTest {
 
@@ -53,8 +54,8 @@ public class VariantDataFactoryTest {
 	public void bigTest() {  
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCF;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCF);
 		assigner.NUM_BARCODES=10;
 		assigner.RETAIN_MONOMORPIC_SNPS=true;
 
@@ -87,8 +88,8 @@ public class VariantDataFactoryTest {
 	public void testMissingData() {
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCF;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCF);
 		assigner.NUM_BARCODES=10;
 		assigner.RETAIN_MONOMORPIC_SNPS=true;
 

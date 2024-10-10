@@ -48,10 +48,12 @@ import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -65,7 +67,7 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the "
 			+ "suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
-	public List<File> INPUT;
+	public List<PicardHtsPath> INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "SAM or BAM file with MAPQ of putative "
 			+ "chimeric reads adjusted.", optional = true)
@@ -125,7 +127,7 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
 
 	@Override
 	protected int doWork() {
-		INPUT = FileListParsingUtils.expandFileList(INPUT);
+		INPUT = FileListParsingUtils.expandPicardHtsPathList(INPUT);
 
 		// FIRST PASS: accumulate chimeric UMIs for each CBC, and optionally write report
 		final Map<String, ChimericUmiCollection> chimerics = identifyChimericsAndWriteReport(MARK_UMI_REUSE, T_RICH_THRESHOLD);
@@ -143,7 +145,7 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
 		final GeneFunctionProcessor p = new GeneFunctionProcessor(GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, false, STRAND_STRATEGY, LOCUS_FUNCTION_LIST, FUNCTIONAL_STRATEGY);
 		
 		long numMarked = 0;
-		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputs(this.INPUT, false, SamReaderFactory.makeDefault());
+		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputPaths(PicardHtsPath.toPaths(this.INPUT), false, SamReaderFactory.makeDefault());
 		SamHeaderUtil.addPgRecord(headerAndIter.header, this);
 		SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(headerAndIter.header, true, OUTPUT);
 		ProgressLogger progLog = new ProgressLogger(log, 1000000, "marked");
@@ -220,9 +222,10 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
         
         // Set up the cell barcodes.  Can be null to try and repair the whole BAM.
         final Set<String> cellBarcodes=getCellBarcodes();       
-        
+
+		final List<Path> inputPaths = PicardHtsPath.toPaths(this.INPUT);
         PeekableIterator<UMICollection> umiIterator = new PeekableIterator<>(
-                new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputs(this.INPUT, false),
+                new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputPaths(inputPaths, false),
                         GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
                         this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
                         this.READ_MQ).setCellBarcodes(cellBarcodes).cellFirstSort(true).build());

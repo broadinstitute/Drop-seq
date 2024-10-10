@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.metagene;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.nio.PicardHtsPath;
 
 import java.io.File;
 import java.util.Arrays;
@@ -62,7 +63,7 @@ public class MergeMetaGeneReportsTest {
 
     private void discoverMetaGenes(final File inputBAM, final File metaGenesReport) {
         DiscoverMetaGenes discoverer = new DiscoverMetaGenes();
-        discoverer.INPUT = inputBAM;
+        discoverer.INPUT = new PicardHtsPath(inputBAM);
         discoverer.MIN_READ_MQ = 2;
         discoverer.META_GENE_RATIO = 0d;
         discoverer.REPORT = metaGenesReport;

@@ -17,18 +17,23 @@ import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.Collection;
 
 public class VCFUtils {
 	private static final Log log = Log.getInstance(VCFUtils.class);
 
 	public static boolean hasIndex(final File vcfFile) {
+		return hasIndex(vcfFile.toPath());
+	}
+
+	public static boolean hasIndex(final Path vcfFile) {
 		// validate that there's an index for the VCF file.
 		VCFFileReader vcfReader=null;
 		try {
 			vcfReader = new VCFFileReader(vcfFile, true);
 		} catch (TribbleException te) {
-			log.error("Must supply an index file for [" + vcfFile.getAbsolutePath()+"]");
+			log.error("Must supply an index file for [" + FileUtils.toAbsoluteString(vcfFile)+"]");
 			return false;
 		} finally {
 			CloserUtil.close(vcfReader);

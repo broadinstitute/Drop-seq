@@ -24,14 +24,20 @@
 package org.broadinstitute.dropseqrna.utils;
 
 
+import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import picard.nio.PicardHtsPath;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URI;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -65,5 +71,71 @@ public class FileListParsingUtilsTest {
         Collections.sort(expected);
         Collections.sort(expandedList);
         Assert.assertEquals(expected, expandedList);
+    }
+
+    @Test
+    public void testPathListParsing() throws IOException {
+        // In the temp dir, create 2 files matching the pattern "testPathListParsing.pattern.*.txt"
+        final String PATTERN = "testPathListParsing.pattern.*.txt";
+        final Path patternFile1 =
+                TestUtils.getTempReportFile("testPathListParsing.pattern.", ".txt").toPath();
+        final Path patternFile2 =
+                TestUtils.getTempReportFile("testPathListParsing.pattern.", ".txt").toPath();
+        final Path noPatternFile1 =
+                TestUtils.getTempReportFile("testPathListParsing.no.pattern.", ".txt").toPath();
+        final Path noPatternFile2 =
+                TestUtils.getTempReportFile("testPathListParsing.no.pattern.", ".txt").toPath();
+
+        final Path tempDir = patternFile1.getParent();
+
+        final Path fileList = TestUtils.getTempReportFile("testPathListParsing.", ".file_list").toPath();
+        final PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(fileList));
+        out.println(FileUtils.toAbsoluteString(noPatternFile2));
+        out.close();
+
+        final List<Path> expandedList =
+                FileListParsingUtils.expandPathList(Arrays.asList(tempDir.resolve(PATTERN), noPatternFile1, fileList));
+        final List<Path> expected = Arrays.asList(
+                patternFile1,
+                patternFile2,
+                noPatternFile1,
+                noPatternFile2
+        );
+
+        Collections.sort(expected);
+        Collections.sort(expandedList);
+        Assert.assertEquals(expected, expandedList);
+    }
+
+    @DataProvider(name = "toAbsoluteStringData")
+    public Object[][] toAbsoluteStringData() {
+        return new Object[][]{
+                {null, null},
+                {Paths.get("/tmp/foo"), "/tmp/foo"},
+                {Paths.get(URI.create("file:/tmp/foo")), "/tmp/foo"},
+                {new PicardHtsPath("/tmp/foo").toPath(), "/tmp/foo"},
+                {new CloudStorageFileSystemProvider().getPath("gs://bucket/foo"), "gs://bucket/foo"},
+        };
+    }
+
+    @Test(dataProvider = "toAbsoluteStringData")
+    public void testToAbsoluteString(final Path path, final String expected) {
+        Assert.assertEquals(FileUtils.toAbsoluteString(path), expected);
+    }
+
+    @DataProvider(name = "toPrettyStringData")
+    public Object[][] toPrettyStringData() {
+        return new Object[][]{
+                {null, null},
+                {Paths.get("/tmp/foo"), "/tmp/foo"},
+                {Paths.get(URI.create("file:/tmp/foo")), "/tmp/foo"},
+                {new PicardHtsPath("/tmp/foo").toPath(), "/tmp/foo"},
+                {new CloudStorageFileSystemProvider().getPath("gs://bucket/foo"), "gs://bucket/foo"},
+        };
+    }
+
+    @Test(dataProvider = "toPrettyStringData")
+    public void testToPrettyString(final Path path, final String expected) {
+        Assert.assertEquals(FileUtils.toPrettyString(path), expected);
     }
 }

@@ -42,6 +42,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import picard.annotation.LocusFunction;
+import picard.nio.PicardHtsPath;
 
 
 public class DigitalExpressionTest {
@@ -94,7 +95,7 @@ public class DigitalExpressionTest {
 		longOutput.deleteOnExit();
 
 		final DigitalExpression de = new DigitalExpression();
-		de.INPUT = DigitalExpressionTestUtil.IN_FILE;
+		de.INPUT = new PicardHtsPath(DigitalExpressionTestUtil.IN_FILE);
 		de.CELL_BC_FILE = cellBCFile;
 		de.OUTPUT = outFile;
 		de.SUMMARY = summaryFile;
@@ -138,7 +139,7 @@ public class DigitalExpressionTest {
 		}
 
         final DigitalExpression de = new DigitalExpression();
-		de.INPUT = DigitalExpressionTestUtil.IN_FILE;
+		de.INPUT = new PicardHtsPath(DigitalExpressionTestUtil.IN_FILE);
 		de.NUM_CORE_BARCODES=1;
 		de.OUTPUT = outFile;
         // the headers aren't going to match up because they contain specific path info.
@@ -375,7 +376,7 @@ public class DigitalExpressionTest {
 		final String summaryExtension = ".digital_expression_summary.txt";
 		final File expectedResultFile = new File(STRAND_AND_FUNCTION_TESTDATA, expectedResultLabel + summaryExtension);
     	final DigitalExpression digitalExpression = new DigitalExpression();
-    	digitalExpression.INPUT = new File(STRAND_AND_FUNCTION_TESTDATA, "DgeStrandFuncTest.bam");
+		digitalExpression.INPUT = new PicardHtsPath(new File(STRAND_AND_FUNCTION_TESTDATA, "DgeStrandFuncTest.bam"));
     	digitalExpression.CELL_BC_FILE = new File(STRAND_AND_FUNCTION_TESTDATA, "DgeStrandFuncTest.cell_barcodes");
     	digitalExpression.SUMMARY = File.createTempFile("DgeStrandFuncTest.", summaryExtension);
     	digitalExpression.SUMMARY.deleteOnExit();

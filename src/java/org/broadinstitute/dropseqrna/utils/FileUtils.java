@@ -24,6 +24,9 @@
 package org.broadinstitute.dropseqrna.utils;
 
 import java.io.File;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.util.List;
 
 public class FileUtils {
     /**
@@ -56,5 +59,56 @@ public class FileUtils {
 
     public static File replaceExtension(final File file,final String periodlessExtensionToRemove, final String periodlessExensionToAdd) {
         return addExension(removeExtension(file, periodlessExtensionToRemove), periodlessExensionToAdd);
+    }
+
+    /**
+     * Returns the path as a string, without prefixing local filesystem paths with "file:".
+     * <p/>
+     * The {@link com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider} does not prefix paths with
+     * "gs:" when calling {@link Path#toString()}. The method
+     * {@link com.google.cloud.storage.contrib.nio.CloudStoragePath#toString()} only returns the path component of the
+     * URI, without the scheme.
+     * <p/>
+     * This method is intended to be used in places where the path is to be displayed to the user, and the user should
+     * not be required to know the underlying filesystem.
+     */
+    public static String toAbsoluteString(final Path path) {
+        return path == null ? null : toPrettyString(path.toAbsolutePath());
+    }
+
+    /**
+     * Returns the paths as a strings, without prefixing local filesystem paths with "file:".
+     * <p/>
+     * The {@link com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider} does not prefix paths with
+     * "gs:" when calling {@link Path#toString()}. The method
+     * {@link com.google.cloud.storage.contrib.nio.CloudStoragePath#toString()} only returns the path component of the
+     * URI, without the scheme.
+     * <p/>
+     * This method is intended to be used in places where the path is to be displayed to the user, and the user should
+     * not be required to know the underlying filesystem.
+     */
+    public static List<String> toAbsoluteStrings(final List<Path> paths) {
+        return paths.stream().map(FileUtils::toAbsoluteString).collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Returns the path as a string, without prefixing local filesystem paths with "file:".
+     * <p/>
+     * The {@link com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider} does not prefix paths with
+     * "gs:" when calling {@link Path#toString()}. The method
+     * {@link com.google.cloud.storage.contrib.nio.CloudStoragePath#toString()} only returns the path component of the
+     * URI, without the scheme.
+     * <p/>
+     * This method is intended to be used in places where the path is to be displayed to the user, and the user should
+     * not be required to know the underlying filesystem.
+     */
+    public static String toPrettyString(final Path path) {
+        if (path == null) {
+            return null;
+        } else if (path.getFileSystem().equals(FileSystems.getDefault())) {
+            return path.toFile().toString();
+        } else {
+            return path.toUri().toString();
+        }
     }
 }

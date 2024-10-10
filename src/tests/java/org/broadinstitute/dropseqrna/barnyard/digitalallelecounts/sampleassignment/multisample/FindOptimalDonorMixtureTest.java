@@ -24,7 +24,6 @@
 package org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample;
 
 import htsjdk.samtools.util.Interval;
-import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.variant.variantcontext.GenotypeType;
@@ -35,17 +34,10 @@ import org.broadinstitute.dropseqrna.barnyard.BarcodeListRetrieval;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.SNPInfoCollection;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.AssignCellsToSamples;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.SampleGenotypeProbabilities;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.AllPairedSampleAssignmentsForCell;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.DetectDoublets;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.FindOptimalDonorMixture;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.GenotypeMatrix;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.SamplePairAssignmentForCell;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.VariantData;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.VariantDataCollection;
-import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignment.multisample.VariantDataFactory;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.nio.PicardHtsPath;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -229,8 +221,8 @@ public class FindOptimalDonorMixtureTest {
 	public void bigTest() { 
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCF;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCF);
 		assigner.NUM_BARCODES=10;
 		assigner.RETAIN_MONOMORPIC_SNPS=true;
 
@@ -266,8 +258,8 @@ public class FindOptimalDonorMixtureTest {
 	public void bigTest3() {
 		DetectDoublets assigner = new DetectDoublets();
 		assigner.GQ_THRESHOLD=30;
-		assigner.INPUT_BAM=Collections.singletonList(this.INPUT_BAM);
-		assigner.VCF=this.VCF;		
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCF);
 
 		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, false);
 		List<String> vcfSamples =Arrays.asList(donors);
@@ -305,11 +297,11 @@ public class FindOptimalDonorMixtureTest {
 	@Test(enabled=true)
 	public void bigTest2() {
 		File vcf = new File (rootDir+"/TTTGCGCGGAGC:ATTGTTTAGGAG2.vcf");
-		List<File> bam = Collections.singletonList(new File (rootDir+"/TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam"));
+		final List<PicardHtsPath> bam = Collections.singletonList(new PicardHtsPath(rootDir + "/TTTGCGCGGAGC:ATTGTTTAGGAG_retagged.bam"));
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
 		assigner.GQ_THRESHOLD=30;
 		assigner.INPUT_BAM=bam;
-		assigner.VCF=vcf;
+		assigner.VCF = new PicardHtsPath(vcf);
 		assigner.NUM_BARCODES=10;
 		assigner.RETAIN_MONOMORPIC_SNPS=true;
 

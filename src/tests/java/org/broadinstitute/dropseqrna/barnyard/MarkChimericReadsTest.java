@@ -28,6 +28,7 @@ import org.broadinstitute.dropseqrna.barnyard.ChimericUmi.CHIMERIC_STRATEGY;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.nio.PicardHtsPath;
 
 import java.io.File;
 import java.util.Arrays;
@@ -46,7 +47,7 @@ public class MarkChimericReadsTest {
 		clp.OUTPUT_REPORT.deleteOnExit();
 		clp.METRICS = TestUtils.getTempReportFile("MarkChimericReads.", ".chimeric_read_metrics");
 		clp.METRICS.deleteOnExit();
-		clp.INPUT = Arrays.asList(new File(TEST_DATA_DIR, "MarkChimericReads.input.sam"));
+		clp.INPUT = Arrays.asList(new PicardHtsPath(new File(TEST_DATA_DIR, "MarkChimericReads.input.sam")));
 		clp.CELL_BC_FILE = CELL_BC_FILE;
 		Assert.assertEquals(clp.doWork(), 0);
 		TestUtils.assertSamFilesSame(clp.OUTPUT, new File(TEST_DATA_DIR, "MarkChimericReads.umiReuse.sam"), false);
@@ -67,7 +68,7 @@ public class MarkChimericReadsTest {
 		clp.OUTPUT_REPORT.deleteOnExit();
 		clp.METRICS = TestUtils.getTempReportFile("MarkChimericReads.", ".chimeric_read_metrics");
 		clp.METRICS.deleteOnExit();
-		clp.INPUT = Arrays.asList(new File(TEST_DATA_DIR, "MarkChimericReads.input2.sam"));
+		clp.INPUT = Arrays.asList(new PicardHtsPath(new File(TEST_DATA_DIR, "MarkChimericReads.input2.sam")));
 		clp.CELL_BC_FILE = new File(TEST_DATA_DIR, "selectedCellBarcodes.txt");
 		clp.STRATEGY = CHIMERIC_STRATEGY.RETAIN_MOST_SUPPORTED;
 		Assert.assertEquals(clp.doWork(), 0);
@@ -85,7 +86,7 @@ public class MarkChimericReadsTest {
 		clp.OUTPUT_REPORT.deleteOnExit();
 		clp.METRICS = TestUtils.getTempReportFile("MarkChimericReads.", ".chimeric_read_metrics");
 		clp.METRICS.deleteOnExit();
-		clp.INPUT = Arrays.asList(new File(TEST_DATA_DIR, "MarkChimericReads.input.sam"));
+		clp.INPUT = Arrays.asList(new PicardHtsPath(new File(TEST_DATA_DIR, "MarkChimericReads.input.sam")));
 		clp.CELL_BC_FILE = new File(TEST_DATA_DIR, "selectedCellBarcodes.txt");
 		clp.MARK_UMI_REUSE = false;
 		clp.T_RICH_THRESHOLD = 6;
@@ -104,7 +105,7 @@ public class MarkChimericReadsTest {
 		clp.OUTPUT_REPORT.deleteOnExit();
 		clp.METRICS = TestUtils.getTempReportFile("MarkChimericReads.", ".chimeric_read_metrics");
 		clp.METRICS.deleteOnExit();
-		clp.INPUT = Arrays.asList(new File(TEST_DATA_DIR, "MarkChimericReads.input.sam"));
+		clp.INPUT = Arrays.asList(new PicardHtsPath(new File(TEST_DATA_DIR, "MarkChimericReads.input.sam")));
 		clp.CELL_BC_FILE = new File(TEST_DATA_DIR, "selectedCellBarcodes.txt");
 		clp.T_RICH_THRESHOLD = 6;
 		Assert.assertEquals(clp.doWork(), 0);

@@ -29,7 +29,8 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -43,7 +44,7 @@ public class BarcodeListRetrievalTest {
             "GGTGAGACAAGG"
     };
 
-    private static final File BAM = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.bam");
+    private static final Path BAM = Paths.get("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.bam");
     private static final String CELL_BARCODE_TAG = "XC";
     private static final String MOLECULAR_BARCODE_TAG = "XM";
     private static final int READ_QUALITY = 10;

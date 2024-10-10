@@ -57,6 +57,7 @@ import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.AssertSequenceDictionaryIntersection;
 import org.broadinstitute.dropseqrna.utils.Bases;
 import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
+import org.broadinstitute.dropseqrna.utils.FileUtils;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
 import org.broadinstitute.dropseqrna.utils.IntervalTagComparator;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
@@ -89,6 +90,7 @@ import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
 import picard.annotation.LocusFunction;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 import picard.util.BasicInputParser;
 import picard.util.TabbedTextFileWithHeaderParser;
 import picard.util.TabbedTextFileWithHeaderParser.Row;
@@ -106,10 +108,10 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 	private static final Log log = Log.getInstance(AssignCellsToSamples.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze. This argument can accept wildcards, or a file with the suffix .bam_list that contains the locations of multiple BAM files", minElements = 1)
-	public List<File> INPUT_BAM;
+	public List<PicardHtsPath> INPUT_BAM;
 
 	@Argument(doc = "The input VCF file to analyze.")
-	public File VCF;
+	public PicardHtsPath VCF;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output file of sample assignments. This supports zipped formats like gz and bz2.")
 	public File OUTPUT;
@@ -224,10 +226,12 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		// get the verbose output writer if not null, or return null.
 		PrintStream verboseWriter = getVerboseWriter(this.VERBOSE_OUTPUT);
 
-		final VCFFileReader vcfReader = new VCFFileReader(this.VCF, true);
+		final VCFFileReader vcfReader = new VCFFileReader(this.VCF.toPath(), true);
 
-		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputs(this.INPUT_BAM, false, SamReaderFactory.makeDefault());
-		AssertSequenceDictionaryIntersection.assertIntersectionObjectVcf(headerAndIter.header, "BAM INPUT(S)", this.VCF, log);
+		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputPaths(
+				PicardHtsPath.toPaths(this.INPUT_BAM), false, SamReaderFactory.makeDefault());
+		AssertSequenceDictionaryIntersection.assertIntersectionObjectVcf(
+				headerAndIter.header, "BAM INPUT(S)", this.VCF.toPath(), log);
 
 		// disable GQ filter if it's not in the header.
 		if (!VCFUtils.GQInHeader(vcfReader)) {
@@ -249,7 +253,8 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		writeVerboseOutputHeader(vcfSamples, answerKey, this.CELL_CONTAMINATION_ESTIMATE_FILE, this.ALLELE_FREQUENCY_ESTIMATE_FILE, verboseWriter);
 
 		// get from the VCF!
-		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(this.VCF, vcfSamples, this.RETAIN_MONOMORPIC_SNPS, this.GQ_THRESHOLD,
+		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(
+				this.VCF.toPath(), vcfSamples, this.RETAIN_MONOMORPIC_SNPS, this.GQ_THRESHOLD,
 				this.FRACTION_SAMPLES_PASSING, IGNORED_CHROMOSOMES, null, false, log);
 
 		// a requested early exit if there are no SNPs.
@@ -515,11 +520,11 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 	}
 
 	private void addMetaDataToHeader(final PrintStream out) {
-
-		List<String> paths = this.INPUT_BAM.stream().map(x -> x.getAbsolutePath()).collect(Collectors.toList());
+		final List<String> paths = FileUtils.toAbsoluteStrings(PicardHtsPath.toPaths(this.INPUT_BAM));
 
 		String bamList = StringUtils.join(paths, ",");
-		List<String> header = new ArrayList<>(Arrays.asList("#INPUT_BAM=" + bamList, "INPUT_VCF=" + this.VCF.getAbsolutePath(),
+		final List<String> header = new ArrayList<>(
+				Arrays.asList("#INPUT_BAM=" + bamList, "INPUT_VCF=" + FileUtils.toAbsoluteString(this.VCF.toPath()),
 				"DONOR_FILE=" + this.SAMPLE_FILE, "CELL_BC_FILE=" + CELL_BC_FILE, "GQ_THRESHOLD=" + Integer.toString(this.GQ_THRESHOLD),
 				"FRACTION_SAMPLES_PASSING=" + Double.toString(this.FRACTION_SAMPLES_PASSING), "READ_MQ=" + Integer.toString(this.READ_MQ),
 				"FIXED_ERROR_RATE=" + CellAssignmentUtils.convertNullToString(this.FIXED_ERROR_RATE),
@@ -895,7 +900,8 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 	public PeekableIterator<List<SampleGenotypeProbabilities>> prepareIterator(final SNPInfoCollection snpIntervals, List<String> barcodes) {
 		// generate the reader with the desired options so we can enable EAGERLY_DECODE.
 		SamReaderFactory factory = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.EAGERLY_DECODE);
-		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputs(this.INPUT_BAM, false, factory);
+		SamHeaderAndIterator headerAndIter =
+				SamFileMergeUtil.mergeInputPaths(PicardHtsPath.toPaths(this.INPUT_BAM), false, factory);
 
 		// override the normal gene annotations with new ones before any other operations.
 		// filter out PCR duplicates.
@@ -953,7 +959,8 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 			return (cellBarcodes);
 		}
 		log.info("Gathering barcodes for the top [" + this.NUM_BARCODES + "] cells");
-		return new BarcodeListRetrieval().getListCellBarcodesByReadCount(this.INPUT_BAM, this.CELL_BARCODE_TAG, this.READ_MQ, null, this.NUM_BARCODES);
+		return new BarcodeListRetrieval().getListCellBarcodesByReadCountFromPaths(
+				PicardHtsPath.toPaths(this.INPUT_BAM), this.CELL_BARCODE_TAG, this.READ_MQ, null, this.NUM_BARCODES);
 	}
 
 	public Map<String, String> readAnswerKey() {
@@ -1173,8 +1180,8 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 
 		final ArrayList<String> list = new ArrayList<>(1);
 
-		IOUtil.assertFileIsReadable(this.VCF);
-		this.INPUT_BAM = FileListParsingUtils.expandFileList(INPUT_BAM);
+		IOUtil.assertFileIsReadable(this.VCF.toPath());
+		this.INPUT_BAM = FileListParsingUtils.expandPicardHtsPathList(INPUT_BAM);
 		IOUtil.assertFileIsWritable(this.OUTPUT);
 		if (CELL_BC_FILE != null)
 			IOUtil.assertFileIsReadable(this.CELL_BC_FILE);
@@ -1183,7 +1190,7 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		if (this.VERBOSE_BEST_DONOR_OUTPUT != null)
 			IOUtil.assertFileIsWritable(this.VERBOSE_BEST_DONOR_OUTPUT);
 		// validate VCF is indexed.
-		if (!VCFUtils.hasIndex(this.VCF))
+		if (!VCFUtils.hasIndex(this.VCF.toPath()))
 			list.add("VCF is not indexed!  Please index and retry.");
 
 		if (this.CELL_CONTAMINATION_ESTIMATE_FILE != null && this.ALLELE_FREQUENCY_ESTIMATE_FILE == null)

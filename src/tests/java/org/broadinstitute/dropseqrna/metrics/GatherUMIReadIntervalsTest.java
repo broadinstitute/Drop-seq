@@ -27,6 +27,7 @@ import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import picard.nio.PicardHtsPath;
 
 import java.io.File;
 import java.util.List;
@@ -43,7 +44,7 @@ public class GatherUMIReadIntervalsTest {
  @Test(dataProvider = "testBasicDataProvider")
  public void testBasic(final int editDistance, final File expectedReport) {
   final GatherUMIReadIntervals clp = new GatherUMIReadIntervals();
-  clp.INPUT = List.of(INPUT);
+  clp.INPUT = List.of(new PicardHtsPath(INPUT));
   clp.CELL_BC_FILE = SELECTED_CELLS;
   clp.OUTPUT = TestUtils.getTempReportFile("GatherUMIReadIntervalsTest.", ".tsv");
   clp.EDIT_DISTANCE = editDistance;
