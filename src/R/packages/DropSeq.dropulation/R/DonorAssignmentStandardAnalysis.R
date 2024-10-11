@@ -118,6 +118,10 @@ plotCommonDonors<-function (df, minimumFractionDonor=0.005) {
     	# Create a data frame from the input vector
     	df <- data.frame(index = seq_along(r), value = r)
     	
+    	#if this data frame has only a single entry, the column names are off.
+    	#This is an odd edge case where a village has only a single donor.
+    	if (dim(df)[1]==1) df$value.Freq=df$value
+    	
     	maxY=max (df$value.Freq)*1.1
     	
     	# Define plot aesthetics
