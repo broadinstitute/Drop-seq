@@ -34,7 +34,7 @@ OptionsTuple = collections.namedtuple("OptionsTuple", ["input", "output", "outpu
                                       defaults=(None, 1000, False, 2000, None))
 class TestHdf5_10X_to_text(unittest.TestCase):
     def setUp(self):
-        self.testDataDir = "../../testdata/python/hdf5_10X_to_text"
+        self.testDataDir = "../../../testdata/python/dropseq_hdf5/hdf5_10X_to_text"
         self.inputFile = os.path.join(self.testDataDir, "N701.h5")
         self.tmpDir = tempfile.mkdtemp(".tmp", "hdf5_10X_to_text.")
         self.sizesFile = os.path.join(self.tmpDir, "N701.digtal_expression_sizes.txt")
