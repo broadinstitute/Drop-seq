@@ -1,0 +1,10 @@
+DONOR	AGE
+donor1	2
+donor2	3
+donor3	4
+donor4	5
+donor5	6
+donor6	7
+donor7	8
+donor8	9
+donor9	10
