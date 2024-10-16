@@ -40,7 +40,7 @@ OptionsTuple = collections.namedtuple("OptionsTuple", ["output", "input", "join"
 
 class TestJoinAndFilterTSV(unittest.TestCase):
     def setUp(self):
-        self.testDataDir = "../../../../testdata/python/dropseq_metadata/join_and_filter_tsv"
+        self.testDataDir = "../../../testdata/python/dropseq_metadata/join_and_filter_tsv"
         self.tmpDir = tempfile.mkdtemp(".tmp", "join_and_filter_tsv.")
         self.outputFile = os.path.join(self.tmpDir, "output.tsv")
         self.options = OptionsTuple(open(self.outputFile, "w"))
