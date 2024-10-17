@@ -161,9 +161,17 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         primary = os.path.join(self.testDataDir, "sample1.100.cell_metadata.txt")
         secondary = os.path.join(self.testDataDir, "sample1.nonunique.scPred.txt")
         options = self.options._replace(input=open(primary),
-                                        join=[(secondary, "CELL_BARCODE", "CELL_BARCODE"),
-                                              (secondary, "CELL_BARCODE", "CELL_BARCODE")])
+                                        join=[(secondary, "CELL_BARCODE", "CELL_BARCODE")])
         self.assertEqual(dropseq_metadata.join_and_filter_tsv.main(options), 1)
+
+    def test_boolean(self):
+        primary = os.path.join(self.testDataDir, "sample1.100.cell_metadata.txt")
+        options = self.options._replace(input=open(primary),
+                                        exclude=[["doublet", "true"]])
+        self.assertEqual(dropseq_metadata.join_and_filter_tsv.main(options), 0)
+        outputDf = pd.read_csv(self.outputFile, sep='\t')
+        self.assertFalse(outputDf["doublet"].any())
+
 
     def assertSharedColumnsEqual(self, wideFile, narrowFile, wideRows = None, narrowRows = None, dropColumns = None):
         wideDf = pd.read_csv(wideFile, sep='\t', index_col=False)
