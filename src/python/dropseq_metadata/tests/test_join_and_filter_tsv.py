@@ -157,6 +157,13 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         self.assertTrue((outputDf["DONOR"].isin(donorsToInclude)).all())
         self.assertFalse((outputDf["predClass"].isin(predClassesToExclude)).any())
 
+    def test_negative_non_unique_join(self):
+        primary = os.path.join(self.testDataDir, "sample1.100.cell_metadata.txt")
+        secondary = os.path.join(self.testDataDir, "sample1.nonunique.scPred.txt")
+        options = self.options._replace(input=open(primary),
+                                        join=[(secondary, "CELL_BARCODE", "CELL_BARCODE"),
+                                              (secondary, "CELL_BARCODE", "CELL_BARCODE")])
+        self.assertEqual(dropseq_metadata.join_and_filter_tsv.main(options), 1)
 
     def assertSharedColumnsEqual(self, wideFile, narrowFile, wideRows = None, narrowRows = None, dropColumns = None):
         wideDf = pd.read_csv(wideFile, sep='\t', index_col=False)

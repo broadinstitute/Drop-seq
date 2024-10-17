@@ -1,0 +1,3 @@
+CELL_BARCODE	predClass	max.prob	predClass_allen_gluta_subclass	max.prob_allen_gluta_subclass	predClass_allen_gluta_subtype	max.prob_allen_gluta_subtype	predClass_allen_gaba_subclass	max.prob_allen_gaba_subclass	predClass_allen_gaba_subtype	max.prob_allen_gaba_subtype	doublet
+TGACTTTGTACGCTGC	glutamatergic	0.7	L23IT	1	Exc L2-3 LINC00507 FREM3	0.78	NA	NA	NA	NA	FALSE
+TGACTTTGTACGCTGC	glutamatergic	1	L23IT	1	Exc L2-3 LINC00507 FREM3	0.667	NA	NA	NA	NA	FALSE
