@@ -40,6 +40,11 @@ line or in a file.
 import argparse
 import sys
 import pandas as pd
+from pandas.errors import MergeError
+try:
+    from . import cli
+except ImportError:
+    import cli
 
 DELETEME_COLUMN_SUFFIX = '_deleteme'
 
@@ -100,8 +105,13 @@ def main(options):
     for join_file, input_col, join_col in options.join:
         join_col_in_left = join_col in primary.columns
         secondary = pd.read_csv(join_file, sep='\t')
-        primary = primary.merge(secondary, how='left', left_on=input_col, right_on=join_col,
-                                suffixes=(None, DELETEME_COLUMN_SUFFIX))
+        try:
+            # many_to_one: require that the join column in the secondary file is unique
+            primary = primary.merge(secondary, how='left', left_on=input_col, right_on=join_col, validate="many_to_one",
+                                    suffixes=(None, DELETEME_COLUMN_SUFFIX))
+        except MergeError as e:
+            cli.logger.error(f"Error joining {join_file} on {input_col} and {join_col}: {e}")
+            return 1
         if not join_col_in_left:
             # drop the join column from the merged data frame
             primary.drop(join_col, axis=1, inplace=True)
