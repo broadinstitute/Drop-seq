@@ -2,7 +2,7 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 [project]
-name = "dropseq_metadata"
+name = "dropseq_aggregation"
 version = "3.0.2"
 dependencies = [
     "pandas==2.2.3"
@@ -24,4 +24,5 @@ Homepage = "https://github.com/broadinstitute/Drop-seq/"
 Issues = "https://github.com/broadinstitute/Drop-seq/issues"
 
 [project.scripts]
-dropseq_metadata = "dropseq_metadata.cli:main"
+join_and_filter_tsv = "dropseq_aggregation.join_and_filter_tsv:main"
+
