@@ -1,4 +1,4 @@
-name: dropseq_metadata
+name: dropseq_aggregation
 channels:
   - conda-forge
   - nodefaults
