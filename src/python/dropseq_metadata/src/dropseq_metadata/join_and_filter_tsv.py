@@ -48,7 +48,10 @@ except ImportError:
 
 DELETEME_COLUMN_SUFFIX = '_deleteme'
 
-def try_convert_string_to_number(s):
+BOOLEAN_STRINGS = {'true': True,
+                     'false': False}
+
+def try_convert_string(s):
     int_val = None
     float_val = None
     try:
@@ -60,6 +63,8 @@ def try_convert_string_to_number(s):
     except ValueError:
         pass
     if int_val is None and float_val is None:
+        if s.lower() in BOOLEAN_STRINGS:
+            return BOOLEAN_STRINGS[s.lower()]
         return s
     if int_val is None and float_val is not None:
         return float_val
@@ -109,7 +114,7 @@ def main(options):
             # many_to_one: require that the join column in the secondary file is unique
             primary = primary.merge(secondary, how='left', left_on=input_col, right_on=join_col, validate="many_to_one",
                                     suffixes=(None, DELETEME_COLUMN_SUFFIX))
-        except MergeError as e:
+        except MergeError    as e:
             cli.logger.error(f"Error joining {join_file} on {input_col} and {join_col}: {e}")
             return 1
         if not join_col_in_left:
@@ -121,12 +126,12 @@ def main(options):
                 primary.drop(col, axis=1, inplace=True)
     # set columns to constant values
     for column, value in options.set:
-        primary[column] = try_convert_string_to_number(value)
+        primary[column] = try_convert_string(value)
     # filter out rows based on column values
     for column, value in options.min:
-        primary = primary[primary[column] >= try_convert_string_to_number(value)]
+        primary = primary[primary[column] >= try_convert_string(value)]
     for column, value in options.max:
-        primary = primary[primary[column] <= try_convert_string_to_number(value)]
+        primary = primary[primary[column] <= try_convert_string(value)]
     for column, file in options.include_file:
         include_values = load_values_file(file)
         primary = primary[primary[column].isin(include_values)]
@@ -136,12 +141,12 @@ def main(options):
     for includes in options.include:
         column = includes[0]
         values = includes[1:]
-        values = [try_convert_string_to_number(value) for value in values]
+        values = [try_convert_string(value) for value in values]
         primary = primary[primary[column].isin(values)]
     for excludes in options.exclude:
         column = excludes[0]
         values = excludes[1:]
-        values = [try_convert_string_to_number(value) for value in values]
+        values = [try_convert_string(value) for value in values]
         primary = primary[~primary[column].isin(values)]
     # write the output
     primary.to_csv(options.output, sep='\t', index=False)
