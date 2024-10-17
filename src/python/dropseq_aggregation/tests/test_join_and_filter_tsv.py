@@ -53,7 +53,7 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         secondary = os.path.join(self.testDataDir, "sample1.100.scPred.txt")
         options = self.options._replace(input=open(primary),
                                         join=[(secondary, "CELL_BARCODE", "CELL_BARCODE")])
-        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.main(options), 0)
+        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.run(options), 0)
         self.assertSharedColumnsEqual(self.outputFile, primary)
         self.assertSharedColumnsEqual(self.outputFile, secondary)
 
@@ -62,7 +62,7 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         secondary = os.path.join(self.testDataDir, "sample1.50.scPred.txt")
         options = self.options._replace(input=open(primary),
                                         join=[(secondary, "CELL_BARCODE", "CELL_BARCODE")])
-        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.main(options), 0)
+        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.run(options), 0)
         self.assertSharedColumnsEqual(self.outputFile, primary)
         self.assertSharedColumnsEqual(self.outputFile, secondary, wideRows=49)
 
@@ -71,7 +71,7 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         secondary = os.path.join(self.testDataDir, "sample1.100.scPred.txt")
         options = self.options._replace(input=open(primary),
                                         join=[(secondary, "CELL_BARCODE", "CELL_BARCODE")])
-        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.main(options), 0)
+        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.run(options), 0)
         self.assertSharedColumnsEqual(self.outputFile, primary)
         self.assertSharedColumnsEqual(self.outputFile, secondary, narrowRows=49)
 
@@ -82,7 +82,7 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         options = self.options._replace(input=open(primary),
                                         join=[(secondary1, "CELL_BARCODE", "CELL_BARCODE"),
                                               (secondary2, "DONOR", "DONOR")])
-        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.main(options), 0)
+        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.run(options), 0)
         self.assertSharedColumnsEqual(self.outputFile, primary)
         self.assertSharedColumnsEqual(self.outputFile, secondary1)
         self.assertMultiJoin(self.outputFile, secondary2, "DONOR", "DONOR")
@@ -94,7 +94,7 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         options = self.options._replace(input=open(primary),
                                         join=[(secondary, "CELL_BARCODE", "CELL_BARCODE")],
                                         set=setTuples)
-        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.main(options), 0)
+        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.run(options), 0)
         outputDf = pd.read_csv(self.outputFile, sep='\t')
         for column, value in setTuples:
             self.assertTrue((outputDf[column] == value).all())
@@ -107,7 +107,7 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         options = self.options._replace(input=open(primary),
                                         join=[(secondary, "CELL_BARCODE", "CELL_BARCODE")],
                                         min=[("max.prob", "0.8")])
-        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.main(options), 0)
+        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.run(options), 0)
         outputDf = pd.read_csv(self.outputFile, sep='\t')
         self.assertTrue((outputDf["max.prob"] >= 0.8).all())
         primaryDf = pd.read_csv(primary, sep='\t')
@@ -119,7 +119,7 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         options = self.options._replace(input=open(primary),
                                         join=[(secondary, "CELL_BARCODE", "CELL_BARCODE")],
                                         max=[("max.prob", "0.8")])
-        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.main(options), 0)
+        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.run(options), 0)
         outputDf = pd.read_csv(self.outputFile, sep='\t')
         self.assertTrue((outputDf["max.prob"] <= 0.8).all())
         primaryDf = pd.read_csv(primary, sep='\t')
@@ -130,7 +130,7 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         includeFile = os.path.join(self.testDataDir, "donor_subset.txt")
         options = self.options._replace(input=open(primary),
                                         include_file=[("DONOR", includeFile)])
-        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.main(options), 0)
+        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.run(options), 0)
         outputDf = pd.read_csv(self.outputFile, sep='\t')
         includeValues = pd.read_csv(includeFile, sep='\t', header=None).iloc[0]
         self.assertTrue((outputDf["DONOR"].isin(includeValues)).all())
@@ -140,7 +140,7 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         excludeFile = os.path.join(self.testDataDir, "donor_subset.txt")
         options = self.options._replace(input=open(primary),
                                         exclude_file=[("DONOR", excludeFile)])
-        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.main(options), 0)
+        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.run(options), 0)
         outputDf = pd.read_csv(self.outputFile, sep='\t')
         excludeValues = pd.read_csv(excludeFile, sep='\t', header=None).iloc[0]
         self.assertFalse((outputDf["DONOR"].isin(excludeValues)).any())
@@ -152,7 +152,7 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         options = self.options._replace(input=open(primary),
                                         include=[["DONOR"] + donorsToInclude],
                                         exclude=[["predClass"] + predClassesToExclude])
-        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.main(options), 0)
+        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.run(options), 0)
         outputDf = pd.read_csv(self.outputFile, sep='\t')
         self.assertTrue((outputDf["DONOR"].isin(donorsToInclude)).all())
         self.assertFalse((outputDf["predClass"].isin(predClassesToExclude)).any())
@@ -162,13 +162,13 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         secondary = os.path.join(self.testDataDir, "sample1.nonunique.scPred.txt")
         options = self.options._replace(input=open(primary),
                                         join=[(secondary, "CELL_BARCODE", "CELL_BARCODE")])
-        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.main(options), 1)
+        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.run(options), 1)
 
     def test_boolean(self):
         primary = os.path.join(self.testDataDir, "sample1.100.cell_metadata.txt")
         options = self.options._replace(input=open(primary),
                                         exclude=[["doublet", "true"]])
-        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.main(options), 0)
+        self.assertEqual(dropseq_aggregation.join_and_filter_tsv.run(options), 0)
         outputDf = pd.read_csv(self.outputFile, sep='\t')
         self.assertFalse(outputDf["doublet"].any())
 

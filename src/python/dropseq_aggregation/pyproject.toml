@@ -24,4 +24,5 @@ Homepage = "https://github.com/broadinstitute/Drop-seq/"
 Issues = "https://github.com/broadinstitute/Drop-seq/issues"
 
 [project.scripts]
-dropseq_aggregation = "dropseq_aggregation.cli:main"
+join_and_filter_tsv = "dropseq_aggregation.join_and_filter_tsv:main"
+

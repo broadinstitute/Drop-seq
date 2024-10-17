@@ -9,5 +9,5 @@ pip install 'git+https://github.com/broadinstitute/Drop-seq.git#egg=dropseq_aggr
 
 ## Usage
 
-Run `dropseq_aggregation -h` for usage information.
+Run `join_and_filter_tsv -h` for usage information.
 

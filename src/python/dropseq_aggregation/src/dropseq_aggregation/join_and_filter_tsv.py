@@ -39,12 +39,10 @@ line or in a file.
 
 import argparse
 import sys
+
 import pandas as pd
 from pandas.errors import MergeError
-try:
-    from . import cli
-except ImportError:
-    import cli
+from . import logger, add_log_argument
 
 DELETEME_COLUMN_SUFFIX = '_deleteme'
 
@@ -77,8 +75,9 @@ def try_convert_string(s):
 def load_values_file(file):
     return pd.read_csv(file, sep='\t', header=None).iloc[0]
 
-def add_subparser(subparsers):
-    parser = subparsers.add_parser("join_and_filter_tsv", description=__doc__)
+def parse_args(args):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    add_log_argument(parser)
     parser.add_argument("--input", "-i", type=argparse.FileType('r'),
                         help="Primary tab-separated file to join.  Default: %(default)s", default=sys.stdin)
     parser.add_argument("--output", "-o", type=argparse.FileType('w'),
@@ -101,8 +100,12 @@ def add_subparser(subparsers):
                         help="Filter out rows where COLUMN is not one of the given VALUEs.  May be specified multiple times.")
     parser.add_argument("--exclude", nargs='+', action='append', default=[], metavar=('COLUMN', 'VALUE'),
                         help="Filter out rows where COLUMN is one of the given VALUEs.  May be specified multiple times.")
+    return parser.parse_args(args)
 
-def main(options):
+def main(args=None):
+    run(parse_args(args))
+
+def run(options):
     # load the primary file
     primary = pd.read_csv(options.input, sep='\t')
     options.input.close()
@@ -115,7 +118,7 @@ def main(options):
             primary = primary.merge(secondary, how='left', left_on=input_col, right_on=join_col, validate="many_to_one",
                                     suffixes=(None, DELETEME_COLUMN_SUFFIX))
         except MergeError    as e:
-            cli.logger.error(f"Error joining {join_file} on {input_col} and {join_col}: {e}")
+            logger.error(f"Error joining {join_file} on {input_col} and {join_col}: {e}")
             return 1
         if not join_col_in_left:
             # drop the join column from the merged data frame
@@ -153,4 +156,5 @@ def main(options):
     options.output.close()
     return 0
 
-
+if __name__ == "__main__":
+    sys.exit(main())
