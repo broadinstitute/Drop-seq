@@ -47,7 +47,7 @@ dctLogLevel = {
 
 
 def main(args=None):
-    parser = argparse.ArgumentParser(prog="dropseq_metadata", description=__doc__)
+    parser = argparse.ArgumentParser(prog="dropseq_aggregation", description=__doc__)
     parser.add_argument("--log-level", "-l", default="INFO", choices=dctLogLevel.keys(),
                         help="Set the logging level.  (default: %(default)s)")
     subparsers = parser.add_subparsers(
