@@ -5,17 +5,18 @@ build-backend = "hatchling.build"
 name = "dropseq_hdf5"
 version = "3.0.2"
 dependencies = [
-    "anndata==0.7.6",
-    "tables==3.6.1",
-    "numpy==1.21.2",
-    "scipy==1.7.1",
+    "anndata",
+    "numpy",
+    "pandas",
+    "scipy",
+    "tables",
 ]
 authors = [
   { name="Alec Wysoker", email="alecw@broadinstitute.org" },
 ]
 description = "Command-line tools for converting from various HDF5 formats to Drop-seq format."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
