@@ -5,14 +5,14 @@ build-backend = "hatchling.build"
 name = "dropseq_aggregation"
 version = "3.0.2"
 dependencies = [
-    "pandas==2.2.3"
+    "pandas",
 ]
 authors = [
   { name="Alec Wysoker", email="alecw@broadinstitute.org" },
 ]
 description = "Command-line tools for converting from various HDF5 formats to Drop-seq format."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -25,4 +25,3 @@ Issues = "https://github.com/broadinstitute/Drop-seq/issues"
 
 [project.scripts]
 join_and_filter_tsv = "dropseq_aggregation.join_and_filter_tsv:main"
-
