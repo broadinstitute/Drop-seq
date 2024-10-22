@@ -25,3 +25,4 @@ Issues = "https://github.com/broadinstitute/Drop-seq/issues"
 
 [project.scripts]
 join_and_filter_tsv = "dropseq_aggregation.join_and_filter_tsv:main"
+cat_tsvs = "dropseq_aggregation.cat_tsvs:main"
