@@ -75,6 +75,7 @@ extends AbstractTripletDgeWriterClp {
             dge: the location of the tabular DGE, which must be lexically sorted by gene. (required)
             prefix: a prefix to prepend to each CBC.  (default: no prefix)
             barcode_list: File containing non-prefixed cell barcodes to include.  (default: include all CBCs in DGE)
+            barcode_column: the name of the column in barcode_list containing the CBCs to include.  (default: barcode_list has no header)
             
             The DGEs will be merged in the order they appear in the list.
             CBCs (with optional prefix) must be unique.
