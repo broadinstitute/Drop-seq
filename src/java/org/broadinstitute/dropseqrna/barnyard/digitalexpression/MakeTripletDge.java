@@ -70,7 +70,7 @@ public class MakeTripletDge
 extends AbstractTripletDgeWriterClp {
     @Argument(shortName = "M", doc= """
             yaml input file containing list of DGEs to be merged.
-            The file is expected to contain a 'datasets' list.  Each element of the list will contain:
+            The file is expected to contain a 'dges' list.  Each element of the list will contain:
             
             dge: the location of the tabular DGE, which must be lexically sorted by gene. (required)
             prefix: a prefix to prepend to each CBC.  (default: no prefix)
