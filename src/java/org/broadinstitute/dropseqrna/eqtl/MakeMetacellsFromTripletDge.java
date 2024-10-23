@@ -89,6 +89,10 @@ extends CommandLineProgram {
     @Argument(doc="This string is used to join the values in the group columns to create the metacell name.")
     public String GROUP_SEPARATOR = ":";
 
+    @Argument( doc = "Value to use for missing group values.  Default: skip rows in MAPPING file that have an empty " +
+            "value for one or more of the GROUP_COLUMNS.",optional = true)
+    public String MISSING_GROUP_VALUE;
+
     public static final String DEFAULT_BARCODES_FILENAME = "barcodes.tsv.gz";
     public static final String DEFAULT_FEATURES_FILENAME = "features.tsv.gz";
 
@@ -221,7 +225,15 @@ extends CommandLineProgram {
             if (cellBarcodeMetacellIndices[barcodeIndex+1] != -1) {
                 throw new IllegalArgumentException("Duplicate cell barcode in mapping file: " + cellBarcode);
             }
-            final String metacell = StringUtil.join(GROUP_SEPARATOR, GROUP_COLUMNS.stream().map(row::getField).toList());
+            List<String> group_values = GROUP_COLUMNS.stream().map(row::getField).toList();
+            if (MISSING_GROUP_VALUE == null) {
+                if (group_values.contains(null)) {
+                    continue; // skip this row
+                }
+            } else {
+                group_values = group_values.stream().map(v -> v == null ? MISSING_GROUP_VALUE : v).toList();
+            }
+            final String metacell = StringUtil.join(GROUP_SEPARATOR, group_values);
             final Integer metacellIndex = metacellToColumnMap.computeIfAbsent(metacell, k -> metacellToColumnMap.size());
             cellBarcodeMetacellIndices[barcodeIndex+1] = metacellIndex;
         }

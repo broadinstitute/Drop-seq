@@ -38,14 +38,28 @@ public class MakeMetacellsFromTripletDgeTest {
     public void testDonor() {
         final MakeMetacellsFromTripletDge clp = runIt("matrix.mtx.gz", "barcodes.tsv.gz", "features.tsv.gz",
                 "donor_map.txt", Arrays.asList("DONOR"));
-        TestUtils.testFilesSame(new File(TEST_DATA_DIR, "expected.donor.metacells.txt.gz"), clp.OUTPUT);
+        Assert.assertTrue(TestUtils.testFilesSame(new File(TEST_DATA_DIR, "expected.donor.metacells.txt.gz"), clp.OUTPUT));
     }
 
     @Test
     public void testDonorCellType() {
         final MakeMetacellsFromTripletDge clp = runIt("matrix.mtx.gz", "barcodes.tsv.gz", "features.tsv.gz",
                 "donor_cell_type_map.txt", Arrays.asList("DONOR", "CELL_TYPE"));
-        TestUtils.testFilesSame(new File(TEST_DATA_DIR, "expected.donor_celltype.metacells.txt.gz"), clp.OUTPUT);
+        Assert.assertTrue(TestUtils.testFilesSame(new File(TEST_DATA_DIR, "expected.donor_celltype.metacells.txt.gz"), clp.OUTPUT));
+    }
+
+    @Test
+    public void testDonorCellTypeMissingData() {
+        final MakeMetacellsFromTripletDge clp = runIt("matrix.mtx.gz", "barcodes.tsv.gz", "features.tsv.gz",
+                "donor_cell_type_map_missing.txt", Arrays.asList("DONOR", "CELL_TYPE"));
+        Assert.assertTrue(TestUtils.testFilesSame(new File(TEST_DATA_DIR, "expected.donor_celltype_missing.metacells.txt.gz"), clp.OUTPUT));
+    }
+
+    @Test
+    public void testDonorCellTypeMissingDataRetained() {
+        final MakeMetacellsFromTripletDge clp = runIt("matrix.mtx.gz", "barcodes.tsv.gz", "features.tsv.gz",
+                "donor_cell_type_map_missing.txt", Arrays.asList("DONOR", "CELL_TYPE"), "MISSING");
+        Assert.assertTrue(TestUtils.testFilesSame(new File(TEST_DATA_DIR, "expected.donor_celltype_missing_retained.metacells.txt.gz"), clp.OUTPUT));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -56,6 +70,11 @@ public class MakeMetacellsFromTripletDgeTest {
 
     private MakeMetacellsFromTripletDge runIt(final String matrix, final String barcodes, final String features,
                                               final String mapping, final List<String> groups) {
+        return runIt(matrix, barcodes, features, mapping, groups, null);
+    }
+
+    private MakeMetacellsFromTripletDge runIt(final String matrix, final String barcodes, final String features,
+                                              final String mapping, final List<String> groups, final String missingGroupValue) {
         final MakeMetacellsFromTripletDge clp = new MakeMetacellsFromTripletDge();
         clp.TMP_DIR = Arrays.asList(TestUtils.createTempDirectory("MakeMetacellsFromTripletDgeTest."));
         clp.MATRIX = new File(TEST_DATA_DIR, matrix);
@@ -64,6 +83,7 @@ public class MakeMetacellsFromTripletDgeTest {
         clp.MAPPING = new File(TEST_DATA_DIR, mapping);
         clp.GROUP_COLUMNS = groups;
         clp.OUTPUT = TestUtils.getTempReportFile("MakeTripletDgeTest.", ".metacells.txt.gz");
+        clp.MISSING_GROUP_VALUE = missingGroupValue;
         Assert.assertEquals(clp.doWork(), 0);
         return clp;
     }
