@@ -518,7 +518,7 @@ public class LikelihoodUtils {
 		// If this donor has the reference allele, use the referencee allele penalty.
 		double errrorProb = penaltyScores[0];
 		// otherwise use the alternate allele penalty
-		if (base!=referenceAllele) errrorProb = penaltyScores[1];		
+		if (base!=referenceAllele) errrorProb = penaltyScores[1];
 		double result = getLikelihoodHomozygote(alleleOne, alleleTwo, base, errrorProb, genotypeProbability);
 		return (result);
 	}

@@ -105,6 +105,8 @@ public class SummarizeUMIBaseQualities {
 	 * Mean of : 0.999,0.999,0.1=0.6993333
 	 * Thus an error rate of 1-0.6993333=0.3006667, which is a phread base score of ~ 5.
 	 * We want to penalize bases with disagreements.
+	 * Note: Phred scores of 0 are not allowed (can't have an error rate of 1), so if the mean is 0, it's set to 1.
+	 * There's an issue here where the error rate will never be 1, but is quantized to 1 by the conversion to phred score.
 	 * @return
 	 */
 	public int getSummarizedPhreadScoreByMeanWithErrors () {
@@ -123,8 +125,11 @@ public class SummarizeUMIBaseQualities {
 				mean.increment(1-prob);
 		}
 		double meanErrorProbability = mean.getResult();
-		int phread = LikelihoodUtils.getInstance().errorProbabilityToPhredScore(meanErrorProbability);
-		return phread;
+		int phred = LikelihoodUtils.getInstance().errorProbabilityToPhredScore(meanErrorProbability);
+		// can't have a phread score of 0 for likeliylhood calculations.
+		if (phred==0)
+			phred=1;
+		return phred;
 	}
 
 	/**
