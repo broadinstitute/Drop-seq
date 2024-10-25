@@ -62,14 +62,24 @@ def main(options):
     cli.logger.info(f'loading full adata {options.input}')
     adata = ad.read_h5ad(options.input)
 
-    adata.var['duplicated_gene_name'] = adata.var['gene_names'].duplicated(keep=False)
-    num_duplicated_genes = adata.var['duplicated_gene_name'].sum()
+    duplicated_gene_name = adata.var['gene_names'].duplicated(keep=False)
+    num_duplicated_genes = duplicated_gene_name.sum()
     if num_duplicated_genes > 0:
         cli.logger.info(f'Removing {num_duplicated_genes} duplicated gene names')
-        adata = adata[:, ~adata.var['duplicated_gene_name']]
+        adata = adata[:, ~duplicated_gene_name]
+
+    # Convert the counts matrix to integers, and transpose where rows are genes and columns are cell barcodes
+    matrix = adata.X.astype(int).T
+    # Count the number of transcripts per cell barcode
+    num_transcripts = matrix.sum(axis=0).A1
 
     cli.logger.info(f'subsetting to barcodes with at least {options.min_transcripts} transcripts')
-    adata = adata[adata.obs['n_molecules'] >= options.min_transcripts, :]
+    adata = adata[num_transcripts >= options.min_transcripts, :]
+
+    # Convert the counts matrix to integers, and transpose where rows are genes and columns are cell barcodes
+    matrix = adata.X.astype(int).T
+    # Count the number of transcripts per cell barcode
+    num_transcripts = matrix.sum(axis=0).A1
 
     # add additional columns with names that are expected by the downstream tools
     obs = adata.obs.copy()
@@ -78,8 +88,8 @@ def main(options):
     obs['NUM_GENES'] = obs['n_genes']
     obs['NUM_GENIC_READS'] = obs['reads_mapped_exonic'] + + obs['reads_mapped_exonic_as'] + \
                              obs['reads_mapped_intronic'] + obs['reads_mapped_intronic_as']
-    obs['NUM_TRANSCRIPTS'] = obs['n_molecules']
-    obs['num_transcripts'] = obs['n_molecules']
+    obs['NUM_TRANSCRIPTS'] = num_transcripts
+    obs['num_transcripts'] = num_transcripts
     obs['num_reads'] = mapped_reads
     obs['totalReads'] = total_reads
     obs['mappedReads'] = mapped_reads
@@ -112,7 +122,7 @@ def main(options):
     if options.mtx is not None:
         cli.logger.info('generating mtx')
         with io_utils.open_maybe_gz(options.mtx, 'wb') as fOut:
-            mmwrite(fOut, adata.X.T, field='integer')
+            mmwrite(fOut, matrix)
     if options.barcodes is not None:
         cli.logger.info(f'generating barcodes')
         with io_utils.open_maybe_gz(options.barcodes, 'wt') as fOut:
@@ -127,7 +137,7 @@ def main(options):
 
     if options.dge is not None:
         cli.logger.info(f'generating dge')
-        dge = pd.DataFrame.sparse.from_spmatrix(adata.X.T.astype(int))
+        dge = pd.DataFrame.sparse.from_spmatrix(matrix)
         dge.columns = adata.obs_names
         dge.index = adata.var_names
         dge.index.name = 'GENE'
