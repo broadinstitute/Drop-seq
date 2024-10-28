@@ -43,9 +43,39 @@ def main(args=None):
     options = parser.parse_args(args)
     return run(options)
 
+def get_best_column_types(dfs):
+    """If a column has all empty values in a dataframe, it seems to get dtype float64.
+    Look at all the columns across the input data frames, and if they column types disagree, pick the one
+    for which there are non-empty values."""
+    column_types = {}
+    for df in dfs:
+        for col in df.columns:
+            if df[col].isna().all():
+                continue
+            if col not in column_types:
+                column_types[col] = df[col].dtype
+            elif df[col].dtype != column_types[col]:
+                raise Exception(f"Column types disagree across input files for column {col}. {df[col].dtype} != {column_types[col]}")
+    for col in dfs[0].columns:
+        if col not in column_types:
+            column_types[col] = dfs[0][col].dtype
+    ret = df.dtypes.copy()
+    for col in column_types:
+        ret[col] = column_types[col]
+    return ret
+
+def maybe_fix_columns(df, dtypes):
+    for col in df.columns:
+        if col in dtypes:
+            df[col] = df[col].astype(dtypes[col])
+    return df
+
 def run(options):
     dfs = [pd.read_csv(f, sep="\t") for f in options.input]
     map(lambda f: f.close(), options.input)
+    best_dtypes = get_best_column_types(dfs)
+    dfs = [maybe_fix_columns(df, best_dtypes) for df in dfs]
+
     df = pd.concat(dfs)
     if options.index_col:
         # Check for duplicate keys
