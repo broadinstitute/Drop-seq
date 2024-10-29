@@ -1,0 +1,2 @@
+PREFIX	CELL_BARCODE	predClass	max.prob	doublet	DONOR	NUM_GENIC_READS	NUM_TRANSCRIPTS	NUM_GENES	bestSample	bestLikelihood	pvalue	num_retained_transcripts	pct_coding	pct_utr	pct_intergenic	pct_genic	pct_intronic	pct_mt	pct_ribosomal	frac_contamination	BRAINBANK	AGE	SEX	RACE	ETHNICITY	PMI	HBCAC.Status
+rxn2	AACGAAACACAACGTT	glutamatergic	1.0	1.0	donor6	222398	86298	10466	donor6	-1500.4	5e-324	86298	0.1237	0.0702	0.0664	0.1939	0.7374	0.0023	0	0.0022660531366337	Maryland	47.0	Male	White	Not reported	22.0	non-HBCAC archival
