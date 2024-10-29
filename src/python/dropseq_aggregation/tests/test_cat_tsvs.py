@@ -67,3 +67,8 @@ class TestCatTsvs(unittest.TestCase):
         inDfs = [pd.read_csv(f, sep="\t") for f in inputs]
         self.assertEqual(len(outDf), sum(len(df) for df in inDfs))
         self.assertEqual(set(outDf.columns), set.union(*[set(df.columns) for df in inDfs]))
+
+    def test_conflicting_column_type(self):
+        inputs = [self.inputs[0], os.path.join(self. testDataDir, "conflicting_column_type.joined_filtered_cell_metadata.tsv")]
+        options = self.options._replace(index_col=self.index_cols, input=[open(f) for f in inputs])
+        self.assertRaisesRegex(Exception, 'Column types disagree', dropseq_aggregation.cat_tsvs.run, options)
