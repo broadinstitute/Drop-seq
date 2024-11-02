@@ -61,10 +61,11 @@ import picard.util.TabbedTextFileWithHeaderParser;
     @Argument(doc="intervals files are named using this prefix")
     public String PREFIX;
 
-    @Argument(doc="Name(s) of MT reference sequence, for creating mt.intervals file")
+    @Argument(doc="Name(s) of MT reference sequence, for creating mt.intervals file", optional = true)
     public List<String> MT_SEQUENCE;
 
-    @Argument(doc="Name(s) of non-autosome reference sequences, for creating non_autosomes.intervals file")
+    @Argument(doc="Name(s) of non-autosome reference sequences, for creating non_autosomes.intervals file",
+            optional = true)
     public List<String> NON_AUTOSOME_SEQUENCE;
 
     public static void main(final String[] args) {
@@ -95,10 +96,18 @@ import picard.util.TabbedTextFileWithHeaderParser;
         final IntervalList mtIntervals;
         final IntervalList nonAutosomeIntervals;
 
+        if (MT_SEQUENCE == null) {
+            MT_SEQUENCE = new ArrayList<>();
+        }
+
         if (MT_SEQUENCE.isEmpty())
 			mtIntervals = null;
 		else
 			mtIntervals = new IntervalList(createSubsetSamHeader(samHeader, MT_SEQUENCE));
+
+        if (NON_AUTOSOME_SEQUENCE == null) {
+            NON_AUTOSOME_SEQUENCE = new ArrayList<>();
+        }
 
         if (NON_AUTOSOME_SEQUENCE.isEmpty())
 			nonAutosomeIntervals = null;

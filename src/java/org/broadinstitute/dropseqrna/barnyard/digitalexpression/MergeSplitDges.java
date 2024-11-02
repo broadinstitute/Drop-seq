@@ -54,7 +54,7 @@ extends CommandLineProgram {
     @Argument(doc = "The Prefix to add to every cell barcode so that cell barcodes seen "
             + "in multiple DGEs can be differentiated.  A typical setting would be 'EXP1_', yielding barcodes like EXP1_ACTGACCGTTTG.  " +
             "If this is used, it must be invoked as many times as INPUT.  This is option is typically not necessary " +
-            "for split DGEs." )
+            "for split DGEs.", optional = true)
     public List<String> PREFIX;
     @Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output dense, tabular DGE file.  " +
             "If filename ends with .gz, will be compressed.")
@@ -79,6 +79,9 @@ extends CommandLineProgram {
         if (INPUT.isEmpty()) {
             log.error("No input files specified.");
             return 1;
+        }
+        if (PREFIX == null) {
+            PREFIX = new ArrayList<>();
         }
         if (!PREFIX.isEmpty() && INPUT.size()!=PREFIX.size()) {
             log.error("Must have the same number of INPUT and PREFIX parameters, or else no PREFIXes can be specified");
