@@ -80,4 +80,89 @@ public class CreateIntervalsFilesTest {
             FileUtils.deleteDirectory(clp.OUTPUT);
         }
     }
+
+    @Test
+    public void testCreateIntervalsFilesNoMT() throws IOException {
+        final CreateIntervalsFiles clp = new CreateIntervalsFiles();
+        clp.SEQUENCE_DICTIONARY = new File(METADATA_DIR, REFERENCE_NAME + ".dict");
+        clp.REDUCED_GTF = new File(METADATA_DIR, REFERENCE_NAME + ".reduced.gtf.gz");
+        clp.OUTPUT = TestUtils.createTempDirectory("CreateIntervalsFilesTest");
+        clp.PREFIX = REFERENCE_NAME;
+        clp.NON_AUTOSOME_SEQUENCE = NON_AUTOSOME_SEQUENCE;
+
+        try {
+            Assert.assertEquals(clp.doWork(), 0);
+
+            Assert.assertFalse(new File(clp.OUTPUT, REFERENCE_NAME + ".mt.intervals").exists());
+
+            final IntervalList nonAutosomeSequences =
+                    IntervalList.fromFile(new File(clp.OUTPUT, REFERENCE_NAME + ".non_autosomes.intervals"));
+            Assert.assertEquals(nonAutosomeSequences.size(), 0);
+            Assert.assertEquals(nonAutosomeSequences.getHeader().getSequenceDictionary().size(), 3);
+
+            final IntervalList rRnaIntervals =
+                    IntervalList.fromFile(new File(clp.OUTPUT, REFERENCE_NAME + ".rRNA.intervals"));
+            Assert.assertEquals(rRnaIntervals.size(), 355);
+
+            // This is hard to validate, so just confirm its readability.
+            IntervalList.fromFile(new File(clp.OUTPUT, REFERENCE_NAME + ".intergenic.intervals"));
+
+            final IntervalList genesIntervals =
+                    IntervalList.fromFile(new File(clp.OUTPUT, REFERENCE_NAME + ".genes.intervals"));
+            Assert.assertEquals(genesIntervals.size(), 32976);
+
+            final IntervalList exonsIntervals =
+                    IntervalList.fromFile(new File(clp.OUTPUT, REFERENCE_NAME + ".exons.intervals"));
+            Assert.assertEquals(exonsIntervals.size(), 615275);
+
+            final IntervalList consensusIntronsIntervals =
+                    IntervalList.fromFile(new File(clp.OUTPUT, REFERENCE_NAME + ".consensus_introns.intervals"));
+            Assert.assertEquals(consensusIntronsIntervals.size(), 396038);
+
+        } finally {
+            FileUtils.deleteDirectory(clp.OUTPUT);
+        }
+    }
+
+    @Test
+    public void testCreateIntervalsFilesNoNonAutosome() throws IOException {
+        final CreateIntervalsFiles clp = new CreateIntervalsFiles();
+        clp.SEQUENCE_DICTIONARY = new File(METADATA_DIR, REFERENCE_NAME + ".dict");
+        clp.REDUCED_GTF = new File(METADATA_DIR, REFERENCE_NAME + ".reduced.gtf.gz");
+        clp.OUTPUT = TestUtils.createTempDirectory("CreateIntervalsFilesTest");
+        clp.PREFIX = REFERENCE_NAME;
+        clp.MT_SEQUENCE = MT_SEQUENCE;
+
+        try {
+            Assert.assertEquals(clp.doWork(), 0);
+
+            final IntervalList mtIntervals =
+                    IntervalList.fromFile(new File(clp.OUTPUT, REFERENCE_NAME + ".mt.intervals"));
+            Assert.assertEquals(mtIntervals.size(), 37);
+
+            Assert.assertFalse(new File(clp.OUTPUT, REFERENCE_NAME + ".non_autosomes.intervals").exists());
+
+            final IntervalList rRnaIntervals =
+                    IntervalList.fromFile(new File(clp.OUTPUT, REFERENCE_NAME + ".rRNA.intervals"));
+            Assert.assertEquals(rRnaIntervals.size(), 355);
+
+            // This is hard to validate, so just confirm its readability.
+            IntervalList.fromFile(new File(clp.OUTPUT, REFERENCE_NAME + ".intergenic.intervals"));
+
+            final IntervalList genesIntervals =
+                    IntervalList.fromFile(new File(clp.OUTPUT, REFERENCE_NAME + ".genes.intervals"));
+            Assert.assertEquals(genesIntervals.size(), 32976);
+
+            final IntervalList exonsIntervals =
+                    IntervalList.fromFile(new File(clp.OUTPUT, REFERENCE_NAME + ".exons.intervals"));
+            Assert.assertEquals(exonsIntervals.size(), 615275);
+
+            final IntervalList consensusIntronsIntervals =
+                    IntervalList.fromFile(new File(clp.OUTPUT, REFERENCE_NAME + ".consensus_introns.intervals"));
+            Assert.assertEquals(consensusIntronsIntervals.size(), 396038);
+
+        } finally {
+            FileUtils.deleteDirectory(clp.OUTPUT);
+        }
+    }
 }

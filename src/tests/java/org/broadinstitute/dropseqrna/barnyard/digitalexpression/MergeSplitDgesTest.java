@@ -45,7 +45,6 @@ public class MergeSplitDgesTest {
  public void testBasic() {
   final MergeSplitDges clp = new MergeSplitDges();
   clp.INPUT = INPUTS;
-  clp.PREFIX = Collections.EMPTY_LIST;
   clp.OUTPUT = TestUtils.getTempReportFile("MergeDge", ".txt.gz");
   Assert.assertEquals(clp.doWork(), 0);
   Assert.assertTrue(TestUtils.dgeMatricesAreEqual(clp.OUTPUT, EXPECTED_OUTPUT));
@@ -55,7 +54,6 @@ public class MergeSplitDgesTest {
  public void testBarcodeCollision() {
   final MergeSplitDges clp = new MergeSplitDges();
   clp.INPUT = Arrays.asList(INPUT1, INPUT1);
-  clp.PREFIX = Collections.EMPTY_LIST;
   clp.OUTPUT = TestUtils.getTempReportFile("MergeDge", ".txt.gz");
   clp.doWork();
  }
@@ -70,11 +68,20 @@ public class MergeSplitDgesTest {
   Assert.assertTrue(TestUtils.dgeMatricesAreEqual(clp.OUTPUT, EXPECTED_PREFIX_OUTPUT));
  }
 
+ @Test
+ public void testEmptyPrefix() {
+  final MergeSplitDges clp = new MergeSplitDges();
+  clp.INPUT = INPUTS;
+  clp.PREFIX = Collections.emptyList();
+  clp.OUTPUT = TestUtils.getTempReportFile("MergeDge", ".txt.gz");
+  Assert.assertEquals(clp.doWork(), 0);
+  Assert.assertTrue(TestUtils.dgeMatricesAreEqual(clp.OUTPUT, EXPECTED_OUTPUT));
+ }
+
  @Test(expectedExceptions = IllegalArgumentException.class)
  void testOutOfOrderGenes() {
   final MergeSplitDges clp = new MergeSplitDges();
   clp.INPUT = List.of(new File(TEST_DATA_DIR, "MergeSplitDge.wrongOrder.digital_expression.txt.gz"));
-  clp.PREFIX = Collections.EMPTY_LIST;
   clp.OUTPUT = TestUtils.getTempReportFile("MergeDge", ".txt.gz");
   clp.doWork();
 

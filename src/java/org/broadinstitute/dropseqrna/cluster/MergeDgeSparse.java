@@ -108,7 +108,7 @@ public class MergeDgeSparse
     		"If you wish to filter with cell barcodes without prefixes, specify these per-experiment in the YAML. " +
             "May be gzipped.  Lines starting with # are ignored.  " +
             "Only the cells in listed in these file(s) are included in the output.  If no files are specified, all cell " +
-            "barcodes are included, subject to the other filters.")
+            "barcodes are included, subject to the other filters.", optional = true)
     public List<File> CELL_BC_FILE;
 
     @Argument(doc="Controls stringency of DGE header merging.  Only relevant if DGE_HEADER_OUTPUT_FILE is set.")

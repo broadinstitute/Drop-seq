@@ -133,9 +133,33 @@ public class SingleCellRnaSeqMetricsCollectorTest {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
 
+	@Test
+	public void testDoWorkNoMT() throws IOException {
+		final SingleCellRnaSeqMetricsCollector c = new SingleCellRnaSeqMetricsCollector();
 
+		final File annotationsFile = new File("testdata/org/broadinstitute/transcriptome/barnyard/mm10.refFlat.gz");
+		final File rRNAIntervalsFile = new File(
+				"testdata/org/broadinstitute/transcriptome/barnyard/mm10.rRNA.intervals");
+		final File cellBarcodeFile = new File(
+				"testdata/org/broadinstitute/transcriptome/barnyard/SingleCellRnaSeqMetricsCollector.cellBarcodes.txt");
+		final File expectedOutFile = new File(
+				"testdata/org/broadinstitute/transcriptome/barnyard/SingleCellRnaSeqMetricsCollector.expected_output_no_mt_sequence.txt");
 
+		final File outFile = File.createTempFile("SingleCellRnaSeqMetricsCollector.", ".output.txt");
+		outFile.deleteOnExit();
+
+		c.INPUT = this.IN_BAM;
+		c.OUTPUT = outFile;
+		c.ANNOTATIONS_FILE = annotationsFile;
+		c.RIBOSOMAL_INTERVALS = rRNAIntervalsFile;
+		c.STRAND_SPECIFICITY = RnaSeqMetricsCollector.StrandSpecificity.NONE;
+		c.CELL_BC_FILE = cellBarcodeFile;
+		c.READ_MQ = 0;
+		int r = c.doWork();
+        Assert.assertEquals(r, 0);
+		Assert.assertTrue(FileUtils.contentEquals(outFile, expectedOutFile));
 	}
 
 	@Test

@@ -96,7 +96,7 @@ public class CollapseTagWithContext extends CommandLineProgram {
 
 	@Argument (doc="By default, groups of reads are gathered by their CONTEXT_TAGS and ordered by the number of total reads.  Contexts with larger numbers of reads are potential 'parents' of smaller context objects. "
 			+ "If this option is used, the count of a context to determine it's ordering is the unique count of values of the TAG(S) added here.  "
-			+ "For example, if you wanted to collapse by UMI counts instead of read counts, you could put the UMI tag here.")
+			+ "For example, if you wanted to collapse by UMI counts instead of read counts, you could put the UMI tag here.", optional = true)
 	public List<String> COUNT_TAGS;
 
 	@Argument (doc="If COUNT_TAGS is set and COUNT_TAGS_EDIT_DISTANCE>0, then collapse the COUNT_TAGS in a CONTEXT by the given edit distance.  For example, if you wanted to collapse "

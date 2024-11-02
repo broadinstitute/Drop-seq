@@ -52,7 +52,7 @@ public class MergeDge
 
 	@Argument(doc = "The Prefix to add to every cell barcode so that cell barcodes seen "
 			+ "in multiple DGEs can be differentiated.  A typical setting would be 'EXP1_', yielding barcodes like EXP1_ACTGACCGTTTG.  Must be"
-			+ "invoked as many times as INPUT." )
+			+ "invoked as many times as INPUT.", optional = true)
 	public List<String> PREFIX;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output DGE file")

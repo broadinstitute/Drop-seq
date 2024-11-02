@@ -118,7 +118,8 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
     @Argument(doc="The map quality of the read to be included for determining which cells will be measured.")
 	public Integer READ_MQ=10;
 
-    @Argument(doc="If specified, count bases that align to this sequence separately from other categories")
+    @Argument(doc="If specified, count bases that align to this sequence separately from other categories",
+            optional = true)
     public List<String> MT_SEQUENCE;
 
 	@Override
@@ -127,6 +128,9 @@ public class SingleCellRnaSeqMetricsCollector extends CommandLineProgram {
 		IOUtil.assertFileIsWritable(OUTPUT);
 		if (RIBOSOMAL_INTERVALS!=null) IOUtil.assertFileIsReadable(RIBOSOMAL_INTERVALS);
 
+        if (MT_SEQUENCE == null) {
+            MT_SEQUENCE = new ArrayList<>();
+        }
 		for (final String mtSequence : MT_SEQUENCE) {
 			final SAMSequenceRecord samSequenceRecord =
 					SamReaderFactory.makeDefault().open(INPUT).getFileHeader().getSequence(mtSequence);
