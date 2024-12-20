@@ -110,12 +110,10 @@ public class SplitBamByCellTest {
             TestUtils.testMetricsFilesEqual(originalMetrics, mergedMetrics);
 
             // Compare the XC and XM tags for the input test BAM and the merged BAM files
-            final CompareBAMTagValues tagsComparator = new CompareBAMTagValues();
-            tagsComparator.INPUT_1 = TEST_BAM;
-            tagsComparator.INPUT_2 = mergedOutputBAM;
-            tagsComparator.TAGS = new ArrayList<>(Arrays.asList("XC", "XM"));
-            Assert.assertEquals(tagsComparator.doWork(), 0);
+            List<String> tags = new ArrayList<>(Arrays.asList("XC", "XM"));
+            compareBAMTagValues(TEST_BAM, mergedOutputBAM, tags, 0);
 
+            // Compare the split BAM report to the expected report
             Assert.assertTrue(TestUtils.testMetricsFilesEqual(report, EXPECTED_REPORT));
 
             // Manifest content will not be identical because of temp file names, so just compare fields expected
@@ -447,4 +445,16 @@ public class SplitBamByCellTest {
                 {null, false},
         };
     }
+
+    private void compareBAMTagValues(File input1, File input2, List<String> tags, int expectedProgramValue) {
+        CompareBAMTagValues cbtv = new CompareBAMTagValues();
+        cbtv.INPUT_1 = Collections.singletonList(new PicardHtsPath(input1));
+        cbtv.INPUT_2 = Collections.singletonList(new PicardHtsPath(input2));
+        cbtv.TAGS_1 = tags;
+        cbtv.TAGS_2 = tags;
+        cbtv.STRICT = true;
+        int result = cbtv.doWork();
+        Assert.assertTrue(result == expectedProgramValue);
+    }
+
 }

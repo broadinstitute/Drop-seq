@@ -2,16 +2,14 @@ package org.broadinstitute.dropseqrna.utils.editdistance;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.broadinstitute.dropseqrna.utils.CompareBAMTagValues;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.testng.annotations.Test;
 
 import org.testng.Assert;
+import picard.nio.PicardHtsPath;
 
 public class CollapseBarcodesInPlaceTest {
 
@@ -103,33 +101,16 @@ public class CollapseBarcodesInPlaceTest {
 		p.OUTPUT=out;
 		p.doWork();
 
-		// the two expected data sets differ.
-		CompareBAMTagValues cbtv = new CompareBAMTagValues();
-		cbtv.INPUT_1=TEST_SUB;
-		cbtv.INPUT_2=TEST_INDEL;
-		List<String> tags = new ArrayList<>();
-		tags.add("ZC");
-		cbtv.TAGS=tags;
-		int result = cbtv.doWork();
-		Assert.assertTrue(result==1);
+		List<String> tags = Collections.singletonList("ZC");
 
-		// test against the correct answer for substiution
-		cbtv = new CompareBAMTagValues();
-		cbtv.INPUT_1=TEST_SUB;
-		cbtv.INPUT_2=out;
-		tags = new ArrayList<>();
-		tags.add("ZC");
-		cbtv.TAGS=tags;
-		result = cbtv.doWork();
-		Assert.assertTrue(result==0);
+		// the two expected data sets differ.
+		compareBAMTagValues(TEST_SUB, TEST_INDEL, tags, 1);
+
+		// test against the correct answer for substitution
+		compareBAMTagValues(TEST_SUB, out, tags, 0);
 
 		// test against the wrong answer for substitution
-		cbtv = new CompareBAMTagValues();
-		cbtv.INPUT_1=TEST_INDEL;
-		cbtv.INPUT_2=out;
-		cbtv.TAGS=tags;
-		result = cbtv.doWork();
-		Assert.assertTrue(result==1);
+		compareBAMTagValues(TEST_INDEL, out, tags, 1);
 	}
 
 	@Test
@@ -151,33 +132,17 @@ public class CollapseBarcodesInPlaceTest {
 		p.OUTPUT=out;
 		p.doWork();
 
-		// the two expected data sets differ.
-		CompareBAMTagValues cbtv = new CompareBAMTagValues();
-		cbtv.INPUT_1=TEST_SUB;
-		cbtv.INPUT_2=TEST_INDEL;
-		List<String> tags = new ArrayList<>();
-		tags.add("ZC");
-		cbtv.TAGS=tags;
-		int result = cbtv.doWork();
-		Assert.assertTrue(result==1);
+		List<String> tags = Collections.singletonList("ZC");
 
-		// test against the correct answer for substiution
-		cbtv = new CompareBAMTagValues();
-		cbtv.INPUT_1=TEST_SUB;
-		cbtv.INPUT_2=out;
-		tags = new ArrayList<>();
-		tags.add("ZC");
-		cbtv.TAGS=tags;
-		result = cbtv.doWork();
-		Assert.assertTrue(result==0);
+		// the two expected data sets differ.
+		compareBAMTagValues(TEST_SUB, TEST_INDEL, tags, 1);
+
+		// test against the correct answer for substitution
+		compareBAMTagValues(TEST_SUB, out, tags, 0);
 
 		// test against the wrong answer for substitution
-		cbtv = new CompareBAMTagValues();
-		cbtv.INPUT_1=TEST_INDEL;
-		cbtv.INPUT_2=out;
-		cbtv.TAGS=tags;
-		result = cbtv.doWork();
-		Assert.assertTrue(result==1);
+		compareBAMTagValues(TEST_INDEL, out, tags, 1);
+
 	}
 	private File getTempReportFile () {
 		File tempFile=null;
@@ -188,5 +153,16 @@ public class CollapseBarcodesInPlaceTest {
 			e1.printStackTrace();
 		}
 		return tempFile;
+	}
+
+	private void compareBAMTagValues(File input1, File input2, List<String> tags, int expectedProgramValue) {
+		CompareBAMTagValues cbtv = new CompareBAMTagValues();
+		cbtv.INPUT_1 = Collections.singletonList(new PicardHtsPath(input1));
+		cbtv.INPUT_2 = Collections.singletonList(new PicardHtsPath(input2));
+		cbtv.TAGS_1 = tags;
+		cbtv.TAGS_2 = tags;
+		cbtv.STRICT = true;
+		int result = cbtv.doWork();
+		Assert.assertTrue(result == expectedProgramValue);
 	}
 }

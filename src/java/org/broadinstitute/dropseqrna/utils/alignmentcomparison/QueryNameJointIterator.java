@@ -49,8 +49,6 @@ public class QueryNameJointIterator {
 		return this.metrics;
 	}
 
-
-
 	public boolean hasNext() {
 		if (this.next == null) getNextSet(); // iterates until you have a result, or you're out of results.
 		return this.next != null;
@@ -129,5 +127,9 @@ public class QueryNameJointIterator {
 		public int READ_ONE = 0;
 		public int READ_TWO = 0;
 		public int BOTH=0;
+
+		public boolean hasDisjointReads() {
+			return READ_ONE != 0 || READ_TWO != 0;
+		}
 	}
 }

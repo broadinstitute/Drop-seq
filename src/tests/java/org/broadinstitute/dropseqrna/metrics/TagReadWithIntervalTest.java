@@ -3,6 +3,7 @@ package org.broadinstitute.dropseqrna.metrics;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.broadinstitute.dropseqrna.utils.CompareBAMTagValues;
@@ -10,6 +11,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.util.Interval;
+import picard.nio.PicardHtsPath;
 
 public class TagReadWithIntervalTest {
 	// any BAM will do.
@@ -35,14 +37,9 @@ public class TagReadWithIntervalTest {
 		int r = t.doWork();
 		Assert.assertTrue (r==0);
 
-		CompareBAMTagValues cbtv = new CompareBAMTagValues();
-		cbtv.INPUT_1=outBAM;
-		cbtv.INPUT_2=TAGGED_BAM;
-		List<String> tags = new ArrayList<>();
-		tags.add("ZI");
-		cbtv.TAGS=tags;
-		int result = cbtv.doWork();
-		Assert.assertTrue(result==0);
+		// compare the tagged BAM to the expected BAM.
+		List<String> tags = Collections.singletonList("ZI");
+		compareBAMTagValues(outBAM, TAGGED_BAM, tags, 0);
 
 	}
 
@@ -56,4 +53,16 @@ public class TagReadWithIntervalTest {
 		Assert.assertEquals(result, "foo,bar");
 
 	}
+
+	private void compareBAMTagValues(File input1, File input2, List<String> tags, int expectedProgramValue) {
+		CompareBAMTagValues cbtv = new CompareBAMTagValues();
+		cbtv.INPUT_1 = Collections.singletonList(new PicardHtsPath(input1));
+		cbtv.INPUT_2 = Collections.singletonList(new PicardHtsPath(input2));
+		cbtv.TAGS_1 = tags;
+		cbtv.TAGS_2 = tags;
+		cbtv.STRICT = true;
+		int result = cbtv.doWork();
+		Assert.assertTrue(result == expectedProgramValue);
+	}
+
 }
