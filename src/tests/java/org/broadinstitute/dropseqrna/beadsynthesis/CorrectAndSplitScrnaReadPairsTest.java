@@ -29,6 +29,7 @@ import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.dropseqrna.utils.BaseRange;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import picard.nio.PicardHtsPath;
 
@@ -45,15 +46,15 @@ public class CorrectAndSplitScrnaReadPairsTest {
  private static final String RAW_BARCODE_TAG = "CR";
  private static final String BASE_RANGE = "1-16";
 
- @Test
- public void testBasic() {
-  CorrectAndSplitScrnaReadPairs clp = initClp();
+ @Test(dataProvider = "testBasicDataProvider")
+ public void testBasic(boolean tagBothReads) {
+  CorrectAndSplitScrnaReadPairs clp = initClp(tagBothReads);
   final File outputSam = new File(clp.OUTPUT_LIST.getParentFile(), "test.0.sam");
   outputSam.deleteOnExit();
   Assert.assertEquals(clp.doWork(), 0);
   final SamReader reader = SamReaderFactory.makeDefault().open(outputSam);
   for (final SAMRecord rec : reader) {
-   if (rec.getSecondOfPairFlag()) {
+   if (rec.getSecondOfPairFlag() || tagBothReads) {
     final String cellBarcode = rec.getStringAttribute(clp.BARCODE_TAG);
     final String expectedCellBarcode = rec.getReadName().split(":")[1];
     Assert.assertEquals(cellBarcode, expectedCellBarcode, rec.getSAMString());
@@ -61,7 +62,15 @@ public class CorrectAndSplitScrnaReadPairsTest {
   }
  }
 
- private CorrectAndSplitScrnaReadPairs initClp() {
+ @DataProvider(name = "testBasicDataProvider")
+ public Object[][] testBasicDataProvider() {
+  return new Object[][]{
+          {false},
+          {true}
+  };
+ }
+
+ private CorrectAndSplitScrnaReadPairs initClp(boolean tagBothReads) {
   final CorrectAndSplitScrnaReadPairs clp = new CorrectAndSplitScrnaReadPairs();
   clp.INPUT = Collections.singletonList(new PicardHtsPath(INPUT_SAM));
   clp.ALLOWED_BARCODE_COUNTS = EXPECTED_BARCODES_HIST;
@@ -74,12 +83,13 @@ public class CorrectAndSplitScrnaReadPairsTest {
   clp.OVERWRITE_EXISTING = true;
   clp.OUTPUT_MANIFEST = TestUtils.getTempReportFile("CorrectAndSplitScrnaReadPairsTest.", ".split_bam_manifest.gz");
   clp.REPORT = TestUtils.getTempReportFile("CorrectAndSplitScrnaReadPairsTest.", ".split_bam_report");
+  clp.TAG_BOTH_READS = tagBothReads;
   return clp;
  }
 
- @Test
- public void testOptionalTags() {
-  CorrectAndSplitScrnaReadPairs clp = initClp();
+ @Test(dataProvider = "testBasicDataProvider")
+ public void testOptionalTags(boolean tagBothReads) {
+  CorrectAndSplitScrnaReadPairs clp = initClp(tagBothReads);
   final File outputSam = new File(clp.OUTPUT_LIST.getParentFile(), "test.0.sam");
   outputSam.deleteOnExit();
   clp.BARCODE_QUALS_TAG = BARCODE_QUALS_TAG;
@@ -94,11 +104,10 @@ public class CorrectAndSplitScrnaReadPairsTest {
    if (rec.getFirstOfPairFlag()) {
     rawBarcode = BaseRange.getSequenceForBaseRange(baseRanges, rec.getReadString());
     barcodeQuals = BaseRange.getSequenceForBaseRange(baseRanges, rec.getBaseQualityString());
-   } else if (rec.getSecondOfPairFlag()) {
+   }
+   if (rec.getSecondOfPairFlag() || tagBothReads) {
     Assert.assertEquals(rec.getAttribute(RAW_BARCODE_TAG), rawBarcode);
     Assert.assertEquals(rec.getAttribute(BARCODE_QUALS_TAG), barcodeQuals);
-   } else {
-    Assert.fail("unpossible");
    }
   }
  }
