@@ -40,22 +40,13 @@ import java.io.PrintStream;
 import java.util.Arrays;
 
 @CommandLineProgramProperties(summary = "", oneLineSummary = "", programGroup = DropSeq.class)
-public class PolyATrimmer extends CommandLineProgram {
+public class PolyATrimmer extends AbstractTrimmerClp {
 
 	private final Log log = Log.getInstance(PolyATrimmer.class);
 
 	// In debug mode, print a message if there is this much adapter match but no
 	// poly A found.
 	private static final int NO_POLY_A_ADAPTER_DEBUG_THRESHOLD = 6;
-
-	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
-	public File INPUT;
-
-	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM file")
-	public File OUTPUT;
-
-	@Argument(doc = "The output summary statistics", optional = true)
-	public File OUTPUT_SUMMARY;
 
 	@Argument(shortName = "NEW", doc="The old polyA trimmer looks for the longest run of As that is at least NUM_BASES" +
 			" long and has no more than MISMATCHES bases that are not A.  For the new polyA trimmer, it is assumed that " +
@@ -109,7 +100,6 @@ public class PolyATrimmer extends CommandLineProgram {
 	@Argument(doc = "When looking for poly A, allow this fraction of bases not to be A (new trim algo)")
 	public double MAX_POLY_A_ERROR_RATE = 0.1;
 
-	private Integer readsTrimmed = 0;
 	private int readsCompletelyTrimmed = 0;
 	final private Histogram<Integer> numBasesTrimmed = new Histogram<>();
 
@@ -139,36 +129,39 @@ public class PolyATrimmer extends CommandLineProgram {
 		else
 			polyAFinder = simplePolyAFinder;
 		for (SAMRecord r : bamReader) {
-			final SimplePolyAFinder.PolyARun polyARun = polyAFinder.getPolyAStart(r);
-			final int polyAStart = polyARun.startPos;
+			if (shouldTrim(r)) {
+				final SimplePolyAFinder.PolyARun polyARun = polyAFinder.getPolyAStart(r);
+				final int polyAStart = polyARun.startPos;
 
-			if (log.isEnabled(Log.LogLevel.DEBUG)) {
-				final PolyAFinder.PolyARun simple;
-				final PolyAFinder.PolyARun withAdapter;
-				if (USE_NEW_TRIMMER) {
-					withAdapter = polyARun;
-					simple = simplePolyAFinder.getPolyAStart(r);
-				} else {
-					simple = polyARun;
-					withAdapter = polyAWithAdapterFinder.getPolyAStart(r);
+				if (log.isEnabled(Log.LogLevel.DEBUG)) {
+					final PolyAFinder.PolyARun simple;
+					final PolyAFinder.PolyARun withAdapter;
+					if (USE_NEW_TRIMMER) {
+						withAdapter = polyARun;
+						simple = simplePolyAFinder.getPolyAStart(r);
+					} else {
+						simple = polyARun;
+						withAdapter = polyAWithAdapterFinder.getPolyAStart(r);
+					}
+					logTrimDifference(simple, withAdapter, r);
 				}
-				logTrimDifference(simple, withAdapter, r);
-			}
 
-			hardClipPolyAFromRecord(r, polyAStart);
-			// Note that if there wasn't a polyA run found, then adapter match is not recorded
-			if (LENGTH_TAG != null && polyARun.length > 0 && !polyARun.isNoMatch()) {
-				r.setAttribute(LENGTH_TAG, polyARun.length);
-			}
-			if (ADAPTER_TAG != null && polyARun.adapterLength > 0 && !polyARun.isNoMatch()) {
-				r.setAttribute(ADAPTER_TAG, polyARun.adapterLength);
+				hardClipPolyAFromRecord(r, polyAStart);
+				// Note that if there wasn't a polyA run found, then adapter match is not recorded
+				if (LENGTH_TAG != null && polyARun.length > 0 && !polyARun.isNoMatch()) {
+					r.setAttribute(LENGTH_TAG, polyARun.length);
+				}
+				if (ADAPTER_TAG != null && polyARun.adapterLength > 0 && !polyARun.isNoMatch()) {
+					r.setAttribute(ADAPTER_TAG, polyARun.adapterLength);
+				}
 			}
 			writer.addAlignment(r);
 			progress.record(r);
+			++numReadsTotal;
 		}
 		CloserUtil.close(bamReader);
 		writer.close();
-		log.info("Total " + progress.getCount() + " reads processed.");
+		log.info("Total " + numReadsTotal + " reads processed.");
 		log.info("Number of reads trimmed: ", this.readsTrimmed);
 		log.info("Number of reads completely trimmed: ", this.readsCompletelyTrimmed);
 		log.debug(String.format("differences: %d; old didn't clip: %d; new didn't clip: %d", numDiffs, numOldDidntClip,
