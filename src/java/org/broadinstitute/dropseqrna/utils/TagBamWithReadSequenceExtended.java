@@ -59,7 +59,9 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 	@Argument(doc = "Summary of barcode base quality",optional=true)
 	public File SUMMARY;
 
-	@Argument(doc="Base range to extract, seperated by a dash.  E.g 1-4.  Can extract multiple ranges by separating them by a colon.  For example 1-4:17-22 extracts the first 4 bases, then the 17-22 bases, and glues the sequence together into a single sequence for a tag.")
+	@Argument(doc="Base range to extract, separated by a dash.  E.g 1-4.  Can extract multiple ranges by separating " +
+			"them by a colon.  For example 1-4:17-22 extracts the first 4 bases, then the 17-22 bases, and glues the " +
+			"sequence together into a single sequence for a tag.")
 	public String BASE_RANGE;
 
 	@Argument(doc = "The sequence can be from the first or second read [1/2].  ")
