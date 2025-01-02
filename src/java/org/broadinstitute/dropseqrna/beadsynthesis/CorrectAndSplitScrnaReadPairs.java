@@ -64,6 +64,9 @@ extends AbstractSplitBamClp {
     @Argument(doc="Tag to store the corrected barcode on the non-barcode read.")
     public String BARCODE_TAG = "XC";
 
+    @Argument(doc="If true, assign BARCODE_TAG (also RAW_BARCODE_TAG and BARCODE_QUALS_TAG, if set) to both reads.")
+    public boolean TAG_BOTH_READS = false;
+
     @Argument(shortName = StandardOptionDefinitions.METRICS_FILE_SHORT_NAME, optional = true,
     doc="Various matching and correction metrics")
     public File METRICS;
@@ -116,13 +119,24 @@ extends AbstractSplitBamClp {
             final SAMRecord readWithBarcode = BARCODED_READ == 1? pair.getFirstRead(): pair.getSecondRead();
             final SAMRecord otherRead = BARCODED_READ == 2? pair.getFirstRead(): pair.getSecondRead();
             if (RAW_BARCODE_TAG != null) {
-                otherRead.setAttribute(RAW_BARCODE_TAG, BaseRange.getSequenceForBaseRange(baseRanges, readWithBarcode.getReadString()));
+                final String rawBarcode = BaseRange.getSequenceForBaseRange(baseRanges, readWithBarcode.getReadString());
+                otherRead.setAttribute(RAW_BARCODE_TAG, rawBarcode);
+                if (TAG_BOTH_READS) {
+                    readWithBarcode.setAttribute(RAW_BARCODE_TAG, rawBarcode);
+                }
             }
             if (BARCODE_QUALS_TAG != null) {
-                otherRead.setAttribute(BARCODE_QUALS_TAG, BaseRange.getSequenceForBaseRange(baseRanges, readWithBarcode.getBaseQualityString()));
+                final String barcodeQuals = BaseRange.getSequenceForBaseRange(baseRanges, readWithBarcode.getBaseQualityString());
+                otherRead.setAttribute(BARCODE_QUALS_TAG, barcodeQuals);
+                if (TAG_BOTH_READS) {
+                    readWithBarcode.setAttribute(BARCODE_QUALS_TAG, barcodeQuals);
+                }
             }
             final String cellBarcode = getCorrectedCellBarcode(readWithBarcode);
             otherRead.setAttribute(BARCODE_TAG, cellBarcode);
+            if (TAG_BOTH_READS) {
+                readWithBarcode.setAttribute(BARCODE_TAG, cellBarcode);
+            }
             final int writerIdx = getWriterIdxForCellBarcode(cellBarcode);
             writeRecord(writerIdx, pair.getFirstRead());
             writeRecord(writerIdx, pair.getSecondRead());
