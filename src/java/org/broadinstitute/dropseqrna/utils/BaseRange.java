@@ -27,7 +27,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class BaseRange {
+public class BaseRange
+implements Comparable<BaseRange> {
 
 	private int start;
 	private int end;
@@ -40,6 +41,15 @@ public class BaseRange {
 	public int getSize () {
 		int r = this.getEnd()-this.getStart()+1;
 		return (r);
+	}
+
+	@Override
+	public int compareTo(BaseRange o) {
+		if (this.start < o.start) return -1;
+		if (this.start > o.start) return 1;
+		if (this.end < o.end) return -1;
+		if (this.end > o.end) return 1;
+		return 0;
 	}
 
 	public static int getTotalRangeSize (final String baseRange) {
