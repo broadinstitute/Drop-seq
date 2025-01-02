@@ -38,12 +38,19 @@ import picard.cmdline.StandardOptionDefinitions;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 
 @CommandLineProgramProperties(summary = "Trim the given sequence from the beginning of reads",
         oneLineSummary = "Trim the given sequence from the beginning of reads",
         programGroup = DropSeq.class)
 public class TrimStartingSequence extends CommandLineProgram {
 	public static final String DEFAULT_TRIM_TAG = "ZS";
+	static final int UNPAIRED = 0;
+	static final int FIRST_OF_PAIR = 1;
+	static final int SECOND_OF_PAIR = 2;
+	private static final Set<Integer> VALID_WHICH_READ = CollectionUtil.makeSet(UNPAIRED, FIRST_OF_PAIR, SECOND_OF_PAIR);
+
 	private final Log log = Log.getInstance(TrimStartingSequence.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
@@ -85,6 +92,9 @@ public class TrimStartingSequence extends CommandLineProgram {
 			optional = true, mutex = {"LEGACY"})
 	public String LENGTH_TAG;
 
+	@Argument(doc="Which reads to trim.  0: unpaired reads; 1: first of pair; 2: second of pair")
+	public List<Integer> WHICH_READ = new ArrayList<>(Arrays.asList(0));
+
 	private Integer readsTrimmed=0;
 	private int numReadsTotal=0;
 	private final Histogram<Integer> numBasesTrimmed= new Histogram<>();
@@ -108,7 +118,7 @@ public class TrimStartingSequence extends CommandLineProgram {
 			TrimSequenceTemplate t = new TrimSequenceTemplate(this.SEQUENCE);
 
 			for (SAMRecord r: bamReader) {
-				SAMRecord rr =  hardClipBarcodeFromRecordLegacy(r, t, this.NUM_BASES, this.MISMATCHES);
+				SAMRecord rr =  shouldTrim(r)? hardClipBarcodeFromRecordLegacy(r, t, this.NUM_BASES, this.MISMATCHES): r;
 				writer.addAlignment(rr);
 				progress.record(r);
 				this.numReadsTotal++;
@@ -123,7 +133,7 @@ public class TrimStartingSequence extends CommandLineProgram {
 			}
 
 			for (SAMRecord r : bamReader) {
-				SAMRecord rr = hardClipBarcodeFromRecord(r, trimmer);
+				SAMRecord rr = shouldTrim(r)? hardClipBarcodeFromRecord(r, trimmer): r;
 				writer.addAlignment(rr);
 				progress.record(r);
 				this.numReadsTotal++;
@@ -139,11 +149,30 @@ public class TrimStartingSequence extends CommandLineProgram {
 		return 0;
 	}
 
+	private boolean shouldTrim(final SAMRecord r) {
+		if (WHICH_READ.contains(UNPAIRED) && r.getReadPairedFlag() == false) {
+			return true;
+		}
+		if (WHICH_READ.contains(FIRST_OF_PAIR) && r.getFirstOfPairFlag()) {
+			return true;
+		}
+		if (WHICH_READ.contains(SECOND_OF_PAIR) && r.getSecondOfPairFlag()) {
+			return true;
+		}
+		return false;
+	}
+
 	@Override
 	protected String[] customCommandLineValidation() {
 		final ArrayList<String> list = new ArrayList<>(1);
 		if (MISMATCH_RATE != null && (MISMATCH_RATE < 0 || MISMATCH_RATE >= 1)) {
 			list.add("MISMATCH_RATE must be >= 0 and < 1");
+		}
+		if (!VALID_WHICH_READ.containsAll(WHICH_READ)) {
+			list.add("WHICH_READ must be one of " + VALID_WHICH_READ);
+		}
+		if (WHICH_READ.isEmpty()) {
+			list.add("WHICH_READ must be specified");
 		}
 		return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
 	}
