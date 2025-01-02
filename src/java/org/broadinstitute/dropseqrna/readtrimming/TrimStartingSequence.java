@@ -44,23 +44,10 @@ import java.util.Set;
 @CommandLineProgramProperties(summary = "Trim the given sequence from the beginning of reads",
         oneLineSummary = "Trim the given sequence from the beginning of reads",
         programGroup = DropSeq.class)
-public class TrimStartingSequence extends CommandLineProgram {
+public class TrimStartingSequence extends AbstractTrimmerClp {
 	public static final String DEFAULT_TRIM_TAG = "ZS";
-	static final int UNPAIRED = 0;
-	static final int FIRST_OF_PAIR = 1;
-	static final int SECOND_OF_PAIR = 2;
-	private static final Set<Integer> VALID_WHICH_READ = CollectionUtil.makeSet(UNPAIRED, FIRST_OF_PAIR, SECOND_OF_PAIR);
 
 	private final Log log = Log.getInstance(TrimStartingSequence.class);
-
-	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
-	public File INPUT;
-
-	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The output BAM file")
-	public File OUTPUT;
-
-	@Argument(doc = "The output summary statistics", optional=true)
-	public File OUTPUT_SUMMARY;
 
 	@Argument(doc="The sequence to look for at the start of reads.")
 	public String SEQUENCE;
@@ -91,13 +78,6 @@ public class TrimStartingSequence extends CommandLineProgram {
 			"something precedes it, so this may be different than TRIM_TAG value.  Not stored if not set.",
 			optional = true, mutex = {"LEGACY"})
 	public String LENGTH_TAG;
-
-	@Argument(doc="Which reads to trim.  0: unpaired reads; 1: first of pair; 2: second of pair")
-	public List<Integer> WHICH_READ = new ArrayList<>(Arrays.asList(0));
-
-	private Integer readsTrimmed=0;
-	private int numReadsTotal=0;
-	private final Histogram<Integer> numBasesTrimmed= new Histogram<>();
 
 	@Override
 	protected int doWork() {
@@ -147,19 +127,6 @@ public class TrimStartingSequence extends CommandLineProgram {
         if (this.OUTPUT_SUMMARY!=null) writeSummary(this.numBasesTrimmed);
 
 		return 0;
-	}
-
-	private boolean shouldTrim(final SAMRecord r) {
-		if (WHICH_READ.contains(UNPAIRED) && r.getReadPairedFlag() == false) {
-			return true;
-		}
-		if (WHICH_READ.contains(FIRST_OF_PAIR) && r.getFirstOfPairFlag()) {
-			return true;
-		}
-		if (WHICH_READ.contains(SECOND_OF_PAIR) && r.getSecondOfPairFlag()) {
-			return true;
-		}
-		return false;
 	}
 
 	@Override
