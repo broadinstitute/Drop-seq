@@ -33,9 +33,12 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Collections;
 
 public class TrimStartingSequenceTest {
-    private static final File INPUT = new File("testdata/org/broadinstitute/dropseq/readtrimming/N701.subset.tagged_filtered.sam");
+    private static final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/readtrimming");
+    private static final File INPUT = new File(TEST_DATA_DIR, "N701.subset.tagged_filtered.sam");
+    private static final File PAIRED_INPUT = new File(TEST_DATA_DIR, "N701.paired.subset.tagged_filtered.sam");
     public static final String LENGTH_TAG = "Zl";
 
     @Test
@@ -65,6 +68,39 @@ public class TrimStartingSequenceTest {
         Assert.assertFalse(outputIterator.hasNext());
         CloserUtil.close(Arrays.asList(outputReader, inputReader));
     }
+
+    @Test
+    public void testTrimStartingSequencePairedClp() {
+        final TrimStartingSequence clp = new TrimStartingSequence();
+        clp.INPUT = PAIRED_INPUT;
+        clp.OUTPUT = TestUtils.getTempReportFile("TrimStartingSequenceTest.", ".sam");
+        clp.OUTPUT_SUMMARY = TestUtils.getTempReportFile("TrimStartingSequenceTest.", ".summary");
+        clp.SEQUENCE = "AAGCAGTGGTATCAACGCAGAGTGAATGGG";
+        clp.MISMATCHES=0;
+        clp.NUM_BASES=5;
+        clp.WHICH_READ = Collections.singletonList(TrimStartingSequence.SECOND_OF_PAIR);
+        Assert.assertEquals(clp.doWork(), 0);
+
+        // Confirm that the expected stuff is trimmed.
+        final SamReader outputReader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
+        final SAMRecordIterator outputIterator = outputReader.iterator();
+        final SamReader inputReader = SamReaderFactory.makeDefault().open(clp.INPUT);
+        for (final SAMRecord inputRec: inputReader) {
+            Assert.assertTrue(outputIterator.hasNext());
+            final SAMRecord outputRec = outputIterator.next();
+            if (inputRec.getSecondOfPairFlag()) {
+                final String inputBases = inputRec.getReadString();
+                final String outputBases = outputRec.getReadString();
+                Assert.assertTrue(inputBases.endsWith(outputBases));
+                final String trimmedBases = inputBases.substring(0, inputBases.length() - outputBases.length());
+                Assert.assertTrue(clp.SEQUENCE.endsWith(trimmedBases));
+            }
+        }
+        Assert.assertFalse(outputIterator.hasNext());
+        CloserUtil.close(Arrays.asList(outputReader, inputReader));
+    }
+
+
 
     /**
      * @param expectedResult -1: fully trimmed, i.e. bases unchanged but all Q2
