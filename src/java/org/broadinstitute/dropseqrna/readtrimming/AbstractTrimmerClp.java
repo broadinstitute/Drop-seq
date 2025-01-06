@@ -27,6 +27,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.Histogram;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
@@ -49,7 +50,7 @@ public abstract class AbstractTrimmerClp extends CommandLineProgram {
     public File OUTPUT_SUMMARY;
     @Argument(doc = "Which reads to trim.  0: unpaired reads; 1: first of pair; 2: second of pair")
     public List<Integer> WHICH_READ = new ArrayList<>(Arrays.asList(0));
-    protected Integer readsTrimmed = 0;
+    protected int readsTrimmed = 0;
     protected int numReadsTotal = 0;
     protected final Histogram<Integer> numBasesTrimmed = new Histogram<>();
 
@@ -64,5 +65,17 @@ public abstract class AbstractTrimmerClp extends CommandLineProgram {
             return true;
         }
         return false;
+    }
+
+    @Override
+    protected String[] customCommandLineValidation() {
+        final ArrayList<String> list = new ArrayList<>(1);
+        if (!VALID_WHICH_READ.containsAll(WHICH_READ)) {
+            list.add("WHICH_READ must be one of " + VALID_WHICH_READ);
+        }
+        if (WHICH_READ.isEmpty()) {
+            list.add("WHICH_READ must be specified");
+        }
+        return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
     }
 }

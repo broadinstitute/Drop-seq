@@ -37,7 +37,7 @@ public enum SequenceBaseEnum {
 	T('T'),
 	N('N');
 	
-	private final char base;
+	public final char base;
 	
 	SequenceBaseEnum(char b) {
 		this.base=b;

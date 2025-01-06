@@ -135,12 +135,6 @@ public class TrimStartingSequence extends AbstractTrimmerClp {
 		if (MISMATCH_RATE != null && (MISMATCH_RATE < 0 || MISMATCH_RATE >= 1)) {
 			list.add("MISMATCH_RATE must be >= 0 and < 1");
 		}
-		if (!VALID_WHICH_READ.containsAll(WHICH_READ)) {
-			list.add("WHICH_READ must be one of " + VALID_WHICH_READ);
-		}
-		if (WHICH_READ.isEmpty()) {
-			list.add("WHICH_READ must be specified");
-		}
 		return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
 	}
 

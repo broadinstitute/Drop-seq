@@ -33,22 +33,21 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Collections;
 
-public class ClipReadsTest {
+public class TrimHomopolymerStartingSequenceTest {
     private static final File TESTDATA_DIR = new File("testdata/org/broadinstitute/dropseq/readtrimming");
-    private static final File PAIRED_INPUT = new File(TESTDATA_DIR, "paired_end.28_technical.sam");
-    private static final File PAIRED_INPUT_SHORT_READ = new File(TESTDATA_DIR, "paired_end.28_technical.short_read.sam");
+    private static final File INPUT = new File(TESTDATA_DIR, "prePolyTTrim.paired.sam");
 
     @Test
-    public void testClipReads() {
-        final File tempDir = TestUtils.createTempDirectory("ClipReadsTest.");
-        final ClipReads clp = new ClipReads();
-        clp.INPUT = PAIRED_INPUT;
-        clp.OUTPUT = TestUtils.getTempReportFile("ClipReadsTest.", ".sam");
-        clp.TMP_DIR = Collections.singletonList(tempDir);
-        clp.BASE_RANGE = "1-16:17-28";
+    public void testBasic() {
+        final File tempDir = TestUtils.createTempDirectory("TrimHomopolymerStartingSequenceTest.");
+        final TrimHomopolymerStartingSequence clp = new TrimHomopolymerStartingSequence();
+        clp.INPUT = INPUT;
+        clp.OUTPUT = TestUtils.getTempReportFile("TrimHomopolymerStartingSequenceTest.", ".sam");
         clp.WHICH_READ = Collections.singletonList(AbstractTrimmerClp.FIRST_OF_PAIR);
+        clp.TMP_DIR = Collections.singletonList(tempDir);
         Assert.assertEquals(clp.doWork(), 0);
 
         final SamReader inputReader = SamReaderFactory.makeDefault().open(clp.INPUT);
@@ -58,12 +57,27 @@ public class ClipReadsTest {
         while (inputIterator.hasNext() && actualIterator.hasNext()) {
             final SAMRecord inputRecord = inputIterator.next();
             final SAMRecord actualRecord = actualIterator.next();
-            Assert.assertEquals(actualRecord.getReadName(), inputRecord.getReadName());
-            Assert.assertEquals(actualRecord.getFirstOfPairFlag(), inputRecord.getFirstOfPairFlag(), actualRecord.getReadName());
+            final String readName = actualRecord.getReadName();
+            Assert.assertEquals(readName, inputRecord.getReadName());
+            Assert.assertEquals(actualRecord.getFirstOfPairFlag(), inputRecord.getFirstOfPairFlag(), readName);
             if (actualRecord.getFirstOfPairFlag()) {
-                final String inputRead = inputRecord.getReadString().substring(28);
-                final String actualRead = actualRecord.getReadString();
-                Assert.assertEquals(actualRead, inputRead, actualRecord.getReadName());
+                final String[] readNameFields = readName.split(":");
+                if (readNameFields[0].equals("trimmed")) {
+                    final int trimLength = Integer.parseInt(readNameFields[1]);
+                    final String inputRead = inputRecord.getReadString().substring(trimLength);
+                    Assert.assertEquals(actualRecord.getReadString(), inputRead, readName);
+                    final String inputQual = inputRecord.getBaseQualityString().substring(trimLength);
+                    Assert.assertEquals(actualRecord.getBaseQualityString(), inputQual, readName);
+                } else if (readNameFields[0].equals("notrim")) {
+                    Assert.assertEquals(actualRecord, inputRecord);
+                } else if (readNameFields[0].equals("fulltrim")) {
+                    Assert.assertEquals(actualRecord.getReadString(), inputRecord.getReadString(), readName);
+                    byte[] expectedQuals = new byte[inputRecord.getReadLength()];
+                    Arrays.fill(expectedQuals, TrimHomopolymerStartingSequence.FULL_TRIM_QUALITY_SCORE);
+                    Assert.assertEquals(actualRecord.getBaseQualities(), expectedQuals, readName);
+                } else {
+                    Assert.fail("Unexpected read name: " + readName);
+                }
             } else {
                 Assert.assertEquals(actualRecord, inputRecord);
             }
@@ -72,19 +86,6 @@ public class ClipReadsTest {
         Assert.assertFalse(actualIterator.hasNext());
         CloserUtil.close(inputReader);
         CloserUtil.close(actualReader);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testShortRead() {
-        final File tempDir = TestUtils.createTempDirectory("ClipReadsTest.");
-        final ClipReads clp = new ClipReads();
-        clp.INPUT = PAIRED_INPUT_SHORT_READ;
-        clp.OUTPUT = TestUtils.getTempReportFile("ClipReadsTest.", ".sam");
-        clp.OUTPUT.deleteOnExit();
-        clp.TMP_DIR = Collections.singletonList(tempDir);
-        clp.BASE_RANGE = "1-16:17-28";
-        clp.WHICH_READ = Collections.singletonList(AbstractTrimmerClp.FIRST_OF_PAIR);
-        clp.doWork();
 
     }
 }
