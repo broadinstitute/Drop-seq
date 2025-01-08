@@ -60,8 +60,6 @@ public abstract class TransformingIterator<INPUT,OUTPUT> extends IterableOnceIte
 	@Override
 	public void close() {
 		CloserUtil.close(this.underlyingIterator);
-		// TODO Auto-generated method stub
-
 	}
 
 }

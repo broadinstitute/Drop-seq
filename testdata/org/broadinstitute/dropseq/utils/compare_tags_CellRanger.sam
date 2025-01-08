@@ -1,0 +1,13 @@
+@HD	VN:1.6	SO:coordinate
+@SQ	SN:chr1	LN:248956422
+@CO	Dataset 2: Data set mimics CellRanger outputs - "-1" suffix on CB tag and suffix \1 on read name
+@CO	CellRanger does not encode the CB tag when repair fails, Optimus encodes '-' as the missing value.
+pass_all_tags_agree/1	0	chr1	1000	255	50M	*	0	0	*	*	CB:Z:TTTCGGGAC-1	CR:Z:TTTCGGGAC
+pass_all_tags_agree2/1	0	chr1	1000	255	50M	*	0	0	*	*	CB:Z:TTTCGGGAC-1	CR:Z:TTTCGGGAC
+fail_same_unrepaired_diff_repaired/1	0	chr1	1010	255	50M	*	0	0	*	*	CB:Z:CCCCGGGAT-1	CR:Z:CCCCGGGTT
+fail_diff_unrepaired_same_repaired/1	0	chr1	1020	255	50M	*	0	0	*	*	CB:Z:GGGCGGGAA-1	CR:Z:GGGCGGGAC
+fail_diff_repaired_diff_unrepaired/1	0	chr1	1030	255	50M	*	0	0	*	*	CB:Z:AAACGGGTT-1	CR:Z:AAACGGGAA
+fail_unset_repaired_tag/1	0	chr1	1030	255	50M	*	0	0	*	*	CR:Z:AAAAAAAAA
+fail_missing_data_repaired_tag_discordant/1	0	chr1	1030	255	50M	*	0	0	*	*	CR:Z:AAAAAAAAA
+pass_missing_data_repaired_tag_concordant/1	0	chr1	1030	255	50M	*	0	0	*	*	CR:Z:AAAAAAAAA
+pass_read_only_cellranger/1	0	chr1	1030	255	50M	*	0	0	*	*	CB:Z:TTTTTTTTT	CR:Z:TTTTTTTTT

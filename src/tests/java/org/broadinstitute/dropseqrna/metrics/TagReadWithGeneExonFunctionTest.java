@@ -42,7 +42,7 @@ public class TagReadWithGeneExonFunctionTest {
 		t.ANNOTATIONS_FILE=annotationsFile;
 		t.SUMMARY=tempSummary;
 		int returnVal = t.doWork();
-		Assert.assertTrue(returnVal==0);
+        Assert.assertEquals(returnVal, 0);
 
 		// test output BAM
 		List<String> tags = new ArrayList<>(Arrays.asList("XC", "GE", "GS", "XF"));
@@ -127,8 +127,8 @@ public class TagReadWithGeneExonFunctionTest {
 		TagReadWithGeneExonFunction tagger = new TagReadWithGeneExonFunction();
 		r=tagger.setAnnotations(r, geneOverlapDetector);
 
-		Assert.assertEquals(r.getStringAttribute("GE"), null);
-		Assert.assertEquals(r.getStringAttribute("GS"), null);
+        Assert.assertNull(r.getStringAttribute("GE"));
+        Assert.assertNull(r.getStringAttribute("GS"));
 		Assert.assertEquals(r.getStringAttribute("XF"), LocusFunction.INTERGENIC.name());
 	}
 
@@ -668,7 +668,7 @@ public class TagReadWithGeneExonFunctionTest {
 		cbtv.TAGS_2 = tags;
 		cbtv.STRICT = true;
 		int result = cbtv.doWork();
-		Assert.assertTrue(result == expectedProgramValue);
+        Assert.assertEquals(expectedProgramValue, result);
 	}
 
 

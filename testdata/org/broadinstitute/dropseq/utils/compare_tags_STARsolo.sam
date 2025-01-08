@@ -1,0 +1,13 @@
+@HD	VN:1.6	SO:coordinate
+@SQ	SN:chr1	LN:248956422
+@CO	Dataset 1: Data set mimics STARsolo outputs
+@CO	CellRanger does not encode the CB tag when repair fails, STARsolo encodes '-' as the missing value.
+pass_all_tags_agree	0	chr1	1000	255	50M	*	0	0	*	*	CB:Z:TTTCGGGAC	CR:Z:TTTCGGGAC
+pass_all_tags_agree2	0	chr1	1000	255	50M	*	0	0	*	*	CB:Z:TTTCGGGAC	CR:Z:TTTCGGGAC
+fail_same_unrepaired_diff_repaired	0	chr1	1010	255	50M	*	0	0	*	*	CB:Z:CCCCGGGAC	CR:Z:CCCCGGGTT
+fail_diff_unrepaired_same_repaired	0	chr1	1020	255	50M	*	0	0	*	*	CB:Z:GGGCGGGAA	CR:Z:GGGCGGGAT
+fail_diff_repaired_diff_unrepaired	0	chr1	1030	255	50M	*	0	0	*	*	CB:Z:AAACGGGAA	CR:Z:AAACGGGTT
+fail_unset_repaired_tag	0	chr1	1030	255	50M	*	0	0	*	*	CB:Z:TTTTTTTTT	CR:Z:AAAAAAAAA
+fail_missing_data_repaired_tag_discordant	0	chr1	1030	255	50M	*	0	0	*	*	CB:Z:TTTTTTTTT	CR:Z:AAAAAAAAA
+pass_missing_data_repaired_tag_concordant	0	chr1	1030	255	50M	*	0	0	*	*	CB:Z:-	CR:Z:AAAAAAAAA
+test_read_only_starsolo	0	chr1	1030	255	50M	*	0	0	*	*	CB:Z:-	CR:Z:AAAAAAAAA

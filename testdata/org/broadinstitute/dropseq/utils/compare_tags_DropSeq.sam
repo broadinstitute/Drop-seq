@@ -1,0 +1,23 @@
+@HD	VN:1.6	SO:coordinate
+@SQ	SN:chr1	LN:248956422
+@CO	Dataset 3:	Paired-end	reads	from	DropSeq.
+@CO	First read of each pair has no tags (flag 77, unmapped).
+@CO	Second read of each pair has tags matching Dataset 2 (CellRanger, flag 141, reverse strand, unmapped).
+pass_all_tags_agree	77	*	0	0	*	*	0	0	*	*
+pass_all_tags_agree	141	*	0	0	*	*	0	0	*	*	CB:Z:TTTCGGGAC	CR:Z:TTTCGGGAC
+pass_all_tags_agree2	77	*	0	0	*	*	0	0	*	*
+pass_all_tags_agree2	141	*	0	0	*	*	0	0	*	*	CB:Z:TTTCGGGAC	CR:Z:TTTCGGGAC
+fail_same_unrepaired_diff_repaired	77	*	0	0	*	*	0	0	*	*
+fail_same_unrepaired_diff_repaired	141	*	0	0	*	*	0	0	*	*	CB:Z:CCCCGGGAC	CR:Z:CCCCGGGTT
+fail_diff_unrepaired_same_repaired	77	*	0	0	*	*	0	0	*	*
+fail_diff_unrepaired_same_repaired	141	*	0	0	*	*	0	0	*	*	CB:Z:GGGCGGGAA	CR:Z:GGGCGGGAT
+fail_diff_repaired_diff_unrepaired	77	*	0	0	*	*	0	0	*	*
+fail_diff_repaired_diff_unrepaired	141	*	0	0	*	*	0	0	*	*	CB:Z:AAACGGGAA	CR:Z:AAACGGGTT
+fail_unset_repaired_tag	77	*	0	0	*	*	0	0	*	*
+fail_unset_repaired_tag	141	*	0	0	*	*	0	0	*	*	CB:Z:TTTTTTTTT	CR:Z:AAAAAAAAA
+fail_missing_data_repaired_tag_discordant	77	*	0	0	*	*	0	0	*	*
+fail_missing_data_repaired_tag_discordant	141	*	0	0	*	*	0	0	*	*	CB:Z:TTTTTTTTT	CR:Z:AAAAAAAAA
+pass_missing_data_repaired_tag_concordant	77	*	0	0	*	*	0	0	*	*
+pass_missing_data_repaired_tag_concordant	141	*	0	0	*	*	0	0	*	*	CB:Z:-	CR:Z:AAAAAAAAA
+test_read_only_dropseq	77	*	0	0	*	*	0	0	*	*
+test_read_only_dropseq	141	*	0	0	*	*	0	0	*	*	CB:Z:-	CR:Z:AAAAAAAAA
