@@ -576,7 +576,6 @@ public class CompareBAMTagValues extends CommandLineProgram {
 			iter = SamRecordSortingIteratorFactory.create(headerAndIter.header, iter, READ_NAME_COMPARATOR, progressLogger);
 		}
 
-		//TODO: the READ_NAME_COMPARATOR is more strict, so may only include single reads, not pairs, given we're filtering out non-primary reads.
 		final GroupingIterator<SAMRecord> groupingIterator = new GroupingIterator<>(iter, READ_NAME_COMPARATOR);
 		PeekableIterator<List<SAMRecord>> peekableIterator = new PeekableIterator<>(groupingIterator);
 		return peekableIterator;
