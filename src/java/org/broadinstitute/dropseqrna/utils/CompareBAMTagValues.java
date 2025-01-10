@@ -69,6 +69,13 @@ public class CompareBAMTagValues extends CommandLineProgram {
 	@Argument(doc = "Output a version of INPUT_2 containing only the reads that are discordant with INPUT_1", optional = true)
 	public File BAM_OUTPUT_2;
 
+	@Argument(doc = "Output a version of INPUT_1 containing only the reads that are only observed in INPUT_1", optional = true)
+	public File BAM_UNIQUE_1;
+
+	@Argument(doc = "Output a version of INPUT_2 containing only the reads that are only observed in INPUT_2", optional = true)
+	public File BAM_UNIQUE_2;
+
+
 	@Argument(doc="A list of tags to test in INPUT_1.  These tags are paired with TAGS_2 at the same index.  For each index, the values of TAGS_1[i] in INPUT_1 are" +
 			"compared to the values of TAGS_2[i] in INPUT_2 for equality.", optional=false)
 	public List<String> TAGS_1;
@@ -99,9 +106,10 @@ public class CompareBAMTagValues extends CommandLineProgram {
 	@Argument(doc="Restrict analysis to reads with a mapping quality greater than or equal to this value.  Reads with a mapping quality less than this value are ignored.  Non-primary reads are always ignored.", optional=true)
 	public int READ_QUALITY=0;
 
-
+	/*
 	@Argument(doc="If all tag values consist of the bases A,C,G,T (for example cell or molecular barcodes) then compress the internal representations to byte arrays to reduce memory usage." +
 			"If your strings as of fixed length, use useFixedLengthBaseCompression instead, as it is even more memory efficient.  If values are encountered that can not be compressed the program will fail.", optional=true)
+	*/
 	private Boolean useBaseCompression=false;
 
 	@Argument(doc="If all tag values consist of the bases A,C,G,T (for example cell or molecular barcodes) then compress the internal representations to byte arrays to reduce memory usage.  These strings must be of fixed length." +
@@ -147,13 +155,14 @@ public class CompareBAMTagValues extends CommandLineProgram {
 		SAMFileWriter writer_1 = createWriter(headerAndIter_1.header, this.BAM_OUTPUT_1);
 		SAMFileWriter writer_2 = createWriter(headerAndIter_2.header, this.BAM_OUTPUT_2);
 
-		log.info("Constructing BAM reader for input" + this.INPUT_1.getFirst().toString());
+		log.info("Constructing BAM reader for input " + this.INPUT_1.getFirst().toString());
 		PeekableIterator<List<SAMRecord>> iterator1 = getReadIterator (headerAndIter_1,this.READ_QUALITY, this.TAGS_1);
 
-		log.info("Constructing BAM reader for input" + this.INPUT_2.getFirst().toString());
+		log.info("Constructing BAM reader for input " + this.INPUT_2.getFirst().toString());
 		PeekableIterator<List<SAMRecord>> iterator2 = getReadIterator (headerAndIter_2,this.READ_QUALITY, this.TAGS_2);
 
 		QueryNameJointIterator jointIterator = new QueryNameJointIterator(iterator1, iterator2);
+		addReadSinks(jointIterator, headerAndIter_1.header, headerAndIter_2.header);
 
 		while (jointIterator.hasNext()) {
 			QueryNameJointIterator.JointResult jr = jointIterator.next();
@@ -194,6 +203,28 @@ public class CompareBAMTagValues extends CommandLineProgram {
 
 		log.info("DONE");
 		return 0;
+	}
+
+	/**
+	 * Convenience method to add read sinks to the joint iterator for reads that are only seen in one of the two input BAMs.
+	 *
+	 * @param jointIterator The joint iterator to add read sinks to.
+	 * @param h1            The header of the first input BAM.
+	 * @param h2            The header of the second input BAM.
+	 */
+	private void addReadSinks(QueryNameJointIterator jointIterator, SAMFileHeader h1, SAMFileHeader h2) {
+		SamWriterSink sink1=null;
+		SamWriterSink sink2=null;
+
+		if (this.BAM_UNIQUE_1!=null) {
+			SAMFileWriter writer = createWriter(h1, this.BAM_UNIQUE_1);
+			sink1 = new SamWriterSink(writer);
+		}
+		if (this.BAM_UNIQUE_2!=null) {
+			SAMFileWriter writer = createWriter(h2, this.BAM_UNIQUE_2);
+			sink2 = new SamWriterSink(writer);
+		}
+		jointIterator.addReadSinks(sink1, sink2);
 	}
 
 	private void writeTagValuesReport (final File output) {
