@@ -18,6 +18,9 @@ import java.util.List;
  */
 public class DNACompressor {
 
+    private static final int BITS_PER_BASE = 3;
+    private static final int BASES_PER_BYTE = 8 / BITS_PER_BASE;
+
     /**
      * Compresses a list of DNA strings into a single byte array, including a leading bitmask for null values.
      *
@@ -58,6 +61,14 @@ public class DNACompressor {
         return result;
     }
 
+
+    /**
+     * Decompresses a single byte array into a list of DNA strings, including handling null values using the bitmask.
+     *
+     * @param compressed The byte array containing the bitmask and compressed DNA sequences.
+     * @param lengths    An array of lengths of the original DNA sequences.
+     * @return A list of decompressed DNA strings, including null values.
+     */
     /**
      * Decompresses a single byte array into a list of DNA strings, including handling null values using the bitmask.
      *
@@ -82,9 +93,10 @@ public class DNACompressor {
                 // Null value indicated by the bitmask
                 decompressed.add(null);
             } else {
+                // Calculate byte length and remainder for the sequence
                 int length = lengths[i];
-                int remainder = length % 4;
-                int byteLength = (length + 3) / 4;
+                int[] calc = calculateByteLengthAndRemainder(length);
+                int byteLength = calc[0];
 
                 // Extract the compressed data for this sequence
                 byte[] sequenceData = new byte[1 + byteLength];
@@ -95,33 +107,32 @@ public class DNACompressor {
                 offset += (1 + byteLength);
             }
         }
-
         return decompressed;
     }
 
-
     /**
-     * Compresses a single DNA string into a byte array.
+     * Compresses a single DNA string into a byte array, supporting 'A', 'C', 'G', 'T', and 'N'.
      */
     public static byte[] compress(String dna) {
-        int length = dna.length();
-        int remainder = length % 4;
-        int byteLength = (length + 3) / 4;
+        int[] calc = calculateByteLengthAndRemainder(dna.length());
+        int byteLength = calc[0];
+        int remainder = calc[1];
 
         byte[] compressed = new byte[1 + byteLength];
         compressed[0] = (byte) remainder;
 
-        for (int i = 0; i < length; i++) {
+        for (int i = 0; i < dna.length(); i++) {
             int base = switch (dna.charAt(i)) {
-                case 'A' -> 0b00;
-                case 'C' -> 0b01;
-                case 'G' -> 0b10;
-                case 'T' -> 0b11;
+                case 'A' -> 0b000;
+                case 'C' -> 0b001;
+                case 'G' -> 0b010;
+                case 'T' -> 0b011;
+                case 'N' -> 0b100;
                 default -> throw new IllegalArgumentException("Invalid base: " + dna.charAt(i));
             };
 
-            int byteIndex = 1 + (i / 4);
-            int bitPosition = (3 - (i % 4)) * 2;
+            int byteIndex = 1 + (i / BASES_PER_BYTE);
+            int bitPosition = (BASES_PER_BYTE - 1 - (i % BASES_PER_BYTE)) * BITS_PER_BASE;
             compressed[byteIndex] |= (base << bitPosition);
         }
 
@@ -129,25 +140,25 @@ public class DNACompressor {
     }
 
     /**
-     * Decompresses a single compressed DNA sequence back into a string.
+     * Decompresses a single compressed DNA sequence back into a string, supporting 'A', 'C', 'G', 'T', and 'N'.
      */
     public static String decompress(byte[] compressed) {
         int remainder = compressed[0] & 0xFF;
-        int byteLength = compressed.length - 1;
-        int totalBases = (byteLength * 4) - ((4 - remainder) % 4);
+        int totalBases = (compressed.length - 1) * BASES_PER_BYTE - ((BASES_PER_BYTE - remainder) % BASES_PER_BYTE);
 
         StringBuilder dna = new StringBuilder(totalBases);
 
         for (int i = 0; i < totalBases; i++) {
-            int byteIndex = 1 + (i / 4);
-            int bitPosition = (3 - (i % 4)) * 2;
-            int base = (compressed[byteIndex] >> bitPosition) & 0b11;
+            int byteIndex = 1 + (i / BASES_PER_BYTE);
+            int bitPosition = (BASES_PER_BYTE - 1 - (i % BASES_PER_BYTE)) * BITS_PER_BASE;
+            int base = (compressed[byteIndex] >> bitPosition) & 0b111;
 
             char nucleotide = switch (base) {
-                case 0b00 -> 'A';
-                case 0b01 -> 'C';
-                case 0b10 -> 'G';
-                case 0b11 -> 'T';
+                case 0b000 -> 'A';
+                case 0b001 -> 'C';
+                case 0b010 -> 'G';
+                case 0b011 -> 'T';
+                case 0b100 -> 'N';
                 default -> throw new IllegalStateException("Invalid base bits: " + base);
             };
             dna.append(nucleotide);
@@ -155,6 +166,19 @@ public class DNACompressor {
 
         return dna.toString();
     }
+
+    /**
+     * Calculates the byte length and remainder for a given DNA sequence length.
+     *
+     * @param sequenceLength The length of the DNA sequence.
+     * @return An array where [0] is the byte length and [1] is the remainder.
+     */
+    private static int[] calculateByteLengthAndRemainder(int sequenceLength) {
+        int remainder = sequenceLength % BASES_PER_BYTE;
+        int byteLength = (sequenceLength + BASES_PER_BYTE - 1) / BASES_PER_BYTE;
+        return new int[]{byteLength, remainder};
+    }
+
 
     /**
      * Compares two compressed DNA outputs (byte arrays) lexicographically,
