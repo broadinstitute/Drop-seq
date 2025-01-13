@@ -11,7 +11,7 @@ import java.util.List;
  * The first byte of the compressed data contains the remainder of the sequence length divided by 4.
  * The remaining bytes contain the bases packed into 2 bits each.
  * The decompressed sequence is reconstructed by extracting the bases from the packed bytes.
- *
+
  * The key difference between this version and DNACompressorVaryingLengths is that this version
  * does not store the lengths of the original sequences in the compressed data, which can save space if the lengths are short.
  *
@@ -39,7 +39,7 @@ public class DNACompressor {
         for (int i = 0; i < numEntries; i++) {
             if (dnaList.get(i) == null) {
                 // Mark null entries in the bitmask
-                bitmask[i / 8] |= (1 << (i % 8));
+                bitmask[i / 8] |= (byte) (1 << (i % 8));
             } else {
                 // Compress non-null sequences
                 byte[] compressed = compress(dnaList.get(i));
@@ -133,7 +133,7 @@ public class DNACompressor {
 
             int byteIndex = 1 + (i / BASES_PER_BYTE);
             int bitPosition = (BASES_PER_BYTE - 1 - (i % BASES_PER_BYTE)) * BITS_PER_BASE;
-            compressed[byteIndex] |= (base << bitPosition);
+            compressed[byteIndex] |= (byte) (base << bitPosition);
         }
 
         return compressed;

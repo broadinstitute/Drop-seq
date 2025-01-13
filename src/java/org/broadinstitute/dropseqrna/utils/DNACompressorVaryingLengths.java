@@ -22,6 +22,7 @@ import java.util.List;
  * Use Cases:
  * - Efficient storage and retrieval of DNA sequences of varying lengths.
  * - Eliminates the need for external length information by embedding metadata.
+ * - This does not handle null strings or N bases.
  *
  * If you know your sequences are of fixed length, you can use `DNACompressor` instead.
  * For example if your sequuences were of length 16,16,10,10 this solution would use 34 bytes, and
