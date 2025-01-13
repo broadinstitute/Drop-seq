@@ -39,7 +39,8 @@ public class DNACompressorTest {
         return new Object[][] {
                 {"ACGT"},
                 {"TTACG"},
-                {"GCGTACGTAC"}
+                {"GCGTACGTAC"},
+                {"GCGTANGTAC"},
         };
     }
 
@@ -47,7 +48,8 @@ public class DNACompressorTest {
     public Object[][] dnaStringLists() {
         return new Object[][] {
                 {new String[] {"ACGT", "TTACG", "GCGTACGTAC"}},
-                {new String[] {"ACGT", "TTACG", null, "GCGTACGTAC"}}
+                {new String[] {"ACGT", "TTACG", null, "GCGTACGTAC"}},
+                {new String[] {"ACGT", "TTACG", null, "GCGTANGTAC"}}
         };
     }
 
