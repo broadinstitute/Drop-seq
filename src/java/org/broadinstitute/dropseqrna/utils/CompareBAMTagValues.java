@@ -367,10 +367,10 @@ public class CompareBAMTagValues extends CommandLineProgram {
 		// One list has a single read, compare against all reads in the other list
 		if (r1List.size() == 1 || r2List.size() == 1) {
 			if (r1List.size()>1) {
-				boolean result = processReadLists(r1List, r2List, tags1, tags2);
+				boolean result = processReadLists(r1List, r2List, tags1, tags2, true);
 				return result;
 			} else {
-				boolean result = processReadLists(r2List, r1List, tags2, tags1);
+				boolean result = processReadLists(r2List, r1List, tags2, tags1, false);
 				return result;
 			}
 		}
@@ -404,14 +404,18 @@ public class CompareBAMTagValues extends CommandLineProgram {
 	 * then attempts to find concordant reads between the filtered multi-read list and the single-read list.
 	 * If no concordant reads are found, it selects the first record from the filtered multi-read list.
 	 *
+	 * The multiReadListFirst indicates if the multi-read list contains data from the first input file - this is critical
+	 * so that the tag values can be saved in the correct order in the output report.
+	 *
 	 * @param multiReadList   The list of reads containing multiple records.
 	 * @param singleReadList  The list of reads containing a single record.
 	 * @param tagsMultiread   A list of tags used for filtering and comparison in the multi-read list.
 	 * @param tagsSingleRead  A list of tags used for comparison between records in both lists.
+	 * @param multiReadListFirst If true, the multiReadList contains data from the first input file.
 	 * @return                A boolean value indicating whether concordant reads were found and processed.
 	 */
 	public boolean processReadLists(List<SAMRecord> multiReadList, List<SAMRecord> singleReadList,
-									List<String> tagsMultiread, List<String> tagsSingleRead) {
+									List<String> tagsMultiread, List<String> tagsSingleRead, boolean multiReadListFirst) {
 
 		// Filter the multi-read list based on tagsMultiread
 		// This gets rid of reads that don't have the tags of interest.
@@ -428,7 +432,13 @@ public class CompareBAMTagValues extends CommandLineProgram {
 		// Explicitly handle the case where both lists have exactly one read
 		// The data has been simplified back to the base case of a single read in each list that can be compared.
 		if (filteredMultiReadList.size() == 1 && singleReadList.size() == 1) {
-			return compareTags(filteredMultiReadList.getFirst(), singleReadList.getFirst(), tagsMultiread, tagsSingleRead, true);
+			// make sure the multi read and single read tags are in the right order to record tag values.
+			if (multiReadListFirst) {
+				return compareTags(filteredMultiReadList.getFirst(), singleReadList.getFirst(), tagsMultiread, tagsSingleRead, true);
+			} else {
+				return compareTags(singleReadList.getFirst(), filteredMultiReadList.getFirst(), tagsSingleRead, tagsMultiread, true);
+			}
+
 		}
 
 		// There's still multiple reads in the multi-read list, so we need to find the concordant read.
