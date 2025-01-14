@@ -31,13 +31,4 @@ public class ByteArrayWrapper implements Comparable<ByteArrayWrapper> {
         return data;
     }
 
-    public static void main(String[] args) {
-        ByteArrayWrapper wrapper1 = new ByteArrayWrapper(new byte[]{1, 2, 3});
-        ByteArrayWrapper wrapper2 = new ByteArrayWrapper(new byte[]{1, 2, 4});
-        ByteArrayWrapper wrapper3 = new ByteArrayWrapper(new byte[]{1, 2, 3});
-
-        System.out.println(wrapper1.compareTo(wrapper2)); // Output: -1 (wrapper1 < wrapper2)
-        System.out.println(wrapper1.compareTo(wrapper3)); // Output: 0 (wrapper1 == wrapper3)
-        System.out.println(wrapper2.compareTo(wrapper1)); // Output: 1 (wrapper2 > wrapper1)
-    }
 }

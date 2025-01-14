@@ -303,7 +303,7 @@ public class CompareBAMTagValues extends CommandLineProgram {
     	List<String> tagValues;
     	switch (mode) {
         	case FIXED_LENGTH_COMPRESSION -> tagValues = DNACompressor.decompressList(key.getData(), this.tagLengths);
-        	case VARYING_LENGTH_COMPRESSION -> tagValues = DNACompressorVaryingLengths.decompressList(key.getData());
+        	// case VARYING_LENGTH_COMPRESSION -> tagValues = DNACompressorVaryingLengths.decompressList(key.getData());
         	default -> throw new IllegalStateException("Unexpected compression mode: " + mode);
     	}
 		List<String> result = new ArrayList<>();
@@ -528,10 +528,12 @@ public class CompareBAMTagValues extends CommandLineProgram {
 					throw new IllegalArgumentException("Tag values have inconsistent lengths, but fixed length compression is enabled. Tag values: " + tagValuesList);
 				tagValuesByteArray.increment(new ByteArrayWrapper(tagValuesBytes));
 			}
+			/*
 			case VARYING_LENGTH_COMPRESSION -> {
 				byte[] tagValuesBytes = DNACompressorVaryingLengths.compressList(tagValuesList);
 				tagValuesByteArray.increment(new ByteArrayWrapper(tagValuesBytes));
 			}
+			*/
 		}
 	}
 

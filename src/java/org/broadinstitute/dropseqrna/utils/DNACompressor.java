@@ -219,46 +219,4 @@ public class DNACompressor {
             return Integer.compare(listA.size(), listB.size());
         };
     }
-
-
-    public static void main(String[] args) {
-        // Example DNA sequences
-
-        List<String> dnaList = List.of("ACGT", "TTACG", "GCGTACGTAC");
-        System.out.println("Original DNA List: " + dnaList);
-
-        // Compress the DNA sequences
-        byte[] compressed = compressList(dnaList);
-        System.out.println("Compressed Data: " + java.util.Arrays.toString(compressed));
-
-        // Lengths of the original sequences
-        int[] lengths = dnaList.stream().mapToInt(String::length).toArray();
-
-        // Decompress back into the original DNA sequences
-        List<String> decompressed = decompressList(compressed, lengths);
-        System.out.println("Decompressed DNA List: " + decompressed);
-
-        // Verify that the decompressed sequences match the originals
-        System.out.println("Matches original: " + dnaList.equals(decompressed));
-
-        // additional tests with NULL values
-        List<String> dnaList2 = Arrays.asList("ACGT", "TTACG", null, "GCGTACGTAC");
-        System.out.println("Original DNA List: " + dnaList2);
-
-        // Compress the DNA sequences
-        byte[] compressed2 = compressList(dnaList2);
-        System.out.println("Compressed Data: " + java.util.Arrays.toString(compressed2));
-
-        // Lengths of the original sequences are the same as the original.  Null values have length 0.
-        lengths = dnaList2.stream().mapToInt(dna -> dna == null ? 0 : dna.length()).toArray();
-
-        // Decompress back into the original DNA sequences
-        List<String> decompressed2 = decompressList(compressed2, lengths);
-        System.out.println("Decompressed DNA List: " + decompressed2);
-
-        // Verify that the decompressed sequences match the originals
-        System.out.println("Matches original: " + dnaList2.equals(decompressed2));
-
-
-    }
 }

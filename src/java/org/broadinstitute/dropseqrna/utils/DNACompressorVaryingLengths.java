@@ -37,6 +37,7 @@ public class DNACompressorVaryingLengths {
      * @param dnaList A list of DNA strings to compress. Each string must contain only 'A', 'C', 'G', 'T'.
      * @return A byte array representing the compressed DNA sequences, including metadata for lengths.
      */
+    /*
     public static byte[] compressList(List<String> dnaList) {
         List<byte[]> compressedSequences = new ArrayList<>();
         int totalSize = 4; // 4 bytes for storing the number of sequences
@@ -59,13 +60,14 @@ public class DNACompressorVaryingLengths {
 
         return buffer.array();
     }
-
+    */
     /**
      * Decompresses a single byte array into a list of DNA strings.
      *
      * @param compressed The byte array containing compressed DNA sequences with metadata.
      * @return A list of decompressed DNA strings.
      */
+    /*
     public static List<String> decompressList(byte[] compressed) {
         ByteBuffer buffer = ByteBuffer.wrap(compressed);
 
@@ -83,10 +85,12 @@ public class DNACompressorVaryingLengths {
 
         return decompressed;
     }
+    */
 
     /**
      * Compresses a single DNA string into a byte array.
      */
+    /*
     public static byte[] compress(String dna) {
         int length = dna.length();
         int remainder = length % 4;
@@ -111,10 +115,11 @@ public class DNACompressorVaryingLengths {
 
         return compressed;
     }
-
+    */
     /**
      * Decompresses a single compressed DNA sequence back into a string.
      */
+    /*
     public static String decompress(byte[] compressed) {
         int remainder = compressed[0] & 0xFF;
         int byteLength = compressed.length - 1;
@@ -156,4 +161,5 @@ public class DNACompressorVaryingLengths {
         // Verify that the decompressed sequences match the originals
         System.out.println("Matches original: " + dnaList.equals(decompressed));
     }
+     */
 }
