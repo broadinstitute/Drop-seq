@@ -17,6 +17,7 @@ import java.util.List;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.assertNull;
 
 public class CompareBAMTagValuesTest {
 
@@ -194,6 +195,29 @@ public class CompareBAMTagValuesTest {
 
         int result = CompareBAMTagValues.PAIRED_READ_ORDER_COMPARATOR.compare(read1, read2);
         assertEquals(result, 0, "Both unpaired reads should be considered equal");
+    }
+
+    @Test
+    public void testCustomCommandLineValidation() {
+        CompareBAMTagValues compareBAMTagValues = new CompareBAMTagValues();
+
+        // Case 1: TAGS_1 and TAGS_2 length mismatch
+        compareBAMTagValues.TAGS_1 = Arrays.asList("CB", "CR");
+        compareBAMTagValues.TAGS_2 = Collections.singletonList("CB");
+        String[] validationResult = compareBAMTagValues.customCommandLineValidation();
+        assertEquals(validationResult.length, 1);
+        assertEquals(validationResult[0], "TAGS_1 and TAGS_2 must be the same length.");
+
+        // Case 2: Writable files
+        compareBAMTagValues.TAGS_1 = Arrays.asList("CB", "CR");
+        compareBAMTagValues.TAGS_2 = Arrays.asList("CB", "CR");
+        compareBAMTagValues.BAM_OUTPUT_1 = new File("test_output_1.bam");
+        compareBAMTagValues.BAM_OUTPUT_2 = new File("test_output_2.bam");
+        compareBAMTagValues.READ_COUNT_OUTPUT = new File("read_count_output.txt");
+        compareBAMTagValues.TAG_VALUES_OUTPUT = new File("tag_values_output.txt");
+        validationResult = compareBAMTagValues.customCommandLineValidation();
+        assertNull(validationResult);
+
     }
 
 }

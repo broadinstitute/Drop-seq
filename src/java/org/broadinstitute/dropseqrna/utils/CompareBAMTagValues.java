@@ -779,13 +779,6 @@ public class CompareBAMTagValues extends CommandLineProgram {
 		if (TAG_VALUES_OUTPUT != null)
 			IOUtil.assertFileIsWritable(this.TAG_VALUES_OUTPUT);
 
-		if (useBaseCompression & useFixedLengthBaseCompression) {
-			list.add("Overriding the useBaseCompression flag with useFixedLengthBaseCompression flag.");
-			this.useBaseCompression=false;
-		}
-
-
-
 		return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
 	}
 
