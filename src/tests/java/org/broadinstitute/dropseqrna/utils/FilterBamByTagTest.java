@@ -105,15 +105,10 @@ public class FilterBamByTagTest {
 		Assert.assertEquals(PAIRED_READS_ACCEPTED, metrics.get(0).READS_ACCEPTED);
 		Assert.assertEquals(PAIRED_READS_REJECTED, metrics.get(0).READS_REJECTED);
 								
-		CompareBAMTagValues cbtv = new CompareBAMTagValues();
-		cbtv.INPUT_1=PAIRED_INPUT_FILE_FILTERED;
-		cbtv.INPUT_2=f.OUTPUT;
-		List<String> tags = new ArrayList<>();
-		tags.add("XC");
-		cbtv.TAGS=tags;
-		int r = cbtv.doWork();
-		Assert.assertEquals(r, 0);
-		
+		// test with tag values file.
+		List<String> tags = Collections.singletonList("XC");
+		compareBAMTagValues(PAIRED_INPUT_FILE_FILTERED, f.OUTPUT, tags, 0);
+
 	}
 
 	@Test
@@ -129,14 +124,10 @@ public class FilterBamByTagTest {
 		Assert.assertEquals(UNPAIRED_READS_ACCEPTED, metrics.get(0).READS_ACCEPTED);
 		Assert.assertEquals(UNPAIRED_READS_REJECTED, metrics.get(0).READS_REJECTED);
 
-		CompareBAMTagValues cbtv = new CompareBAMTagValues();
-		cbtv.INPUT_1=UNPAIRED_INPUT_FILE_FILTERED;
-		cbtv.INPUT_2=f.OUTPUT;
-		List<String> tags = new ArrayList<>();
-		tags.add("XC");
-		cbtv.TAGS=tags;
-		int r = cbtv.doWork();
-		Assert.assertEquals(r, 0);
+		// test with tag values file.
+		List<String> tags = Collections.singletonList("XC");
+		compareBAMTagValues(UNPAIRED_INPUT_FILE_FILTERED, f.OUTPUT, tags, 0);
+
 
 		// test alternate path without tag values file.
 		f.INPUT=Collections.singletonList(new PicardHtsPath(UNPAIRED_INPUT_FILE));
@@ -148,13 +139,9 @@ public class FilterBamByTagTest {
 		f.OUTPUT.deleteOnExit();
 		Assert.assertEquals(f.doWork(), 0);
 
-
-		cbtv.INPUT_1=UNPAIRED_INPUT_FILE_FILTERED_AAAGTAGAGTGG;
-		cbtv.INPUT_2=f.OUTPUT;
-		cbtv.TAGS=tags;
-		r = cbtv.doWork();
-		Assert.assertEquals(r, 0);
-		
+		// test with tag values file.
+		tags = Collections.singletonList("XC");
+		compareBAMTagValues(UNPAIRED_INPUT_FILE_FILTERED_AAAGTAGAGTGG, f.OUTPUT, tags, 0);
 
 	}
 	
@@ -398,6 +385,17 @@ public class FilterBamByTagTest {
 		f.OUTPUT.deleteOnExit();
 		Assert.assertSame(1, f.doWork());
 
+	}
+
+	private void compareBAMTagValues(File input1, File input2, List<String> tags, int expectedProgramValue) {
+		CompareBAMTagValues cbtv = new CompareBAMTagValues();
+		cbtv.INPUT_1 = Collections.singletonList(new PicardHtsPath(input1));
+		cbtv.INPUT_2 = Collections.singletonList(new PicardHtsPath(input2));
+		cbtv.TAGS_1 = tags;
+		cbtv.TAGS_2 = tags;
+		cbtv.STRICT = true;
+		int result = cbtv.doWork();
+		Assert.assertTrue(result == expectedProgramValue);
 	}
 
 }

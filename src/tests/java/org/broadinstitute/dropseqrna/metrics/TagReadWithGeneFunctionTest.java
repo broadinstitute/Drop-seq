@@ -46,13 +46,9 @@ public class TagReadWithGeneFunctionTest {
 		Assert.assertTrue(returnVal==0);
 
 		// test output BAM
-		CompareBAMTagValues cbtv = new CompareBAMTagValues();
-		cbtv.INPUT_1=OUT_BAM;
-		cbtv.INPUT_2=tempBAM;
 		List<String> tags = new ArrayList<>(Arrays.asList("XC", "gn", "gs", "gf", "XF"));
-		cbtv.TAGS=tags;
-		int r = cbtv.doWork();
-		Assert.assertTrue(r==0);
+		compareBAMTagValues(OUT_BAM, tempBAM, tags, 0);
+
 
 	}
 
@@ -600,5 +596,17 @@ public class TagReadWithGeneFunctionTest {
 				return (r);
 		return null;
 	}
+
+	private void compareBAMTagValues(File input1, File input2, List<String> tags, int expectedProgramValue) {
+		CompareBAMTagValues cbtv = new CompareBAMTagValues();
+		cbtv.INPUT_1 = Collections.singletonList(new PicardHtsPath(input1));
+		cbtv.INPUT_2 = Collections.singletonList(new PicardHtsPath(input2));
+		cbtv.TAGS_1 = tags;
+		cbtv.TAGS_2 = tags;
+		cbtv.STRICT = true;
+		int result = cbtv.doWork();
+		Assert.assertTrue(result == expectedProgramValue);
+	}
+
 
 }

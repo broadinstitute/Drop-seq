@@ -12,8 +12,10 @@ package org.broadinstitute.dropseqrna.utils.alignmentcomparison;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordQueryNameComparator;
+import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.PeekableIterator;
+import org.broadinstitute.dropseqrna.utils.SamWriterSink;
 
 import java.util.List;
 
@@ -33,20 +35,49 @@ public class QueryNameJointIterator {
 	private final PeekableIterator<List<SAMRecord>> iterTwo;
 	private final SAMRecordQueryNameComparator comp;
 
+	private SamWriterSink sink1;
+	private SamWriterSink sink2;
+
 	private JointResult next = null;
+	public final QueryNameJointIteratorMetrics metrics;
 
 	public QueryNameJointIterator(final PeekableIterator<List<SAMRecord>> iterOne, final PeekableIterator<List<SAMRecord>> iterTwo) {
+		this.metrics = new QueryNameJointIteratorMetrics();
 		this.comp = new SAMRecordQueryNameComparator();
 		this.iterOne = iterOne;
 		this.iterTwo = iterTwo;
 		getNextSet();
 	}
 
+	/**
+	 * Adds reads sinks to the iterator.  For reads that are skipped by the iterator, they are written to the sink.
+	 * These sinks are closed when the iterator is exhausted.
+	 * @param sink1 The sink for reads that are skipped by the first iterator.
+	 * @param sink2 The sink for reads that are skipped by the second iterator.
+	 */
+	public void addReadSinks (SamWriterSink sink1, SamWriterSink sink2) {
+		this.sink1=sink1;
+		this.sink2=sink2;
+	}
 
+
+	public QueryNameJointIteratorMetrics getMetrics () {
+		return this.metrics;
+	}
 
 	public boolean hasNext() {
 		if (this.next == null) getNextSet(); // iterates until you have a result, or you're out of results.
-		return this.next != null;
+		boolean hasResult = this.next != null;
+		// automatically close the sinks if they exist and there are no more results.
+		if (!hasResult) {
+			if (this.sink1!=null) {
+				sink1.writer.close();
+			}
+			if (this.sink2!=null) {
+				sink2.writer.close();
+			}
+		}
+		return hasResult;
 	}
 
 	/**
@@ -68,19 +99,31 @@ public class QueryNameJointIterator {
 	private void getNextSet() {
 
 		while (iterOne.hasNext() && iterTwo.hasNext()) {
-
 			List<SAMRecord> r1List = iterOne.peek();
 			List<SAMRecord> r2List = iterTwo.peek();
 			// only have to compare the first record.
 			int cmp = comp.fileOrderCompare(r1List.get(0), r2List.get(0));
 			// log.info("R1: "+ r1List.toString()+ " R2: " +r2List.toString());
-			if (cmp < 0)
+			if (cmp < 0) {
+				this.metrics.READ_ONE++;
 				r1List = iterOne.next();
-			else if (cmp > 0)
+				if (this.sink1!=null) {
+					for (SAMRecord r: r1List)
+						this.sink1.add(r);
+				}
+			}
+			else if (cmp > 0) {
+				this.metrics.READ_TWO++;
 				r2List = iterTwo.next();
+				if (this.sink2!=null) {
+					for (SAMRecord r: r2List)
+						this.sink2.add(r);
+				}
+			}
 			else if (cmp == 0) {
 				// do some real work.
 				// grab the next record and process it.
+				metrics.BOTH++;
 				r1List = iterOne.next();
 				r2List = iterTwo.next();
 				JointResult jr = new JointResult(r1List, r2List);
@@ -112,5 +155,15 @@ public class QueryNameJointIterator {
 			return this.two;
 		}
 
+	}
+
+	public class QueryNameJointIteratorMetrics extends MetricBase {
+		public int READ_ONE = 0;
+		public int READ_TWO = 0;
+		public int BOTH=0;
+
+		public boolean hasDisjointReads() {
+			return READ_ONE != 0 || READ_TWO != 0;
+		}
 	}
 }

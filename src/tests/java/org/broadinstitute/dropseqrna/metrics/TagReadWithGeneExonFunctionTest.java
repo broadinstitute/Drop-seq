@@ -21,6 +21,7 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.OverlapDetector;
 import picard.annotation.Gene;
 import picard.annotation.LocusFunction;
+import picard.nio.PicardHtsPath;
 
 public class TagReadWithGeneExonFunctionTest {
 
@@ -41,16 +42,11 @@ public class TagReadWithGeneExonFunctionTest {
 		t.ANNOTATIONS_FILE=annotationsFile;
 		t.SUMMARY=tempSummary;
 		int returnVal = t.doWork();
-		Assert.assertTrue(returnVal==0);
+        Assert.assertEquals(returnVal, 0);
 
 		// test output BAM
-		CompareBAMTagValues cbtv = new CompareBAMTagValues();
-		cbtv.INPUT_1=testBAMFile;
-		cbtv.INPUT_2=tempBAM;
 		List<String> tags = new ArrayList<>(Arrays.asList("XC", "GE", "GS", "XF"));
-		cbtv.TAGS=tags;
-		int r = cbtv.doWork();
-		Assert.assertTrue(r==0);
+		compareBAMTagValues(testBAMFile, tempBAM, tags, 0);
 
 	}
 
@@ -131,8 +127,8 @@ public class TagReadWithGeneExonFunctionTest {
 		TagReadWithGeneExonFunction tagger = new TagReadWithGeneExonFunction();
 		r=tagger.setAnnotations(r, geneOverlapDetector);
 
-		Assert.assertEquals(r.getStringAttribute("GE"), null);
-		Assert.assertEquals(r.getStringAttribute("GS"), null);
+        Assert.assertNull(r.getStringAttribute("GE"));
+        Assert.assertNull(r.getStringAttribute("GS"));
 		Assert.assertEquals(r.getStringAttribute("XF"), LocusFunction.INTERGENIC.name());
 	}
 
@@ -663,6 +659,18 @@ public class TagReadWithGeneExonFunctionTest {
 		}
 		return tempFile;
 	}
+
+	private void compareBAMTagValues(File input1, File input2, List<String> tags, int expectedProgramValue) {
+		CompareBAMTagValues cbtv = new CompareBAMTagValues();
+		cbtv.INPUT_1 = Collections.singletonList(new PicardHtsPath(input1));
+		cbtv.INPUT_2 = Collections.singletonList(new PicardHtsPath(input2));
+		cbtv.TAGS_1 = tags;
+		cbtv.TAGS_2 = tags;
+		cbtv.STRICT = true;
+		int result = cbtv.doWork();
+        Assert.assertEquals(expectedProgramValue, result);
+	}
+
 
 
 }

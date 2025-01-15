@@ -25,16 +25,14 @@ package org.broadinstitute.dropseqrna.beadsynthesis;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.utils.CompareBAMTagValues;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.nio.PicardHtsPath;
 
 
 public class DetectBeadSynthesisErrorsTest {
@@ -84,16 +82,9 @@ public class DetectBeadSynthesisErrorsTest {
 			e.printStackTrace();
 		}
 
-		// test BAM
-		CompareBAMTagValues cbtv = new CompareBAMTagValues();
-		cbtv.INPUT_1=EXPECTED_BAM;
-		cbtv.INPUT_2=cleanBAM;
-		List<String> tags = new ArrayList<>();
-		tags.add("XC");
-		cbtv.TAGS=tags;
-		int r = cbtv.doWork();
-		Assert.assertTrue(r==0);
-
+		// test BAM,
+		List<String> tags = Collections.singletonList("XC");
+		compareBAMTagValues(EXPECTED_BAM, cleanBAM, tags, 0);
 
 
 
@@ -287,6 +278,15 @@ public class DetectBeadSynthesisErrorsTest {
 		Assert.assertTrue(errors.length>0);
 	}
 
-
+	private void compareBAMTagValues(File input1, File input2, List<String> tags, int expectedProgramValue) {
+		CompareBAMTagValues cbtv = new CompareBAMTagValues();
+		cbtv.INPUT_1 = Collections.singletonList(new PicardHtsPath(input1));
+		cbtv.INPUT_2 = Collections.singletonList(new PicardHtsPath(input2));
+		cbtv.TAGS_1 = tags;
+		cbtv.TAGS_2 = tags;
+		cbtv.STRICT = true;
+		int result = cbtv.doWork();
+		Assert.assertTrue(result == expectedProgramValue);
+	}
 
 }
