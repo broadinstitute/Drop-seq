@@ -10,3 +10,4 @@ jacoco_reports
 
 .Rproj.user
 .Rhistory
+.DS_Store

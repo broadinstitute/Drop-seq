@@ -1,0 +1,69 @@
+name: Python Package using Conda
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - 'src/python/dropseq_terra_utils/**'
+
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 5
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.12'
+    - name: Add conda to system path
+      run: |
+        # $CONDA is an environment variable pointing to the root of the miniconda directory
+        # https://github.com/actions/runner-images/blob/ff9acc6/images/ubuntu/Ubuntu2204-Readme.md#environment-variables
+        echo $CONDA/bin >> $GITHUB_PATH
+    - name: Modify the conda configuration to use conda-forge
+      run: |
+        conda config --add channels conda-forge
+        conda config --remove channels defaults || true
+
+        # There are many issues filed regarding:
+        #   > warning  libmamba Problem type not implemented SOLVER_RULE_STRICT_REPO_PRIORITY
+        # when using the recommended strict channel priority and creating environments from YAML files,
+        # but the FOSS conda/mamba community has not been able to fix the issue.
+        # https://github.com/mamba-org/mamba/issues/2810#issuecomment-1910011988
+        conda config --set channel_priority flexible
+
+        # Disable lock files to avoid bugs in mamba and libmamba
+        # https://mamba.readthedocs.io/en/latest/user_guide/troubleshooting.html#hangs-during-package-installation-on-nfs-network-file-systems
+        # https://github.com/mamba-org/mamba/issues/1993#issuecomment-1268397084
+        echo "use_lockfiles: false" >> ~/.mambarc
+    - name: Install dependencies
+      run: |
+        cd src/python/dropseq_terra_utils
+        conda env update --file environment.yml --name base
+    - name: Lint with flake8
+      run: |
+        cd src/python/dropseq_terra_utils
+
+        # Explicitly using the classic solver to avoid:
+        #   a) "libarchive.so.20: cannot open shared object", and
+        #   b) switching from the miniconda installed in the "ubuntu-latest" image
+        #      https://github.com/actions/runner-images/blob/ff9acc6/images/ubuntu/Ubuntu2204-Readme.md#package-management
+        #   c) upgrading to a working version using the below takes minutes while the tests themselves take seconds
+        #      https://stackoverflow.com/questions/77617946/solve-conda-libmamba-solver-libarchive-so-19-error-after-updating-conda-to-23#answer-78293971
+        conda install --solver=classic --override-channels --channel conda-forge flake8
+
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Test with unittest
+      run: |
+        cd src/python/dropseq_terra_utils
+        PYTHONPATH=src python -m unittest discover -s tests
