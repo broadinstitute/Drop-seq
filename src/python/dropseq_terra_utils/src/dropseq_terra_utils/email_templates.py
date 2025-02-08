@@ -219,7 +219,7 @@ class PdfTearsheet(EmailTemplate, ABC):
     def make_message(self, workflow_info: WorkflowInfo, output_data: dict[str, FileBytes]) -> HtmlEmailMessage:
         email_message = HtmlEmailMessage()
         email_message.subject = self._subject_line(self.message_type, workflow_info)
-        email_message.body = f"""\n<div>\n{self._body_header(self.message_type, workflow_info)}</div>\n"""
+        email_message.body = self._body_html(workflow_info, output_data)
         email_message.attachments = [output_data[self._TEARSHEET_PDF_KEY]]
         return email_message
 
