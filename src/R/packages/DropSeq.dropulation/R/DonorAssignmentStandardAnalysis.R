@@ -741,7 +741,9 @@ outSummaryStatsFile=NULL, minimumFractionDonor=0.002, alpha=0.05, rescueDiffuseD
     }
     
     if (!is.null(outFileLikelyDonors)) write.table(donors, outFileLikelyDonors, row.names=F, col.names=T, quote=F, sep="\t")
-    if (!is.null(cellDonorMap)) write.table(cellDonorMap, outDonorToCellMap, row.names=F, col.names=T, quote=F, sep="\t")
+    if (!is.null(cellDonorMap) && !is.null(outDonorToCellMap)) {
+      write.table(cellDonorMap, outDonorToCellMap, row.names=F, col.names=T, quote=F, sep="\t")
+    }
     if (!is.null(dgeFile) && !is.null(outMetaCellFile)) {
         generateMetaCells(cellDonorMap, dgeFile, outMetaCellFile, selectedCellsForMetaCellFile=selectedCellsForMetaCellFile)
     }
