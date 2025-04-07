@@ -1,0 +1,29 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=VAS,Description="Variant alleles swapped">
+##INFO=<ID=BETA,Number=1,Type=String,Description="slope">
+##INFO=<ID=GENE,Number=1,Type=String,Description="phenotype_id">
+##INFO=<ID=qval,Number=1,Type=String,Description="qval">
+##PairsToVcfCommandLine=<ID=PairsToVcf,CommandLine="PairsToVcf INPUT=/path/to/testdata/org/broadinstitute/dropseq/eqtl/PairsToVcfTest/input_pairs.tsv VCF=/path/to/testdata/org/broadinstitute/dropseq/eqtl/PairsToVcfTest/genotypes.vcf.gz MAP_COLUMNS=/path/to/testdata/org/broadinstitute/dropseq/eqtl/PairsToVcfTest/map_columns.tsv VARIANT_COLUMN=variant_id BETA_COLUMN=slope NUM_THREADS=2 OUTPUT=/tmp/PairsToVcfTest.7279794649945639374.vcf.gz VALIDATION_STRINGENCY=SILENT    VARIANT_SEPARATOR=: SORT_OUTPUT=true OUTPUT_COMMANDLINE=true VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=true CREATE_MD5_FILE=false USE_JDK_DEFLATER=false USE_JDK_INFLATER=false",Version="unknown",Date=2025-04-05T21:46:10.421319-04:00[America/New_York]>
+##contig=<ID=chr1,length=249250621>
+##source=PairsToVcf
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+chr1	100	.	A	T	.	.	BETA=1;GENE=GENEA;qval=0.001
+chr1	100	.	A	T	.	VAS	BETA=2.0;GENE=GENEB;qval=0.002
+chr1	100	.	A	T	.	.	BETA=3;GENE=GENEC;qval=0.003
+chr1	200	.	A	T	.	.	BETA=1;GENE=GENEA;qval=0.001
+chr1	200	.	A	T	.	.	BETA=-2;GENE=GENEB;qval=0.002
+chr1	200	.	A	T	.	.	BETA=3;GENE=GENEC;qval=0.003
+chr1	400	.	A	T	.	.	BETA=4;GENE=GENED;qval=0.004
+chr1	500	.	A	T	.	.	BETA=5;GENE=GENEE;qval=0.005
+chr1	601	.	ACACAC	T	.	.	BETA=6.1;GENE=GENEF.1;qval=0.006
+chr1	602	.	ACACAC	T	.	.	BETA=6.2;GENE=GENEF.2;qval=0.006
+chr1	603	.	ACACAC	T	.	.	BETA=6.3;GENE=GENEF.3;qval=0.006
+chr1	603	.	ACACAC	A	.	.	BETA=-6.3;GENE=GENEF.4;qval=0.006
+chr1	700	.	A	T	.	.	BETA=7;GENE=GENEG;qval=NA
+chr1	800	.	A	T	.	.	BETA=8;GENE=GENEH;qval=0.8
+chr1	900	.	A	T	.	.	BETA=NA;GENE=GENEI;qval=0.009
+chr1	1000	.	A	T	.	.	BETA=0;GENE=GENEJ;qval=0.010
+chr1	1100	.	A	T	.	VAS	BETA=NA;GENE=GENEK;qval=0.011
+chr1	1200	.	A	AT	.	.	BETA=12;GENE=GENEL;qval=0.012
+chr1	1200	.	A	AT	.	VAS	BETA=-123.0;GENE=GENEM;qval=0.013
+chr1	1200	.	A	GC	.	.	BETA=1234;GENE=GENEN;qval=0.014

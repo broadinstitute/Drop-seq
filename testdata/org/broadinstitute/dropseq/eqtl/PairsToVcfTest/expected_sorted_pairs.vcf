@@ -1,0 +1,29 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=VAS,Description="Variant alleles swapped">
+##INFO=<ID=phenotype_id,Number=1,Type=String,Description="phenotype_id">
+##INFO=<ID=qval,Number=1,Type=String,Description="qval">
+##INFO=<ID=slope,Number=1,Type=String,Description="slope">
+##PairsToVcfCommandLine=<ID=PairsToVcf,CommandLine="PairsToVcf INPUT=/path/to/testdata/org/broadinstitute/dropseq/eqtl/PairsToVcfTest/input_pairs.tsv VCF=/path/to/testdata/org/broadinstitute/dropseq/eqtl/PairsToVcfTest/genotypes.vcf.gz VARIANT_COLUMN=variant_id BETA_COLUMN=slope OUTPUT_COMMANDLINE=true OUTPUT=/tmp/PairsToVcfTest.15797439231472450784.vcf.gz VALIDATION_STRINGENCY=SILENT    VARIANT_SEPARATOR=: SORT_OUTPUT=true VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=true CREATE_MD5_FILE=false USE_JDK_DEFLATER=false USE_JDK_INFLATER=false",Version="unknown",Date=2025-04-05T21:31:38.249059-04:00[America/New_York]>
+##contig=<ID=chr1,length=249250621>
+##source=PairsToVcf
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+chr1	100	.	A	T	.	.	phenotype_id=GENEA;qval=0.001;slope=1
+chr1	100	.	A	T	.	VAS	phenotype_id=GENEB;qval=0.002;slope=2.0
+chr1	100	.	A	T	.	.	phenotype_id=GENEC;qval=0.003;slope=3
+chr1	200	.	A	T	.	.	phenotype_id=GENEA;qval=0.001;slope=1
+chr1	200	.	A	T	.	.	phenotype_id=GENEB;qval=0.002;slope=-2
+chr1	200	.	A	T	.	.	phenotype_id=GENEC;qval=0.003;slope=3
+chr1	400	.	A	T	.	.	phenotype_id=GENED;qval=0.004;slope=4
+chr1	500	.	A	T	.	.	phenotype_id=GENEE;qval=0.005;slope=5
+chr1	601	.	ACACAC	T	.	.	phenotype_id=GENEF.1;qval=0.006;slope=6.1
+chr1	602	.	ACACAC	T	.	.	phenotype_id=GENEF.2;qval=0.006;slope=6.2
+chr1	603	.	ACACAC	T	.	.	phenotype_id=GENEF.3;qval=0.006;slope=6.3
+chr1	603	.	ACACAC	A	.	.	phenotype_id=GENEF.4;qval=0.006;slope=-6.3
+chr1	700	.	A	T	.	.	phenotype_id=GENEG;qval=NA;slope=7
+chr1	800	.	A	T	.	.	phenotype_id=GENEH;qval=0.8;slope=8
+chr1	900	.	A	T	.	.	phenotype_id=GENEI;qval=0.009;slope=NA
+chr1	1000	.	A	T	.	.	phenotype_id=GENEJ;qval=0.010;slope=0
+chr1	1100	.	A	T	.	VAS	phenotype_id=GENEK;qval=0.011;slope=NA
+chr1	1200	.	A	AT	.	.	phenotype_id=GENEL;qval=0.012;slope=12
+chr1	1200	.	A	AT	.	VAS	phenotype_id=GENEM;qval=0.013;slope=-123.0
+chr1	1200	.	A	GC	.	.	phenotype_id=GENEN;qval=0.014;slope=1234
