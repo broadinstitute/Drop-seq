@@ -70,6 +70,9 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 	@Argument(doc="Add the tag to the sequence the read came from? If false, the read that does not have the barcode gets the tag.  If true, set the tag on the barcoded read.")
 	public Boolean TAG_BARCODED_READ=false;
 
+	@Argument(doc="If true, then the TAG_NAME tag and TAG_QUALTIY tag are added to both reads.  If false, then TAG_BARCODED_READ is heeded.")
+	public boolean TAG_BOTH_READS=false;
+
 	@Argument(doc = "Discard the read the sequence came from?.  If this is true, then the remaining read is marked as unpaired.  If the read is unpaired, then you can't discard a read.")
 	public Boolean DISCARD_READ=false;
 
@@ -239,7 +242,10 @@ public class TagBamWithReadSequenceExtended extends CommandLineProgram {
 		String seq = barcodedRead.getReadString();
 		String baseQualities = BaseRange.getSequenceForBaseRange(filter.getBaseRanges(),  barcodedRead.getBaseQualityString());
 		seq=BaseRange.getSequenceForBaseRange(filter.getBaseRanges(), seq);
-		if (this.TAG_BARCODED_READ)
+		if (TAG_BOTH_READS) {
+			setTagsOnRead(otherRead, numBadBases, seq, baseQualities);
+			setTagsOnRead(barcodedRead, numBadBases, seq, baseQualities);
+		} else if (this.TAG_BARCODED_READ)
 			setTagsOnRead(barcodedRead, numBadBases, seq, baseQualities);
 		else
 			setTagsOnRead(otherRead, numBadBases, seq, baseQualities);
