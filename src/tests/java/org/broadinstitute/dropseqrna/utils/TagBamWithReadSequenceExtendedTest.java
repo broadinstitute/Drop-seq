@@ -133,10 +133,12 @@ public class TagBamWithReadSequenceExtendedTest {
             boolean singleRange,
             boolean sorted,
             boolean goodQuality,
-            boolean tagBarcodedRead
+            boolean tagBarcodedRead,
+            boolean tagBothReads
     ) throws IOException {
         System.err.println(String.format("read treatment: %s; which read: %s; single range: %s; sorted: %s; good quality: %s;" +
-                "tag barcoded read: %s", readTreatment, whichRead, singleRange, sorted, goodQuality, tagBarcodedRead));
+                "tag barcoded read: %s; tag both reads: %s", readTreatment, whichRead, singleRange, sorted, goodQuality,
+                tagBarcodedRead, tagBothReads));
         final SamRecords samRecords = new SamRecords(whichRead != WhichRead.Unpaired, sorted);
         final TagBamWithReadSequenceExtended clp = new TagBamWithReadSequenceExtended();
         clp.INPUT = samRecords.samFile;
@@ -171,6 +173,7 @@ public class TagBamWithReadSequenceExtendedTest {
             clp.BASE_QUALITY = 52; // SamRecordSetBuilder assigns random qualitys up to 50
             clp.NUM_BASES_BELOW_QUALITY = 2;
         }
+        clp.TAG_BOTH_READS = tagBothReads;
         Assert.assertEquals(0, clp.doWork());
         final ArrayList<SAMRecord> taggedRecords = new ArrayList<>();
         final SamReader samReader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
@@ -219,32 +222,48 @@ public class TagBamWithReadSequenceExtendedTest {
             Assert.assertEquals(barcodedRead.getReadString(), originalBarcodedRead.getReadString());
         }
         final SAMRecord taggedRead;
+        final SAMRecord otherRead;
         if (whichRead == WhichRead.Unpaired) {
             taggedRead = taggedRecords.get(0);
+            otherRead = null;
         } else if (readTreatment == ReadTreatment.Discard) {
             taggedRead = taggedRecords.get(0);
+            otherRead = null;
         } else if (tagBarcodedRead) {
             if (whichRead == WhichRead.First) {
                 taggedRead = taggedRecords.get(firstIndex);
+                otherRead = taggedRecords.get(secondIndex);
             } else {
                 taggedRead = taggedRecords.get(secondIndex);
+                otherRead = taggedRecords.get(firstIndex);
             }
         } else {
             if (whichRead == WhichRead.First) {
                 taggedRead = taggedRecords.get(secondIndex);
+                otherRead = taggedRecords.get(firstIndex);
             } else {
                 taggedRead = taggedRecords.get(firstIndex);
+                otherRead = taggedRecords.get(secondIndex);
             }
         }
         // Confirm that barcode tag contains the barcode
         Assert.assertEquals(taggedRead.getStringAttribute(clp.TAG_NAME), barcode);
+        if (tagBothReads && otherRead != null) {
+            Assert.assertEquals(otherRead.getStringAttribute(clp.TAG_NAME), barcode);
+        }
 
         // Check quality flag
         if (goodQuality) {
             Assert.assertNull(taggedRead.getAttribute(clp.TAG_QUALITY));
+            if (tagBothReads && otherRead != null) {
+                Assert.assertNull(otherRead.getAttribute(clp.TAG_QUALITY));
+            }
         } else {
             int barcodeBasesBelowQualityThreshold = barcode.length();
             Assert.assertEquals(taggedRead.getIntegerAttribute(clp.TAG_QUALITY).intValue(), barcodeBasesBelowQualityThreshold);
+            if (tagBothReads && otherRead != null) {
+                Assert.assertEquals(otherRead.getIntegerAttribute(clp.TAG_QUALITY).intValue(), barcodeBasesBelowQualityThreshold);
+            }
         }
 
         // check that the reconstructed TAG_QUALITY from BARCODE_QUALITY_TAG equals expected TAG_QUALITY
@@ -287,14 +306,18 @@ public class TagBamWithReadSequenceExtendedTest {
 	                            tagBarcodeReadChoices = booleanValues;
                             }
                             for (final boolean tagBarcodeRead: tagBarcodeReadChoices) {
-	                            ret.add(new Object[]{
-	                                    treatment,
-                                        which,
-                                        singleRange,
-                                        sorted,
-                                        goodQuality,
-                                        tagBarcodeRead
-                                });
+                                final boolean tagBothReads[] = which == WhichRead.Unpaired? new boolean[]{false}: booleanValues;
+                                for (final boolean tagBothRead: tagBothReads) {
+                                    ret.add(new Object[]{
+                                            treatment,
+                                            which,
+                                            singleRange,
+                                            sorted,
+                                            goodQuality,
+                                            tagBarcodeRead,
+                                            tagBothRead
+                                    });
+                                }
                             }
                         }
                     }
