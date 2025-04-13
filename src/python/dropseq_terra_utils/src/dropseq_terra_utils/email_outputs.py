@@ -43,7 +43,7 @@ try:
     from .email_clients import EmailClient, SmtpEmailClient
     from .gcloud_clients import CredentialsHelper, GcsClient, TerraClient, GcloudClients
     from .email_templates import EmailTemplate
-    from .models import WorkflowEmail, SubmissionInfo, WorkflowInfo, HtmlEmailMessage, SmtpSettings, WorkspaceInfo, \
+    from .models import WorkflowEmail, SubmissionInfo, WorkflowInfo, HtmlEmailMessage, WorkspaceInfo, \
         SubmissionFilters, GcloudConfig
 except ImportError:
     import cli
@@ -53,7 +53,7 @@ except ImportError:
     from email_clients import EmailClient, SmtpEmailClient
     from gcloud_clients import CredentialsHelper, GcsClient, TerraClient, GcloudClients
     from email_templates import EmailTemplate
-    from models import WorkflowEmail, SubmissionInfo, WorkflowInfo, HtmlEmailMessage, SmtpSettings, WorkspaceInfo, \
+    from models import WorkflowEmail, SubmissionInfo, WorkflowInfo, HtmlEmailMessage, WorkspaceInfo, \
         SubmissionFilters, GcloudConfig
 
 
@@ -101,13 +101,9 @@ def add_arguments(parser) -> None:
         "--recheck", "-r", type=int, default=300,
         help="Number of seconds to wait between rechecking for email outputs.  Default: %(default)s",
     )
-    parser.add_argument("--smtp-username", help="Optional SMTP username.")
-    parser.add_argument("--smtp-password", help="Optional SMTP password.")
-    parser.add_argument("--smtp-server", default="smtp", help="SMTP server.  Default: %(default)s")
-    parser.add_argument("--smtp-port", type=int, default=25, help="SMTP port.  Default: %(default)s")
-    parser.add_argument("--smtp-tls", action="store_true", help="Use TLS for SMTP. Default: %(default)s")
+    parser.add_argument("--smtp-settings", help="Optional SMTP settings file.")
     parser.add_argument("--email-from", help="Default email from address.  Default: derived from the user and host")
-    parser.add_argument("--errors-to", help="Email address to send errors to.")
+    parser.add_argument("--errors-to", action="append", help="Email address(es) to send errors to.")
 
 
 def run(options):
@@ -120,14 +116,7 @@ def run(options):
         cli.logger.info("Using application default credentials")
         credential_helpers = [CredentialsHelper()]
 
-    smtp_settings = SmtpSettings(
-        options.smtp_server,
-        options.smtp_port,
-        options.smtp_username,
-        options.smtp_password,
-        options.smtp_tls,
-    )
-    smtp = SmtpEmailClient(smtp_settings, options.email_from, options.errors_to)
+    smtp = SmtpEmailClient(options.smtp_settings, options.email_from, options.errors_to)
     ds = DataStore(options.data_store)
     system_clients = SystemClients(smtp, ds)
 
@@ -198,7 +187,7 @@ def get_terra_credentials(gcloud_configs: list[GcloudConfig]) -> list[Credential
         terra_client = TerraClient(credentials_helper)
         user_details = terra_client.get_user_details()
         if not isinstance(user_details, dict) or not user_details.get("enabled", False):
-            cli.logger.info(f"Terra user {email} found not for project {gcloud_config.name}")
+            cli.logger.info(f"Terra user {email} not found for project {gcloud_config.name}")
             continue
 
         cli.logger.info(f"Using credentials {email} via project {gcloud_config.name}")
@@ -446,13 +435,13 @@ def run_with_retries(func: Callable[[], None], system_clients: SystemClients, re
                 func()
                 if existing_error:
                     existing_error = False
-                    cli.logger.info("Resuming normal operation")
+                    cli.logger.info("Resuming emailing outputs from Terra workflows")
             except KeyboardInterrupt:
                 raise
             except Exception as exception:
                 if not existing_error:
                     existing_error = True
-                    cli.logger.exception(f"Error processing emails", exc_info=exception)
+                    cli.logger.exception(f"Error emailing outputs from Terra workflows", exc_info=exception)
                     send_error_message(exception, system_clients)
 
             if recheck_seconds < 0:
@@ -464,10 +453,10 @@ def run_with_retries(func: Callable[[], None], system_clients: SystemClients, re
 
 
 def send_error_message(exception: Exception, system_clients: SystemClients) -> None:
-    if system_clients.email_client.errors_to_address():
+    if system_clients.email_client.errors_to_addresses():
         error_message = HtmlEmailMessage(
             email_from=system_clients.email_client.default_from_address(),
-            email_to=[system_clients.email_client.errors_to_address()],
+            email_to=system_clients.email_client.errors_to_addresses(),
             subject="[INTERNAL_ERROR] : Trouble emailing outputs from Terra workflows",
             body=format_error_message(exception),
         )

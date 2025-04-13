@@ -23,13 +23,14 @@
 """
 Sends emails
 """
-import copy
 import os
 import smtplib
 import socket
 from abc import ABC, abstractmethod
 from email.message import EmailMessage
 from typing import Optional
+
+import yaml
 
 try:
     from .models import HtmlEmailMessage, SmtpSettings
@@ -42,9 +43,9 @@ class EmailClient(ABC):
     An email client.
     """
 
-    def __init__(self, default_from: Optional[str] = None, errors_to: Optional[str] = None):
+    def __init__(self, default_from: Optional[str] = None, errors_to: list[str] = None):
         self._default_from_address: Optional[str] = default_from
-        self._errors_to_address: Optional[str] = errors_to
+        self._errors_to_addresses: list[str] = errors_to
 
     def default_from_address(self) -> str:
         """
@@ -54,11 +55,11 @@ class EmailClient(ABC):
             self._default_from_address = f"{self._default_from_user()}@{self._default_from_domain()}"
         return self._default_from_address
 
-    def errors_to_address(self) -> Optional[str]:
+    def errors_to_addresses(self) -> list[str]:
         """
-        Get the errors to email address.
+        Get the errors to email addresses.
         """
-        return self._errors_to_address
+        return self._errors_to_addresses
 
     @abstractmethod
     def send_email(self, message: HtmlEmailMessage) -> None:
@@ -90,11 +91,27 @@ class SmtpEmailClient(EmailClient):
     """
 
     def __init__(self,
-                 smtp_settings: SmtpSettings,
+                 smtp_settings_file: Optional[str] = None,
                  default_from: Optional[str] = None,
-                 errors_to: Optional[str] = None):
+                 errors_to: list[str] = None):
         super().__init__(default_from, errors_to)
-        self.smtp_settings = copy.copy(smtp_settings)
+        self.smtp_settings = SmtpEmailClient.__load_settings(smtp_settings_file)
+
+    @staticmethod
+    def __load_settings(smtp_settings_file: str) -> SmtpSettings:
+        """
+        Load SMTP settings from a YAML file.
+        """
+        smtp_settings = {}
+        if smtp_settings_file:
+            with open(smtp_settings_file, "r") as file:
+                smtp_settings = yaml.safe_load(file)
+            if not smtp_settings:
+                smtp_settings = {}
+        try:
+            return SmtpSettings(**smtp_settings)
+        except Exception as e:
+            raise ValueError(f"Failed to load SMTP settings from {smtp_settings_file}: {e}")
 
     def send_email(self, message: HtmlEmailMessage) -> None:
         email_message = EmailMessage()

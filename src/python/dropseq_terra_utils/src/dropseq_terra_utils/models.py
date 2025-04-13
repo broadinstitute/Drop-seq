@@ -133,11 +133,11 @@ class SmtpSettings:
     """
     Represents the settings needed to send an email via SMTP.
     """
-    server: Optional[str]
-    port: Optional[int]
-    username: Optional[str]
-    password: Optional[str]
-    tls: bool
+    server: str = field(default="smtp")
+    port: int = field(default=25)
+    username: Optional[str] = field(default=None)
+    password: Optional[str] = field(default=None)
+    tls: bool = field(default=False)
 
 
 @dataclass
