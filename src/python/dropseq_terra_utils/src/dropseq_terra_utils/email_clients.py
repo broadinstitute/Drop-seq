@@ -42,8 +42,9 @@ class EmailClient(ABC):
     An email client.
     """
 
-    def __init__(self, default_from: Optional[str] = None):
+    def __init__(self, default_from: Optional[str] = None, errors_to: Optional[str] = None):
         self._default_from_address: Optional[str] = default_from
+        self._errors_to_address: Optional[str] = errors_to
 
     def default_from_address(self) -> str:
         """
@@ -52,6 +53,12 @@ class EmailClient(ABC):
         if not self._default_from_address:
             self._default_from_address = f"{self._default_from_user()}@{self._default_from_domain()}"
         return self._default_from_address
+
+    def errors_to_address(self) -> Optional[str]:
+        """
+        Get the errors to email address.
+        """
+        return self._errors_to_address
 
     @abstractmethod
     def send_email(self, message: HtmlEmailMessage) -> None:
@@ -82,8 +89,11 @@ class SmtpEmailClient(EmailClient):
     Send an email via an SMTP server.
     """
 
-    def __init__(self, smtp_settings: SmtpSettings, default_from: Optional[str] = None):
-        super().__init__(default_from)
+    def __init__(self,
+                 smtp_settings: SmtpSettings,
+                 default_from: Optional[str] = None,
+                 errors_to: Optional[str] = None):
+        super().__init__(default_from, errors_to)
         self.smtp_settings = copy.copy(smtp_settings)
 
     def send_email(self, message: HtmlEmailMessage) -> None:

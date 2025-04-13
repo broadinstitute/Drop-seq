@@ -228,3 +228,13 @@ class TerraClient:
         """
         url = f"{self.firecloud_host}/api/workflows/v1/{workflow_id}/metadata?expandSubWorkflows=true"
         return self._make_request(url)
+
+
+class GcloudClients:
+    """
+    Collection of clients for Google Cloud.
+    """
+
+    def __init__(self, gcs: GcsClient, terra: TerraClient):
+        self.gcs: GcsClient = gcs
+        self.terra: TerraClient = terra
