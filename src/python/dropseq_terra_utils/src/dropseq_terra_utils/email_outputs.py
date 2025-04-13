@@ -24,11 +24,13 @@
 Email outputs from Terra workflows.
 """
 import argparse
+import html
+import logging
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Optional
 
 import yaml
 from dateutil import parser as date_parser
@@ -39,7 +41,7 @@ try:
     from . import email_templates
     from .data_store import DataStore
     from .email_clients import EmailClient, SmtpEmailClient
-    from .gcloud_clients import CredentialsHelper, GcsClient, TerraClient
+    from .gcloud_clients import CredentialsHelper, GcsClient, TerraClient, GcloudClients
     from .email_templates import EmailTemplate
     from .models import WorkflowEmail, SubmissionInfo, WorkflowInfo, HtmlEmailMessage, SmtpSettings, WorkspaceInfo, \
         SubmissionFilters, GcloudConfig
@@ -49,10 +51,20 @@ except ImportError:
     import email_templates
     from data_store import DataStore
     from email_clients import EmailClient, SmtpEmailClient
-    from gcloud_clients import CredentialsHelper, GcsClient, TerraClient
+    from gcloud_clients import CredentialsHelper, GcsClient, TerraClient, GcloudClients
     from email_templates import EmailTemplate
     from models import WorkflowEmail, SubmissionInfo, WorkflowInfo, HtmlEmailMessage, SmtpSettings, WorkspaceInfo, \
         SubmissionFilters, GcloudConfig
+
+
+class SystemClients:
+    """
+    Collection of clients for various system services.
+    """
+
+    def __init__(self, emailer: EmailClient, ds: DataStore):
+        self.email_client: EmailClient = emailer
+        self.data_store: DataStore = ds
 
 
 def add_subparser(subparsers) -> None:
@@ -95,6 +107,7 @@ def add_arguments(parser) -> None:
     parser.add_argument("--smtp-port", type=int, default=25, help="SMTP port.  Default: %(default)s")
     parser.add_argument("--smtp-tls", action="store_true", help="Use TLS for SMTP. Default: %(default)s")
     parser.add_argument("--email-from", help="Default email from address.  Default: derived from the user and host")
+    parser.add_argument("--errors-to", help="Email address to send errors to.")
 
 
 def run(options):
@@ -114,14 +127,15 @@ def run(options):
         options.smtp_password,
         options.smtp_tls,
     )
-    smtp = SmtpEmailClient(smtp_settings, options.email_from)
+    smtp = SmtpEmailClient(smtp_settings, options.email_from, options.errors_to)
     ds = DataStore(options.data_store)
+    system_clients = SystemClients(smtp, ds)
 
-    service_clients = []
+    gcloud_clients_list = []
     for credentials_helper in credential_helpers:
         gcs = GcsClient(credentials_helper, options.max_gcs_bytes)
         terra = TerraClient(credentials_helper)
-        service_clients.append(ServiceClients(gcs, terra, smtp, ds))
+        gcloud_clients_list.append(GcloudClients(gcs, terra))
 
     email_templates_list = email_templates.email_templates_list()
 
@@ -131,31 +145,14 @@ def run(options):
         options.max_days_old,
     )
 
-    recheck_seconds = options.recheck
-    try:
-        while True:
-            send_emails(service_clients, email_templates_list, submission_filters)
-            if recheck_seconds < 0:
-                break
-            cli.logger.debug(f"Sleeping for {recheck_seconds} seconds")
-            time.sleep(recheck_seconds)
-    except KeyboardInterrupt:
-        pass
+    run_with_retries(
+        lambda: send_workspace_emails(system_clients, gcloud_clients_list, email_templates_list, submission_filters),
+        system_clients,
+        options.recheck,
+    )
 
     cli.logger.info("Done")
     return 0
-
-
-class ServiceClients:
-    """
-    Collection of clients for various services.
-    """
-
-    def __init__(self, gcs: GcsClient, terra: TerraClient, emailer: EmailClient, ds: DataStore):
-        self.gcs: GcsClient = gcs
-        self.terra: TerraClient = terra
-        self.email_client: EmailClient = emailer
-        self.data_store: DataStore = ds
 
 
 def get_service_accounts(project_metadata_path: str) -> list[GcloudConfig]:
@@ -211,18 +208,18 @@ def get_terra_credentials(gcloud_configs: list[GcloudConfig]) -> list[Credential
     return credentials_helpers
 
 
-def get_workspaces(clients: ServiceClients, submission_filters: SubmissionFilters) -> list[WorkspaceInfo]:
+def get_workspaces(gcloud_clients: GcloudClients, submission_filters: SubmissionFilters) -> list[WorkspaceInfo]:
     """
     Get the workspaces to process.
 
-    :param clients: The service clients.
+    :param gcloud_clients: The Google Cloud clients.
     :param submission_filters: The workflow filters.
     :return: The list of workspaces to process.
     """
     if submission_filters.workspaces:
         workspace_infos = submission_filters.workspaces
     else:
-        all_workspaces = clients.terra.get_workspaces()
+        all_workspaces = gcloud_clients.terra.get_workspaces()
         filtered_workspaces = [
             workspace["workspace"]
             for workspace in all_workspaces
@@ -239,19 +236,19 @@ def get_workspaces(clients: ServiceClients, submission_filters: SubmissionFilter
 
 
 def get_submissions(
-        clients: ServiceClients,
+        gcloud_clients: GcloudClients,
         workspace: WorkspaceInfo,
         submission_filters: SubmissionFilters,
 ) -> list[SubmissionInfo]:
     """
     Get the submissions to process.
 
-    :param clients: The service clients.
+    :param gcloud_clients: The Google Cloud clients.
     :param workspace: The workspace to process.
     :param submission_filters: The workflow filters.
     :return: The list of submissions to process.
     """
-    all_submissions = clients.terra.get_submissions(workspace.workspace_namespace, workspace.workspace_name)
+    all_submissions = gcloud_clients.terra.get_submissions(workspace.workspace_namespace, workspace.workspace_name)
 
     submission_infos = [
         SubmissionInfo(workspace.workspace_namespace, workspace.workspace_name, submission)
@@ -305,45 +302,48 @@ def get_submission_workflow_names(submission_detail: dict[str, Any]) -> list[str
     return sorted(workflow_counts, key=workflow_counts.get, reverse=True)
 
 
-def send_emails(
-        service_clients: list[ServiceClients],
+def send_workspace_emails(
+        system_clients: SystemClients,
+        gcloud_clients_list: list[GcloudClients],
         email_templates_list: list[EmailTemplate],
         submission_filters: SubmissionFilters,
 ) -> None:
-    for clients in service_clients:
-        workspaces = get_workspaces(clients, submission_filters)
+    for gcloud_clients in gcloud_clients_list:
+        workspaces = get_workspaces(gcloud_clients, submission_filters)
         for workspace in workspaces:
-            process_workspace(clients, email_templates_list, workspace, submission_filters)
+            process_workspace(system_clients, gcloud_clients, email_templates_list, workspace, submission_filters)
 
 
 def process_workspace(
-        clients: ServiceClients,
+        system_clients: SystemClients,
+        gcloud_clients: GcloudClients,
         email_templates_list: list[EmailTemplate],
         workspace: WorkspaceInfo,
         submission_filters: SubmissionFilters,
 ) -> None:
     cli.logger.debug(f"Processing workspace {workspace.workspace_namespace}/{workspace.workspace_name}")
-    submission_infos = get_submissions(clients, workspace, submission_filters)
+    submission_infos = get_submissions(gcloud_clients, workspace, submission_filters)
     for submission_info in submission_infos:
-        if clients.data_store.has_done_submission(submission_info.submission_id):
+        if system_clients.data_store.has_done_submission(submission_info.submission_id):
             cli.logger.debug(f"Submission {submission_info.submission_id} was already done")
             continue
 
         cli.logger.debug(f"Processing submission {submission_info.submission_id}")
-        process_submission(clients, email_templates_list, submission_info)
+        process_submission(system_clients, gcloud_clients, email_templates_list, submission_info)
 
         # If the submission is done, mark it as done and don't process it again
         if submission_info.is_submission_done:
             cli.logger.info(f"Marking submission {submission_info.submission_id} as done")
-            clients.data_store.add_done_submission(submission_info.submission_id)
+            system_clients.data_store.add_done_submission(submission_info.submission_id)
 
 
 def process_submission(
-        clients: ServiceClients,
+        system_clients: SystemClients,
+        gcloud_clients: GcloudClients,
         email_templates_list: list[EmailTemplate],
         submission_info: SubmissionInfo,
 ) -> None:
-    submission_detail = clients.terra.get_submission(
+    submission_detail = gcloud_clients.terra.get_submission(
         submission_info.workspace_namespace,
         submission_info.workspace_name,
         submission_info.submission_id,
@@ -356,11 +356,18 @@ def process_submission(
             continue
         cli.logger.debug(f"Processing {current_email_template.config_name}")
         for submission_workflow in submission_detail["workflows"]:
-            process_workflow(clients, submission_info, submission_workflow, current_email_template)
+            process_workflow(
+                system_clients,
+                gcloud_clients,
+                submission_info,
+                submission_workflow,
+                current_email_template,
+            )
 
 
 def process_workflow(
-        clients: ServiceClients,
+        system_clients: SystemClients,
+        gcloud_clients: GcloudClients,
         submission_info: SubmissionInfo,
         submission_workflow: dict[str, Any],
         current_email_template: EmailTemplate,
@@ -368,7 +375,7 @@ def process_workflow(
     workflow_id = submission_workflow["workflowId"]
 
     current_workflow_email = WorkflowEmail(current_email_template.config_name, workflow_id)
-    if clients.data_store.has_workflow_email(current_workflow_email):
+    if system_clients.data_store.has_workflow_email(current_workflow_email):
         cli.logger.debug(
             f"Already processed {current_email_template.config_name} in workflow {workflow_id}"
         )
@@ -377,7 +384,7 @@ def process_workflow(
     cli.logger.debug(
         f"Processing {current_email_template.config_name} in workflow {workflow_id}"
     )
-    workflow_metadata = clients.terra.get_workflow(workflow_id)
+    workflow_metadata = gcloud_clients.terra.get_workflow(workflow_id)
     workflow_info = WorkflowInfo(
         submission_info.workspace_namespace,
         submission_info.workspace_name,
@@ -385,11 +392,18 @@ def process_workflow(
         submission_workflow,
         workflow_metadata,
     )
-    process_workflow_email(clients, workflow_info, current_email_template, current_workflow_email)
+    process_workflow_email(
+        system_clients,
+        gcloud_clients,
+        workflow_info,
+        current_email_template,
+        current_workflow_email,
+    )
 
 
 def process_workflow_email(
-        clients: ServiceClients,
+        system_clients: SystemClients,
+        gcloud_clients: GcloudClients,
         workflow_info: WorkflowInfo,
         current_email_template: EmailTemplate,
         current_workflow_email: WorkflowEmail,
@@ -402,13 +416,13 @@ def process_workflow_email(
             f" in workflow {workflow_info.workflow_id}: {missing_output_paths}"
         )
         return
-    output_data = {key: clients.gcs.download_file(val) for key, val in output_paths.items()}
+    output_data = {key: gcloud_clients.gcs.download_file(val) for key, val in output_paths.items()}
     email_message = current_email_template.make_message(workflow_info, output_data)
-    send_email_message(clients, workflow_info, email_message, current_workflow_email)
+    send_email_message(system_clients, workflow_info, email_message, current_workflow_email)
 
 
 def send_email_message(
-        clients: ServiceClients,
+        system_clients: SystemClients,
         workflow_info: WorkflowInfo,
         email_message: HtmlEmailMessage,
         current_workflow_email: WorkflowEmail,
@@ -417,11 +431,76 @@ def send_email_message(
         f"Sending {current_workflow_email.email_template} in workflow {workflow_info.workflow_id}"
     )
     if not email_message.email_from:
-        email_message.email_from = clients.email_client.default_from_address()
+        email_message.email_from = system_clients.email_client.default_from_address()
     if not email_message.email_to:
         email_message.email_to = [workflow_info.submitter]
-    clients.email_client.send_email(email_message)
-    clients.data_store.add_workflow_email(current_workflow_email)
+    system_clients.email_client.send_email(email_message)
+    system_clients.data_store.add_workflow_email(current_workflow_email)
+
+
+def run_with_retries(func: Callable[[], None], system_clients: SystemClients, recheck_seconds: Optional[int]) -> None:
+    existing_error = False
+    try:
+        while True:
+            try:
+                func()
+                if existing_error:
+                    existing_error = False
+                    cli.logger.info("Resuming normal operation")
+            except KeyboardInterrupt:
+                raise
+            except Exception as exception:
+                if not existing_error:
+                    existing_error = True
+                    cli.logger.exception(f"Error processing emails", exc_info=exception)
+                    send_error_message(exception, system_clients)
+
+            if recheck_seconds < 0:
+                break
+            cli.logger.debug(f"Sleeping for {recheck_seconds} seconds")
+            time.sleep(recheck_seconds)
+    except KeyboardInterrupt:
+        pass
+
+
+def send_error_message(exception: Exception, system_clients: SystemClients) -> None:
+    if system_clients.email_client.errors_to_address():
+        error_message = HtmlEmailMessage(
+            email_from=system_clients.email_client.default_from_address(),
+            email_to=[system_clients.email_client.errors_to_address()],
+            subject="[INTERNAL_ERROR] : Trouble emailing outputs from Terra workflows",
+            body=format_error_message(exception),
+        )
+        try:
+            system_clients.email_client.send_email(error_message)
+        except Exception as additional_exception:
+            cli.logger.exception(f"Error sending error email", exc_info=additional_exception)
+
+
+def format_error_message(exception: Exception) -> str:
+    hr = ('<hr style="'
+          ' border: 0;'
+          ' height: 0;'
+          ' border-top: 1px solid rgba(0, 0, 0, 0.1);'
+          ' border-bottom: 1px solid rgba(255, 255, 255, 0.3);'
+          '"/>')
+    formatter = logging.Formatter()
+    exception_string = formatter.formatException((type(exception), exception, exception.__traceback__))
+    exception_html = html.escape(exception_string).replace("\n", "<br/>\n")
+    return f"""
+    <div>
+        <div><table>
+            <tr>
+                <td style="text-align: right; font-weight: bold;">Status</td>
+                <td><span style="color: #DF0101; font-weight: bold;">INTERNAL_ERROR</span></td>
+            </tr>
+        </table></div>
+        {hr}
+        <div>
+            <div>{exception_html}</div>
+        </div>
+    </div>
+    """
 
 
 def main(args=None):
