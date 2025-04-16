@@ -176,6 +176,7 @@ class TerraClient:
         headers.update(self.credentials.make_auth_header())
         headers.update(USER_AGENT_HEADER)
         response = session.get(url, headers=headers)
+        response.raise_for_status()
         return json.loads(response.text)
 
     def get_user_details(self) -> dict[str, Any]:

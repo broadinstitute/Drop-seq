@@ -34,6 +34,8 @@ from typing import Any, Callable, Optional
 
 import yaml
 from dateutil import parser as date_parser
+from requests.exceptions import RequestException
+from urllib3.exceptions import MaxRetryError
 
 try:
     from . import cli
@@ -439,7 +441,9 @@ def run_with_retries(func: Callable[[], None], system_clients: SystemClients, re
             except KeyboardInterrupt:
                 raise
             except Exception as exception:
-                if not existing_error:
+                if ignore_exception(exception):
+                    cli.logger.debug(f"Ignoring exception: {exception}")
+                elif not existing_error:
                     existing_error = True
                     cli.logger.exception(f"Error emailing outputs from Terra workflows", exc_info=exception)
                     send_error_message(exception, system_clients)
@@ -450,6 +454,21 @@ def run_with_retries(func: Callable[[], None], system_clients: SystemClients, re
             time.sleep(recheck_seconds)
     except KeyboardInterrupt:
         pass
+
+
+def ignore_exception(exception: BaseException) -> bool:
+    if exception is None:
+        return False
+    if isinstance(exception, RequestException) and exception.response is not None:
+        status_code = exception.response.status_code
+        return status_code == 429 or status_code // 100 == 5
+    if isinstance(exception, MaxRetryError):
+        return ignore_exception(exception.reason)
+    if exception.__cause__:
+        return ignore_exception(exception.__cause__)
+    if exception.__context__:
+        return ignore_exception(exception.__context__)
+    return False
 
 
 def send_error_message(exception: Exception, system_clients: SystemClients) -> None:
