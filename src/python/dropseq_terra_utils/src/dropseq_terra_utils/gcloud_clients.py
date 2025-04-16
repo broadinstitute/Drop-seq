@@ -34,6 +34,7 @@ from google.auth.exceptions import RefreshError
 from google.cloud.storage import Blob, Client
 from google.oauth2 import service_account
 from requests.adapters import HTTPAdapter
+from requests.exceptions import HTTPError
 from urllib3.util.retry import Retry as URLLibRetry
 
 try:
@@ -186,7 +187,13 @@ class TerraClient:
         :return: The current Terra user parsed from json.
         """
         url = f"{self.firecloud_host}/me?userDetailsOnly=true"
-        return self._make_request(url)
+        try:
+            return self._make_request(url)
+        except HTTPError as e:
+            if e.response.status_code in [401, 403, 404]:
+                return {}
+            else:
+                raise
 
     def get_workspaces(self) -> list[dict[str, Any]]:
         """
