@@ -63,11 +63,9 @@ public class TestUtils {
 		TabbedInputParser e = new TabbedInputParser(treatGroupedDelimitersAsOne, expected);
 		TabbedInputParser a = new TabbedInputParser(treatGroupedDelimitersAsOne, actual);
 		while (e.hasNext() && a.hasNext()) {
-			e.next();
-			a.next();
-			String le = e.getCurrentLine();
-			String la = a.getCurrentLine();
-			if (!le.equals(la)) {
+			String le[] = e.next();
+			String la[] = a.next();
+			if (!Arrays.equals(le, la)) {
 				CloserUtil.close(e);
 				CloserUtil.close(a);
 				return false;
