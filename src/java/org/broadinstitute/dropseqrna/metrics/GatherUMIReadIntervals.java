@@ -1,9 +1,5 @@
 package org.broadinstitute.dropseqrna.metrics;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.util.*;
-
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.*;
 import org.apache.commons.lang3.StringUtils;
@@ -16,14 +12,24 @@ import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.*;
 import org.broadinstitute.dropseqrna.utils.readiterators.*;
-
 import picard.annotation.LocusFunction;
 import picard.cmdline.StandardOptionDefinitions;
 import picard.nio.PicardHtsPath;
-import picard.util.TabbedTextFileWithHeaderParser;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.util.*;
 
 @CommandLineProgramProperties(
-        summary = "For a cell/gene/umi, finds the min/max positions of the reads in genomic coordinates.",
+        summary = "For a cell barcode/gene/molecular barcode, finds the min/max positions of the reads in genomic coordinates.  The report contains the following columns:\n" +
+				"Cell_Barcode, Gene, Molecular_Barcode: there is a single row for each unique combination of these.\n" +
+				"Num_Reads: total reads for this {cell barcode, gene, molecular barcode}\n" +
+				"Num_Gapped_Reads: number of reads for this row that have at least one gap\n" +
+				"Contig: contig containing the gene\n" +
+				"Position_Min: smallest 1-based alignment start for all reads for this row\n" +
+				"Position_Max: largest 1-based inclusive alignment end for all reads for this row\n" +
+				"Read_Positive_Strand: true if reads are on positive strand\n" +
+				"Gaps: comma-separated list of gaps, where each gap is <1-based position before the gap start>:<1-based position after the gap end>:<number of reads with this gap>",
         oneLineSummary = "Find read intervals for each UMI",
         programGroup = DropSeq.class
 )
@@ -160,7 +166,17 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 		
 		for (SAMRecord r: recs) {
 			// get the min/max, count of reads with cigar string N
-			if (hasGap(r)) result.NUM_SPLICED_READS++;	
+			final List<AlignmentGap> gaps = getGaps(r);
+			if (!gaps.isEmpty()) {
+				result.NUM_SPLICED_READS++;
+				for (final AlignmentGap gap: gaps) {
+					if (result.GAPS.containsKey(gap)) {
+						result.GAPS.put(gap, result.GAPS.get(gap) + 1);
+					} else {
+						result.GAPS.put(gap, 1);
+					}
+				}
+			}
 			posList.add(r.getAlignmentStart());
 			posList.add(r.getAlignmentEnd());
 		}
@@ -171,14 +187,46 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 		return (result);
 	}
 	
-	private boolean hasGap (final SAMRecord r) {
-		Cigar c = r.getCigar();
-		for (CigarElement ce: c.getCigarElements())
-			if (ce.getOperator()==CigarOperator.N)
-				return true;
-		return false;
+	private List<Integer> getIndicesOfAlignmentBlocksPrecedingGaps(final SAMRecord r) {
+		ArrayList<Integer> ret = null;
+		List<CigarElement> cigarElements = r.getCigar().getCigarElements();
+		int alignmentBlockIndex = -1;
+		for (final CigarElement ce: cigarElements) {
+			if (ce.getOperator() == CigarOperator.MATCH_OR_MISMATCH) {
+				++alignmentBlockIndex;
+			} else if (ce.getOperator() == CigarOperator.SKIPPED_REGION) {
+				if (ret == null) {
+					ret = new ArrayList<>();
+				}
+				ret.add(alignmentBlockIndex);
+			}
+		}
+		if (ret == null) {
+			return Collections.emptyList();
+		}
+		return ret;
 	}
-	
+
+	private List<AlignmentGap> getGaps (final SAMRecord r) {
+		final List<Integer> alignmentBlocksPrecedingGaps = getIndicesOfAlignmentBlocksPrecedingGaps(r);
+		if (alignmentBlocksPrecedingGaps.isEmpty()) {
+			return Collections.emptyList();
+		} else {
+			List<AlignmentGap> ret = new ArrayList<>(alignmentBlocksPrecedingGaps.size());
+			final List<AlignmentBlock> alignmentBlocks = r.getAlignmentBlocks();
+			for (int alignmentBlockIndex : alignmentBlocksPrecedingGaps) {
+				final AlignmentBlock precedingAlignmentBlock = alignmentBlocks.get(alignmentBlockIndex);
+				if (alignmentBlockIndex == alignmentBlocks.size() - 1) {
+					throw new IllegalStateException("Strange CIGAR: " + r.getCigarString() +
+							" for read " + r.getReadName());
+				}
+				ret.add(new AlignmentGap(precedingAlignmentBlock.getReferenceStart() + precedingAlignmentBlock.getLength() - 1,
+						alignmentBlocks.get(alignmentBlockIndex + 1).getReferenceStart()));
+			}
+			return ret;
+		}
+	}
+
 	static void writePerUMIStats (UmiReadInterval interval, final BufferedWriter out) {
 		OutputWriterUtil.writeResult(interval.toTsv(), out);
 
@@ -275,6 +323,10 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 		}
 	}
 
+	record AlignmentGap(int start, int end) {
+
+	}
+
 	static class UmiReadInterval {
 		public static final String CELL_BARCODE_HEADER = "Cell_Barcode";
 		public static final String GENE_HEADER = "Gene";
@@ -285,9 +337,10 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 		public static final String POSITION_MIN_HEADER = "Position_Min";
 		public static final String POSITION_MAX_HEADER = "Position_Max";
 		public static final String READ_POSITIVE_STRAND_HEADER = "Read_Positive_Strand";
+		public static final String GAPS_HEADER = "Gaps";
 		static String [] COLUMN_HEADERS = {CELL_BARCODE_HEADER,
 				GENE_HEADER, MOLECULAR_BARCODE_HEADER, NUM_READS_HEADER, NUM_GAPPED_READS_HEADER, CONTIG_HEADER,
-				POSITION_MIN_HEADER, POSITION_MAX_HEADER, READ_POSITIVE_STRAND_HEADER};
+				POSITION_MIN_HEADER, POSITION_MAX_HEADER, READ_POSITIVE_STRAND_HEADER, GAPS_HEADER};
 
 		String CELL_BARCODE;
 		String GENE_NAME;
@@ -298,20 +351,9 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 		int POSITION_MIN;
 		int POSITION_MAX;
 		boolean POSITIVE_STRAND;
+		Map<AlignmentGap, Integer> GAPS = new HashMap<>();
 
 		public UmiReadInterval() {
-		}
-
-		public UmiReadInterval(final TabbedTextFileWithHeaderParser.Row row) {
-			this.CELL_BARCODE = row.getField(CELL_BARCODE_HEADER);
-			this.GENE_NAME = row.getField(GENE_HEADER);
-			this.MOLECULAR_BARCODE = row.getField(MOLECULAR_BARCODE_HEADER);
-			this.NUM_READS = row.getIntegerField(NUM_READS_HEADER);
-			this.NUM_SPLICED_READS = row.getIntegerField(NUM_GAPPED_READS_HEADER);
-			this.CONTIG = row.getField(CONTIG_HEADER);
-			this.POSITION_MIN = row.getIntegerField(POSITION_MIN_HEADER);
-			this.POSITION_MAX = row.getIntegerField(POSITION_MAX_HEADER);
-			this.POSITIVE_STRAND = Boolean.parseBoolean(row.getField(READ_POSITIVE_STRAND_HEADER));
 		}
 
 		@Override
@@ -322,9 +364,21 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 					+ ", POSITIVE_STRAND=" + POSITIVE_STRAND + "]";
 		}		
 
+		private String makeGapsString() {
+			final String[] gapStrings = new String[GAPS.size()];
+			int i = 0;
+			for (Map.Entry<AlignmentGap, Integer> entry : GAPS.entrySet()) {
+				AlignmentGap gap = entry.getKey();
+				int count = entry.getValue();
+				gapStrings[i++] = gap.start + ":" + gap.end + ":" + count;
+			}
+			return StringUtils.join(gapStrings, ",");
+		}
+
 		public String toTsv() {
 			String [] body = {CELL_BARCODE, GENE_NAME, MOLECULAR_BARCODE, Integer.toString(NUM_READS), Integer.toString(NUM_SPLICED_READS),
-					CONTIG, Integer.toString(POSITION_MIN), Integer.toString(POSITION_MAX), Boolean.toString(POSITIVE_STRAND)};
+					CONTIG, Integer.toString(POSITION_MIN), Integer.toString(POSITION_MAX), Boolean.toString(POSITIVE_STRAND),
+					makeGapsString()};
 			return StringUtils.join(body, "\t");
 		}
 	}

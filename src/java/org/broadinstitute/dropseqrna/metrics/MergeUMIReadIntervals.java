@@ -62,16 +62,20 @@ public class MergeUMIReadIntervals
     @Override
     protected int doWork() {
         IOUtil.assertFileIsWritable(OUTPUT);
-        final MergingIterator<GatherUMIReadIntervals.UmiReadInterval> it = new MergingIterator<>(new UMIReadIntervalComparator(),
-                INPUT.stream().map(UMIReadIntervalIterator::new).collect(Collectors.toList()));
+        // Instead of fully parsing the inputs, just use getCurrentLine to output whatever the input is.
+        // This will produce nonsensical results if any of the input columns are not in the same order as
+        // GatherUMIReadIntervals.writePerUMIStatsHeader defines.
+        final MergingIterator<TabbedTextFileWithHeaderParser.Row> it = new MergingIterator<>(new UMIReadIntervalRowComparator(),
+                INPUT.stream().map(input -> new TabbedTextFileWithHeaderParser(input).iterator()).collect(Collectors.toList()));
         BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT);
         GatherUMIReadIntervals.writePerUMIStatsHeader(out);
         ProgressLogger prog = new ProgressLogger(log);
-        for (final GatherUMIReadIntervals.UmiReadInterval interval : new IterableAdapter<>(it)) {
-            prog.record(interval.CONTIG, interval.POSITION_MIN);
-            GatherUMIReadIntervals.writePerUMIStats(interval, out);
-        }
         try {
+            for (final TabbedTextFileWithHeaderParser.Row row : new IterableAdapter<>(it)) {
+                prog.record(row.getField(GatherUMIReadIntervals.UmiReadInterval.CONTIG_HEADER), row.getIntegerField(GatherUMIReadIntervals.UmiReadInterval.POSITION_MIN_HEADER));
+                out.write(row.getCurrentLine());
+                out.newLine();
+            }
             out.close();
         } catch (IOException e) {
             throw new RuntimeIOException(e);
@@ -89,35 +93,11 @@ public class MergeUMIReadIntervals
     /**
      * It is assumed that input files are in appropriate order so that all that is needed is to order by CBC
      */
-    private static class UMIReadIntervalComparator
-    implements Comparator<GatherUMIReadIntervals.UmiReadInterval> {
+    private static class UMIReadIntervalRowComparator
+    implements Comparator<TabbedTextFileWithHeaderParser.Row> {
         @Override
-        public int compare(GatherUMIReadIntervals.UmiReadInterval o1, GatherUMIReadIntervals.UmiReadInterval o2) {
-            return o1.CELL_BARCODE.compareTo(o2.CELL_BARCODE);
-        }
-    }
-
-    private static class UMIReadIntervalIterator
-    implements CloseableIterator<GatherUMIReadIntervals.UmiReadInterval> {
-        private final CloseableIterator<TabbedTextFileWithHeaderParser.Row> iterator;
-
-        public UMIReadIntervalIterator(final File input) {
-            iterator = new TabbedTextFileWithHeaderParser(input).iterator();
-        }
-
-        @Override
-        public void close() {
-            iterator.close();
-        }
-
-        @Override
-        public boolean hasNext() {
-            return iterator.hasNext();
-        }
-
-        @Override
-        public GatherUMIReadIntervals.UmiReadInterval next() {
-            return new GatherUMIReadIntervals.UmiReadInterval(iterator.next());
+        public int compare(TabbedTextFileWithHeaderParser.Row r1, TabbedTextFileWithHeaderParser.Row r2) {
+            return r1.getField(GatherUMIReadIntervals.UmiReadInterval.CELL_BARCODE_HEADER).compareTo(r2.getField(GatherUMIReadIntervals.UmiReadInterval.CELL_BARCODE_HEADER));
         }
     }
 }
