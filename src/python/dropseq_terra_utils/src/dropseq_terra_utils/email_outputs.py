@@ -26,6 +26,7 @@ Email outputs from Terra workflows.
 import argparse
 import html
 import logging
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -35,7 +36,7 @@ from typing import Any, Callable, Optional
 import yaml
 from dateutil import parser as date_parser
 from requests.exceptions import RequestException
-from urllib3.exceptions import MaxRetryError
+from urllib3.exceptions import MaxRetryError, ResponseError
 
 try:
     from . import cli
@@ -456,12 +457,19 @@ def run_with_retries(func: Callable[[], None], system_clients: SystemClients, re
         pass
 
 
+def ignore_status(status_code: int) -> bool:
+    return status_code == 429 or status_code // 100 == 5
+
+
 def ignore_exception(exception: BaseException) -> bool:
     if exception is None:
         return False
     if isinstance(exception, RequestException) and exception.response is not None:
         status_code = exception.response.status_code
-        return status_code == 429 or status_code // 100 == 5
+        return ignore_status(status_code)
+    if isinstance(exception, ResponseError):
+        match = re.search(r"too many (\d+) error responses", str(exception))
+        return ignore_status(int(match.group(1))) if match else False
     if isinstance(exception, MaxRetryError):
         return ignore_exception(exception.reason)
     if exception.__cause__:
