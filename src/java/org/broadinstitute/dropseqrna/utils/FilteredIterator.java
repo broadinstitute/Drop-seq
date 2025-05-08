@@ -38,8 +38,8 @@ public abstract class FilteredIterator<T>
     final PeekableIterator<T> it;
     boolean firstTime = true;
     private final ObjectSink<T> sink;
-    private int recordsPass=0;
-	private int recordsFail=0;
+    private long recordsPass=0;
+	private long recordsFail=0;
 	
         
     /**
@@ -132,12 +132,12 @@ public abstract class FilteredIterator<T>
     }
     
     @Override
-	public int getRecordsPassed() {
+	public long getRecordsPassed() {
 		return this.recordsPass;		
 	}
 
 	@Override
-	public int getRecordsFailed() {
+	public long getRecordsFailed() {
 		return this.recordsFail;
 	}
 }
