@@ -7,7 +7,7 @@ package org.broadinstitute.dropseqrna.utils;
  */
 public interface PassFailTrackingIteratorI {
 
-	public int getRecordsPassed();
-	public int getRecordsFailed();
+	public long getRecordsPassed();
+	public long getRecordsFailed();
 	
 }
