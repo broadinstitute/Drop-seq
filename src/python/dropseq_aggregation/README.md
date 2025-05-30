@@ -2,12 +2,11 @@
 
 ## Installation
 
-Requires python >= 3.8
+Requires python >= 3.12
 ```
 pip install 'git+https://github.com/broadinstitute/Drop-seq.git#egg=dropseq_aggregation&subdirectory=src/python/dropseq_aggregation'
 ```
 
 ## Usage
 
-Run `join_and_filter_tsv -h` for usage information.
-
+Run `cat_tsvs -h` or `join_and_filter_tsv -h` for usage information.

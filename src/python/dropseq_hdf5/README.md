@@ -2,7 +2,7 @@
 
 ## Installation
 
-Requires python >= 3.8
+Requires python >= 3.12
 ```
 pip install 'git+https://github.com/broadinstitute/Drop-seq.git#egg=dropseq_hdf5&subdirectory=src/python/dropseq_hdf5'
 ```
@@ -10,4 +10,3 @@ pip install 'git+https://github.com/broadinstitute/Drop-seq.git#egg=dropseq_hdf5
 ## Usage
 
 Run `dropseq_hdf5 -h` for usage information.
-
