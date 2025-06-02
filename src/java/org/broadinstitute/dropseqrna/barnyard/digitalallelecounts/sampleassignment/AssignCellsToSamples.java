@@ -223,6 +223,12 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 
 	@Override
 	protected int doWork() {
+		if (CELL_CONTAMINATION_ESTIMATE_FILE != null) {
+			IOUtil.assertFileIsReadable(CELL_CONTAMINATION_ESTIMATE_FILE);
+		}
+		if (ALLELE_FREQUENCY_ESTIMATE_FILE != null) {
+			IOUtil.assertFileIsReadable(ALLELE_FREQUENCY_ESTIMATE_FILE);
+		}
 		// get the verbose output writer if not null, or return null.
 		PrintStream verboseWriter = getVerboseWriter(this.VERBOSE_OUTPUT);
 
