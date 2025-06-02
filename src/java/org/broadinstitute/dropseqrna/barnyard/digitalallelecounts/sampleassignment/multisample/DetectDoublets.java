@@ -201,6 +201,12 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 
 	@Override
 	protected int doWork() {
+		if (CELL_CONTAMINATION_ESTIMATE_FILE != null) {
+			IOUtil.assertFileIsReadable(CELL_CONTAMINATION_ESTIMATE_FILE);
+		}
+		if (ALLELE_FREQUENCY_ESTIMATE_FILE != null) {
+			IOUtil.assertFileIsReadable(ALLELE_FREQUENCY_ESTIMATE_FILE);
+		}
 
 		List<String> donorList = ParseBarcodeFile.readCellBarcodeFile(this.SAMPLE_FILE);
 		log.info("Number of donors in donor list [" + donorList.size() + "]");
