@@ -108,6 +108,20 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
     public static final String BAM_LIST_EXTENSION = ".bam_list";
     public static final String BAM_REPORT_EXTENSION =".split_bam_report";
 
+    @Override
+    protected String[] customCommandLineValidation() {
+        if (OUTPUT_LIST != null) {
+            IOUtil.assertFileIsWritable(OUTPUT_LIST);
+        }
+        if (OUTPUT_MANIFEST != null) {
+            IOUtil.assertFileIsWritable(OUTPUT_MANIFEST);
+        }
+        if (REPORT != null) {
+            IOUtil.assertFileIsWritable(REPORT);
+        }
+        return super.customCommandLineValidation();
+    }
+
     protected void writeRecord(final int writerIdx, final SAMRecord rec) {
         writerInfoList.get(writerIdx).addRecord(rec);
     }
@@ -290,6 +304,8 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
                 } else {
                     throw new IllegalArgumentException("BAM file " + splitBamFile.getAbsolutePath() + " already exists, but OVERWRITE_EXISTING is set to false.");
                 }
+            } else {
+                IOUtil.assertFileIsWritable(splitBamFile);
             }
         }
     }
