@@ -1,0 +1,25 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+#
+# See https://github.com/r-lib/actions/tree/master/examples#readme for
+# additional example workflows available for the R community.
+
+name: DropSeq.eqtl R package
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+    paths: 'src/R/packages/DropSeq.eqtl/**'
+
+
+# See https://dirk.eddelbuettel.com/blog/code/r4/ for using r2u to speed up dependency loading
+jobs:
+  call-R-package:
+    uses: ./.github/workflows/R-package.yml
+    with:
+      package_name: eqtl
+    secrets: inherit
