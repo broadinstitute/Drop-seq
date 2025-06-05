@@ -1,0 +1,31 @@
+chr1: autosome
+chr2: autosome
+chr3: autosome
+chr4: autosome
+chr5: autosome
+chr6: autosome
+chr7: autosome
+chr8: autosome
+chr9: autosome
+chr10: autosome
+chr11: autosome
+chr12: autosome
+chr13: autosome
+chr14: autosome
+chr15: autosome
+chr16: autosome
+chr17: autosome
+chr18: autosome
+chr19: autosome
+chr20: autosome
+chr21: autosome
+chr22: autosome
+chrX:
+- non-autosome
+- X
+chrY:
+- non-autosome
+- Y
+chrM:
+- non-autosome
+- MT
