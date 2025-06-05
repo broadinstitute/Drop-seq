@@ -1,0 +1,1 @@
+snp	chr	pos	id	end
