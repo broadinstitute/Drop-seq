@@ -22,4 +22,5 @@ jobs:
     uses: ./.github/workflows/R-package.yml
     with:
       package_name: eqtl
+      error-on: error
     secrets: inherit
