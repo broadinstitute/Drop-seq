@@ -1,0 +1,19 @@
+Package: DropSeq.eqtl
+Type: Package
+Title: Tools for running eQTL analysis on dropseq data sets
+Version: 1.0
+Author: nemesh@broadinstitute.org
+Maintainer: James Nemesh <nemesh@broadinstitute.org>
+Description: Tools for running eQTL analysis on dropseq data sets.  More experimental single cell regression analysis does not support data compression in the standard install as the CRAN package has been retired.  To enable, please follow install directions at https://github.com/Mu-Sigma/muHVT#installation-of-muhvt-(v23.06.07).  Or, add the remote github::Mu-Sigma/muHVT which is currently broken.
+Imports: MatrixEQTL, data.table, tictoc, utils, stats, qvalue, RColorBrewer, VennDiagram, futile.logger,
+    vegan, areaplot, yaml, graphics, qqman, readr, matrixTests, MASS, beeswarm, purrr, heatmap3, permuco, LDlinkR,
+    Rsamtools, stringr, ggplot2, ggbeeswarm, logger, GenomicRanges, IRanges, Seurat, lme4, cowplot, viridis,
+    SeuratDisk, RACER, muHVT, fitdistrplus, Matrix, caret, genetics, plotrix, png
+Suggests: DropSeq.utilities
+Remotes: github::broadinstitute/Drop-seq/src/R/packages/DropSeq.utilities,
+    github::oliviasabik/RACER, github::mojaveazure/seurat-disk, github::Mu-Sigma/muHVT
+biocViews: # for Rsamtools
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.2

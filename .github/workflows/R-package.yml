@@ -1,0 +1,49 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+#
+# See https://github.com/r-lib/actions/tree/master/examples#readme for
+# additional example workflows available for the R community.
+
+on:
+  workflow_call:
+    inputs:
+      package_name:
+        required: true
+        type: string
+      error-on:
+        required: false
+        type: string
+        default: 'warning'
+        
+
+name: Build and check an R package
+
+permissions: read-all
+
+# See https://dirk.eddelbuettel.com/blog/code/r4/ for using r2u to speed up dependency loading
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: rocker/r2u:latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: SessionInfo
+        run: R -q -e 'sessionInfo()'
+      - name: Install dependencies
+        working-directory: src/R/packages/DropSeq.${{ inputs.package_name }}
+        run: |
+          install.packages(c("rcmdcheck"))
+          remotes::install_deps(dependencies = TRUE)
+        shell: Rscript {0}
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }} # this is needed because some deps are downloaded from github
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          working-directory: src/R/packages/DropSeq.${{ inputs.package_name }}
+          upload-snapshots: true
+          build_args: 'c("--no-manual")'
+          # for some reason this needs to be quoted lest it gets passed as (error)
+          error-on: ${{ format('"{0}"', inputs.error-on) }}
