@@ -40,8 +40,10 @@ jobs:
         shell: Rscript {0}
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }} # this is needed because some deps are downloaded from github
-      - name: Check
-        working-directory: src/R/packages/DropSeq.${{ inputs.package_name }}
-        run: |
-          rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "error")
-        shell: Rscript {0}
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          working-directory: src/R/packages/DropSeq.${{ inputs.package_name }}
+          upload-snapshots: true
+          build_args: 'c("--no-manual")'
+          # for some reason this needs to be quoted lest it gets passed as (error)
+          error-on: ${{ format('"{0}"', inputs.error-on) }}
