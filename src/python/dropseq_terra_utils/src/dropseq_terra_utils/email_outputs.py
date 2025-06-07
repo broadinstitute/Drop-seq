@@ -29,7 +29,7 @@ import logging
 import re
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -258,12 +258,12 @@ def get_submissions(
         ]
 
     if submission_filters.max_days_old > -1:
+        now = datetime.now(timezone.utc)
+        max_time_delta = timedelta(days=submission_filters.max_days_old)
         submission_infos = [
             submission
             for submission in submission_infos
-            if (
-                       datetime.now(timezone.utc) - date_parser.isoparse(submission.submission_date)
-               ).days <= submission_filters.max_days_old
+            if (now - date_parser.isoparse(submission.submission_date)) <= max_time_delta
         ]
 
     return submission_infos
