@@ -24,6 +24,7 @@
 Services to access Google Cloud related resources including Terra on Google Cloud.
 """
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -64,6 +65,11 @@ GOOGLE_CLOUD_SCOPES = [
 # Token URI for Google Cloud that isn't present in ADC JSON files, but is needed for the credentials object
 GOOGLE_CLOUD_TOKEN_URI = "https://accounts.google.com/o/oauth2/token"
 
+# If a token is within this threshold of expiry, it will be considered stale and refreshed.
+# The google auth library has a shorter threshold. But we ran into 401 errors while using that
+# threshold, likely while Terra was reporting 5xx errors and the HTTP client was retrying.
+# We don't have good instrumentation on what the threshold should be, so trying this for now.
+GOOGLE_CLOUD_TOKEN_REFRESH_THRESHOLD = timedelta(minutes=15)
 
 class CredentialsHelper:
     """
@@ -88,11 +94,24 @@ class CredentialsHelper:
         self.project: Optional[str] = gcloud_config.gcp_project if gcloud_config else None
         self.request: Optional[Request] = None
 
+    @property
+    def _token_state(self) -> TokenState:
+        """
+        Determine the state of the token based on its freshness and expiry.
+        """
+        token_state = self.credentials.token_state
+        if token_state == TokenState.FRESH and self.credentials.expiry:
+            # utcnow() returns a naive datetime, but is deprecated. Do our own naive conversion.
+            remaining = self.credentials.expiry - datetime.now(timezone.utc).replace(tzinfo=None)
+            if remaining <= GOOGLE_CLOUD_TOKEN_REFRESH_THRESHOLD:
+                return TokenState.STALE
+        return token_state
+
     def fresh_credentials(self) -> Credentials:
         """
         Refresh the credentials if they are not fresh.
         """
-        if self.credentials.token_state != TokenState.FRESH:
+        if self._token_state != TokenState.FRESH:
             if not self.request:
                 self.request = Request()
             self.credentials.refresh(self.request)
