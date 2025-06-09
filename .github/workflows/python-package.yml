@@ -1,4 +1,6 @@
 name: Reusable python unit test workflow for package
+permissions:
+  contents: read
 
 on:
   workflow_call:
