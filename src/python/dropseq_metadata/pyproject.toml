@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 name = "dropseq_metadata"
 version = "3.0.0"
 dependencies = [
-    "yaml",
+    "pyyaml",
 ]
 authors = [
   { name="Alec Wysoker", email="alecw@broadinstitute.org" },

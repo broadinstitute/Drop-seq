@@ -1,4 +1,4 @@
-name: Python unit tests for bican_mccarroll_helloworld
+name: Python unit tests for dropseq_metadata
 
 on:
   push:
