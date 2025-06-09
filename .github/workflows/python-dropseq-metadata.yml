@@ -1,0 +1,19 @@
+name: Python unit tests for bican_mccarroll_helloworld
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - '.github/workflows/python-dropseq-metadata.yml'
+      - '.github/workflows/python-package.yml'
+      - 'src/python/dropseq_metadata/**'
+
+
+jobs:
+  call-python-reusable:
+    uses: ./.github/workflows/python-package.yml
+    with:
+      package_name: metadata
+    secrets: inherit

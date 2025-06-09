@@ -1,0 +1,32 @@
+name: Reusable python unit test workflow for package
+
+on:
+  workflow_call:
+    inputs:
+      package_name:
+        required: true
+        type: string
+      python_version:
+        required: false
+        type: string
+        default: '3.12'
+
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ inputs.python_version }}
+    - name: Install package including dependencies
+      run: |
+        cd python
+        pip install ./dropseq_${{ inputs.package_name }}
+    - name: Test with unittest
+      run: |
+        cd python/dropseq_${{ inputs.package_name }}
+        PYTHONPATH=src python -m unittest discover -s tests
