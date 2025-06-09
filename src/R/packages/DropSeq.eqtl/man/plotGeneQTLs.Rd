@@ -5,7 +5,6 @@
 \title{Plot many eQTL expression vs genotype plots on one page.}
 \usage{
 plotGeneQTLs(
-  gene_location_file_name,
   snps_location_file_name,
   expression_file_name,
   SNP_file_name,
@@ -13,12 +12,11 @@ plotGeneQTLs(
   outPDF = NULL,
   outIndexSNPs = NULL,
   qValueThreshold = 0.05,
-  geneList = NULL
+  geneList = NULL,
+  gene_location_file_name = NULL
 )
 }
 \arguments{
-\item{gene_location_file_name}{The location of each gene.  Same number of lines as the expression_file_name, encodes the gene name, chromosome, start, end.}
-
 \item{snps_location_file_name}{The location of each SNP.  Same number of lines as the SNP_file_name, encodes the snp name, chromosome, position.}
 
 \item{expression_file_name}{A matrix of expression data, 1 row per gene, 1 column per sample.}
@@ -34,6 +32,8 @@ plotGeneQTLs(
 \item{qValueThreshold}{Genes with a score <= this threshold will be emitted in the outIndexSNPs and outPDF.}
 
 \item{geneList}{Override the qValueThreshold and plot these genes instead.}
+
+\item{gene_location_file_name}{Obsolete, will be removed in the future.}
 }
 \description{
 Plot many eQTL expression vs genotype plots on one page.
