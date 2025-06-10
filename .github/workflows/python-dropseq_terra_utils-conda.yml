@@ -9,6 +9,8 @@ on:
       - '.github/workflows/python-dropseq_terra_utils-conda.yml'
       - 'src/python/dropseq_terra_utils/**'
 
+permissions:
+  contents: read
 
 jobs:
   build-linux:
