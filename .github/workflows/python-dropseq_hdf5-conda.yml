@@ -9,6 +9,8 @@ on:
       - '.github/workflows/python-dropseq_hdf5-conda.yml'
       - 'src/python/dropseq_hdf5/**'
 
+permissions:
+  contents: read
 
 jobs:
   build-linux:

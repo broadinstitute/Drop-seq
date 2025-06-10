@@ -8,13 +8,15 @@
 
 name: DropSeq.eqtl R package
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
     paths: 'src/R/packages/DropSeq.eqtl/**'
-
 
 # See https://dirk.eddelbuettel.com/blog/code/r4/ for using r2u to speed up dependency loading
 jobs:
