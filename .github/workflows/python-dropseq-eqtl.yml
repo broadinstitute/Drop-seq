@@ -1,5 +1,8 @@
 name: Python unit tests for dropseq_eqtl
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ "master" ]
@@ -9,7 +12,6 @@ on:
       - '.github/workflows/python-dropseq-eqtl.yml'
       - '.github/workflows/python-package.yml'
       - 'src/python/dropseq_eqtl/**'
-
 
 jobs:
   call-python-reusable:
