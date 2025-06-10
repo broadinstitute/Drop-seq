@@ -1,5 +1,8 @@
 name: Python Package dropseq_aggregation using Conda
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ "master" ]
@@ -8,7 +11,6 @@ on:
     paths:
       - '.github/workflows/python-dropseq_aggregation-conda.yml'
       - 'src/python/dropseq_aggregation/**'
-
 
 jobs:
   build-linux:
