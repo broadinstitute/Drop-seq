@@ -21,5 +21,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# a tests directory is needed for github action not to fail running tests,
-# even if the directory is empty.
+# Github python workflow requires at least one test file in the tests directory.
+
+
+import unittest
+
+
+
+class TestTrivial(unittest.TestCase):
+    def test_trivial(self):
+        # This is a trivial test that always passes.
+        self.assertTrue(True)
