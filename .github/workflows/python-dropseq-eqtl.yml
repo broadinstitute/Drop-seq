@@ -1,0 +1,19 @@
+name: Python unit tests for dropseq_eqtl
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - '.github/workflows/python-dropseq-eqtl.yml'
+      - '.github/workflows/python-package.yml'
+      - 'src/python/dropseq_eqtl/**'
+
+
+jobs:
+  call-python-reusable:
+    uses: ./.github/workflows/python-package.yml
+    with:
+      package_name: eqtl
+    secrets: inherit
