@@ -68,7 +68,7 @@ import java.util.stream.StreamSupport;
 )
 public class MakeTripletDge
 extends AbstractTripletDgeWriterClp {
-    @Argument(shortName = "M", doc= """
+    @Argument(shortName = "M", mutex = {"YAML"}, doc= """
             yaml input file containing list of DGEs to be merged.
             The file is expected to contain a 'dges' list.  Each element of the list will contain:
             
@@ -81,6 +81,10 @@ extends AbstractTripletDgeWriterClp {
             CBCs (with optional prefix) must be unique.
             """)
     public File MANIFEST;
+
+    @Argument(shortName = "YAML", mutex = {"MANIFEST"},
+            doc="Instead of a MANIFEST file, supply manifest as a string.")
+    public String YAML;
 
     @Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME,
             doc="Output file in Matrix Market format.  Typically this is matrix.mtx.gz")
@@ -102,7 +106,7 @@ extends AbstractTripletDgeWriterClp {
 
     @Override
     protected int doWork() {
-        final Map<String, Object> manifest = loadManifest(MANIFEST);
+        final Map<String, Object> manifest = loadManifest(MANIFEST, YAML);
         final List<ParsedYamlDge> parsedDges = parseYamlDges(manifest, MANIFEST);
         final List<TabularDgeStream> dgeStreams = new ArrayList<>(parsedDges.size());
         final List<String> outputBarcodes = new ArrayList<>();
@@ -208,16 +212,21 @@ extends AbstractTripletDgeWriterClp {
         }
     }
 
-    private Map<String, Object> loadManifest(final File manifest) {
+    private Map<String, Object> loadManifest(final File manifest, final String yamlString) {
         final Yaml yaml = new Yaml();
-        return yaml.load(IOUtil.openFileForReading(manifest));
+        if (yamlString != null) {
+            return yaml.load(yamlString);
+        } else {
+            return yaml.load(IOUtil.openFileForReading(manifest));
+        }
     }
+
     private List<ParsedYamlDge> parseYamlDges(Map<String, Object> manifestMap, File manifest) {
         final List<Map<String, Object>> dges = (List<Map<String, Object>>)manifestMap.get(YamlKeys.DGES_KEY);
         if (dges == null) {
             throw new IllegalArgumentException("MANIFEST must contain a '" + YamlKeys.DGES_KEY + "' key");
         }
-        File manifestDirectory = manifest.getParentFile();
+        File manifestDirectory = manifest == null? null: manifest.getParentFile();
         if (manifestDirectory == null) {
             manifestDirectory = new File(".");
         }

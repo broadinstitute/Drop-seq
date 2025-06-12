@@ -41,6 +41,13 @@ public class MakeTripletDgeTest {
     }
 
     @Test
+    public void testYamlString() {
+        final String yaml = "{dges: [{prefix: N701, dge: testdata/org/broadinstitute/dropseq/barnyard/digitalexpression/tools/N701.auto.digital_expression.txt.gz}]}";
+        final MakeTripletDge makeTripletDge = runItYamlString(yaml);
+        testIt(makeTripletDge, "N701.barcodes.tsv.gz", "N701.features.tsv.gz", "N701.matrix.mtx.gz");
+    }
+
+    @Test
     public void testBarcodeList() {
         final MakeTripletDge makeTripletDge = runIt("N701.barcode_list.manifest.yaml");
         testIt(makeTripletDge, "N701.barcode_list.barcodes.tsv.gz", "N701.features.tsv.gz", "N701.barcode_list.matrix.mtx.gz");
@@ -70,13 +77,24 @@ public class MakeTripletDgeTest {
     }
 
     private MakeTripletDge runIt(final String manifestName) {
+        final MakeTripletDge makeTripletDge = clpMaker();
+        makeTripletDge.MANIFEST = new File(TEST_DATA_DIR, manifestName);
+        Assert.assertEquals(makeTripletDge.doWork(), 0);
+        return makeTripletDge;
+    }
+
+    private MakeTripletDge clpMaker() {
         final MakeTripletDge makeTripletDge = new MakeTripletDge();
         makeTripletDge.TMP_DIR = Arrays.asList(TestUtils.createTempDirectory("MakeTripletDgeTest."));
-
-        makeTripletDge.MANIFEST = new File(TEST_DATA_DIR, manifestName);
         makeTripletDge.OUTPUT_CELLS = TestUtils.getTempReportFile("MakeTripletDgeTest.", ".barcodes.tsv.gz");
         makeTripletDge.OUTPUT_FEATURES = TestUtils.getTempReportFile("MakeTripletDgeTest.", ".features.tsv.gz");
         makeTripletDge.OUTPUT = TestUtils.getTempReportFile("MakeTripletDgeTest.", ".matrix.mtx.gz");
+        return makeTripletDge;
+    }
+
+    private MakeTripletDge runItYamlString(final String yaml) {
+        final MakeTripletDge makeTripletDge = clpMaker();
+        makeTripletDge.YAML = yaml;
         Assert.assertEquals(makeTripletDge.doWork(), 0);
         return makeTripletDge;
     }
