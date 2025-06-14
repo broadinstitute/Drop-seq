@@ -86,7 +86,7 @@ def main(options):
     total_reads = obs['n_reads']
     mapped_reads = obs['reads_mapped_uniquely']
     obs['NUM_GENES'] = obs['n_genes']
-    obs['NUM_GENIC_READS'] = obs['reads_mapped_exonic'] + + obs['reads_mapped_exonic_as'] + \
+    obs['NUM_GENIC_READS'] = obs['reads_mapped_exonic'] + obs['reads_mapped_exonic_as'] + \
                              obs['reads_mapped_intronic'] + obs['reads_mapped_intronic_as']
     obs['NUM_TRANSCRIPTS'] = num_transcripts
     obs['num_transcripts'] = num_transcripts
