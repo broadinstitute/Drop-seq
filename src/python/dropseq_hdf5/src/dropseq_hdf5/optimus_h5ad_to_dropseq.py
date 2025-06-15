@@ -39,16 +39,16 @@ except ImportError:
 def add_subparser(subparsers):
     parser = subparsers.add_parser("optimus_h5ad_to_dropseq", description=__doc__)
     parser.add_argument("--input", "-i", required=True, help="Input h5ad file.")
+    parser.add_argument("--min-transcripts", type=int, default=20,
+                        help="Minimum number of transcripts to keep a CBC.  (default: %(default)s)")
     parser.add_argument("--h5ad",
                         help="Output same format as input, but with CBCs < min-transcripts and duplicated genes "
                              "removed.")
-    parser.add_argument("--min-transcripts", type=int, default=20, help="Minimum number of transcripts to keep a CBC. "
-                                                                        "(default: %(default)s)")
     parser.add_argument("--mtx", help="Output mtx. If .gz extension, will be gzipped.")
     parser.add_argument("--barcodes", help="Output barcodes. If .gz extension, will be gzipped.")
     parser.add_argument("--features", help="Output features. If .gz extension, will be gzipped.")
     parser.add_argument("--dge", help="Output tab-separated text file, with rows=genes and columns=cells. "
-                                            "If .gz extension, will be gzipped.")
+                                      "If .gz extension, will be gzipped.")
     parser.add_argument("--summary", type=argparse.FileType(mode="w"),
                         help="Output a tab-separated DGE summary text file with columns CELL_BARCODE, NUM_GENIC_READS, "
                              "NUM_TRANSCRIPTS, NUM_GENES.")
@@ -57,6 +57,7 @@ def add_subparser(subparsers):
     parser.add_argument("--read-quality-metrics", type=argparse.FileType(mode="w"),
                         help="Output a tab-separated ReadQualityMetrics text file.")
     parser.add_argument("--cell-selection-report", help="Output a table of per-cell-barcode metrics.")
+
 
 def main(options):
     cli.logger.info(f'loading full adata {options.input}')
@@ -86,7 +87,7 @@ def main(options):
     total_reads = obs['n_reads']
     mapped_reads = obs['reads_mapped_uniquely']
     obs['NUM_GENES'] = obs['n_genes']
-    obs['NUM_GENIC_READS'] = obs['reads_mapped_exonic'] + + obs['reads_mapped_exonic_as'] + \
+    obs['NUM_GENIC_READS'] = obs['reads_mapped_exonic'] + obs['reads_mapped_exonic_as'] + \
                              obs['reads_mapped_intronic'] + obs['reads_mapped_intronic_as']
     obs['NUM_TRANSCRIPTS'] = num_transcripts
     obs['num_transcripts'] = num_transcripts
