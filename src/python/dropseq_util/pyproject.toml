@@ -2,7 +2,7 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 [project]
-name = "dropseq_eqtl"
+name = "dropseq_util"
 version = "3.0.0"
 authors = [
   { name="Alec Wysoker", email="alecw@broadinstitute.org" },
