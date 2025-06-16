@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+[project]
+name = "dropseq"
+version = "3.0.0"
+dependencies = [
+    "pyyaml",
+    "google-auth",
+    "google-cloud-storage",
+    "pandas",
+    "python-dateutil",
+    "requests",
+    "urllib3",
+    "numpy",
+    "scipy",
+    "scanpy>=1.11.2", # pinning due to numba and numpy conflicts w/o pin
+    "pyarrow",
+    "anndata",
+    "tables",
+]
+authors = [
+  { name="Alec Wysoker", email="alecw@broadinstitute.org" },
+]
+description = "Drop-seq command-line tools and python libraries."
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/broadinstitute/Drop-seq/"
+Issues = "https://github.com/broadinstitute/Drop-seq/issues"
+
+[project.scripts]
+lookup_contig_groups = "dropseq.metadata.lookup_contig_groups:main"
+join_and_filter_tsv = "dropseq.aggregation.join_and_filter_tsv:main"
+cat_tsvs = "dropseq.aggregation.cat_tsvs:main"
+normalize_tensorqtl_expression = "dropseq.eqtl.normalize_tensorqtl_expression:main"
+prepare_tensorqtl_data = "dropseq.eqtl.prepare_tensorqtl_data:main"
+merge_parquet_files = "dropseq.eqtl.merge_parquet_files:main"
+hdf5_10X_to_text = "dropseq.hdf5.hdf5_10X_to_text:main"
+optimus_h5ad_to_dropseq = "dropseq.hdf5.optimus_h5ad_to_dropseq:main"
+dge_to_h5ad = "dropseq.hdf5.dge_to_h5ad:main"
+dropseq_terra_utils = "dropseq.terra_utils.cli:main"

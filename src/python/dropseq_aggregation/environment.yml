@@ -1,7 +1,0 @@
-name: dropseq_aggregation
-channels:
-  - conda-forge
-  - nodefaults
-dependencies:
-  - pandas
-  - python=3.12
