@@ -29,8 +29,8 @@ from types import MethodType
 
 import pandas as pd
 
-import misc_utils.pandas_utils as pd_utils
-from misc_utils.argparse_utils import argparse_error
+import dropseq_util.pandas_utils as pd_utils
+from dropseq_util.argparse_utils import argparse_error
 
 
 def main(args=None):

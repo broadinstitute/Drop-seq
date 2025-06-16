@@ -33,7 +33,7 @@ import pyarrow as pa
 import pyarrow.csv as csv
 import pyarrow.parquet as pq
 
-import misc_utils.pandas_utils as pd_utils
+import dropseq_util.pandas_utils as pd_utils
 import dropseq_util.log_util as my_logging
 
 

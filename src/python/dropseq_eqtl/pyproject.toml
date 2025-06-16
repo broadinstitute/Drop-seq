@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 [project]
 name = "dropseq_eqtl"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
     "numpy",
     "pandas",
