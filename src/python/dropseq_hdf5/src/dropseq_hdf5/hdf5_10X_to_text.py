@@ -50,6 +50,17 @@ def readDgeHeader(dge_path):
     return retval
 
 
+def readCbrbCommandLineFromLog(cbrb_log):
+    sawPrecedingLine = False
+    with open(cbrb_log) as fIn:
+        for strLine in fIn:
+            strLine = strLine.rstrip("\n")
+            if sawPrecedingLine:
+                return strLine
+            elif strLine.endswith("Command:"):
+                sawPrecedingLine = True
+    raise Exception("Could not find command line in " + cbrb_log)
+
 def add_subparser(subparsers):
     parser = subparsers.add_parser("hdf5_10X_to_text", description=__doc__)
     parser.add_argument("--input", "-i", required=True, help="Input hdf5 file.")
@@ -64,6 +75,9 @@ def add_subparser(subparsers):
                         help="output a limited set of barcodes: only those analyzed by the algorithm.  (default: output all barcodes)")
     parser.add_argument("--limit", "-l", type=int, help="Output no more than this number of genes (for debugging)")
     parser.add_argument("--header", help="If set, read DGE header lines from this file and write to output.")
+    parser.add_argument("--cbrb-log",
+                                         help="If set, read the CBRB log for the CBRB "
+                                              "command line, and write to #COMMAND record in DGE header.")
 
 
 def main(options):
@@ -83,6 +97,12 @@ def main(options):
     header_lines = readDgeHeader(options.header)
     for header_line in header_lines:
         print(header_line, file=fOut)
+
+    cbrb_command_line = None
+    if options.cbrb_log is not None:
+        cbrb_command_line = readCbrbCommandLineFromLog(options.cbrb_log)
+    if cbrb_command_line is not None:
+        print("#COMMAND\tCL:" + cbrb_command_line, file=fOut)
 
     if options.output_sizes is not None:
         cell_sizes = [0] * len(cells)

@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+[project]
+name = "dropseq_eqtl"
+version = "3.0.0"
+authors = [
+  { name="Alec Wysoker", email="alecw@broadinstitute.org" },
+]
+description = "Miscellaneous utility modules used by other packages."
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/broadinstitute/Drop-seq/"
+Issues = "https://github.com/broadinstitute/Drop-seq/issues"
+
