@@ -26,7 +26,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import dropseq_metadata.lookup_contig_groups
+import dropseq.metadata.lookup_contig_groups
 
 OptionsTuple = collections.namedtuple('OptionsTuple', ['contig_groups', 'group', 'out'], defaults=[None])
 
@@ -34,7 +34,7 @@ class TestLookupContigGroups(unittest.TestCase):
     def setUp(self):
         self.tmpDir = Path(tempfile.mkdtemp(".tmp", "lookup_contig_groups."))
         self.outputFile = self.tmpDir / "output.txt"
-        self.contigGroupsFile = "tests/data/contig_groups.yaml"
+        self.contigGroupsFile = "tests/data/metadata/contig_groups.yaml"
         self.options = OptionsTuple(
             contig_groups=self.contigGroupsFile,
             group="test_project",
@@ -47,7 +47,7 @@ class TestLookupContigGroups(unittest.TestCase):
     def test_mt(self):
         # Test group that returns a single contig
         options = self.options._replace(group=["MT"])
-        self.assertEqual(dropseq_metadata.lookup_contig_groups.run(options), 0)
+        self.assertEqual(dropseq.metadata.lookup_contig_groups.run(options), 0)
         with open(self.outputFile, 'r') as f:
             lines = f.readlines()
             self.assertEqual(len(lines), 1)
@@ -56,7 +56,7 @@ class TestLookupContigGroups(unittest.TestCase):
     def test_non_autosomes(self):
         # Test group that returns multiple contigs
         options = self.options._replace(group=["non-autosome"])
-        self.assertEqual(dropseq_metadata.lookup_contig_groups.run(options), 0)
+        self.assertEqual(dropseq.metadata.lookup_contig_groups.run(options), 0)
         with open(self.outputFile, 'r') as f:
             lines = f.readlines()
         actual = set(line.strip() for line in lines)

@@ -28,10 +28,7 @@ from typing import Optional, TypeVar, Generic, Callable
 import pandas as pd
 from pandas import Series
 
-try:
-    from .models import WorkflowEmail
-except ImportError:
-    from models import WorkflowEmail
+from dropseq.terra_utils.models import WorkflowEmail
 
 
 def default_data_store_dir() -> Path:

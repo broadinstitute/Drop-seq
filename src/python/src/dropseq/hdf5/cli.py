@@ -34,21 +34,6 @@ except ImportError:
     import hdf5_10X_to_text
     import optimus_h5ad_to_dropseq
 
-# I cannot believe I need to do this to cause logger to write to stderr.
-logging.basicConfig(
-    level=logging.INFO,               # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()] # StreamHandler writes to sys.stderr by default
-)
-logger = logging.getLogger(__name__)
-
-dctLogLevel = {
-    "DEBUG": logging.DEBUG,
-    "INFO": logging.INFO,
-    "WARNING": logging.WARNING,
-    "ERROR": logging.ERROR,
-    "CRITICAL": logging.CRITICAL
-}
 
 
 def main(args=None):

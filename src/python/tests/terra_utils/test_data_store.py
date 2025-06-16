@@ -25,12 +25,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-try:
-    from dropseq_terra_utils.data_store import DataStore
-    from dropseq_terra_utils.models import WorkflowEmail
-except ImportError:
-    from dropseq_terra_utils.src.dropseq_terra_utils.data_store import DataStore
-    from dropseq_terra_utils.src.dropseq_terra_utils.models import WorkflowEmail
+from dropseq.terra_utils.models import WorkflowEmail
+from dropseq.terra_utils.data_store import DataStore
 
 
 class TestDataStore(unittest.TestCase):

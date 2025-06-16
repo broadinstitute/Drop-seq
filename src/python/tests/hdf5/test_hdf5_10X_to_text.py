@@ -26,15 +26,15 @@ import shutil
 import tempfile
 import unittest
 import collections
-import dropseq_hdf5.hdf5_10X_to_text
+import dropseq.hdf5.hdf5_10X_to_text
 
 OptionsTuple = collections.namedtuple("OptionsTuple", ["input", "output", "output_sizes",
                                                        "progress_interval", "analyzed_barcodes_only",
-                                                       "limit", "header"],
-                                      defaults=(None, 1000, False, 2000, None))
+                                                       "limit", "header", "cbrb_log"],
+                                      defaults=(None, 1000, False, 2000, None, None))
 class TestHdf5_10X_to_text(unittest.TestCase):
     def setUp(self):
-        self.testDataDir = "../../../testdata/python/dropseq_hdf5/hdf5_10X_to_text"
+        self.testDataDir = "tests/data/hdf5/hdf5_10X_to_text"
         self.inputFile = os.path.join(self.testDataDir, "N701.h5")
         self.tmpDir = tempfile.mkdtemp(".tmp", "hdf5_10X_to_text.")
         self.sizesFile = os.path.join(self.tmpDir, "N701.digtal_expression_sizes.txt")
@@ -44,13 +44,13 @@ class TestHdf5_10X_to_text(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmpDir)
     def test_basic(self):
-        self.assertEqual(dropseq_hdf5.hdf5_10X_to_text.main(self.options), 0)
+        self.assertEqual(dropseq.hdf5.hdf5_10X_to_text.run(self.options), 0)
         self.assertTrue(filecmp.cmp(self.options.output, os.path.join(self.testDataDir, "N701.2000.digital_expression.txt"), shallow=False))
         self.assertTrue(filecmp.cmp(self.sizesFile, os.path.join(self.testDataDir, "N701.2000.sizes.txt"), shallow=False))
 
     def test_analyzed_barcodes_only(self):
         options = self.options._replace(analyzed_barcodes_only=True)
-        self.assertEqual(dropseq_hdf5.hdf5_10X_to_text.main(options), 0)
+        self.assertEqual(dropseq.hdf5.hdf5_10X_to_text.run(options), 0)
         self.assertTrue(filecmp.cmp(self.options.output, os.path.join(self.testDataDir, "N701.2000.analyzed_barcodes_only.digital_expression.txt"), shallow=False))
         self.assertTrue(filecmp.cmp(self.sizesFile, os.path.join(self.testDataDir, "N701.2000.analyzed_barcodes_only.sizes.txt"), shallow=False))
 

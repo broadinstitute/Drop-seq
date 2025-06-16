@@ -28,16 +28,12 @@ import anndata as ad
 import pandas as pd
 from scipy.io import mmwrite
 
-try:
-    from . import cli
-    from . import io_utils
-except ImportError:
-    import cli
-    import io_utils
+import dropseq.hdf5.io_utils as io_utils
+from dropseq.util.log_util import log_message
 
 
-def add_subparser(subparsers):
-    parser = subparsers.add_parser("optimus_h5ad_to_dropseq", description=__doc__)
+def create_arg_parser():
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", "-i", required=True, help="Input h5ad file.")
     parser.add_argument("--min-transcripts", type=int, default=20,
                         help="Minimum number of transcripts to keep a CBC.  (default: %(default)s)")
@@ -57,16 +53,17 @@ def add_subparser(subparsers):
     parser.add_argument("--read-quality-metrics", type=argparse.FileType(mode="w"),
                         help="Output a tab-separated ReadQualityMetrics text file.")
     parser.add_argument("--cell-selection-report", help="Output a table of per-cell-barcode metrics.")
+    return parser
 
 
-def main(options):
-    cli.logger.info(f'loading full adata {options.input}')
+def run(options):
+    log_message(f'loading full adata {options.input}')
     adata = ad.read_h5ad(options.input)
 
     duplicated_gene_name = adata.var['gene_names'].duplicated(keep=False)
     num_duplicated_genes = duplicated_gene_name.sum()
     if num_duplicated_genes > 0:
-        cli.logger.info(f'Removing {num_duplicated_genes} duplicated gene names')
+        log_message(f'Removing {num_duplicated_genes} duplicated gene names')
         adata = adata[:, ~duplicated_gene_name]
 
     # Convert the counts matrix to integers, and transpose where rows are genes and columns are cell barcodes
@@ -74,7 +71,7 @@ def main(options):
     # Count the number of transcripts per cell barcode
     num_transcripts = matrix.sum(axis=0).A1
 
-    cli.logger.info(f'subsetting to barcodes with at least {options.min_transcripts} transcripts')
+    log_message(f'subsetting to barcodes with at least {options.min_transcripts} transcripts')
     adata = adata[num_transcripts >= options.min_transcripts, :]
 
     # Convert the counts matrix to integers, and transpose where rows are genes and columns are cell barcodes
@@ -117,19 +114,19 @@ def main(options):
     obs['pct_utr'] = obs['pct_utr'].round(4)
 
     if options.h5ad is not None:
-        cli.logger.info(f'generating h5ad')
+        log_message(f'generating h5ad')
         adata.write(options.h5ad)
 
     if options.mtx is not None:
-        cli.logger.info('generating mtx')
+        log_message('generating mtx')
         with io_utils.open_maybe_gz(options.mtx, 'wb') as fOut:
             mmwrite(fOut, matrix)
     if options.barcodes is not None:
-        cli.logger.info(f'generating barcodes')
+        log_message(f'generating barcodes')
         with io_utils.open_maybe_gz(options.barcodes, 'wt') as fOut:
             adata.obs_names.to_series().to_csv(fOut, header=False, index=False)
     if options.features is not None:
-        cli.logger.info(f'generating features')
+        log_message(f'generating features')
         features_df = pd.DataFrame(adata.var_names.to_series(), columns=['gene_id'])
         features_df['gene_name'] = features_df['gene_id']
         features_df['feature_type'] = 'Gene Expression'
@@ -137,7 +134,7 @@ def main(options):
             features_df.to_csv(fOut, sep='\t', header=False, index=False)
 
     if options.dge is not None:
-        cli.logger.info(f'generating dge')
+        log_message(f'generating dge')
         dge = pd.DataFrame.sparse.from_spmatrix(matrix)
         dge.columns = adata.obs_names
         dge.index = adata.var_names
@@ -147,7 +144,7 @@ def main(options):
             dge.to_csv(fOut, sep='\t')
 
     if options.summary is not None:
-        cli.logger.info(f'generating summary')
+        log_message(f'generating summary')
         dge_summary = obs[['NUM_GENIC_READS', 'NUM_TRANSCRIPTS', 'NUM_GENES']]
         dge_summary.index.name = 'CELL_BARCODE'
         dge_summary = dge_summary.sort_values(by='NUM_GENIC_READS', ascending=False)
@@ -156,13 +153,13 @@ def main(options):
 
     if options.reads_per_cell is not None:
         with io_utils.open_maybe_gz(options.reads_per_cell, 'wt') as fOut:
-            cli.logger.info('generating reads per cell')
+            log_message('generating reads per cell')
             reads_per_cell = obs[['num_reads', 'cell_names']]
             reads_per_cell = reads_per_cell.sort_values(by='num_reads', ascending=False)
             reads_per_cell.to_csv(fOut, sep='\t', header=False, index=False)
 
     if options.read_quality_metrics is not None:
-        cli.logger.info('generating read quality metrics')
+        log_message('generating read quality metrics')
         read_qualities = obs[['totalReads', 'mappedReads', 'hqMappedReads', 'hqMappedReadsNoPCRDupes']]
         read_quality_metrics = pd.DataFrame(read_qualities.sum()).T
         read_quality_metrics.insert(0, 'aggregate', 'all')
@@ -171,7 +168,7 @@ def main(options):
         read_quality_metrics.to_csv(options.read_quality_metrics, sep='\t', index=False)
 
     if options.cell_selection_report is not None:
-        cli.logger.info('generating cell selection report')
+        log_message('generating cell selection report')
         cell_selection_report = obs[
             ['num_transcripts', 'num_reads', 'pct_ribosomal', 'pct_coding', 'pct_intronic', 'pct_intergenic', 'pct_utr',
              'pct_genic', 'pct_mt']]
@@ -179,5 +176,13 @@ def main(options):
         cell_selection_report = cell_selection_report.sort_values(by='num_transcripts', ascending=False)
         cell_selection_report.to_csv(options.cell_selection_report, sep='\t')
 
-    cli.logger.info('Done')
+    log_message('Done')
     return 0
+
+def main():
+    parser = create_arg_parser()
+    options = parser.parse_args()
+    return run(options)
+
+if __name__ == "__main__":
+    sys.exit(main())

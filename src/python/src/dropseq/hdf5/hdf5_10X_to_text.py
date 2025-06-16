@@ -25,17 +25,13 @@ Convert DGE matrix in 10X hdf5 format produced by remove-background into dense D
 """
 import argparse
 import gzip
+import sys
 
 import numpy
+from dropseq.util.log_util import log_message
 
-try:
-    from . import io_utils
-    from . import downstream
-    from . import cli
-except ImportError:
-    import io_utils
-    import downstream
-    import cli
+import dropseq.hdf5.io_utils as io_utils
+import dropseq.hdf5.downstream as downstream
 
 
 
@@ -61,8 +57,8 @@ def readCbrbCommandLineFromLog(cbrb_log):
                 sawPrecedingLine = True
     raise Exception("Could not find command line in " + cbrb_log)
 
-def add_subparser(subparsers):
-    parser = subparsers.add_parser("hdf5_10X_to_text", description=__doc__)
+def create_arg_parser():
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", "-i", required=True, help="Input hdf5 file.")
     parser.add_argument("--output", "-o", required=True,
                         help="Output tab-separated text file, with rows=genes and columns=cells.  "
@@ -78,9 +74,10 @@ def add_subparser(subparsers):
     parser.add_argument("--cbrb-log",
                                          help="If set, read the CBRB log for the CBRB "
                                               "command line, and write to #COMMAND record in DGE header.")
+    return parser
 
 
-def main(options):
+def run(options):
     h5 = downstream.anndata_from_h5(options.input, analyzed_barcodes_only=options.analyzed_barcodes_only)
     genes = [g for g in h5.var_names]
     cells = [c for c in h5.obs_names]
@@ -106,7 +103,7 @@ def main(options):
 
     if options.output_sizes is not None:
         cell_sizes = [0] * len(cells)
-    cli.logger.info("%d genes to write" % len(genes))
+    log_message("%d genes to write" % len(genes))
     print("\t".join(["GENE"] + cells), file=fOut)
     num_genes = len(genes)
     if options.limit is not None and options.limit < num_genes:
@@ -118,7 +115,7 @@ def main(options):
                 cell_sizes[j] += expressionForGene[j]
         print("\t".join([genes[i]] + [str(v) for v in expressionForGene]), file=fOut)
         if options.progress_interval > 0 and (i + 1) % options.progress_interval == 0:
-            cli.logger.info("Wrote %d genes" % (i + 1))
+            log_message("Wrote %d genes" % (i + 1))
     fOut.close()
 
     if options.output_sizes is not None:
@@ -126,5 +123,13 @@ def main(options):
         for j in range(len(cell_sizes)):
             print("\t".join([cells[j], str(cell_sizes[j])]), file=options.output_sizes)
         options.output_sizes.close()
-    cli.logger.info("Done")
+    log_message("Done")
     return 0
+
+def main():
+    parser = create_arg_parser()
+    options = parser.parse_args()
+    return run(options)
+
+if __name__ == "__main__":
+    sys.exit(main())

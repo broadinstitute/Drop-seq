@@ -21,6 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import logging
 import time
 import sys
 
@@ -31,3 +32,40 @@ def log_message(message, level=0, verbosity=0, file=sys.stderr, print_date=True,
         print("\t".join(messages), file=file)
         if flush:
             file.flush()
+
+# The below is a work in progress.  It needs to be encapsulated in a class or something to make it
+# easier to use.
+def configure_logger(name, level):
+    # I cannot believe I need to do this to cause logger to write to stderr.
+    logging.basicConfig(
+        level=logging.INFO,               # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[logging.StreamHandler()] # StreamHandler writes to sys.stderr by default
+    )
+    return logging.getLogger(name)
+
+def add_log_level_argument(parser, default="INFO"):
+    """
+    Add a log level argument to an argparse parser.
+
+    Args:
+        parser: The argparse parser to add the argument to.
+        default: Default log level (default: "INFO").
+    """
+    parser.add_argument(
+        "--log-level", "-l",
+        choices=dctLogLevel.keys(),
+        default=default,
+        help="Set the logging level. (default: %(default)s)"
+    )
+
+def set_log_level_from_string(logger, logLevelStr):
+    logger.setLevel(dctLogLevel[logLevelStr])
+
+dctLogLevel = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL
+}
