@@ -60,5 +60,5 @@ curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL=$uv_dir sh
 for pyproject_toml in "$envs_dir"/pyproject.toml; do
   env_name=dropseq
   echo "Building $env_name"
-  uv tool install -q "$envs_dir"
+  uv tool install "$envs_dir"
 done

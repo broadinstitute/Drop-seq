@@ -14,7 +14,7 @@ dependencies = [
     "urllib3",
     "numpy",
     "scipy",
-    "scanpy",
+    "scanpy>=1.11.2", # pinning due to numba and numpy conflicts w/o pin
     "pyarrow",
     "anndata",
     "tables",
