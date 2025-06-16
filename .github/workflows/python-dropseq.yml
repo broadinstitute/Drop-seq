@@ -1,18 +1,16 @@
-name: Reusable python unit test workflow for package
+name: unit tests for dropseq python package
+
 permissions:
   contents: read
 
 on:
-  workflow_call:
-    inputs:
-      package_name:
-        required: true
-        type: string
-      python_version:
-        required: false
-        type: string
-        default: '3.12'
-
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - '.github/workflows/python.yml'
+      - 'src/python/**'
 
 jobs:
   build-linux:
@@ -27,8 +25,8 @@ jobs:
     - name: Install package including dependencies
       run: |
         cd src/python
-        pip install ./dropseq_${{ inputs.package_name }}
+        pip install .
     - name: Test with unittest
       run: |
-        cd src/python/dropseq_${{ inputs.package_name }}
+        cd src/python
         PYTHONPATH=src python -m unittest discover -s tests
