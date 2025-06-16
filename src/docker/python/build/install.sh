@@ -57,8 +57,8 @@ apt-get -qq update && apt-get -qq install curl
 curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL=$uv_dir sh
 
 # Install python scripts
-for pyproject_toml in "$envs_dir"/*/pyproject.toml; do
-  env_name=$(basename "$(dirname "$pyproject_toml")")
+for pyproject_toml in "$envs_dir"/pyproject.toml; do
+  env_name=dropseq
   echo "Building $env_name"
-  uv tool install -q "$envs_dir/$env_name"
+  uv tool install -q "$envs_dir"
 done
