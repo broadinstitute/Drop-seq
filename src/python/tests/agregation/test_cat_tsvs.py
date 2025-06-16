@@ -41,19 +41,21 @@ class TestCatTsvs(unittest.TestCase):
         self.index_cols = ["PREFIX", "CELL_BARCODE"]
 
     def tearDown(self):
+        map(lambda f: f.close(), self.options.input)
+        self.options.output.close()
         shutil.rmtree(self.tmpDir)
 
     def test_basic(self):
-        options = self.options._replace(index_col=self.index_cols, input=[open(f) for f in self.inputs])
-        self.assertEqual(dropseq.aggregation.cat_tsvs.run(options), 0)
+        self.options = self.options._replace(index_col=self.index_cols, input=[open(f) for f in self.inputs])
+        self.assertEqual(dropseq.aggregation.cat_tsvs.run(self.options), 0)
         outDf = pd.read_csv(self.outputFile, sep="\t")
         inDfs = [pd.read_csv(f, sep="\t") for f in self.inputs]
         self.assertEqual(len(outDf), sum(len(df) for df in inDfs))
         self.assertEqual(set(outDf.columns), set.union(*[set(df.columns) for df in inDfs]))
 
     def test_duplicate_keys(self):
-        options = self.options._replace(index_col=self.index_cols, input=[open(self.inputs[0]), open(self.inputs[0])])
-        self.assertNotEqual(dropseq.aggregation.cat_tsvs.run(options), 0)
+        self.options = self.options._replace(index_col=self.index_cols, input=[open(self.inputs[0]), open(self.inputs[0])])
+        self.assertNotEqual(dropseq.aggregation.cat_tsvs.run(self.options), 0)
 
     def test_fewer_columns(self):
         dfToClip = pd.read_csv(self.inputs[0], sep="\t", index_col=self.index_cols)
@@ -61,8 +63,8 @@ class TestCatTsvs(unittest.TestCase):
         clippedFile = os.path.join(self.tmpDir, "clipped.tsv")
         dfToClip.to_csv(clippedFile, sep="\t")
         inputs = [clippedFile, self.inputs[1]]
-        options = self.options._replace(index_col=self.index_cols, input=[open(f) for f in inputs])
-        self.assertEqual(dropseq.aggregation.cat_tsvs.run(options), 0)
+        self.options = self.options._replace(index_col=self.index_cols, input=[open(f) for f in inputs])
+        self.assertEqual(dropseq.aggregation.cat_tsvs.run(self.options), 0)
         outDf = pd.read_csv(self.outputFile, sep="\t")
         inDfs = [pd.read_csv(f, sep="\t") for f in inputs]
         self.assertEqual(len(outDf), sum(len(df) for df in inDfs))
@@ -70,8 +72,6 @@ class TestCatTsvs(unittest.TestCase):
 
     def test_conflicting_column_type(self):
         inputs = [self.inputs[0], os.path.join(self. testDataDir, "conflicting_column_type.joined_filtered_cell_metadata.tsv")]
-        options = self.options._replace(index_col=self.index_cols, input=[open(f) for f in inputs])
-        self.assertRaisesRegex(Exception, 'Column types disagree', dropseq.aggregation.cat_tsvs.run, options)
-        map(lambda f: f.close(), options.input)
-        options.output.close()
+        self.options = self.options._replace(index_col=self.index_cols, input=[open(f) for f in inputs])
+        self.assertRaisesRegex(Exception, 'Column types disagree', dropseq.aggregation.cat_tsvs.run, self.options)
 
