@@ -24,6 +24,8 @@
 Convert optimus h5ad to standard Drop-seq output files.
 """
 import argparse
+import sys
+
 import anndata as ad
 import pandas as pd
 from scipy.io import mmwrite
