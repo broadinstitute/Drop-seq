@@ -63,6 +63,7 @@ def main(args=None):
         missing_gene_ids = set(dge.var_names) - set(gtf['gene_name'])
         if missing_gene_ids:
             raise Exception(f"Missing gene IDs for {len(missing_gene_ids)} genes: " + ", ".join(missing_gene_ids))
+        dge.var["gene_symbol"] = dge.var_names
         dge.var_names = dge.var_names.map(gtf.set_index('gene_name')['gene_id'])
 
     logging.info(f"Writing {options.output}")
