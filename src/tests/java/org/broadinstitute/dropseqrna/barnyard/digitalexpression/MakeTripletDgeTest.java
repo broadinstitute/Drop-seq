@@ -48,6 +48,15 @@ public class MakeTripletDgeTest {
     }
 
     @Test
+    public void testWithGtf() {
+        final MakeTripletDge makeTripletDge = clpMaker();
+        makeTripletDge.MANIFEST = new File(TEST_DATA_DIR, "N701.manifest.yaml");
+        makeTripletDge.REDUCED_GTF = new File(TEST_DATA_DIR, "N701.reduced.gtf.gz");
+        Assert.assertEquals(makeTripletDge.doWork(), 0);
+        testIt(makeTripletDge, "N701.barcodes.tsv.gz", "N701.withGeneIds.features.tsv.gz", "N701.matrix.mtx.gz");
+    }
+
+    @Test
     public void testBarcodeList() {
         final MakeTripletDge makeTripletDge = runIt("N701.barcode_list.manifest.yaml");
         testIt(makeTripletDge, "N701.barcode_list.barcodes.tsv.gz", "N701.features.tsv.gz", "N701.barcode_list.matrix.mtx.gz");
@@ -100,8 +109,8 @@ public class MakeTripletDgeTest {
     }
 
     private void testIt(final MakeTripletDge makeTripletDge, final String barcodeFile, final String featureFile, final String matrixFile) {
-        TestUtils.testFilesSame(makeTripletDge.OUTPUT_CELLS, new File(TEST_DATA_DIR, barcodeFile));
-        TestUtils.testFilesSame(makeTripletDge.OUTPUT_FEATURES, new File(TEST_DATA_DIR, featureFile));
+        Assert.assertTrue(TestUtils.testFilesSame(makeTripletDge.OUTPUT_CELLS, new File(TEST_DATA_DIR, barcodeFile)));
+        Assert.assertTrue(TestUtils.testFilesSame(makeTripletDge.OUTPUT_FEATURES, new File(TEST_DATA_DIR, featureFile)));
         // This file is not tabular, so we can't use TestUtils.testFilesSame
         IOUtil.assertFilesEqual(makeTripletDge.OUTPUT, new File(TEST_DATA_DIR, matrixFile));
     }

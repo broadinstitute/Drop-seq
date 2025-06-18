@@ -29,9 +29,11 @@ import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintWriter;
 import picard.cmdline.CommandLineProgram;
+import picard.util.TabbedTextFileWithHeaderParser;
 
 import java.io.File;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public abstract class AbstractTripletDgeWriterClp
@@ -45,6 +47,19 @@ extends CommandLineProgram {
     public File OUTPUT_FEATURES;
     @Argument(doc = "When writing OUTPUT_FEATURES, the value to put in the 3rd column")
     public String FEATURE_TYPE = "Gene Expression";
+
+    @Argument(optional = true, doc = "Tabular file with columns gene_id and gene_name (and any other columns). " +
+            "If provided, and OUTPUT_FEATURES is set, first column of features will be gene ID.  " +
+            "If not provided, gene symbol will be used for both columns.  All gene symbols must be found in this file.")
+    public File REDUCED_GTF;
+
+    @Override
+    protected String[] customCommandLineValidation() {
+        if (REDUCED_GTF != null) {
+            IOUtil.assertFileIsReadable(REDUCED_GTF);
+        }
+        return super.customCommandLineValidation();
+    }
 
     protected void writeListFile(final File outputFile, final List<String> values) {
         log.info("Writing ", outputFile);
@@ -61,8 +76,10 @@ extends CommandLineProgram {
             writeListFile(OUTPUT_GENES, genes);
         }
         if (OUTPUT_FEATURES != null) {
+            final GeneNameMapper geneNameMapper = new GeneNameMapper();
             final List<String> features = genes.stream().map(
-                    gene -> StringUtil.join("\t", gene, gene, FEATURE_TYPE)).collect(Collectors.toList());
+                    gene -> StringUtil.join("\t", geneNameMapper.mapGeneName(gene), gene, FEATURE_TYPE)).
+                    collect(Collectors.toList());
             writeListFile(OUTPUT_FEATURES, features);
         }
         if (OUTPUT_CELLS != null) {
@@ -70,4 +87,33 @@ extends CommandLineProgram {
         }
 
     }
+
+    private class GeneNameMapper {
+        private final Map<String, String> symbolToId;
+        public GeneNameMapper() {
+            if (REDUCED_GTF == null) {
+                symbolToId = null;
+            } else {
+                final TabbedTextFileWithHeaderParser gtfParser = new TabbedTextFileWithHeaderParser(REDUCED_GTF);
+                symbolToId = gtfParser.iterator().stream()
+                        .collect(Collectors.toMap(
+                                row -> row.getField("gene_name"),
+                                row -> row.getField("gene_id"),
+                                (existing, duplicate) -> existing // keep first if duplicate
+                                 ));
+            }
+        }
+
+        public String mapGeneName(final String geneName) {
+            if (symbolToId == null) {
+                return geneName;
+            } else {
+                final String id = symbolToId.get(geneName);
+                if (id == null) {
+                    throw new IllegalArgumentException("Gene symbol " + geneName + " not found in " + REDUCED_GTF);
+                }
+                return id;
+            }
+        }
+        }
 }
