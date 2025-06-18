@@ -8,9 +8,6 @@
 
 name: DropSeq.eqtl R package
 
-permissions:
-  contents: read-all
-
 on:
   push:
     branches: [ "master" ]
