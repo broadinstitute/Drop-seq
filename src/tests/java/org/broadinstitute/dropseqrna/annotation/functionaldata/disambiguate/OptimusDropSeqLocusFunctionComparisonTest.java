@@ -39,9 +39,9 @@ public class OptimusDropSeqLocusFunctionComparisonTest {
         int result = cmd.doWork();
         Assert.assertEquals(result, 0);
 
-        TestUtils.testFilesSame(this.EXPECTED_OUTPUT, cmd.OUTPUT);
-        TestUtils.testFilesSame(this.EXPECTED_CONFUSION_MATRIX, cmd.OUT_CONFUSION_MATRIX, false);
-        TestUtils.testFilesSame(this.EXPECTED_SUMMARY, cmd.SUMMARY);
+        Assert.assertTrue(TestUtils.testFilesSame(this.EXPECTED_OUTPUT, cmd.OUTPUT));
+        Assert.assertTrue(TestUtils.testFilesSame(this.EXPECTED_CONFUSION_MATRIX, cmd.OUT_CONFUSION_MATRIX, false));
+        Assert.assertTrue(TestUtils.testFilesSame(this.EXPECTED_SUMMARY, cmd.SUMMARY));
         TestUtils.assertSamFilesSame(this.EXPECTED_OUT_BAM, cmd.OUT_BAM, false);
 
 
