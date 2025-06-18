@@ -9,7 +9,7 @@
 name: DropSeq.eqtl R package
 
 permissions:
-  contents: read
+  contents: read-all
 
 on:
   push:
