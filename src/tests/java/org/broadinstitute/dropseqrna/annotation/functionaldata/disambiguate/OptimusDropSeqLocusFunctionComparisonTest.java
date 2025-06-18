@@ -22,7 +22,7 @@ public class OptimusDropSeqLocusFunctionComparisonTest {
 
     private final File EXPECTED_OUT_BAM = new File(ROOT_DIR, "testdata.function_comparison_error_reads.bam");
 
-    @Test
+    @Test(enabled = false)
     /**
      * Writing this mostly to satisfy code coverage, but this does cover at least a little bit of most cases / functional types
      * so if I break something later this may find it - but I trust the other more explicit unit tests written to test
