@@ -43,7 +43,6 @@ import pandas as pd
 import scipy.stats as stats
 
 
-
 def consistent_log2(dbl):
     """
     Use the slower and possibly loss of precision math.log(dbl, 2) instead of np.log2 unless math.log cannot process the
@@ -183,19 +182,63 @@ def main(args: Optional[List[str]] = None) -> int:
     )
     parser.add_argument(
         dest='phenotype_bed',
-        type=str,
+        nargs='?',
         help='Phenotypes in BED format. '
+             'Deprecated: use --input instead. '
              'For more information see https://github.com/broadinstitute/tensorqtl/tree/v1.0.7#input-formats',
     )
     parser.add_argument(
         dest='output_prefix',
-        type=str,
-        help='prefix for output files',
+        nargs='?',
+        help='Prefix for output files. '
+             'Deprecated: use --tpm/--int instead.'
     )
+    parser.add_argument(
+        '-i',
+        '--input',
+        required=False,
+        help='Input phenotypes in BED format. '
+             'For more information see https://github.com/broadinstitute/tensorqtl/tree/v1.0.7#input-formats',
+    )
+    parser.add_argument(
+        '-t',
+        '--tpm',
+        required=False,
+        help='edgeR (TPM) normalized output in BED format.',
+    )
+    parser.add_argument(
+        '-n',
+        '--int',
+        required=False,
+        help='Inverse Normal Transformation (INT) normalized output in BED format.',
+    )
+
     options = parser.parse_args(args)
 
+    args_error = 'Both phenotype_bed and output_prefix are required, or --input and --tpm/--int.'
+
+    # Check for new and old input args
+    if not (bool(options.phenotype_bed) ^ bool(options.input)):
+        parser.error(args_error)
+
+    # Check for new and old output args
+    if not (bool(options.output_prefix) ^ (bool(options.tpm) or bool(options.int))):
+        parser.error(args_error)
+
+    # Check for only one of phenotype_bed or output_prefix
+    if bool(options.phenotype_bed) ^ bool(options.output_prefix):
+        parser.error(args_error)
+    elif bool(options.phenotype_bed) and bool(options.output_prefix):
+        warnings.warn('The arguments phenotype_bed and output_prefix are deprecated.')
+        options.input = options.phenotype_bed
+        options.tpm = f'{options.output_prefix}.TPM_expression.bed'
+        options.int = f'{options.output_prefix}.normalized_expression.bed'
+
+    if not bool(options.tpm) and not bool(options.int):
+        parser.error(args_error)
+
     # read in genes x donors count matrix
-    phenotype_df = pd.read_csv(options.phenotype_bed, sep='\t', index_col=None)
+    phenotype_df = pd.read_csv(options.input, sep='\t', index_col=None)
 
     phenotype_mapping = {
         phenotype_df.columns[0]: '#chr',
@@ -210,21 +253,18 @@ def main(args: Optional[List[str]] = None) -> int:
 
     # edgeR CPM normalization
     cpm_df = edger_cpm(phenotype_df.iloc[:, 4:])
-
-    out_df = phenotype_df.iloc[:, :4].join(cpm_df)
-    out_df = out_df.sort_values(['#chr', 'start'])
-
-    out_file = f'{options.output_prefix}.TPM_expression'
-    out_df.to_csv(out_file + '.bed', sep='\t', index=False)
+    if options.tpm:
+        out_df = phenotype_df.iloc[:, :4].join(cpm_df)
+        out_df = out_df.sort_values(['#chr', 'start'])
+        out_df.to_csv(options.tpm, sep='\t', index=False)
 
     # inverse normal transform
-    int_df = inverse_normal_transform(cpm_df)
+    if options.int:
+        int_df = inverse_normal_transform(cpm_df)
+        out_df = phenotype_df.iloc[:, :4].join(int_df)
+        out_df = out_df.sort_values(['#chr', 'start'])
+        out_df.to_csv(options.int, sep='\t', index=False)
 
-    out_df = phenotype_df.iloc[:, :4].join(int_df)
-    out_df = out_df.sort_values(['#chr', 'start'])
-
-    out_file = f'{options.output_prefix}.normalized_expression'
-    out_df.to_csv(out_file + '.bed', sep='\t', index=False)
     return 0
 
 
