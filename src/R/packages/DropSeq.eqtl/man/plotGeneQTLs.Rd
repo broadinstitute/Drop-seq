@@ -12,8 +12,7 @@ plotGeneQTLs(
   outPDF = NULL,
   outIndexSNPs = NULL,
   qValueThreshold = 0.05,
-  geneList = NULL,
-  gene_location_file_name = NULL
+  geneList = NULL
 )
 }
 \arguments{
@@ -32,8 +31,6 @@ plotGeneQTLs(
 \item{qValueThreshold}{Genes with a score <= this threshold will be emitted in the outIndexSNPs and outPDF.}
 
 \item{geneList}{Override the qValueThreshold and plot these genes instead.}
-
-\item{gene_location_file_name}{Obsolete, will be removed in the future.}
 }
 \description{
 Plot many eQTL expression vs genotype plots on one page.
