@@ -2,4 +2,5 @@
 
 export(plotDiversity)
 export(plotGeneQTLs)
+import(data.table)
 import(vegan)

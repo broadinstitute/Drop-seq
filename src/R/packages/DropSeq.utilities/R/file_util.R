@@ -35,6 +35,7 @@ fastRead<-function(inFile, comment_regexp=NA, ...) {
   if (!file.exists(inFile)) {
     stop(paste0(inFile, " does not exist"))
   }
+  datatable.cedata()
   # fread writes process output to /dev/shm if it exists, which is OK so long as it is big enough.
   # If that fails, fall back to function that uses an explicit TMPDIR
   if (length(grep(".gz", inFile))==1) {
@@ -89,6 +90,7 @@ fastReadBigGz<-function(inFile, ...) {
 #' @export
 #' @import data.table
 read_dge_gz<-function(file, decreasing_order_by_size=TRUE) {
+  datatable.cedata()
   dge <- fastRead(file, comment_regexp = '^#', header = TRUE)
   setkey(dge,GENE)
   gene_names = dge$GENE
@@ -155,6 +157,7 @@ write_table_with_label_for_rownames = function(x, file, rowname_label, quote=FAL
 #' @export
 #' @import data.table
 read_table_with_label_for_rownames=function(file, ...) {
+  datatable.cedata()
   ret = fastRead(file, ...)
   rowname_column = colnames(ret)[1]
   labels = ret[, get(rowname_column)]
@@ -220,6 +223,7 @@ version_above <- function(pkg, than) {
 #' @import data.table
 #' @export
 read_dge_txt = function(path) {
+  datatable.cedata()
   headerLength = countHeaderLines(path)
   dge = fastRead(path, skip=headerLength)
   if (headerLength > 0) {
@@ -261,6 +265,7 @@ getSparseMatrixDimensions=function(file) {
 #' @return list(numRows, numCols)
 #' @export
 getDenseDgeDimensions=function(file) {
+  datatable.cedata()
   numCols = ncol(fastRead(file, nrows=1)) - 1
   # start at -1 because first line is a header
   numRows = -1
@@ -305,3 +310,27 @@ MatrixMarketConstants = list(
   integer_element_format = "%d\t%d\t%d"
 )
 MatrixMarketConstants$MM_HEADER_START = paste0(MatrixMarketConstants$MM_STRUCTURED_COMMENT_LINE_START, "MatrixMarket matrix coordinate")
+
+#' Report if data.table is set up incorrectly by temporarily turning on the option datatable.verbose and calling the
+#' internal function data.table:::cedta().
+#'
+#' With verbosity turned on, that private function warns about a case where if the data.table package is not listed in
+#' a package NAMESPACE file then any data.table indexing will run VERY slowly as `[.data.table` will revert to calling
+#' `[.data.frame`.
+#'
+#' See also:
+#' - https://github.com/Rdatatable/data.table/blob/1.17.6/R/cedta.R#L42-L43
+#' - https://github.com/Rdatatable/data.table/blob/1.17.6/vignettes/datatable-importing.Rmd#L189
+#' - https://stackoverflow.com/questions/10527072/using-data-table-package-inside-my-own-package#answer-10529888
+#' - https://github.com/Rdatatable/data.table/issues/2341
+#' - https://github.com/Rdatatable/data.table/issues/3744
+#' - etc.
+#'
+#' @param n parameter to pass to `data.table:::cedta()`
+#' @return the result of calling `data.table:::cedta(n)`
+datatable.cedata <- function(n = 3L) {
+  op <- options(datatable.verbose = TRUE)
+  on.exit(options(op), add = TRUE)
+    data.table:::cedta(n)
+  return(data.table:::cedta(n))
+}
