@@ -31,7 +31,7 @@
 #' @param outIndexSNPs The file location of the gene/SNPs with a q-value <= qValueThreshold
 #' @param qValueThreshold Genes with a score <= this threshold will be emitted in the outIndexSNPs and outPDF.
 #' @param geneList Override the qValueThreshold and plot these genes instead.
-#' @suggest DropSeq.utilities
+#' @import data.table
 #' @export
 plotGeneQTLs<-function (snps_location_file_name, expression_file_name, SNP_file_name, eQTLPermutationResultFile,
                         outPDF=NULL, outIndexSNPs=NULL, qValueThreshold=0.05, geneList=NULL) {

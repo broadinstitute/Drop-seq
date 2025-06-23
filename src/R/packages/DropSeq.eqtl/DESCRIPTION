@@ -5,7 +5,7 @@ Version: 1.0
 Author: nemesh@broadinstitute.org
 Maintainer: James Nemesh <nemesh@broadinstitute.org>
 Description: Tools for running eQTL analysis on dropseq data sets.
-Imports: utils, stats, vegan, graphics, grDevices
+Imports: utils, stats, vegan, graphics, grDevices, data.table
 Suggests: DropSeq.utilities
 Remotes: github::broadinstitute/Drop-seq/src/R/packages/DropSeq.utilities
 License: MIT + file LICENSE
