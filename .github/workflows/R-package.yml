@@ -47,3 +47,42 @@ jobs:
           build_args: 'c("--no-manual")'
           # for some reason this needs to be quoted lest it gets passed as (error)
           error-on: ${{ format('"{0}"', inputs.error-on) }}
+
+  check-roxygen:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+
+      - name: Run roxygenize
+        working-directory: src/R/packages/DropSeq.${{ inputs.package_name }}
+        run: |
+          # Install roxygen2 from Posit Package Manager
+          os_codename <- system("lsb_release -cs", intern = TRUE)
+          repo_url <- paste0("https://packagemanager.posit.co/cran/__linux__/", os_codename, "/latest")
+          options(HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version$platform, R.version$arch, R.version$os)))
+          options(repos = repo_url)
+          # Uncomment the next line if you want to check the user agent is configured to download binary packages
+          #source("https://docs.rstudio.com/rspm/admin/check-user-agent.R")
+          install.packages(c("roxygen2", "remotes"), repos = repo_url)
+          remotes::install_deps(dependencies = TRUE)
+          roxygen2::roxygenize()
+        shell: Rscript {0}
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }} # this is needed because some deps are downloaded from github
+
+      - name: Check for modified files
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "Error: Files were modified by roxygen2::roxygenize()"
+            echo "Modified files:"
+            git status --porcelain
+            git diff
+            echo "Please run roxygen2::roxygenize() locally and commit the changes."
+            exit 1
+          else
+            echo "No files were modified by roxygen"
+          fi
