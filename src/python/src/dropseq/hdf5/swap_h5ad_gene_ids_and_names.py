@@ -38,7 +38,7 @@ def main(args=None):
     gene_symbol_colname = "gene_symbol"
     if gene_symbol_colname not in adata.var.columns:
         raise ValueError(f"Input h5ad file does not contain '{gene_symbol_colname}' in var columns.")
-    adata.var[gene_symbol_colname] = adata.var_names.to_series()
+    adata.var['gene_id'] = adata.var_names.to_series()
     adata.var_names = adata.var["gene_symbol"]
     adata.write_h5ad(options.output, compression="gzip")
     return 0
