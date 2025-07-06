@@ -20,29 +20,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""
-Swap the gene IDs var["gene_symbol"] and names (var_names) in an h5ad file.
-
-This can be useful when running MapMyCells with query markers that use gene names.
-"""
-import argparse
-import sys
-import anndata as ad
-
-def main(args=None):
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument("--input", "-i", required=True, help="Input h5ad file")
-    parser.add_argument("--output", "-o", required=True, help="Output h5ad file")
-    options = parser.parse_args(args)
-    adata = ad.read_h5ad(options.input)
-    gene_symbol_colname = "gene_symbol"
-    if gene_symbol_colname not in adata.var.columns:
-        raise ValueError(f"Input h5ad file does not contain '{gene_symbol_colname}' in var columns.")
-    adata.var['gene_id'] = adata.var_names.to_series()
-    adata.var_names = adata.var["gene_symbol"]
-    adata.write_h5ad(options.output, compression="gzip")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+GENE_SYMBOLS_COLUMN_NAME = "gene_symbols"
+GENE_IDS_COLUMN_NAME = "gene_ids"
+FEATURE_TYPES_COLUMN_NAME = "feature_types"
+GENE_EXPRESSION_FEATURE_TYPE = "Gene Expression"

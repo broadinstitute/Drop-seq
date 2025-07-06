@@ -32,6 +32,7 @@ from scipy import sparse
 import pandas as pd
 import sys
 
+import dropseq.hdf5.h5ad_defs as h5ad_defs
 
 def read_dropseq_dge(in_file: str, dtype: str = "uint") -> sc.AnnData:
     # copied from CellAnnotationService.ipynb
@@ -51,6 +52,8 @@ def main(args=None):
                                                     "(and any other columns).  If provided, gene names will be "
                                                     "converted to gene IDs")
     parser.add_argument("--dtype", "-d", default="uint32", help="Data type for the matrix.  Default: %(default)s)")
+    parser.add_argument("--feature-type", "-f", default=h5ad_defs.GENE_EXPRESSION_FEATURE_TYPE,
+                        help=f"var[{h5ad_defs.FEATURE_TYPES_COLUMN_NAME}] will be set to this value. ")
     options = parser.parse_args(args)
 
     dge = read_dropseq_dge(options.input, dtype=options.dtype)
@@ -63,9 +66,8 @@ def main(args=None):
         missing_gene_ids = set(dge.var_names) - set(gtf['gene_name'])
         if missing_gene_ids:
             raise Exception(f"Missing gene IDs for {len(missing_gene_ids)} genes: " + ", ".join(missing_gene_ids))
-        dge.var["gene_symbol"] = dge.var_names
-        dge.var_names = dge.var_names.map(gtf.set_index('gene_name')['gene_id'])
-
+        dge.var[h5ad_defs.GENE_IDS_COLUMN_NAME] = dge.var_names.map(gtf.set_index('gene_name')['gene_id'])
+    dge.var[h5ad_defs.FEATURE_TYPES_COLUMN_NAME] = len(dge.var_names) * [options.feature_type]
     logging.info(f"Writing {options.output}")
     adDge = anndata.AnnData(X=dge.X, obs=dge.obs, var=dge.var, dtype=options.dtype)
     adDge.write_h5ad(options.output, compression="gzip")

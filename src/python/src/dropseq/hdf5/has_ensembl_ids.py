@@ -67,15 +67,12 @@ def getGeneFromFeaturesFile(features_path):
 
 def getGeneFromH5ad(h5ad_path):
     """
-    Read the h5ad file and return the first gene ID from the var index.
+    Read the h5ad file and return the first gene ID from the var_names.
     :param h5ad_path: Path to the h5ad file
-    :return: string from the first row of the var index
+    :return: string from the first row of var_names
     """
     adata = ad.read_h5ad(h5ad_path, backed='r')
-    gene_ids = adata.var['gene_ids']
-    if gene_ids.size == 0:
-        raise Exception(f"h5ad file {h5ad_path} has no gene_ids.")
-    return gene_ids.iloc[0]
+    return adata.var_names[0]
 
 def getGeneFromDgeFile(dge_path):
     with open_maybe_gz(dge_path) as f:
