@@ -13,7 +13,10 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-    paths: 'src/R/packages/DropSeq.utilities/**'
+    paths:
+      - '.github/workflows/R-package.yml'
+      - '.github/workflows/DropSeq.utilities.r.yml'
+      - 'src/R/packages/DropSeq.utilities/**'
 
 permissions:
   contents: read
