@@ -298,6 +298,9 @@ public class SignTest extends CommandLineProgram {
     }
 
     private static Effect effectFromString(final String effect) {
+        if (effect == null || effect.isEmpty()) {
+            return Effect.UNKNOWN;
+        }
         try {
             return Double.parseDouble(effect) > 0 ? Effect.POSITIVE : Effect.NEGATIVE;
         } catch (final NumberFormatException e) {
