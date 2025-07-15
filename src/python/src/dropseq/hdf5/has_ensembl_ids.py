@@ -109,6 +109,7 @@ def main(args=None):
     group.add_argument("--dge", "-d", help="Input tabular DGE file")
     group.add_argument("--query-markers", "-q", help="Input MapMyCells query markers json file")
     options = parser.parse_args(args)
+    infile = options.h5ad or options.features or options.dge or options.query_markers
     if options.h5ad:
         gene = getGeneFromH5ad(options.h5ad)
     elif options.features:
@@ -120,10 +121,10 @@ def main(args=None):
     else:
         raise ValueError("No input file specified")
     if isEnsemblId(gene):
-        print(f"Gene ID {gene} is an Ensembl ID.", file=sys.stderr)
+        print(f"Gene ID {gene} in {infile} is an Ensembl ID.")
         return 0
     else:
-        print(f"Gene ID {gene} is NOT an Ensembl ID.", file=sys.stderr)
+        print(f"Gene ID {gene} is {infile} NOT an Ensembl ID.")
         return 1
 
 
