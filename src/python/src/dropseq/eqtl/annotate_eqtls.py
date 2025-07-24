@@ -92,6 +92,26 @@ def join_dbsnp(qtls, dbsnpPath, missing_value):
     return qtls
 
 
+def parse_variant_id(variant_id):
+    """
+    Parse a variant ID into its components: chromosome, position, reference allele, and alternate allele.
+    """
+    parts = variant_id.split(':')
+    if len(parts) != 4:
+        raise ValueError(f"Invalid variant_id format: {variant_id}. Expected format: 'chr:pos:ref:alt'.")
+    return {
+        'chr': parts[0],
+        'pos': int(parts[1]),
+        'ref': parts[2],
+        'alt': parts[3]
+    }
+
+def expand_variant_id(qtls):
+    parsed_variants = qtls['variant_id'].apply(parse_variant_id)
+    variantDf = pd.DataFrame(parsed_variants.tolist())
+    qtls = pd.concat([qtls, variantDf], axis=1)
+    return qtls
+
 
 def main(args=None):
     parser = argparse.ArgumentParser(
@@ -135,6 +155,7 @@ def main(args=None):
     qtls.rename(columns={
         Columns.phenotype_id: Columns.gene_id
     }, inplace=True)
+    qtls = expand_variant_id(qtls)
     if options.gtf:
         qtls = join_gtf(qtls, options.gtf, options.missing_value)
     if options.dbsnp:
