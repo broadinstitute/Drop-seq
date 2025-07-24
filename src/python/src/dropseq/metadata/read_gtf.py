@@ -25,9 +25,19 @@
 
 import pandas as pd
 
-gtf_colnames = [
-'CHROMOSOME', 'SOURCE', 'FEATURE', 'START', 'END', 'SCORE', 'STRAND', 'FRAME', 'ATTRIBUTE'
-]
+class GtfRequiredColNames:
+    CHROMOSOME = 'CHROMOSOME'
+    SOURCE = 'SOURCE'
+    FEATURE= 'FEATURE'
+    START = 'START'
+    END = 'END'
+    SCORE = 'SCORE'
+    STRAND = 'STRAND'
+    FRAME = 'FRAME'
+    ATTRIBUTE = 'ATTRIBUTE'
+    all_colnames = [
+        CHROMOSOME, SOURCE, FEATURE, START, END, SCORE, STRAND, FRAME, ATTRIBUTE
+    ]
 
 def fix_attribute_field(attribute):
     """
@@ -61,26 +71,29 @@ def parse_attribute_to_dict(attribute):
     # Create a dictionary from the pairs
     return {key_value.split(' ')[0]: key_value.split(' ')[1].strip("'") for key_value in pairs}
 
-def read_gtf(gtf_path):
+def read_gtf(gtf_path, filterFunc = lambda df: df):
     """
     Read a GTF file and return a DataFrame with gene information.
 
     Args:
         gtf_path (str): Path to the GTF file.
+        filterFunc (function): A function to filter the DataFrame after reading. May be used to reduce the number of
+        rows before parsing the attributes, or eliminate ATTRIBUTE column, to speed loading. Defaults to a no-op function.
 
     Returns:
         pd.DataFrame: DataFrame containing gene information.
     """
 
-    gtf = pd.read_csv(gtf_path, sep='\t', header=0, index_col=None, names=gtf_colnames, comment='#')
+    gtf = pd.read_csv(gtf_path, sep='\t', header=0, index_col=None, names=GtfRequiredColNames.all_colnames, comment='#')
+    gtf = filterFunc(gtf)
 
-    parsedAttributes = gtf['ATTRIBUTE'].apply(parse_attribute_to_dict)
-    # Create a DataFrame from the parsed attributes
-    attributes_df = pd.DataFrame(parsedAttributes.tolist())
-    # Concatenate the attributes DataFrame with the original GTF DataFrame
-    gtf = pd.concat([gtf, attributes_df], axis=1)
-    # Drop the original ATTRIBUTE column
-    gtf.drop(columns=['ATTRIBUTE'], inplace=True)
+    if GtfRequiredColNames.ATTRIBUTE in gtf.columns:
+        parsedAttributes = gtf[GtfRequiredColNames.ATTRIBUTE].apply(parse_attribute_to_dict)
+        # Drop the original ATTRIBUTE column
+        gtf.drop(columns=[GtfRequiredColNames.ATTRIBUTE], inplace=True)
+        # Create a DataFrame from the parsed attributes
+        attributes_df = pd.DataFrame(parsedAttributes.tolist())
+        gtf = pd.concat([gtf.reset_index(drop=True), attributes_df.reset_index(drop=True)], axis=1)
     return gtf
 
 
