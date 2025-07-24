@@ -23,6 +23,14 @@ getSingletDoubletDF(
 \item{expectedSamplesFile}{A file containing the expected list of donors in the experiment. The file has no header,
 and a single donor ID on each line.}
 
+\item{doubletPvalue}{The p-value threshold for calling a cell a doublet}
+
+\item{bestPairPvalue}{The p-value threshold for calling a cell a diffuse doublet}
+
+\item{ignoreDiffuseDoublets}{If TRUE, diffuse doublets are labeled}
+
+\item{fdrThreshold}{The false discovery rate threshold for labeling singlets}
+
 \item{anonymizeDonors}{If set to true, donor IDs are changed to DONOR_1, DONOR_2, etc.  Purely for sharing 
 visualizations of not-yet-public data.}
 }

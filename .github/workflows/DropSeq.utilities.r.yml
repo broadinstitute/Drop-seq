@@ -13,28 +13,16 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-    paths: 'src/R/packages/DropSeq.utilities/**'
+    paths:
+      - '.github/workflows/R-package.yml'
+      - '.github/workflows/DropSeq.utilities.r.yml'
+      - 'src/R/packages/DropSeq.utilities/**'
 
-permissions:
-  contents: read
+permissions: read-all
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    container:
-      image: rocker/r2u:latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: SessionInfo
-        run: R -q -e 'sessionInfo()'
-      - name: Install dependencies
-        run: |
-          setwd("src/R/packages/DropSeq.utilities")
-          install.packages(c("rcmdcheck"))
-          remotes::install_deps(dependencies = TRUE)
-        shell: Rscript {0}
-      - name: Check
-        run: |
-          setwd("src/R/packages/DropSeq.utilities")
-          rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "error")
-        shell: Rscript {0}
+  call-R-package:
+    uses: ./.github/workflows/R-package.yml
+    with:
+      package_name: utilities
+    secrets: inherit
