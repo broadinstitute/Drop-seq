@@ -29,9 +29,15 @@ import sys
 from types import MethodType
 import pandas as pd
 import dropseq.metadata.read_gtf as read_gtf
+import dropseq.hdf5.io_utils as io_utils
 
 from dropseq.util.argparse_utils import argparse_error
 import dropseq.util.pandas_utils as pd_utils
+
+
+class Columns:
+    gene_id = "gene_id"
+    phenotype_id = "phenotype_id"
 
 def join_gtf(qtls, gtfPath, missing_value):
     """
@@ -41,20 +47,20 @@ def join_gtf(qtls, gtfPath, missing_value):
     gtf = read_gtf.read_gtf(gtfPath, lambda df: df[df[read_gtf.GtfRequiredColNames.FEATURE] == 'gene'])
     # select relevant columns
     gtf = gtf[gtf.FEATURE == 'gene']
-    gtf = gtf[['gene_name', 'CHROMOSOME', 'START', 'END', 'STRAND', 'gene_id']]
+    gtf = gtf[['gene_name', read_gtf.GtfRequiredColNames.CHROMOSOME, read_gtf.GtfRequiredColNames.START,
+               read_gtf.GtfRequiredColNames.END, read_gtf.GtfRequiredColNames.STRAND, 'gene_id']]
     # rename columns to match what we want to go into the qtls DataFrame
     gtf.rename(columns={
-        'CHROMOSOME': 'gene_chr',
-        'START': 'gene_start',
-        'END': 'gene_end',
-        'STRAND': 'strand',
-        'gene_id': 'phenotype_id',  # the join column
+        read_gtf.GtfRequiredColNames.CHROMOSOME: 'gene_chr',
+        read_gtf.GtfRequiredColNames.START: 'gene_start',
+        read_gtf.GtfRequiredColNames.END: 'gene_end',
+        read_gtf.GtfRequiredColNames.STRAND: 'strand',
     }, inplace=True)
     # change these columns to strings so that missing values can be replaced with a string
     gtf['gene_start'] = gtf['gene_start'].astype(str)
     gtf['gene_end'] = gtf['gene_end'].astype(str)
     gtf['strand'] = gtf['strand'].astype(str)
-    qtls = qtls.merge(gtf, on='phenotype_id', how='left')
+    qtls = qtls.merge(gtf, on=Columns.gene_id, how='left')
     qtls.fillna(missing_value, inplace=True)
     return qtls
 
@@ -121,17 +127,29 @@ def main(args=None):
     parser.add_argument('--missing-value', '-m', default='.',
                         help='String to use for missing values, typically rsids, gene_name, gene_start, gene_end. (default: %(default)s)')
     options = parser.parse_args(args)
-    if not options.gtf and not options.dbsnp:
-        parser.error("At least one of --gtf or --dbsnp must be specified.")
     if options.output is None:
-        options.output = sys.stdout
+        fOut = sys.stdout
+    else:
+        fOut = io_utils.open_maybe_gz(options.output, 'wt')
     qtls = pd.read_csv(options.input, sep='\t')
+    qtls.rename(columns={
+        Columns.phenotype_id: Columns.gene_id
+    }, inplace=True)
     if options.gtf:
         qtls = join_gtf(qtls, options.gtf, options.missing_value)
     if options.dbsnp:
         qtls = join_dbsnp(qtls, options.dbsnp, options.missing_value)
 
-    pd_utils.to_tsv(qtls, options.output, index=False)
+    if options.output is None:
+        fOut = sys.stdout
+    else:
+        fOut = io_utils.open_maybe_gz(options.output, 'wt')
+    for k, v in vars(options).items():
+        if k != 'output' and v is not None:
+            fOut.write(f"# {k}={v}\n")
+    qtls.to_csv(fOut, sep='\t', index=False)
+    if options.output is not None:
+        fOut.close()
     return 0
 
 
