@@ -38,6 +38,7 @@ from dropseq.util.argparse_utils import argparse_error
 
 class Columns:
     gene_id = "gene_id"
+    gene_name = "gene_name"
     phenotype_id = "phenotype_id"
 
 def join_gtf(qtls, gtfPath, missing_value):
@@ -61,7 +62,8 @@ def join_gtf(qtls, gtfPath, missing_value):
     gtf['gene_start'] = gtf['gene_start'].astype(str)
     gtf['gene_end'] = gtf['gene_end'].astype(str)
     gtf['strand'] = gtf['strand'].astype(str)
-    qtls = qtls.merge(gtf, on=Columns.gene_id, how='left')
+
+    qtls = qtls.merge(gtf, on=Columns.gene_name, how='left')
     qtls.fillna(missing_value, inplace=True)
     return qtls
 
@@ -102,7 +104,7 @@ def parse_variant_id(variant_id):
         raise ValueError(f"Invalid variant_id format: {variant_id}. Expected format: 'chr:pos:ref:alt'.")
     return {
         'chr': parts[0],
-        'pos': int(parts[1]),
+        'variant_pos': int(parts[1]),
         'ref': parts[2],
         'alt': parts[3]
     }
@@ -154,10 +156,10 @@ def main(args=None):
         fOut = io_utils.open_maybe_gz(options.output, 'wt')
     qtls = pd.read_csv(options.input, sep='\t')
     qtls.rename(columns={
-        Columns.phenotype_id: Columns.gene_id
+        Columns.phenotype_id: Columns.gene_name
     }, inplace=True)
     qtls = expand_variant_id(qtls)
-    qtls['bhfdr'] = stats.false_discovery_control(qtls['pval_beta'], method='bh')
+    qtls['bh_fdr'] = stats.false_discovery_control(qtls['pval_beta'], method='bh')
     if options.gtf:
         qtls = join_gtf(qtls, options.gtf, options.missing_value)
     if options.dbsnp:
