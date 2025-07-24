@@ -25,6 +25,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from pandas.testing import assert_frame_equal
 
 import dropseq.metadata.read_gtf as read_gtf
 
@@ -34,12 +35,13 @@ class TestReadGTF(unittest.TestCase):
         self.testDataDir = "tests/data/metadata"
         self.tmpDir = tempfile.mkdtemp(".tmp", "read_gtf.")
         self.outputFile = os.path.join(self.tmpDir, "output.gtf")
+        self.inputFile = os.path.join(self.testDataDir, "GRCh38-2020-A.100.gtf")
 
     def tearDown(self):
         shutil.rmtree(self.tmpDir)
 
     def test_basic(self):
-        df = read_gtf.read_gtf(os.path.join(self.testDataDir, "GRCh38-2020-A.100.gtf"))
+        df = read_gtf.read_gtf(self.inputFile)
         df.to_csv(self.outputFile, sep="\t", index=False, quotechar='', quoting=csv.QUOTE_NONE)
         with open(self.outputFile, 'r') as f1, open(os.path.join(self.testDataDir, "GRCh38-2020-A.100.parsed.gtf"), 'r') as f2:
             content1 = f1.read()
@@ -47,5 +49,20 @@ class TestReadGTF(unittest.TestCase):
 
         self.assertEqual(content1, content2, "Files are not equal")
 
+    def test_genes_only(self):
+        genesOnlyDf = read_gtf.read_gtf(self.inputFile, lambda df: df[df[read_gtf.GtfRequiredColNames.FEATURE] == 'gene'])
+        expectedDf = read_gtf.read_gtf(self.inputFile)
+        expectedDf = expectedDf[expectedDf[read_gtf.GtfRequiredColNames.FEATURE] == 'gene']
+        # Reset index to ensure comparison works correctly
+        expectedDf.reset_index(drop=True, inplace=True)
+        # The dataframe loaded without gene filtering will have additional columns from transcripts that have
+        # attributes that cause columns to be created, so we need to filter the expected DataFrame
+        expectedDf = expectedDf[genesOnlyDf.columns]
+        assert_frame_equal(genesOnlyDf,expectedDf, )
 
+    def test_no_attributes(self):
+        noAttributesDf = read_gtf.read_gtf(self.inputFile, lambda df: df.drop(columns=[read_gtf.GtfRequiredColNames.ATTRIBUTE]))
+        expectedDf = read_gtf.read_gtf(self.inputFile)
+        expectedDf = expectedDf[noAttributesDf.columns]
+        assert_frame_equal(noAttributesDf,expectedDf)
 

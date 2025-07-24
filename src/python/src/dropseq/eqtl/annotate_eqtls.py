@@ -37,8 +37,9 @@ def join_gtf(qtls, gtfPath, missing_value):
     """
     Annotate eQTLs with gene information from a GTF file.
     """
-    gtf = read_gtf.read_gtf(gtfPath)
-    # Filter for genes only, and select relevant columns
+    # Read the GTF file, filtering for 'gene' features only
+    gtf = read_gtf.read_gtf(gtfPath, lambda df: df[df[read_gtf.GtfRequiredColNames.FEATURE] == 'gene'])
+    # select relevant columns
     gtf = gtf[gtf.FEATURE == 'gene']
     gtf = gtf[['gene_name', 'CHROMOSOME', 'START', 'END', 'STRAND', 'gene_id']]
     # rename columns to match what we want to go into the qtls DataFrame
