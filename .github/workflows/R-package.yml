@@ -22,24 +22,43 @@ name: Build and check an R package
 
 permissions: read-all
 
-# See https://dirk.eddelbuettel.com/blog/code/r4/ for using r2u to speed up dependency loading
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    # Using r2u to speed up dependency loading:
+    #  - https://eddelbuettel.github.io/r2u/
+    #  - https://dirk.eddelbuettel.com/blog/code/r4/
     container:
       image: rocker/r2u:latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Install Git
+        run: |
+          apt-get -qq update
+          apt-get -qq install git
+          git --version
+
+      - uses: actions/checkout@v4
+
       - name: SessionInfo
-        run: R -q -e 'sessionInfo()'
+        run: |
+          R -q -e 'sessionInfo()'
+
+      - name: Install R packages
+        working-directory: src/R/packages/DropSeq.${{ inputs.package_name }}
+        shell: Rscript {0}
+        run: |
+          install.packages(c("rcmdcheck", "roxygen2", "remotes"))
+
       - name: Install dependencies
         working-directory: src/R/packages/DropSeq.${{ inputs.package_name }}
-        run: |
-          install.packages(c("rcmdcheck"))
-          remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
+        run: |
+          remotes::install_deps(dependencies = TRUE)
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }} # this is needed because some deps are downloaded from github
+
       - uses: r-lib/actions/check-r-package@v2
         with:
           working-directory: src/R/packages/DropSeq.${{ inputs.package_name }}
@@ -47,3 +66,24 @@ jobs:
           build_args: 'c("--no-manual")'
           # for some reason this needs to be quoted lest it gets passed as (error)
           error-on: ${{ format('"{0}"', inputs.error-on) }}
+
+      - name: Roxygenize
+        working-directory: src/R/packages/DropSeq.${{ inputs.package_name }}
+        shell: Rscript {0}
+        run: |
+          roxygen2::roxygenize()
+
+      - name: Check for modified files
+        shell: bash
+        run: |
+          git config --global --add safe.directory $PWD
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "Error: Files were modified during the build."
+            echo "Modified files:"
+            git status --porcelain
+            git diff
+            echo "Try running roxygen2::roxygenize() locally and commit the changes."
+            exit 1
+          else
+            echo "No files were modified by roxygen"
+          fi

@@ -13,9 +13,13 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-    paths: 'src/R/packages/DropSeq.eqtl/**'
+    paths:
+      - '.github/workflows/R-package.yml'
+      - '.github/workflows/DropSeq.eqtl.r.yml'
+      - 'src/R/packages/DropSeq.eqtl/**'
 
-# See https://dirk.eddelbuettel.com/blog/code/r4/ for using r2u to speed up dependency loading
+permissions: read-all
+
 jobs:
   call-R-package:
     uses: ./.github/workflows/R-package.yml
