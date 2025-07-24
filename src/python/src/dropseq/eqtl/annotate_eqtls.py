@@ -27,12 +27,13 @@
 import argparse
 import sys
 from types import MethodType
-import pandas as pd
-import dropseq.metadata.read_gtf as read_gtf
-import dropseq.hdf5.io_utils as io_utils
 
+import pandas as pd
+import scipy.stats as stats
+
+import dropseq.hdf5.io_utils as io_utils
+import dropseq.metadata.read_gtf as read_gtf
 from dropseq.util.argparse_utils import argparse_error
-import dropseq.util.pandas_utils as pd_utils
 
 
 class Columns:
@@ -156,6 +157,7 @@ def main(args=None):
         Columns.phenotype_id: Columns.gene_id
     }, inplace=True)
     qtls = expand_variant_id(qtls)
+    qtls['bhfdr'] = stats.false_discovery_control(qtls['pval_beta'], method='bh')
     if options.gtf:
         qtls = join_gtf(qtls, options.gtf, options.missing_value)
     if options.dbsnp:
