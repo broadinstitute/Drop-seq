@@ -1,10 +1,10 @@
-# Simple python tools for querying reference metadata files.
+# Miscellaneous python scripts for Drop-seq
 
 ## Installation
 
 Requires python >= 3.12
 ```
-pip install 'git+https://github.com/broadinstitute/Drop-seq.git#egg=dropseq_metadata&subdirectory=src/python/dropseq_metadata'
+pip install 'git+https://github.com/broadinstitute/Drop-seq.git#egg=dropseq&subdirectory=src/python'
 ```
 
 ## Usage
