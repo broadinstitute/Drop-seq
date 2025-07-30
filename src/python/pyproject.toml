@@ -18,6 +18,7 @@ dependencies = [
     "pyarrow",
     "anndata",
     "tables",
+    "psutil"
 ]
 authors = [
   { name="Alec Wysoker", email="alecw@broadinstitute.org" },
@@ -42,11 +43,13 @@ cat_tsvs = "dropseq.aggregation.cat_tsvs:main"
 normalize_tensorqtl_expression = "dropseq.eqtl.normalize_tensorqtl_expression:main"
 prepare_tensorqtl_data = "dropseq.eqtl.prepare_tensorqtl_data:main"
 merge_parquet_files = "dropseq.eqtl.merge_parquet_files:main"
+annotate_eqtls = "dropseq.eqtl.annotate_eqtls:main"
 hdf5_10X_to_text = "dropseq.hdf5.hdf5_10X_to_text:main"
 optimus_h5ad_to_dropseq = "dropseq.hdf5.optimus_h5ad_to_dropseq:main"
 dge_to_h5ad = "dropseq.hdf5.dge_to_h5ad:main"
 mtx_to_h5ad = "dropseq.hdf5.mtx_to_h5ad:main"
-dropseq_terra_utils = "dropseq.terra_utils.cli:main"
 has_ensembl_ids = "dropseq.hdf5.has_ensembl_ids:main"
 transfer_h5ad_var_names = "dropseq.hdf5.transfer_h5ad_var_names:main"
-annotate_eqtls = "dropseq.eqtl.annotate_eqtls:main"
+aggregate_filter_adata = "dropseq.hdf5.aggregate_filter_adata:main"
+metacells_from_h5ad = "dropseq.hdf5.metacells_from_h5ad:main"
+dropseq_terra_utils = "dropseq.terra_utils.cli:main"
