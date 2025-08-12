@@ -2,16 +2,19 @@ package org.broadinstitute.dropseqrna.metrics;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.annotations.Test;
 
 import org.testng.Assert;
+import picard.nio.PicardHtsPath;
 
 public class BamTagHistogramTest {
 
-	private static final File IN_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.bam");
+	private static final Path IN_FILE = Paths.get("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.bam");
 	private static final File EXPECTED_RESULT = new File ("testdata/org/broadinstitute/dropseq/metrics/5cell3gene.counts_per_XC.txt");
 	private static final File EXPECTED_RESULT_INT = new File ("testdata/org/broadinstitute/dropseq/metrics/5cell3gene.counts_per_NM.txt");
 
@@ -20,7 +23,7 @@ public class BamTagHistogramTest {
 		File outFile = File.createTempFile("BamTagHistogramTest.", ".counts_XC.txt");
 		outFile.deleteOnExit();
 		BamTagHistogram bth = new BamTagHistogram();
-		bth.INPUT=Collections.singletonList(IN_FILE);
+		bth.INPUT = Collections.singletonList(PicardHtsPath.fromPath(IN_FILE));
 		bth.OUTPUT=outFile;
 		bth.MINIMUM_MAPPING_QUALITY=10;
 		bth.TAG="XC";
@@ -37,7 +40,7 @@ public class BamTagHistogramTest {
 		outFile = File.createTempFile("BamTagHistogramTest.", ".counts_NM.txt");
 		outFile.deleteOnExit();
 		BamTagHistogram bth = new BamTagHistogram();
-		bth.INPUT=Collections.singletonList(IN_FILE);
+		bth.INPUT = Collections.singletonList(PicardHtsPath.fromPath(IN_FILE));
 		bth.OUTPUT=outFile;
 		bth.MINIMUM_MAPPING_QUALITY=10;
 		bth.TAG="NM";

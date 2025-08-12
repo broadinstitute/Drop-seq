@@ -25,6 +25,7 @@ package org.broadinstitute.dropseqrna.utils;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -41,6 +42,7 @@ import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.ProgressLogger;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 
 @CommandLineProgramProperties(summary = "Reads each base and generates a composition per-position matrix",
         oneLineSummary = "Reads each base and generates a composition per-position matrix",
@@ -50,7 +52,7 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 	private final Log log = Log.getInstance(BaseDistributionAtReadPosition.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.")
-	public File INPUT;
+	public PicardHtsPath INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "Output report")
 	public File OUTPUT;
@@ -66,21 +68,21 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 
 	@Override
 	protected int doWork() {
-		IOUtil.assertFileIsReadable(INPUT);
+		IOUtil.assertFileIsReadable(INPUT.toPath());
 		IOUtil.assertFileIsWritable(OUTPUT);
 		BaseDistributionMetricCollection result;
 
 		if (this.TAG != null)
-			result = gatherBaseQualities(INPUT, this.TAG);
+			result = gatherBaseQualities(INPUT.toPath(), this.TAG);
 		else
-			result = gatherBaseQualities(INPUT, this.READ_NUMBER);
+			result = gatherBaseQualities(INPUT.toPath(), this.READ_NUMBER);
 
         result.writeOutput(OUTPUT);
 
 		return (0);
 	}
 
-	BaseDistributionMetricCollection gatherBaseQualities (final File input, final int readNumber) {
+	BaseDistributionMetricCollection gatherBaseQualities (final Path input, final int readNumber) {
 		ProgressLogger p = new ProgressLogger(this.log);
 
 		SamReader inputSam = SamReaderFactory.makeDefault().open(input);
@@ -119,7 +121,7 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 
 	}
 
-	BaseDistributionMetricCollection gatherBaseQualities (final File input, final String tag) {
+	BaseDistributionMetricCollection gatherBaseQualities (final Path input, final String tag) {
 		ProgressLogger pl = new ProgressLogger(this.log);
 		SamReader inputSam = SamReaderFactory.makeDefault().open(input);
 

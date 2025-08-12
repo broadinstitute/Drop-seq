@@ -2,15 +2,18 @@ package org.broadinstitute.dropseqrna.utils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.apache.commons.io.FileUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import picard.nio.PicardHtsPath;
 
 public class BaseDistributionAtReadPositionTest {
 
-	private static final File TAGGED_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.bam");
-	private static final File UNMAPPED_BAM_FILE = new File("testdata/org/broadinstitute/dropseq/utils/unmapped_paired_reads.bam");
+	private static final Path TAGGED_FILE = Paths.get("testdata/org/broadinstitute/transcriptome/barnyard/5cell3gene_retagged.bam");
+	private static final Path UNMAPPED_BAM_FILE = Paths.get("testdata/org/broadinstitute/dropseq/utils/unmapped_paired_reads.bam");
 	private static final File OUTPUT_EXPECTED_RESULT=new File("testdata/org/broadinstitute/dropseq/utils/BaseDistributionAtReadPosition.expected_output.txt");
 
 	@Test
@@ -75,7 +78,7 @@ public class BaseDistributionAtReadPositionTest {
 	public void testDoWork () {
 		BaseDistributionAtReadPosition test= new BaseDistributionAtReadPosition();
 		File tempReportFile=getTempReportFile();
-		test.INPUT=TAGGED_FILE;
+		test.INPUT = PicardHtsPath.fromPath(TAGGED_FILE);
 		test.TAG="XC";
 		test.OUTPUT=tempReportFile;
 		test.doWork();

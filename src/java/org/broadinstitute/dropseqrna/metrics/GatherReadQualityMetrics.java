@@ -36,10 +36,12 @@ import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
+import picard.nio.PicardHtsPath;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -54,7 +56,7 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 	private final Log log = Log.getInstance(GatherReadQualityMetrics.class);
 
 	@Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input SAM or BAM file to analyze.  Must be coordinate sorted.")
-	public List<File> INPUT;
+	public List<PicardHtsPath> INPUT;
 
 	@Argument(shortName = StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc = "The file to write stats to.")
 	public File OUTPUT;
@@ -84,9 +86,9 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 	 */
 	@Override
 	protected int doWork() {
-		INPUT = FileListParsingUtils.expandFileList(INPUT);
+		INPUT = FileListParsingUtils.expandPicardHtsPathList(INPUT);
 		IOUtil.assertFileIsWritable(OUTPUT);
-		Map<String, ReadQualityMetrics> metricsMap = gatherMetrics(INPUT);
+		Map<String, ReadQualityMetrics> metricsMap = gatherMetrics(PicardHtsPath.toPaths(INPUT));
 		MetricsFile<ReadQualityMetrics, Integer> outFile = new MetricsFile<>();
 		outFile.addHistogram(metricsMap.get(GLOBAL).getHistogram());
         // Make sure the GLOBAL metrics is added first
@@ -104,13 +106,13 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 		return 0;
 	}
 
-	public Map<String, ReadQualityMetrics> gatherMetrics(final List<File> inputSamOrBamFile) {
+	public Map<String, ReadQualityMetrics> gatherMetrics(final List<Path> inputSamOrBamFile) {
 		ProgressLogger p = new ProgressLogger(this.log);
         Map<String, ReadQualityMetrics> result = new TreeMap<>();
 
 		ReadQualityMetrics globalMetrics = new ReadQualityMetrics(this.MINIMUM_MAPPING_QUALITY, GLOBAL, true);
 
-		SamHeaderAndIterator headerAndIter= SamFileMergeUtil.mergeInputs(inputSamOrBamFile, false, SamReaderFactory.makeDefault());
+		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputPaths(inputSamOrBamFile, false, SamReaderFactory.makeDefault());
 		CloseableIterator<SAMRecord> in = headerAndIter.iterator;
 
 		for (final SAMRecord r : new IterableAdapter<>(in))
