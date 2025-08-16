@@ -23,12 +23,9 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.nio.file.Path;
-import java.util.List;
 
-import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
@@ -125,7 +122,7 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 		ProgressLogger pl = new ProgressLogger(this.log);
 		SamReader inputSam = SamReaderFactory.makeDefault().open(input);
 
-		BaseDistributionMetricCollection c = new BaseDistributionMetricCollection();
+		BaseDistributionMetricCollection c = new BaseDistributionMetricCollection(VALIDATION_STRINGENCY);
 		// MAIN_LOOP:
 		for (final SAMRecord samRecord : inputSam) {
 			pl.record(samRecord);
@@ -145,9 +142,6 @@ public class BaseDistributionAtReadPosition extends CommandLineProgram {
 		return (c);
 
 	}
-
-
-
 
 	/** Stock main method. */
 	public static void main(final String[] args) {

@@ -27,7 +27,9 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.metrics.MetricBase;
+import htsjdk.samtools.util.Log;
 
 public class BaseDistributionMetric extends MetricBase implements Serializable {
 
@@ -35,6 +37,8 @@ public class BaseDistributionMetric extends MetricBase implements Serializable {
 	 *
 	 */
 	private static final long serialVersionUID = -644875076890522563L;
+
+    private static final Log LOG = Log.getInstance(BaseDistributionMetric.class);
 
 	private Map<Character, Integer> map = null;
 
@@ -56,10 +60,27 @@ public class BaseDistributionMetric extends MetricBase implements Serializable {
 		map.put(Bases.N.getBase(), countN);
 	}
 
+    void addBase(final Character base, final int numTimes, final ValidationStringency validationStringency) {
+        Integer count = map.get(base);
+        if (count != null) {
+            count += numTimes;
+            map.put(base, count);
+        } else {
+            switch (validationStringency) {
+                case STRICT:
+                    throw new IllegalArgumentException("Base '" + base + "' not found in BaseDistributionMetric map.");
+                case LENIENT:
+                    LOG.warn("Base '" + base + "' not found in BaseDistributionMetric map.");
+                    break;
+                case SILENT:
+                    break;
+            }
+            addBase(Bases.N.getBase(), numTimes, validationStringency);
+        }
+    }
+
     void addBase(final Character base, final int numTimes) {
-        int count = map.get(base);
-        count += numTimes;
-        map.put(base, count);
+        addBase(base, numTimes, ValidationStringency.DEFAULT_STRINGENCY);
     }
 
     void addBase(final Character base) {

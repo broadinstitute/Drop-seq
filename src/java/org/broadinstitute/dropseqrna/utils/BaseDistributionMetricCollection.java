@@ -24,6 +24,7 @@
 package org.broadinstitute.dropseqrna.utils;
 
 import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.ValidationStringency;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 
@@ -45,11 +46,17 @@ public class BaseDistributionMetricCollection implements Serializable {
 	 */
 	private static final long serialVersionUID = -55813371198085699L;
 
+	private final ValidationStringency validationStringency;
 	private Map<Integer, BaseDistributionMetric> collection = null;
 
-	public BaseDistributionMetricCollection() {
+	public BaseDistributionMetricCollection(final ValidationStringency validationStringency) {
+        this.validationStringency = validationStringency;
 		collection = new HashMap<>();
 	}
+
+    public BaseDistributionMetricCollection() {
+        this(ValidationStringency.DEFAULT_STRINGENCY);
+    }
 
     public void addBase (final char base, final int position, final int numTimes) {
         BaseDistributionMetric m = this.collection.get(position);
@@ -57,7 +64,7 @@ public class BaseDistributionMetricCollection implements Serializable {
             m = new BaseDistributionMetric();
             this.collection.put(position, m);
         }
-        m.addBase(base, numTimes);
+        m.addBase(base, numTimes, this.validationStringency);
     }
 
 	public void addBase (final char base, final int position) {
