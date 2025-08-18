@@ -38,6 +38,17 @@ jobs:
 
     - name: Build with Gradle Wrapper
       run: ./gradlew test build jacocoTestReport
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: gradle-test-results
+        retention-days: 7
+        path: |
+          dropseq/build/test-results/test/TEST-*.xml
+          dropseq/build/reports/tests/test/
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       env:

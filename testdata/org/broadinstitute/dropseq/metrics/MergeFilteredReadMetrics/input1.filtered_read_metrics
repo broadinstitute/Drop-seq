@@ -1,0 +1,10 @@
+## htsjdk.samtools.metrics.StringHeader
+# FilterBam INPUT=/humgen/cnp04/sandbox/alecw/tmp/data/libraries/2018-03-23_d14Ngn2plusGlia_F10/GRCh38_GRCm38.exonic+intronic/alignment/d14Ngn2plusGlia_F10.multi_organism.0.bam OUTPUT=/humgen/cnp04/sandbox/alecw/tmp/data/libraries/2018-03-23_d14Ngn2plusGlia_F10/GRCh38_GRCm38.exonic+intronic/alignment/d14Ngn2plusGlia_F10.multi_organism.MOUSE.0.bam SUMMARY=/humgen/cnp04/sandbox/alecw/tmp/data/libraries/2018-03-23_d14Ngn2plusGlia_F10/GRCh38_GRCm38.exonic+intronic/alignment/d14Ngn2plusGlia_F10.multi_organism.MOUSE.0.organism_filter_metrics REF_SOFT_MATCHED_RETAINED=[MOUSE] TMP_DIR=[/broad/hptmp/alecw/d14Ngn2plusGlia_F10, /broad/hptmp/alecw/d14Ngn2plusGlia_F10] VALIDATION_STRINGENCY=SILENT CREATE_INDEX=true    FILTER_PCR_DUPES=false RETAIN_ONLY_PRIMARY_READS=false DROP_REJECTED_REF=false VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_MD5_FILE=false GA4GH_CLIENT_SECRETS=client_secrets.json USE_JDK_DEFLATER=false USE_JDK_INFLATER=false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: Mon Dec 20 23:19:52 EST 2021
+
+## METRICS CLASS	org.broadinstitute.dropseqrna.utils.FilteredReadsMetric
+READS_REJECTED	READS_ACCEPTED
+1	10
+
+
