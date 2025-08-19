@@ -28,5 +28,5 @@ set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get -qq update
-apt-get -qq install openjdk-21-jre-headless
+apt-get -qq install openjdk-21-jre-headless r-base
 rm -rf /var/lib/apt/lists/*
