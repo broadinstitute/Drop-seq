@@ -26,10 +26,8 @@ package org.broadinstitute.dropseqrna.metrics;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
-import org.testng.SkipException;
 import org.testng.annotations.Test;
 import picard.analysis.MeanQualityByCycle;
-import picard.cmdline.CommandLineProgram;
 
 import java.io.File;
 import java.util.Arrays;
@@ -42,11 +40,6 @@ public class MergeMeanQualityByCycleTest {
 
     @Test
     public void testDoWork() {
-        if (!CommandLineProgram.checkRInstallation(true)) {
-            throw new SkipException(
-                    "R is not installed on this machine. It is required for creating the required MeanQualityByCycle chart and running the test."
-            );
-        }
         File metrics1 = TestUtils.getTempReportFile("MergeMeanQualityByCycle", ".metrics");
         File metrics2 = TestUtils.getTempReportFile("MergeMeanQualityByCycle", ".metrics");
         File mergedMetrics = TestUtils.getTempReportFile("MergeMeanQualityByCycle", ".metrics");
