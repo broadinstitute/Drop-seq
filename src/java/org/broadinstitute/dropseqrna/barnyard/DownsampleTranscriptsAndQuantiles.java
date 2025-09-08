@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.barnyard;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -278,7 +279,7 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
             for (final double r : DOWNSAMPLING_RATES) globalHists.get(r).increment(batchHists.get(r));
         }
 
-        // TODO: write out global histograms
+        // write global histograms
         writeDownsampledHistogramTable(globalHists);
         CloserUtil.close(iter);
     }
