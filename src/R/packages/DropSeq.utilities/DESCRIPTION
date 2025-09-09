@@ -8,5 +8,5 @@ Author: Alec Wysoker
 Maintainer: McCarroll Lab <dropseq@gmail.com>
 Description: Grab-bag of generic functions for handling strings, files, errors.
 License: MIT + file LICENSE
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Encoding: UTF-8
