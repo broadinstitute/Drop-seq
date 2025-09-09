@@ -261,4 +261,37 @@ public class DownsampleTranscriptsAndQuantilesTest {
         integrationTestDownsampling(javaDownsamplingFile, rDownsamplingFile);
         integrationTestQuantiles(javaQuantileFile, rQuantileFile);
     }
+
+    @Test
+    public void integrationTestHistogram() throws IOException {
+        /* Integration test against output from R code to
+         * To recreate R outputs to test against, run the following in R from the dropseqrna github directory:
+         *
+         * library(DropSeq.barnyard)
+         * write_java_histogram_unit_test_data(molBC_file="/broad/bican_um1_mccarroll/RNAseq/data/libraries/2025-08-11_v123_10X-GEMX-3P_Pu_rxn3/GRCh38-2020-A.isa.exonic+intronic/std_analysis/svm_nuclei_10X/v123_10X-GEMX-3P_Pu_rxn3.svm_nuclei_10X.molBC.txt.gz")
+         */
+
+        final String prefix = "downsampled.d35Ngn2plusGlia_E7";
+        final File inputFile = new File(TEST_DATA_DIR,prefix+".molBC.txt.gz");
+        final File cellBcsFile = new File(TEST_DATA_DIR, prefix+ ".selectedCellBarcodes.txt");
+        final File rDownsamplingFile = new File(TEST_DATA_DIR, prefix+".umi_saturation_histogram.txt");
+        final File javaDownsamplingFile = File.createTempFile(prefix, ".JavaVersion.umi_saturation_histogram.txt");
+        javaDownsamplingFile.deleteOnExit();
+
+        DownsampleTranscriptsAndQuantiles c = new DownsampleTranscriptsAndQuantiles();
+        c.INPUT = inputFile;
+        c.CELL_BC_FILE = cellBcsFile;
+        c.RANDOM_SEED = 140;
+        // at very low downsampling rates, some of the species only observed once can be filtered out, which can
+        // drop rows of the histogram, which makes the correlation test harder. So we only test at higher downsampling rates.
+        c.DOWNSAMPLING_RATES = Arrays.asList(0.5, 0.6, 0.7, 0.8, 0.9, 1.0);
+        c.OUTPUT_HISTOGRAM_FILE = javaDownsamplingFile;
+        int ret = c.doWork();
+        Assert.assertEquals(ret, 0);
+
+        integrationTestDownsampling(javaDownsamplingFile, rDownsamplingFile);
+
+    }
+
+
 }
