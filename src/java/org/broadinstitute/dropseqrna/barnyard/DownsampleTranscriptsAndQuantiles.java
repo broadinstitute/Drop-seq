@@ -69,7 +69,7 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
     public File INPUT;
 
     @Argument(doc = "Unordered headerless text file containing newline-separated cell barcode sequences to include in " +
-            "downsampling analysis. Other cell barcodes in input file will be ignored.")
+            "downsampling analysis. Other cell barcodes in input file will be ignored.", optional = true)
     public File CELL_BC_FILE = null;
 
     @Argument(doc = "Random seed to use if deterministic behavior is desired. " +
