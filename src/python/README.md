@@ -9,4 +9,6 @@ pip install 'git+https://github.com/broadinstitute/Drop-seq.git#egg=dropseq&subd
 
 ## Usage
 
-Run `lookup_contig_groups -h` for usage information.
+Wrapper scripts are generated for all the executables listed in `[project.scripts]` 
+section of [pyproject.toml](pyproject.toml).  Each these will respond to `-h` or `--help`
+with a usage message.
