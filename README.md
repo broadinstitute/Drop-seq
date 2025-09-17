@@ -53,3 +53,5 @@ devtools::install_github("broadinstitute/Drop-seq", subdir="/src/R/packages/Drop
 
 Alternately, you can download sources and use `R CMD BUILD` and `R CMD INSTALL` as usual.
 
+## Installing Drop-seq python scripts
+See [src/python/README.md](src/python/README.md)
