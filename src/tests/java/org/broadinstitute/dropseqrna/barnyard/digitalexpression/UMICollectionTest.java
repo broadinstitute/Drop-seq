@@ -115,8 +115,9 @@ public class UMICollectionTest {
         c.incrementMolecularBarcodeCount("BAR", nr);
         c.incrementMolecularBarcodeCount("FOOBAR", nr);
         c.incrementMolecularBarcodeCount("BARFOO", nr2);
-        ObjectCounter<String> counts = c.getDownsampledMolecularBarcodeCounts(downsampleRate, random);
-        Assert.assertEquals(counts.getTotalCount(), numReads*downsampleRate, numReads*confidenceRate);
+        List<Pair<String, Integer>> counts = c.getDownsampledMolecularBarcodeCounts(downsampleRate, random, 1);
+        int totalCount = counts.stream().mapToInt(Pair::getRight).sum();
+        Assert.assertEquals(totalCount, numReads*downsampleRate, numReads*confidenceRate);
     }
 
     @Test()
