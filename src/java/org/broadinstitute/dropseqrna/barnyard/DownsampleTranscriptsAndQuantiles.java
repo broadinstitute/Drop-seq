@@ -26,7 +26,6 @@ package org.broadinstitute.dropseqrna.barnyard;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.ProgressLogger;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -114,13 +113,6 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
     private ForkJoinPool pool;
 
 
-    /** Build num_reads_per_UMI histogram from a downsampled per-UMI counter.*/
-    private static ObjectCounter<Integer> toReadsPerUmiHistogram(final List<Pair<String, Integer>> mbc) {
-        final ObjectCounter<Integer> hist = new ObjectCounter<>();
-        for (final Pair<String, Integer> p : mbc) hist.increment(p.getRight());
-        return hist;
-    }
-
     /** Downsample all UMICollections at 'rate' and return map of downsamped histograms. */
     private Map<Double, ObjectCounter<Integer>> buildDownsampledHistograms(final List<UMICollection> umiCollections) {
         // Set up initial map of histograms
@@ -132,7 +124,8 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
         for (final UMICollection uc : umiCollections) {
             for (final double rate : DOWNSAMPLING_RATES) {
                 final List<Pair<String, Integer>> down = uc.getDownsampledMolecularBarcodeCounts(rate, random, 1);
-                initMap.get(rate).increment(toReadsPerUmiHistogram(down));
+                final ObjectCounter<Integer> histogram = initMap.get(rate);
+                down.forEach(p -> histogram.increment(p.getRight()));
             }
         }
         return initMap;
