@@ -241,7 +241,7 @@ public class UMICollection {
 	 * @param downsampleRate
 	 * @param random
      * @param minDownsampledCount Minimum number of reads a UMI must have after downsampling to be retained.
-	 * @return
+	 * @return List of pairs of UMI and estimated downsampled read count.
 	 */
 	public List<Pair<String, Integer>> getDownsampledMolecularBarcodeCounts(double downsampleRate, Random random,
                                                                   int minDownsampledCount) {
