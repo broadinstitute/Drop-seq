@@ -34,6 +34,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.PeekableIterator;
+import picard.sam.util.Pair;
 import picard.util.TabbedTextFileWithHeaderParser;
 
 /**
@@ -239,19 +240,21 @@ public class UMICollection {
 	 * @author dmeyer
 	 * @param downsampleRate
 	 * @param random
+     * @param minDownsampledCount Minimum number of reads a UMI must have after downsampling to be retained.
 	 * @return
 	 */
-	public ObjectCounter<String> getDownsampledMolecularBarcodeCounts(double downsampleRate, Random random) {
+	public List<Pair<String, Integer>> getDownsampledMolecularBarcodeCounts(double downsampleRate, Random random,
+                                                                  int minDownsampledCount) {
 		assert downsampleRate >= 0 && downsampleRate <= 1;
 
 		// Iterate over umis create a downsampled objectCounter that has umi counts at a given downsampleRate
-		ObjectCounter<String> res = new ObjectCounter<>();
+        List<Pair<String, Integer>> res = new ArrayList<>(this.molecularBarcodeCounts.getSize());
 		int count; int downsampledCount;
 		for (String umi : this.molecularBarcodeCounts.getKeys()) {
 			count = this.getMolecularBarcodeCounts().getCountForKey(umi);
 			downsampledCount =  (int)random.doubles(count).filter(r -> r < downsampleRate).count();
-            if (downsampledCount > 0) {
-                res.setCount(umi, downsampledCount);
+            if (downsampledCount >= minDownsampledCount) {
+                res.add(new Pair<>(umi, downsampledCount));
             }
 		}
 		return res;

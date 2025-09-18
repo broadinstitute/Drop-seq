@@ -35,6 +35,7 @@ import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import picard.cmdline.CommandLineProgram;
+import picard.sam.util.Pair;
 
 import java.io.File;
 import java.io.IOException;
@@ -114,12 +115,9 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
 
 
     /** Build num_reads_per_UMI histogram from a downsampled per-UMI counter.*/
-    private static ObjectCounter<Integer> toReadsPerUmiHistogram(final ObjectCounter<String> mbc) {
+    private static ObjectCounter<Integer> toReadsPerUmiHistogram(final List<Pair<String, Integer>> mbc) {
         final ObjectCounter<Integer> hist = new ObjectCounter<>();
-        for (final String umi : mbc.getKeys()) {
-            final int j = mbc.getCountForKey(umi);
-            if (j > 0) hist.incrementByCount(j, 1);
-        }
+        for (final Pair<String, Integer> p : mbc) hist.increment(p.getRight());
         return hist;
     }
 
@@ -133,7 +131,7 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
         // for each UMI, downsample at each rate, and update histograms
         for (final UMICollection uc : umiCollections) {
             for (final double rate : DOWNSAMPLING_RATES) {
-                final ObjectCounter<String> down = uc.getDownsampledMolecularBarcodeCounts(rate, random);
+                final List<Pair<String, Integer>> down = uc.getDownsampledMolecularBarcodeCounts(rate, random, 1);
                 initMap.get(rate).increment(toReadsPerUmiHistogram(down));
             }
         }
@@ -150,9 +148,8 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
      */
     private List<Integer> getDownsampledCounts(List<UMICollection> umiCollections) {
         Function<Double, ToIntFunction<UMICollection>> downsampledCountFunGen = rate -> umi -> {
-            ObjectCounter<String> downsampledCounts = umi.getDownsampledMolecularBarcodeCounts(rate, random);
-            downsampledCounts.filterByMinCount(1);
-            return downsampledCounts.getSize();
+            List<Pair<String, Integer>> downsampledCounts = umi.getDownsampledMolecularBarcodeCounts(rate, random, 1);
+            return downsampledCounts.size();
         };
         return DOWNSAMPLING_RATES.stream()
                 .map(rate -> {
