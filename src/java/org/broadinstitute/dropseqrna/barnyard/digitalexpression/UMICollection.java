@@ -250,9 +250,10 @@ public class UMICollection {
 		for (String umi : this.molecularBarcodeCounts.getKeys()) {
 			count = this.getMolecularBarcodeCounts().getCountForKey(umi);
 			downsampledCount =  (int)random.doubles(count).filter(r -> r < downsampleRate).count();
-			res.setCount(umi, downsampledCount);
+            if (downsampledCount > 0) {
+                res.setCount(umi, downsampledCount);
+            }
 		}
-		res.filterByMinCount(1);
 		return res;
 	}
 
