@@ -134,7 +134,6 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
         for (final UMICollection uc : umiCollections) {
             for (final double rate : DOWNSAMPLING_RATES) {
                 final ObjectCounter<String> down = uc.getDownsampledMolecularBarcodeCounts(rate, random);
-                down.filterByMinCount(1);
                 initMap.get(rate).increment(toReadsPerUmiHistogram(down));
             }
         }
