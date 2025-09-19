@@ -52,4 +52,7 @@ has_ensembl_ids = "dropseq.hdf5.has_ensembl_ids:main"
 transfer_h5ad_var_names = "dropseq.hdf5.transfer_h5ad_var_names:main"
 aggregate_filter_adata = "dropseq.hdf5.aggregate_filter_adata:main"
 metacells_from_h5ad = "dropseq.hdf5.metacells_from_h5ad:main"
+kmeans_cluster_effects = "dropseq.effect_clustering.kmeans_effect_clustering:main"
 dropseq_terra_utils = "dropseq.terra_utils.cli:main"
+
+

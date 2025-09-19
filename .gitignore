@@ -11,3 +11,6 @@ jacoco_reports
 .Rproj.user
 .Rhistory
 .DS_Store
+
+# Ignore jupyter lab checkpoints
+**/.ipynb_checkpoints/
