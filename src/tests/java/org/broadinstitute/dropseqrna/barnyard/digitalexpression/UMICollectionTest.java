@@ -109,7 +109,7 @@ public class UMICollectionTest {
          * with some standard deviation (say 5%?)
          */
         UMICollection c = new UMICollection("C", "G");
-        Random random = new Random(1L);
+        SplittableRandom random = new SplittableRandom(1L);
         int nr=(int)(numReads/4);
         int nr2 = (int)(numReads - ((double)nr*3));
         c.incrementMolecularBarcodeCount("FOO", nr);
