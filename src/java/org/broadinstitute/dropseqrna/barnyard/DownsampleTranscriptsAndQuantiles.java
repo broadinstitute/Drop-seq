@@ -107,7 +107,7 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
             "the number of processors + NUM_THREADS is used.", optional = true)
     public int NUM_THREADS = 1;
 
-    private Random random;
+    private SplittableRandom random;
     private final ObjectCounter<String> transcriptsPerCell = new ObjectCounter<>();
     private Set<String> cellBarcodes;
     private ForkJoinPool pool;
@@ -357,9 +357,9 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
         if (CELL_BC_FILE != null)
             cellBarcodes = new HashSet<>(ParseBarcodeFile.readCellBarcodeFile(CELL_BC_FILE));
         if (RANDOM_SEED == null)
-            random = new Random();
+            random = new SplittableRandom();
         else
-            random = new Random(RANDOM_SEED);
+            random = new SplittableRandom(RANDOM_SEED);
 
         if (this.OUTPUT_QUANTILE_FILE != null & this.OUTPUT_DOWNSAMPLING_FILE == null)
             throw new IllegalArgumentException("If OUTPUT_QUANTILE_FILE is provided, OUTPUT_DOWNSAMPLING_FILE must also be provided.");
