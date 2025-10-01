@@ -895,17 +895,24 @@ plotFractionConfidentDoubletsFromSingleLikelihoodFit<-function (cellDF) {
 	fitted_values <- prediction[, "fit"]
 	dfSinglet$fitted_values <- prediction[, "fit"]
 	dfSinglet$residuals <- dfSinglet$normalizedBestLikelihood - fitted_values
+	dfSinglet$residual_type <- "Singlet"
 	
-	# predict the doublets, calculate the residuals, and flag outliers
+	######################################################
+	# Predict the doublets, calculate the residuals, and flag outliers
+	######################################################
 	dfDoublet=df[df$label=="confident_doublet",]
-	prediction <- predict(fit, log10(dfDoublet$singlet_num_inform_umis))
-	fitted_values <- prediction[, "fit"]
 	
 	# Calculate the residuals
-	dfDoublet$residuals <- dfDoublet$normalizedBestLikelihood - fitted_values
-	
-	dfSinglet$residual_type <- "Singlet"
-	dfDoublet$residual_type <- "Doublet"
+	# If there are no doublets, then keep the data frame 0 rows and add empty values for residuals and type.
+	if (nrow(dfDoublet)==0) {
+		dfDoublet$residuals=numeric(0)
+		dfDoublet$residual_type=character(0)
+	} else {
+		prediction <- predict(fit, log10(dfDoublet$singlet_num_inform_umis))
+		fitted_values <- prediction[, "fit"]
+		dfDoublet$residuals <- dfDoublet$normalizedBestLikelihood - fitted_values
+		dfDoublet$residual_type <- "Doublet"
+	}
 	
 	# Combine the residuals into a single data frame
 	df_combined <- rbind(
