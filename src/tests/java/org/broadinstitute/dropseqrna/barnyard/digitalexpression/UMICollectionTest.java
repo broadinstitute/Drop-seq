@@ -30,6 +30,7 @@ import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
+import org.broadinstitute.dropseqrna.utils.statistics.BinomialStatistics;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import picard.sam.util.Pair;
@@ -117,7 +118,10 @@ public class UMICollectionTest {
         c.incrementMolecularBarcodeCount("BARFOO", nr2);
         List<Pair<String, Integer>> counts = c.getDownsampledMolecularBarcodeCounts(downsampleRate, random, 1);
         int totalCount = counts.stream().mapToInt(Pair::getRight).sum();
-        Assert.assertEquals(totalCount, numReads*downsampleRate, numReads*confidenceRate);
+        double pval = new BinomialStatistics((int)numReads, totalCount, 1.0 - confidenceRate, downsampleRate).getBinomialPvalue();
+        Assert.assertTrue(pval > 0.05,
+                "pval is " + pval + " for downsample rate " + downsampleRate +
+                        "; expected " + (numReads*downsampleRate) + "; observed " + totalCount);
     }
 
     @Test()
