@@ -28,6 +28,7 @@ import argparse
 import sys
 from types import MethodType
 
+import numpy as np
 import pandas as pd
 import scipy.stats as stats
 
@@ -40,6 +41,14 @@ class Columns:
     gene_id = "gene_id"
     gene_name = "gene_name"
     phenotype_id = "phenotype_id"
+
+
+def join_fdr(qtls, missing_value):
+    mask = np.isfinite(qtls['pval_beta'])
+    qtls.loc[mask, 'bh_fdr'] = stats.false_discovery_control(qtls.loc[mask, 'pval_beta'], method='bh')
+    qtls['bh_fdr'] = qtls['bh_fdr'].fillna(missing_value).astype(str)
+    return qtls
+
 
 def join_gtf(qtls, gtfPath, missing_value):
     """
@@ -58,14 +67,14 @@ def join_gtf(qtls, gtfPath, missing_value):
         read_gtf.GtfRequiredColNames.END: 'gene_end',
         read_gtf.GtfRequiredColNames.STRAND: 'strand',
     }, inplace=True)
-    # change these columns to strings so that missing values can be replaced with a string
-    gtf['gene_start'] = gtf['gene_start'].astype(str)
-    gtf['gene_end'] = gtf['gene_end'].astype(str)
-    gtf['strand'] = gtf['strand'].astype(str)
+    # change these columns to strings while replacing missing values
+    gtf['gene_start'] = gtf['gene_start'].fillna(missing_value).astype(str)
+    gtf['gene_end'] = gtf['gene_end'].fillna(missing_value).astype(str)
+    gtf['strand'] = gtf['strand'].fillna(missing_value).astype(str)
 
     qtls = qtls.merge(gtf, on=Columns.gene_name, how='left')
-    qtls.fillna(missing_value, inplace=True)
     return qtls
+
 
 def join_dbsnp(qtls, dbsnpPath, missing_value):
     colnames = ['CHROM', 'POS', 'ID', 'REF', 'ALT']
@@ -109,6 +118,7 @@ def parse_variant_id(variant_id):
         'alt': parts[3]
     }
 
+
 def expand_variant_id(qtls):
     parsed_variants = qtls['variant_id'].apply(parse_variant_id)
     variantDf = pd.DataFrame(parsed_variants.tolist())
@@ -147,8 +157,21 @@ def main(args=None):
         '-d',
         help='dbSNP file to annotate eQTLs with SNP information.',
     )
-    parser.add_argument('--missing-value', '-m', default='.',
-                        help='String to use for missing values, typically rsids, gene_name, gene_start, gene_end. (default: %(default)s)')
+
+    parser.add_argument(
+        '--missing-value',
+        '-m',
+        default='.',
+        help='String to use for missing values, typically rsids, gene_name, gene_start, gene_end. (default: %(default)s)',
+    )
+    parser.add_argument(
+        '--leaving-missing',
+        '-l',
+        action = "store_true",
+        default = False,
+        help='If set, do not fill missing values in the --input with --missing-value',
+    )
+
     options = parser.parse_args(args)
     if options.output is None:
         fOut = sys.stdout
@@ -159,11 +182,13 @@ def main(args=None):
         Columns.phenotype_id: Columns.gene_name
     }, inplace=True)
     qtls = expand_variant_id(qtls)
-    qtls['bh_fdr'] = stats.false_discovery_control(qtls['pval_beta'], method='bh')
+    qtls = join_fdr(qtls, options.missing_value)
     if options.gtf:
         qtls = join_gtf(qtls, options.gtf, options.missing_value)
     if options.dbsnp:
         qtls = join_dbsnp(qtls, options.dbsnp, options.missing_value)
+    if not options.leaving_missing:
+        qtls = qtls.fillna(options.missing_value).astype(str)
 
     if options.output is None:
         fOut = sys.stdout
@@ -176,7 +201,6 @@ def main(args=None):
     if options.output is not None:
         fOut.close()
     return 0
-
 
 
 if __name__ == "__main__":
