@@ -51,7 +51,7 @@ export PATH=$PATH:$uv_dir:$BASEDIR
 
 # Install prerequisites
 echo "Installing prerequisites..."
-apt-get -qq update && apt-get -qq install curl
+apt-get -qq update && apt-get -qq install curl build-essential cmake
 
 # Install uv
 curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL=$uv_dir sh
@@ -60,5 +60,10 @@ curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL=$uv_dir sh
 for pyproject_toml in "$envs_dir"/pyproject.toml; do
   env_name=dropseq
   echo "Building $env_name"
-  uv tool install "$envs_dir"
+  # Limit python version to <3.14 until numba issue resolved.
+  # Note that pyproject.toml upper bounds are not respected by uv, so install.sh also needs to be updated too.
+  # See also:
+  #   - https://github.com/numba/numba/issues/9957
+  #   - https://github.com/astral-sh/uv/issues/11506
+  uv tool install --python ">=3.12,<3.14" "$envs_dir"
 done

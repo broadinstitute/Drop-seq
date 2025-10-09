@@ -18,6 +18,7 @@ on:
       - '.github/workflows/docker-drop-seq_reusable.yaml'
       - '.github/workflows/docker-drop-seq_python.yaml'
       - 'src/python/**'
+      - 'src/docker/python/**'
   workflow_dispatch:
 
 jobs:
