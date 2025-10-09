@@ -1,0 +1,16 @@
+## htsjdk.samtools.metrics.StringHeader
+# CorrectAndSplitScrnaReadPairs BARCODED_READ=1 BASE_RANGE=1-16 ALLOWED_BARCODE_COUNTS=/humgen/cnp04/sandbox/alecw/tmp/data/libraries/2024-03-27_SMRI_V11_rxn1/HNJ7KDMXY.SMRI_V11_rxn1.expected_barcode_metrics.gz BARCODE_TAG=XC TAG_BOTH_READS=true METRICS=2.corrected_barcode_metrics INPUT=[/humgen/cnp04/sandbox/alecw/tmp/data/libraries/2024-03-27_SMRI_V11_rxn1/SMRI_V11_rxn1_S1_L001_002.bcl.bam] NUM_OUTPUTS=1 OUTPUT=SMRI_V11_rxn1_S1_L001_002.bcl.corrected.bam OUTPUT_SLUG=null  OVERWRITE_EXISTING=true DELETE_INPUTS=true TMP_DIR=[/broad/hptmp/alecw/HNJ7KDMXY] VALIDATION_STRINGENCY=SILENT CREATE_INDEX=false CREATE_MD5_FILE=false    LIKELIHOOD_RATIO=0.95 VERBOSITY=INFO QUIET=false COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 USE_JDK_DEFLATER=false USE_JDK_INFLATER=false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: Tue Oct 07 10:45:51 EDT 2025
+
+## METRICS CLASS	org.broadinstitute.dropseqrna.beadsynthesis.CorrectAndSplitScrnaReadPairs$BarcodeCorrectionMetrics
+NUM_READS_EXACT_MATCH	NUM_READS_CORRECTED_SINGLE_ED1	NUM_READS_CORRECTED_MULTI_ED1	NUM_READS_UNCORRECTABLE_NO_ED1_BARCODES	NUM_READS_UNCORRECTED_AMBIGUOUS
+540520	9941	592	15232	109
+
+## HISTOGRAM	java.lang.Integer
+NUM_ED1_CANDIDATES	NUM_READS
+1	9941
+2	570
+3	22
+4	5
+
