@@ -25,7 +25,12 @@ authors = [
 ]
 description = "Drop-seq command-line tools and python libraries."
 readme = "README.md"
-requires-python = ">=3.12"
+# Limit python version to <3.14 until numba issue resolved.
+# Note that pyproject.toml upper bounds are not respected by uv, so install.sh also needs to be updated too.
+# See also:
+#   - https://github.com/numba/numba/issues/9957
+#   - https://github.com/astral-sh/uv/issues/11506
+requires-python = ">=3.12,<3.14"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -54,5 +59,3 @@ aggregate_filter_adata = "dropseq.hdf5.aggregate_filter_adata:main"
 metacells_from_h5ad = "dropseq.hdf5.metacells_from_h5ad:main"
 kmeans_cluster_effects = "dropseq.effect_clustering.kmeans_effect_clustering:main"
 dropseq_terra_utils = "dropseq.terra_utils.cli:main"
-
-

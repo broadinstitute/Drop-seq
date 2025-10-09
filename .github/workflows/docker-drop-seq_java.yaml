@@ -19,6 +19,7 @@ on:
       - '.github/workflows/docker-drop-seq_java.yaml'
       - 'src/java/**'
       - 'src/tests/java/**'
+      - 'src/docker/java/**'
   workflow_dispatch:
 
 jobs:
