@@ -50,7 +50,7 @@ public class MergeChimericReadMetrics
 
     @Override
     protected int doWork() {
-        new MergeMetricsHelper<MarkChimericReads.MarkChimericReadMetrics>().
+        new MergeMetricsHelper<MarkChimericReads.MarkChimericReadMetrics, Integer>().
                 mergeSingleMetric(OUTPUT, INPUT, DELETE_INPUTS, MarkChimericReads.MarkChimericReadMetrics::new,
                         (MarkChimericReads.MarkChimericReadMetrics target, MarkChimericReads.MarkChimericReadMetrics source) -> target.merge(source),
                         this.getMetricsFile());

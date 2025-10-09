@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright 2021 Broad Institute
+ * Copyright 2025 Broad Institute
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,7 @@ package org.broadinstitute.dropseqrna.metrics;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.beadsynthesis.CorrectAndSplitScrnaReadPairs.BarcodeCorrectionMetrics;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.FilteredReadsMetric;
 import picard.cmdline.CommandLineProgram;
@@ -33,11 +34,11 @@ import picard.cmdline.StandardOptionDefinitions;
 import java.io.File;
 import java.util.List;
 
-@CommandLineProgramProperties(summary = "Merges FilteredReadMetrics files, produced by FilterBam and FilterBamByTag.",
-        oneLineSummary = "Merges rnaseq metrics files.",
+@CommandLineProgramProperties(summary = "Merges BarcodeCorrectionMetrics files, produced by CorrectAndSplitScrnaReadPairs.",
+        oneLineSummary = "Merges BarcodeCorrectionMetrics files.",
         programGroup = DropSeq.class)
-public class MergeFilteredReadMetrics
-        extends CommandLineProgram {
+public class MergeBarcodeCorrectionMetrics
+extends CommandLineProgram {
     @Argument(shortName = StandardOptionDefinitions.INPUT_SHORT_NAME, doc = "The input read quality metrics files to be merged.", minElements = 1)
     public List<File> INPUT;
 
@@ -50,9 +51,9 @@ public class MergeFilteredReadMetrics
 
     @Override
     protected int doWork() {
-        new MergeMetricsHelper<FilteredReadsMetric, Integer>().
-                mergeSingleMetric(OUTPUT, INPUT, DELETE_INPUTS, FilteredReadsMetric::new, FilteredReadsMetric::merge,
-                this.getMetricsFile());
+        new MergeMetricsHelper<BarcodeCorrectionMetrics, Integer>().
+                mergeSingleMetric(OUTPUT, INPUT, DELETE_INPUTS, BarcodeCorrectionMetrics::new, BarcodeCorrectionMetrics::merge,
+                        this.getMetricsFile());
         return 0;
     }
 }

@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.metrics;
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.Histogram;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.samtools.util.StringUtil;
@@ -42,7 +43,7 @@ import java.util.stream.Collectors;
  * Currently this only supports files containing a single metric, but can be enhanced as necessary.
  * @param <METRIC_CLASS>
  */
-public class  MergeMetricsHelper<METRIC_CLASS extends MetricBase> {
+public class  MergeMetricsHelper<METRIC_CLASS extends MetricBase, HKEY extends Comparable> {
 
  /**
   * Merge input metric files where each input contains a single metric object
@@ -59,20 +60,33 @@ public class  MergeMetricsHelper<METRIC_CLASS extends MetricBase> {
   IOUtil.assertFileIsWritable(OUTPUT);
   try {
    final METRIC_CLASS outMetric = ctor.get();
+   List< Histogram<HKEY> > histograms = null;
    for (File file : INPUT) {
-    MetricsFile<METRIC_CLASS, Integer> metricsFile = new MetricsFile<>();
+    MetricsFile<METRIC_CLASS, HKEY> metricsFile = new MetricsFile<>();
     metricsFile.read(IOUtil.openFileForBufferedReading(file));
     for (Header header : metricsFile.getHeaders()) {
      outputMetricsFile.addHeader(header);
     }
     final METRIC_CLASS inMetric = metricsFile.getMetrics().getFirst();
     merge.accept(outMetric, inMetric);
+    if (histograms == null) {
+        histograms = metricsFile.getAllHistograms();
+    } else {
+        if (metricsFile.getNumHistograms() != histograms.size()) {
+            throw new IllegalArgumentException("Input metrics files have different numbers of histograms.");
+        }
+        final List< Histogram<HKEY> > thisHistograms = metricsFile.getAllHistograms();
+        for (int i=0; i<histograms.size(); i++) {
+            histograms.get(i).addHistogram(thisHistograms.get(i));
+        }
+    }
    }
 
    if (outputMetricsFile == null) {
     outputMetricsFile = new MetricsFile<>();
    }
    outputMetricsFile.addMetric(outMetric);
+   histograms.forEach(outputMetricsFile::addHistogram);
    outputMetricsFile.write(OUTPUT);
   } catch (Exception e) {
    throw new RuntimeException(e);

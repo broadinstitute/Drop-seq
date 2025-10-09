@@ -277,6 +277,14 @@ extends AbstractSplitBamClp {
         public long NUM_READS_CORRECTED_MULTI_ED1;
         public long NUM_READS_UNCORRECTABLE_NO_ED1_BARCODES;
         public long NUM_READS_UNCORRECTED_AMBIGUOUS;
+
+        public void merge(final BarcodeCorrectionMetrics that) {
+            this.NUM_READS_EXACT_MATCH += that.NUM_READS_EXACT_MATCH;
+            this.NUM_READS_CORRECTED_SINGLE_ED1 += that.NUM_READS_CORRECTED_SINGLE_ED1;
+            this.NUM_READS_CORRECTED_MULTI_ED1 += that.NUM_READS_CORRECTED_MULTI_ED1;
+            this.NUM_READS_UNCORRECTABLE_NO_ED1_BARCODES += that.NUM_READS_UNCORRECTABLE_NO_ED1_BARCODES;
+            this.NUM_READS_UNCORRECTED_AMBIGUOUS += that.NUM_READS_UNCORRECTED_AMBIGUOUS;
+        }
     }
 
 	/** Stock main method. */
