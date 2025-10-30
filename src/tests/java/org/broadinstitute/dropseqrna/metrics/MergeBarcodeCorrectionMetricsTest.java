@@ -26,7 +26,7 @@ package org.broadinstitute.dropseqrna.metrics;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import org.broadinstitute.dropseqrna.beadsynthesis.CorrectAndSplitScrnaReadPairs.BarcodeCorrectionMetrics;
+import org.broadinstitute.dropseqrna.beadsynthesis.BarcodeCorrectionMetrics;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

@@ -25,9 +25,8 @@ package org.broadinstitute.dropseqrna.metrics;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.beadsynthesis.CorrectAndSplitScrnaReadPairs.BarcodeCorrectionMetrics;
+import org.broadinstitute.dropseqrna.beadsynthesis.BarcodeCorrectionMetrics;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
-import org.broadinstitute.dropseqrna.utils.FilteredReadsMetric;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
