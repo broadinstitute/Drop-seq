@@ -92,7 +92,7 @@ public class BarcodeCorrector {
         this.BARCODE_QUALS_TAG = BARCODE_QUALS_TAG;
         baseRanges = BaseRange.parseBaseRange(BASE_RANGE);
         String baseRangeStr = StringUtil.join(",", baseRanges);
-        log.info(String.format("Splitting BAM files based on cell barcode on read %d in range %s",
+        log.info(String.format("Correcting cell barcode on read %d in range %s",
                 BARCODED_READ, baseRangeStr));
         final MetricsFile<CountBarcodeSequences.CountBarcodeSequenceMetrics, String> metricsFile = new MetricsFile<>();
         metricsFile.read(IOUtil.openFileForBufferedReading(ALLOWED_BARCODE_COUNTS));
@@ -230,6 +230,13 @@ public class BarcodeCorrector {
             case SequenceUtil.N, SequenceUtil.n -> acgt;
             default -> throw new IllegalArgumentException(String.format("Unexpected base %d", original));
         };
+    }
+
+    public void writeMetrics(final File METRICS,
+                             final MetricsFile<BarcodeCorrectionMetrics, Integer> metricsFile) {
+        metricsFile.addMetric(this.getMetrics());
+        metricsFile.addHistogram(this.getNumCandidatesHist());
+        metricsFile.write(METRICS);
     }
 
     public void setVERBOSITY(Log.LogLevel VERBOSITY) {
