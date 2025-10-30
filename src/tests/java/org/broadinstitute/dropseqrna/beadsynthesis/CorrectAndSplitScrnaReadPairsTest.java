@@ -39,12 +39,12 @@ import java.util.List;
 
 public class CorrectAndSplitScrnaReadPairsTest {
 
- private static final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/beadsynthesis/CorrectAndSplitScrnaReadPairsTest");
- private static final File INPUT_SAM = new File(TEST_DATA_DIR, "correct_barcodes_test.sam");
- private static final File EXPECTED_BARCODES_HIST = new File(TEST_DATA_DIR, "correct_barcodes_test.expected_barcode_metrics.gz");
- private static final String BARCODE_QUALS_TAG = "CY";
- private static final String RAW_BARCODE_TAG = "CR";
- private static final String BASE_RANGE = "1-16";
+ static final File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/beadsynthesis/CorrectAndSplitScrnaReadPairsTest");
+ static final File INPUT_SAM = new File(TEST_DATA_DIR, "correct_barcodes_test.sam");
+ static final File EXPECTED_BARCODES_HIST = new File(TEST_DATA_DIR, "correct_barcodes_test.expected_barcode_metrics.gz");
+ static final String BARCODE_QUALS_TAG = "CY";
+ static final String RAW_BARCODE_TAG = "CR";
+ static final String BASE_RANGE = "1-16";
 
  @Test(dataProvider = "testBasicDataProvider")
  public void testBasic(boolean tagBothReads) {

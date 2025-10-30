@@ -39,7 +39,8 @@ import java.io.File;
 import java.util.ArrayList;
 
 @CommandLineProgramProperties(
-        summary = "Correct edit-distance 1 errors in cell barcodes in scRNA-seq read pairs.",
+        summary = "Correct edit-distance 1 errors in cell barcodes in scRNA-seq read pairs, and split into BAMs such " +
+                "that all the reads for a cell barcode are in the same BAM.",
         oneLineSummary = "Correct edit-distance 1 errors in cell barcodes in scRNA-seq read pairs.",
         programGroup = DropSeq.class
 )
@@ -103,10 +104,7 @@ extends AbstractSplitBamClp {
         }
 
         if (METRICS != null) {
-            final MetricsFile<org.broadinstitute.dropseqrna.beadsynthesis.BarcodeCorrectionMetrics, Integer> metricsFile = getMetricsFile();
-            metricsFile.addMetric(barcodeCorrector.getMetrics());
-            metricsFile.addHistogram(barcodeCorrector.getNumCandidatesHist());
-            metricsFile.write(METRICS);
+            barcodeCorrector.writeMetrics(METRICS, getMetricsFile());
         }
     }
 
