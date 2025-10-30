@@ -103,7 +103,7 @@ extends AbstractSplitBamClp {
         }
 
         if (METRICS != null) {
-            final MetricsFile<BarcodeCorrectionMetrics, Integer> metricsFile = getMetricsFile();
+            final MetricsFile<org.broadinstitute.dropseqrna.beadsynthesis.BarcodeCorrectionMetrics, Integer> metricsFile = getMetricsFile();
             metricsFile.addMetric(barcodeCorrector.getMetrics());
             metricsFile.addHistogram(barcodeCorrector.getNumCandidatesHist());
             metricsFile.write(METRICS);
@@ -124,4 +124,9 @@ extends AbstractSplitBamClp {
 	public static void main(final String[] args) {
 		System.exit(new CorrectAndSplitScrnaReadPairs().instanceMain(args));
 	}
+
+    // To support loading metrics files before this class became top-level
+    public static class BarcodeCorrectionMetrics
+    extends org.broadinstitute.dropseqrna.beadsynthesis.BarcodeCorrectionMetrics
+    {}
 }
