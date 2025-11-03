@@ -39,17 +39,17 @@ public class CorrectScrnaReadPairsTest {
     public void testBasic(boolean tagBothReads) {
         CorrectScrnaReadPairs clp = new CorrectScrnaReadPairs();
         clp.INPUT = Collections.singletonList(new PicardHtsPath(CorrectAndSplitScrnaReadPairsTest.INPUT_SAM));
-        clp.ALLOWED_BARCODE_COUNTS = CorrectAndSplitScrnaReadPairsTest.EXPECTED_BARCODES_HIST;
-        clp.BARCODED_READ = 1;
-        clp.BASE_RANGE = CorrectAndSplitScrnaReadPairsTest.BASE_RANGE;
-        clp.METRICS = TestUtils.getTempReportFile("test.", ".corrected_barcode_metrics");
+        clp.ARGUMENT_COLLECTION.ALLOWED_BARCODE_COUNTS = CorrectAndSplitScrnaReadPairsTest.EXPECTED_BARCODES_HIST;
+        clp.ARGUMENT_COLLECTION.BARCODED_READ = 1;
+        clp.ARGUMENT_COLLECTION.BASE_RANGE = CorrectAndSplitScrnaReadPairsTest.BASE_RANGE;
+        clp.ARGUMENT_COLLECTION.METRICS = TestUtils.getTempReportFile("test.", ".corrected_barcode_metrics");
         clp.OUTPUT = TestUtils.getTempReportFile("CorrectScrnaReadPairsTest.", ".sam");
-        clp.TAG_BOTH_READS = tagBothReads;
+        clp.ARGUMENT_COLLECTION.TAG_BOTH_READS = tagBothReads;
         Assert.assertEquals(clp.doWork(), 0);
         final SamReader reader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
         for (final SAMRecord rec : reader) {
             if (rec.getSecondOfPairFlag() || tagBothReads) {
-                final String cellBarcode = rec.getStringAttribute(clp.BARCODE_TAG);
+                final String cellBarcode = rec.getStringAttribute(clp.ARGUMENT_COLLECTION.BARCODE_TAG);
                 final String expectedCellBarcode = rec.getReadName().split(":")[1];
                 Assert.assertEquals(cellBarcode, expectedCellBarcode, rec.getSAMString());
             }

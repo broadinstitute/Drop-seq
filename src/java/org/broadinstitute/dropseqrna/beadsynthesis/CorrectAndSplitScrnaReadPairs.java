@@ -27,6 +27,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.IterableAdapter;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
@@ -46,53 +47,14 @@ import java.util.ArrayList;
 )
 public class CorrectAndSplitScrnaReadPairs
 extends AbstractSplitBamClp {
-    @Argument(doc = "Which read of each read pair contains the cell barcode [1/2].")
-    public int BARCODED_READ = 1;
+    @ArgumentCollection
+    public CorrectScrnaReadPairsArgumentCollection ARGUMENT_COLLECTION = new CorrectScrnaReadPairsArgumentCollection();
 
-    @Argument(doc="The region of the barcoded read containing the cell barcode, seperated by a dash.  " +
-            "E.g. 1-4.  Can extract multiple ranges by separating them by a colon.  " +
-            "For example 1-4:17-22 extracts the first 4 bases, then the 17-22 bases, and glues the sequence together " +
-            "into a single cell barcode.")
-    public String BASE_RANGE;
-
-    @Argument(doc="Metrics file produced by CountBarcodeSequences that has counts for all the expected cell barcodes " +
-            "that are found as exact matches in the input data.")
-    public File ALLOWED_BARCODE_COUNTS;
-
-    @Argument(doc="Tag to store the corrected barcode on the non-barcode read.")
-    public String BARCODE_TAG = "XC";
-
-    @Argument(doc="If true, assign BARCODE_TAG (also RAW_BARCODE_TAG and BARCODE_QUALS_TAG, if set) to both reads.")
-    public boolean TAG_BOTH_READS = false;
-
-    @Argument(shortName = StandardOptionDefinitions.METRICS_FILE_SHORT_NAME, optional = true,
-    doc="Various matching and correction metrics")
-    public File METRICS;
-
-    @Argument(doc="If more than on allowed barcode matches, (best likelihood)/sum(all likelihoods) " +
-            "must be >= this value.")
-    public double LIKELIHOOD_RATIO = 0.95;
-
-    @Argument(doc="Store the original barcode sequence in this tag on the non-barcode read.  Default: do not assign this tag.",
-    optional = true)
-    public String RAW_BARCODE_TAG;
-    @Argument(doc="Store the barcode base qualities in this tag on the non-barcode read.  Default: do not assign this tag.",
-    optional = true)
-    public String BARCODE_QUALS_TAG;
 
 
     @Override
     protected void splitBAMs() {
-        final BarcodeCorrector barcodeCorrector = new BarcodeCorrector(
-                ALLOWED_BARCODE_COUNTS,
-                BARCODED_READ,
-                BASE_RANGE,
-                BARCODE_TAG,
-                TAG_BOTH_READS,
-                LIKELIHOOD_RATIO,
-                RAW_BARCODE_TAG,
-                BARCODE_QUALS_TAG
-        );
+        final BarcodeCorrector barcodeCorrector = new BarcodeCorrector(ARGUMENT_COLLECTION);
         barcodeCorrector.setVERBOSITY(VERBOSITY);
         final PairedSamRecordIterator iterator = new PairedSamRecordIterator(headerAndIterator.iterator);
         for (ReadPair pair: new IterableAdapter<>(iterator)) {
@@ -103,16 +65,16 @@ extends AbstractSplitBamClp {
             writeRecord(writerIdx, pair.getSecondRead());
         }
 
-        if (METRICS != null) {
-            barcodeCorrector.writeMetrics(METRICS, getMetricsFile());
+        if (ARGUMENT_COLLECTION.METRICS != null) {
+            barcodeCorrector.writeMetrics(ARGUMENT_COLLECTION.METRICS, getMetricsFile());
         }
     }
 
     @Override
     protected String[] customCommandLineValidation() {
-        IOUtil.assertFileIsReadable(ALLOWED_BARCODE_COUNTS);
+        IOUtil.assertFileIsReadable(ARGUMENT_COLLECTION.ALLOWED_BARCODE_COUNTS);
         final ArrayList<String> list = new ArrayList<>();
-        if (BARCODED_READ < 1 || BARCODED_READ > 2) {
+        if (ARGUMENT_COLLECTION.BARCODED_READ < 1 || ARGUMENT_COLLECTION.BARCODED_READ > 2) {
             list.add("BARCODE_READ must be 1 or 2.");
         }
         return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);

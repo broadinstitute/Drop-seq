@@ -76,26 +76,19 @@ public class BarcodeCorrector {
     /**
      * See CorrectAndSplitScRnaReadPairs CLP documentation for parameter documentation.
      */
-    public BarcodeCorrector(final File ALLOWED_BARCODE_COUNTS,
-                            final int BARCODED_READ,
-                            final String BASE_RANGE,
-                            final String BARCODE_TAG,
-                            final boolean TAG_BOTH_READS,
-                            final double LIKELIHOOD_RATIO,
-                            final String RAW_BARCODE_TAG,
-                            final String BARCODE_QUALS_TAG) {
-        this.BARCODED_READ = BARCODED_READ;
-        this.BARCODE_TAG = BARCODE_TAG;
-        this.TAG_BOTH_READS = TAG_BOTH_READS;
-        this.LIKELIHOOD_RATIO = LIKELIHOOD_RATIO;
-        this.RAW_BARCODE_TAG = RAW_BARCODE_TAG;
-        this.BARCODE_QUALS_TAG = BARCODE_QUALS_TAG;
-        baseRanges = BaseRange.parseBaseRange(BASE_RANGE);
+    public BarcodeCorrector(final CorrectScrnaReadPairsArgumentCollection args) {
+        this.BARCODED_READ = args.BARCODED_READ;
+        this.BARCODE_TAG = args.BARCODE_TAG;
+        this.TAG_BOTH_READS = args.TAG_BOTH_READS;
+        this.LIKELIHOOD_RATIO = args.LIKELIHOOD_RATIO;
+        this.RAW_BARCODE_TAG = args.RAW_BARCODE_TAG;
+        this.BARCODE_QUALS_TAG = args.BARCODE_QUALS_TAG;
+        baseRanges = BaseRange.parseBaseRange(args.BASE_RANGE);
         String baseRangeStr = StringUtil.join(",", baseRanges);
         log.info(String.format("Correcting cell barcode on read %d in range %s",
                 BARCODED_READ, baseRangeStr));
         final MetricsFile<CountBarcodeSequences.CountBarcodeSequenceMetrics, String> metricsFile = new MetricsFile<>();
-        metricsFile.read(IOUtil.openFileForBufferedReading(ALLOWED_BARCODE_COUNTS));
+        metricsFile.read(IOUtil.openFileForBufferedReading(args.ALLOWED_BARCODE_COUNTS));
         Histogram<String> allowedBarcodeHistogram = metricsFile.getHistogram();
         double allowedBarcodeOccurenceCount = allowedBarcodeHistogram.getSumOfValues();
         allowedBarcodeNormalizedOccurences = new HashMap<>(allowedBarcodeHistogram.size());

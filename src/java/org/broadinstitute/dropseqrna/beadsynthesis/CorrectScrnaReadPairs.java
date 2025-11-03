@@ -28,6 +28,7 @@ import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SamFiles;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.AbstractSplitBamClp;
@@ -75,40 +76,8 @@ extends CommandLineProgram {
     @Argument(optional = true, shortName = "DI", doc="Delete BAM indices corresponding to input BAMs.  Default: DELETE_INPUTS setting.")
     public Boolean DELETE_INPUT_INDICES;
 
-    @Argument(doc = "Which read of each read pair contains the cell barcode [1/2].")
-    public int BARCODED_READ = 1;
-
-    @Argument(doc="The region of the barcoded read containing the cell barcode, seperated by a dash.  " +
-            "E.g. 1-4.  Can extract multiple ranges by separating them by a colon.  " +
-            "For example 1-4:17-22 extracts the first 4 bases, then the 17-22 bases, and glues the sequence together " +
-            "into a single cell barcode.")
-    public String BASE_RANGE;
-
-    @Argument(doc="Metrics file produced by CountBarcodeSequences that has counts for all the expected cell barcodes " +
-            "that are found as exact matches in the input data.")
-    public File ALLOWED_BARCODE_COUNTS;
-
-    @Argument(doc="Tag to store the corrected barcode on the non-barcode read.")
-    public String BARCODE_TAG = "XC";
-
-    @Argument(doc="If true, assign BARCODE_TAG (also RAW_BARCODE_TAG and BARCODE_QUALS_TAG, if set) to both reads.")
-    public boolean TAG_BOTH_READS = false;
-
-    @Argument(shortName = StandardOptionDefinitions.METRICS_FILE_SHORT_NAME, optional = true,
-            doc="Various matching and correction metrics")
-    public File METRICS;
-
-    @Argument(doc="If more than on allowed barcode matches, (best likelihood)/sum(all likelihoods) " +
-            "must be >= this value.")
-    public double LIKELIHOOD_RATIO = 0.95;
-
-    @Argument(doc="Store the original barcode sequence in this tag on the non-barcode read.  Default: do not assign this tag.",
-            optional = true)
-    public String RAW_BARCODE_TAG;
-    @Argument(doc="Store the barcode base qualities in this tag on the non-barcode read.  Default: do not assign this tag.",
-            optional = true)
-    public String BARCODE_QUALS_TAG;
-
+    @ArgumentCollection
+    public CorrectScrnaReadPairsArgumentCollection ARGUMENT_COLLECTION = new CorrectScrnaReadPairsArgumentCollection();
 
     @Override
     protected int doWork() {
@@ -139,16 +108,7 @@ extends CommandLineProgram {
                 makeSAMOrBAMWriter(headerAndIterator.header, true, OUTPUT);
 
         SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
-        final BarcodeCorrector barcodeCorrector = new BarcodeCorrector(
-                ALLOWED_BARCODE_COUNTS,
-                BARCODED_READ,
-                BASE_RANGE,
-                BARCODE_TAG,
-                TAG_BOTH_READS,
-                LIKELIHOOD_RATIO,
-                RAW_BARCODE_TAG,
-                BARCODE_QUALS_TAG
-        );
+        final BarcodeCorrector barcodeCorrector = new BarcodeCorrector(ARGUMENT_COLLECTION);
         barcodeCorrector.setVERBOSITY(VERBOSITY);
         final PairedSamRecordIterator iterator = new PairedSamRecordIterator(headerAndIterator.iterator);
         for (ReadPair pair: new IterableAdapter<>(iterator)) {
@@ -159,8 +119,8 @@ extends CommandLineProgram {
         }
         CloserUtil.close(headerAndIterator.iterator);
         samFileWriter.close();
-        if (METRICS != null) {
-            barcodeCorrector.writeMetrics(METRICS, getMetricsFile());
+        if (ARGUMENT_COLLECTION.METRICS != null) {
+            barcodeCorrector.writeMetrics(ARGUMENT_COLLECTION.METRICS, getMetricsFile());
         }
 
         try {
