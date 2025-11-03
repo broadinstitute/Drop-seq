@@ -55,7 +55,7 @@ public class CorrectAndSplitScrnaReadPairsTest {
   final SamReader reader = SamReaderFactory.makeDefault().open(outputSam);
   for (final SAMRecord rec : reader) {
    if (rec.getSecondOfPairFlag() || tagBothReads) {
-    final String cellBarcode = rec.getStringAttribute(clp.BARCODE_TAG);
+    final String cellBarcode = rec.getStringAttribute(clp.ARGUMENT_COLLECTION.BARCODE_TAG);
     final String expectedCellBarcode = rec.getReadName().split(":")[1];
     Assert.assertEquals(cellBarcode, expectedCellBarcode, rec.getSAMString());
    }
@@ -73,17 +73,17 @@ public class CorrectAndSplitScrnaReadPairsTest {
  private CorrectAndSplitScrnaReadPairs initClp(boolean tagBothReads) {
   final CorrectAndSplitScrnaReadPairs clp = new CorrectAndSplitScrnaReadPairs();
   clp.INPUT = Collections.singletonList(new PicardHtsPath(INPUT_SAM));
-  clp.ALLOWED_BARCODE_COUNTS = EXPECTED_BARCODES_HIST;
-  clp.BARCODED_READ = 1;
-  clp.BASE_RANGE = BASE_RANGE;
-  clp.METRICS = TestUtils.getTempReportFile("test.", ".corrected_barcode_metrics");
+  clp.ARGUMENT_COLLECTION.ALLOWED_BARCODE_COUNTS = EXPECTED_BARCODES_HIST;
+  clp.ARGUMENT_COLLECTION.BARCODED_READ = 1;
+  clp.ARGUMENT_COLLECTION.BASE_RANGE = BASE_RANGE;
+  clp.ARGUMENT_COLLECTION.METRICS = TestUtils.getTempReportFile("test.", ".corrected_barcode_metrics");
   clp.NUM_OUTPUTS = 1;
   clp.OUTPUT_LIST = TestUtils.getTempReportFile("CorrectAndSplitScrnaReadPairsTest.", ".bam_list");
   clp.OUTPUT = new File("test." + clp.OUTPUT_SLUG + ".sam");
   clp.OVERWRITE_EXISTING = true;
   clp.OUTPUT_MANIFEST = TestUtils.getTempReportFile("CorrectAndSplitScrnaReadPairsTest.", ".split_bam_manifest.gz");
   clp.REPORT = TestUtils.getTempReportFile("CorrectAndSplitScrnaReadPairsTest.", ".split_bam_report");
-  clp.TAG_BOTH_READS = tagBothReads;
+  clp.ARGUMENT_COLLECTION.TAG_BOTH_READS = tagBothReads;
   return clp;
  }
 
@@ -92,8 +92,8 @@ public class CorrectAndSplitScrnaReadPairsTest {
   CorrectAndSplitScrnaReadPairs clp = initClp(tagBothReads);
   final File outputSam = new File(clp.OUTPUT_LIST.getParentFile(), "test.0.sam");
   outputSam.deleteOnExit();
-  clp.BARCODE_QUALS_TAG = BARCODE_QUALS_TAG;
-  clp.RAW_BARCODE_TAG = RAW_BARCODE_TAG;
+  clp.ARGUMENT_COLLECTION.BARCODE_QUALS_TAG = BARCODE_QUALS_TAG;
+  clp.ARGUMENT_COLLECTION.RAW_BARCODE_TAG = RAW_BARCODE_TAG;
   Assert.assertEquals(clp.doWork(), 0);
   final SamReader reader = SamReaderFactory.makeDefault().open(outputSam);
   final List<BaseRange> baseRanges = org.broadinstitute.dropseqrna.utils.BaseRange.parseBaseRange(BASE_RANGE);
