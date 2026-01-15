@@ -41,6 +41,8 @@ def main(args=None):
     options = parser.parse_args(args)
 
     adDge = sc.read_10x_mtx(options.input_directory, prefix=options.prefix)
+    # seems like downstream tools want csr format rather than csc.  It would be nice if there were a standard.
+    adDge.X = adDge.X.tocsr()
 
     logging.info(f"Writing {options.output}")
     adDge.write_h5ad(options.output, compression="gzip")
