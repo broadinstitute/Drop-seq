@@ -29,7 +29,6 @@ import java.text.DecimalFormat;
 import java.util.*;
 import java.util.function.Function;
 
-import htsjdk.samtools.util.Log;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -289,9 +288,39 @@ public class DetectDoubletsTest {
 	
 	/**
 	 * With split BAMs and small sets of selected cells, not finding any barcodes in a BAM is no longer a failure.
+	 * By default, write out the expected cell barcodes, even with default best pair p-values.
 	 */
 	@Test
 	public void testNoBarcodesFound () throws IOException {
+		File EXPECTED_OUTPUT=new File(TESTDATA_DIR, "null.sampleAssignments.txt.unguided_donors.txt");
+		File EXPECTED_PAIR_OUTPUT=new File(TESTDATA_DIR, "empty.sampleAssignments.unguided.perDonor.txt");
+
+		DetectDoublets assigner = new DetectDoublets();
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2_retagged.bam")));
+		assigner.VCF = new PicardHtsPath(new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2.vcf"));
+		assigner.SINGLE_DONOR_LIKELIHOOD_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2.sampleAssignments.txt");
+		assigner.CELL_BC_FILE=new File(TESTDATA_DIR, "matches_nothing.cellBarcodes.txt");
+		assigner.SAMPLE_FILE=new File(TESTDATA_DIR, "donors.txt");
+		assigner.OUTPUT= File.createTempFile("DetectDoublets", ".txt");
+		assigner.OUTPUT_ALL_PAIRS=File.createTempFile("DetectDoublets", ".pairs.txt");
+		assigner.OUTPUT.deleteOnExit();
+		assigner.OUTPUT_ALL_PAIRS.deleteOnExit();
+		// assigner.USE_MISSING_DATA=false;
+
+		assigner.FIXED_ERROR_RATE=0.1;
+		assigner.GQ_THRESHOLD=30;
+		int ret = assigner.doWork();
+		Assert.assertTrue(ret==0);
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_PAIR_OUTPUT, assigner.OUTPUT_ALL_PAIRS));
+	}
+
+	/**
+	 * With split BAMs and small sets of selected cells, not finding any barcodes in a BAM is no longer a failure.
+	 * When the option to write out missing likelihoods is turned off, the output should be empty, but still succeed.
+	 */
+	@Test
+	public void testEmptyOutput () throws IOException {
 		File EXPECTED_OUTPUT=new File(TESTDATA_DIR, "empty.sampleAssignments.txt.unguided_donors.txt");
 		File EXPECTED_PAIR_OUTPUT=new File(TESTDATA_DIR, "empty.sampleAssignments.unguided.perDonor.txt");
 
@@ -301,6 +330,7 @@ public class DetectDoubletsTest {
 		assigner.SINGLE_DONOR_LIKELIHOOD_FILE=new File(TESTDATA_DIR, "TTTGCGCGGAGC:ATTGTTTAGGAG2.sampleAssignments.txt");
 		assigner.CELL_BC_FILE=new File(TESTDATA_DIR, "matches_nothing.cellBarcodes.txt");
 		assigner.SAMPLE_FILE=new File(TESTDATA_DIR, "donors.txt");
+		assigner.WRITE_ALL_DONOR_BARCODES = false;
 		assigner.OUTPUT= File.createTempFile("DetectDoublets", ".txt");
 		assigner.OUTPUT_ALL_PAIRS=File.createTempFile("DetectDoublets", ".pairs.txt");
 		assigner.OUTPUT.deleteOnExit();

@@ -35,7 +35,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -180,6 +179,12 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 			+ "accepted as passing, and each read (or read pair) will be treated as a single UMI  If the data is PCR Duplicate marked, duplicate reads will be filtered. ")
 	public Boolean DNA_MODE = false;
 
+	@Argument(doc = "Set to false exclude donor cells that are unable to be tested for doublets.")
+	public Boolean WRITE_ALL_DONOR_BARCODES = true;
+
+	@Argument(doc = "The value to write for the best pair p-value for untested cells.")
+	public Double MISSING_BEST_PAIR_PVALUE = 1.0E-101d;
+
 	/*
 	 * @Argument
 	 * (doc="The model tests the best donor against the all the possible second most likely donors to find the pair that best explain the data.  Sort the donors by their single donor likelihood score,"
@@ -300,6 +305,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 
 		int cellCount = 0;
 		int reportInterval = 100;
+		final Set<String> writtenBarcodes = new HashSet<>();
 		log.info("Calling doublets");
 		if (!sampleGenotypeIterator.hasNext()) {
 			log.warn("No Cells found for analysis.");
@@ -347,6 +353,18 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 						writeAssignment(other, null, perDonorWriter, true);
 				}
 				reportResultsPerSNP(cell, f, bestDonor, donorList, allAssignments, perSNPWriter);
+				writtenBarcodes.add(cell);
+			}
+		}
+
+		if (WRITE_ALL_DONOR_BARCODES) {
+			final List<String> remainingCellBarcodes = new ArrayList<>(bestDonorForCell.keySet());
+			remainingCellBarcodes.removeAll(writtenBarcodes);
+			Collections.sort(remainingCellBarcodes);
+			for (final String cell : remainingCellBarcodes) {
+				log.warn("No best pair found for cell [" + cell + "] due to no informative UMIs.  Cell selection or similar problem?");
+				final SamplePairAssignmentForCell best = SamplePairAssignmentForCell.constructEmptyResult(cell, bestDonorForCell.get(cell));
+				writeAssignment(best, MISSING_BEST_PAIR_PVALUE, writer, false);
 			}
 		}
 		
@@ -388,7 +406,7 @@ public class DetectDoublets extends GeneFunctionCommandLineBase {
 	void writeSingleDonorEdgeCaseOutput(Map<String, String> bestDonorForCell, PrintStream writer) {
 		for (String cell: bestDonorForCell.keySet()) {
 			SamplePairAssignmentForCell best = SamplePairAssignmentForCell.constructEmptyResult(cell, bestDonorForCell.get(cell));
-			writeAssignment(best, 1.0E-101d, writer, false);
+			writeAssignment(best, MISSING_BEST_PAIR_PVALUE, writer, false);
 		}
 		writer.close();
 		
