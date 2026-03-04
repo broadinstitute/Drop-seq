@@ -40,7 +40,7 @@ wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc >> /e
 echo "deb https://cloud.r-project.org/bin/linux/ubuntu ${DISTRIB_CODENAME}-cran40/" >> /etc/apt/sources.list
 
 # Install R along with tools required to install the Drop-seq R_LIBS and their dependencies.
-r_version=4.4.3
+r_version=4.5.2
 r_base_version=${r_version}-1.${DISTRIB_RELEASE/./}.0
 
 apt-get -qq update
