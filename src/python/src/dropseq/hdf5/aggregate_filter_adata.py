@@ -122,7 +122,7 @@ def safe_log(msg: str) -> None:
     else:
         logger.info(msg)
 
-def sanitize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+def sanitize_dataframe_old(df: pd.DataFrame) -> pd.DataFrame:
     """
     Clean and sanitize a DataFrame (e.g., `.obs` or `.var`) so it's safe for Zarr.
 
@@ -169,6 +169,57 @@ def sanitize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = series.astype(str)
 
     return df
+
+def sanitize_dataframe(
+    df: pd.DataFrame,
+    max_categories: int = 1000,
+    max_unique_fraction: float = 0.5
+) -> pd.DataFrame:
+    df = df.copy()
+
+    for col in df.columns:
+        series = df[col]
+
+        if isinstance(series.dtype, pd.CategoricalDtype):
+            if series.isna().any():
+                if "NA" not in series.cat.categories:
+                    series = series.cat.add_categories(["NA"])
+                series = series.fillna("NA")
+            df[col] = series
+            continue
+
+        if pd.api.types.is_numeric_dtype(series.dtype):
+            df[col] = series
+            continue
+
+        if pd.api.types.is_object_dtype(series.dtype) or pd.api.types.is_string_dtype(series.dtype):
+            series_no_na_string = series.replace("NA", np.nan)
+
+            converted = pd.to_numeric(series_no_na_string, errors="coerce")
+            original_nonmissing = series_no_na_string.notna().sum()
+            converted_nonmissing = converted.notna().sum()
+
+            if original_nonmissing > 0 and original_nonmissing == converted_nonmissing:
+                df[col] = converted
+                continue
+
+            filled = series.fillna("NA").astype(str)
+
+            n_rows = len(filled)
+            n_unique = filled.nunique(dropna=False)
+            unique_fraction = (n_unique / n_rows) if n_rows > 0 else 0
+
+            if n_unique <= max_categories and unique_fraction < max_unique_fraction:
+                df[col] = filled.astype("category")
+            else:
+                df[col] = filled
+
+            continue
+
+        df[col] = series
+
+    return df
+
 
 def log_memory(note: str = ""):
     gc.collect()
