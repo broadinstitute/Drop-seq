@@ -30,8 +30,8 @@ import dropseq.hdf5.hdf5_10X_to_text
 
 OptionsTuple = collections.namedtuple("OptionsTuple", ["input", "output", "output_sizes",
                                                        "progress_interval", "analyzed_barcodes_only",
-                                                       "limit", "header", "cbrb_log"],
-                                      defaults=(None, 1000, False, 2000, None, None))
+                                                       "limit", "header", "command_yaml", "cbrb_log"],
+                                      defaults=(None, 1000, False, 2000, None, None, None))
 class TestHdf5_10X_to_text(unittest.TestCase):
     def setUp(self):
         self.testDataDir = "tests/data/hdf5/hdf5_10X_to_text"
