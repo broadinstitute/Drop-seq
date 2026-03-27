@@ -26,6 +26,7 @@ Convert DGE matrix in 10X hdf5 format produced by remove-background into dense D
 import argparse
 import gzip
 import sys
+import yaml
 
 import numpy
 from dropseq.util.log_util import log_message
@@ -44,6 +45,18 @@ def readDgeHeader(dge_path):
                     break
                 retval.append(strLine.rstrip("\n"))
     return retval
+
+
+# Hacky: It's known exactly how to find the CBRB command line in the yaml file
+def readCbrbCommandLineFromGlsYaml(gls_yaml):
+    with open(gls_yaml) as fIn:
+        y = yaml.load(fIn, Loader=yaml.SafeLoader)
+    try:
+        cbrb_actions = [v for v in filter(lambda action: action['containerName'] == 'remove-background', y['actions'])]
+        return cbrb_actions[0]['commands'][-1]
+    except:
+        print("Problem parsing " + gls_yaml, file=sys.stderr)
+        raise
 
 
 def readCbrbCommandLineFromLog(cbrb_log):
@@ -71,7 +84,11 @@ def create_arg_parser():
                         help="output a limited set of barcodes: only those analyzed by the algorithm.  (default: output all barcodes)")
     parser.add_argument("--limit", "-l", type=int, help="Output no more than this number of genes (for debugging)")
     parser.add_argument("--header", help="If set, read DGE header lines from this file and write to output.")
-    parser.add_argument("--cbrb-log",
+    cbrb_command_line_group = parser.add_mutually_exclusive_group(required=False)
+    cbrb_command_line_group.add_argument("--command-yaml",
+                                         help="If set, read Google Life Sciences pipeline definition for CBRB "
+                                              "command line, and write to #COMMAND record in DGE header.")
+    cbrb_command_line_group.add_argument("--cbrb-log",
                                          help="If set, read the CBRB log for the CBRB "
                                               "command line, and write to #COMMAND record in DGE header.")
     return parser
@@ -96,6 +113,8 @@ def run(options):
         print(header_line, file=fOut)
 
     cbrb_command_line = None
+    if options.command_yaml is not None:
+        cbrb_command_line = readCbrbCommandLineFromGlsYaml(options.command_yaml)
     if options.cbrb_log is not None:
         cbrb_command_line = readCbrbCommandLineFromLog(options.cbrb_log)
     if cbrb_command_line is not None:
