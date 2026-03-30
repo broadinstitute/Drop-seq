@@ -72,7 +72,10 @@ def getGeneFromH5ad(h5ad_path):
     :return: string from the first row of var_names
     """
     adata = ad.read_h5ad(h5ad_path, backed='r')
-    return adata.var_names[0]
+    if 'gene_ids' in adata.var:
+        return adata.var['gene_ids'][0]
+    else:
+        return adata.var_names[0]
 
 def getGeneFromDgeFile(dge_path):
     with open_maybe_gz(dge_path) as f:
