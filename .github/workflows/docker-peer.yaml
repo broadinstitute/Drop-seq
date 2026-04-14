@@ -1,6 +1,6 @@
 # based on:
 # https://github.com/broadinstitute/Drop-seq/new/master?filename=.github%2Fworkflows%2Fdocker-publish.yml&workflow_template=ci%2Fdocker-publish
-name: DropSeq R Docker
+name: PEER Docker
 
 # This workflow uses actions that are not certified by GitHub.
 # They are provided by a third-party and are governed by
@@ -16,9 +16,9 @@ on:
     branches: [ "master" ]
     paths:
       - '.github/workflows/docker-drop-seq_reusable.yaml'
-      - '.github/workflows/docker-drop-seq_r.yaml'
-      - 'src/R/packages/**'
-      - 'src/docker/R/**'
+      - '.github/workflows/docker-peer.yaml'
+      - 'src/R/PEER/**'
+      - 'src/docker/PEER/**'
   workflow_dispatch:
 
 jobs:
@@ -26,8 +26,8 @@ jobs:
     uses: ./.github/workflows/docker-drop-seq_reusable.yaml
     with:
       registry: quay.io
-      image_name: broadinstitute/drop-seq_r
-      dockerfile: src/docker/R/Dockerfile
+      image_name: broadinstitute/peer
+      dockerfile: src/docker/PEER/Dockerfile
     secrets: inherit
     permissions:
       contents: read
