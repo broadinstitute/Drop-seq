@@ -23,6 +23,11 @@ plugins {
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
+    maven {
+        name = "sonatypeSnapshots"
+        url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+        mavenContent { snapshotsOnly() }
+    }
 }
 
 configurations {
@@ -47,6 +52,7 @@ dependencies {
     implementation("org.slf4j:slf4j-api:2.0.9")
     implementation("org.yaml:snakeyaml:2.2")
 
+    implementation("com.github.samtools:htsjdk:5.0.0-4f25db8-SNAPSHOT")
     implementation("com.github.broadinstitute:picard:3.4.0"){
         attributes{
             attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
