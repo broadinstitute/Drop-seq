@@ -47,7 +47,7 @@ dependencies {
     implementation("org.slf4j:slf4j-api:2.0.9")
     implementation("org.yaml:snakeyaml:2.2")
 
-    implementation("com.github.broadinstitute:picard:3.3.0"){
+    implementation("com.github.broadinstitute:picard:3.4.0"){
         attributes{
             attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
         }
