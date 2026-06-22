@@ -173,6 +173,26 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         outputDf = pd.read_csv(self.outputFile, sep='\t')
         self.assertFalse(outputDf["doublet"].any())
 
+    def test_drop(self):
+        primary = os.path.join(self.testDataDir, "sample1.100.cell_metadata.txt")
+        columnToDrop = "bestSample"
+        options = self.options._replace(input=open(primary),
+                                        drop=[columnToDrop])
+        self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 0)
+        outputDf = pd.read_csv(self.outputFile, sep='\t')
+        self.assertFalse(columnToDrop in outputDf.columns)
+
+    def test_rename(self):
+        primary = os.path.join(self.testDataDir, "sample1.100.cell_metadata.txt")
+        columnToRename = "predClass"
+        newName = "cellClass"
+        options = self.options._replace(input=open(primary),
+                                        rename=[(columnToRename, newName)])
+        self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 0)
+        outputDf = pd.read_csv(self.outputFile, sep='\t')
+        self.assertFalse(columnToRename in outputDf.columns)
+        self.assertTrue(newName in outputDf.columns)
+
 
     def assertSharedColumnsEqual(self, wideFile, narrowFile, wideRows = None, narrowRows = None, dropColumns = None):
         wideDf = pd.read_csv(wideFile, sep='\t', index_col=False)
