@@ -35,8 +35,9 @@ import dropseq.aggregation.join_and_filter_tsv
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 OptionsTuple = collections.namedtuple("OptionsTuple", ["output", "input", "join", "set", "min",
-                                                       "max", "include_file", "exclude_file", "include", "exclude"],
-                                      defaults=(None, [], [], [], [], [], [], [], []))
+                                                       "max", "include_file", "exclude_file", "include", "exclude",
+                                                       "drop", "rename"],
+                                      defaults=(None, [], [], [], [], [], [], [], [], [], []))
 
 class TestJoinAndFilterTSV(unittest.TestCase):
     def setUp(self):
@@ -132,7 +133,7 @@ class TestJoinAndFilterTSV(unittest.TestCase):
                                         include_file=[("DONOR", includeFile)])
         self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 0)
         outputDf = pd.read_csv(self.outputFile, sep='\t')
-        includeValues = pd.read_csv(includeFile, sep='\t', header=None).iloc[0]
+        includeValues = pd.read_csv(includeFile, sep='\t', header=None).iloc[:, 0]
         self.assertTrue((outputDf["DONOR"].isin(includeValues)).all())
 
     def test_exclude_file(self):
@@ -142,7 +143,7 @@ class TestJoinAndFilterTSV(unittest.TestCase):
                                         exclude_file=[("DONOR", excludeFile)])
         self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 0)
         outputDf = pd.read_csv(self.outputFile, sep='\t')
-        excludeValues = pd.read_csv(excludeFile, sep='\t', header=None).iloc[0]
+        excludeValues = pd.read_csv(excludeFile, sep='\t', header=None).iloc[:, 0]
         self.assertFalse((outputDf["DONOR"].isin(excludeValues)).any())
 
     def test_include_exclude(self):
