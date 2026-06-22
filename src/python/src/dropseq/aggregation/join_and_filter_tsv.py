@@ -73,7 +73,7 @@ def try_convert_string(s):
     return float_val
 
 def load_values_file(file):
-    return pd.read_csv(file, sep='\t', header=None).iloc[0]
+    return pd.read_csv(file, sep='\t', header=None).iloc[:,0]
 
 def parse_args(args):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
