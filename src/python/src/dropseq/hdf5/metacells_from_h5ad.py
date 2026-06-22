@@ -33,7 +33,7 @@ from scipy.sparse import issparse
 from tqdm import tqdm
 
 import dropseq.hdf5.filters as filters
-
+import dropseq.hdf5.aggregate_filter_adata as afd
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +107,9 @@ def read_single_h5ad(h5ad_path: str, verbose: bool) -> ad.AnnData:
     if verbose: 
         logger.info(f"Reading AnnData object from {h5ad_path}")
     adata = sc.read(h5ad_path)
+    adata.obs = afd.sanitize_dataframe(adata.obs)
+    adata.var = afd.sanitize_dataframe(adata.var)
+
     return adata
 
 def filter_adata(adata: ad.AnnData, filtering: list[str], verbose: bool) -> ad.AnnData:

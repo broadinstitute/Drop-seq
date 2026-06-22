@@ -123,9 +123,15 @@ def format_filter_syntax(expr: str) -> str:
 
     return reformatted
 
+def numeric_obs(adata: ad.AnnData, col: str) -> pd.Series:
+    values = adata.obs[col]
+
+    if isinstance(values.dtype, pd.CategoricalDtype):
+        values = values.astype(str)
+
+    return pd.to_numeric(values, errors="coerce")
 
 def evaluate_filters(adata: ad.AnnData, expressions: List[str]) -> ad.AnnData:
-
     """
     Apply filter expressions to an AnnData object and return a filtered copy.
 
@@ -150,38 +156,52 @@ def evaluate_filters(adata: ad.AnnData, expressions: List[str]) -> ad.AnnData:
     ValueError
         If any expression does not return a boolean array of the correct shape.
     """
-    try:
-        if not expressions:
-            return adata
+    if not expressions:
+        return adata
 
-        keep = np.ones(adata.n_obs, dtype=bool)
+    keep = np.ones(adata.n_obs, dtype=bool)
 
-        for expr in expressions:
-            result = eval(expr, {}, {"adata": adata})
+    eval_namespace = {
+        "adata": adata,
+        "np": np,
+        "pd": pd,
+        "numeric_obs": numeric_obs,
+    }
 
-            if isinstance(result, pd.Series):
-                result = result.to_numpy()
+    for expr in expressions:
+        try:
+            result = eval(expr, {"__builtins__": {}}, eval_namespace)
+        except Exception as e:
+            raise ValueError(f"Failed to evaluate filter expression {expr!r}: {e}") from e
 
-            if not isinstance(result, np.ndarray) or result.dtype != bool:
-                raise ValueError(f"Expression did not return a boolean array: {expr!r}")
-            if result.shape[0] != adata.n_obs:
-                raise ValueError(f"Expression result length {result.shape[0]} does not match adata.n_obs")
+        if isinstance(result, pd.Series):
+            result = result.to_numpy()
 
-            keep &= result
+        if not isinstance(result, np.ndarray):
+            raise ValueError(f"Expression did not return a boolean array: {expr!r}")
 
-        if keep.all():
-            return adata
+        if result.dtype != bool:
+            raise ValueError(f"Expression did not return a boolean array: {expr!r}")
 
-        # If the AnnData object is backed, convert it to memory to avoid issues with slicing
-        if adata.isbacked:
-            adata = adata.to_memory()
+        if result.shape[0] != adata.n_obs:
+            raise ValueError(
+                f"Expression result length {result.shape[0]} does not match "
+                f"adata.n_obs {adata.n_obs}: {expr!r}"
+            )
 
-        if not np.any(keep):
-            return adata[[]].copy()
+        keep &= result
 
-        return adata[keep]
-    except Exception as e:
-        raise ValueError(f"Failed to evaluate filters on AnnData object: {e}")
+    if keep.all():
+        return adata
+
+    if adata.isbacked:
+        adata = adata.to_memory()
+
+    if not np.any(keep):
+        return adata[[]].copy()
+
+    return adata[keep].copy()
+
 
 class _DummyAnnData:
     """Minimal stand-in so adata.obs resolves to obs_df in eval()."""
