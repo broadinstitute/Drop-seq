@@ -100,6 +100,7 @@ def parse_args(args):
                         help="Filter out rows where COLUMN is not one of the given VALUEs.  May be specified multiple times.")
     parser.add_argument("--exclude", nargs='+', action='append', default=[], metavar=('COLUMN', 'VALUE'),
                         help="Filter out rows where COLUMN is one of the given VALUEs.  May be specified multiple times.")
+    parser.add_argument("--drop", action='append', default=[], help="Column to drop from the output.  May be specified multiple times.")
     return parser.parse_args(args)
 
 def main(args=None):
@@ -151,6 +152,9 @@ def run(options):
         values = excludes[1:]
         values = [try_convert_string(value) for value in values]
         primary = primary[~primary[column].isin(values)]
+    # drop columns
+    for column in options.drop:
+        primary = primary.drop(column, axis=1)
     # write the output
     primary.to_csv(options.output, sep='\t', index=False)
     options.output.close()
