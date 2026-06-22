@@ -42,7 +42,7 @@ import sys
 
 import pandas as pd
 from pandas.errors import MergeError
-from . import logger, add_log_argument
+from dropseq.aggregation import logger, add_log_argument
 
 DELETEME_COLUMN_SUFFIX = '_deleteme'
 
@@ -112,7 +112,7 @@ def run(options):
     # load each secondary file, and join it to the primary file, dropping secondary columns that are already in the primary
     for join_file, input_col, join_col in options.join:
         join_col_in_left = join_col in primary.columns
-        secondary = pd.read_csv(join_file, sep='\t')
+        secondary = pd.read_csv(join_file, sep='\t', comment='#')
         try:
             # many_to_one: require that the join column in the secondary file is unique
             primary = primary.merge(secondary, how='left', left_on=input_col, right_on=join_col, validate="many_to_one",
