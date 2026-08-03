@@ -1,0 +1,20 @@
+Package: DropSeq.eqtl.susie
+Type: Package
+Title: Individual-Level SuSiE Fine-Mapping for tensorQTL eQTLs
+Version: 0.1.0
+Author: nemesh@broadinstitute.org
+Maintainer: James Nemesh <nemesh@broadinstitute.org>
+Description: Runs individual-level SuSiE fine-mapping (via susieR) for every
+    significant eQTL gene in one tensorQTL-derived dataset. Given a
+    tensorQTL index-eQTL file, cis-pair file, normalized expression matrix,
+    genotype dosage matrix, and covariate file, the package residualizes
+    expression and genotypes against the tensorQTL covariates and fits
+    susieR::susie() per gene, producing a verbose SNP-gene result table, a
+    slim credible-set table, and a one-row-per-gene processing report.
+Imports: data.table, susieR, stats, R.utils, pbmcapply
+Suggests: testthat, Rfast
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Config/roxygen2/version: 8.0.0
+RoxygenNote: 8.0.0
