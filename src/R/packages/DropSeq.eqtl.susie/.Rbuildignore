@@ -1,0 +1,5 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^susie_eqtl_finemapping_package_plan\.md$
+^\.claude$
