@@ -13,6 +13,7 @@ on:
   pull_request:
     branches: [ "master" ]
     paths:
+      - '.github/workflows/gradle.yml'
       - 'src/java/**'
       - 'src/tests/java/**'
 
@@ -24,10 +25,10 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Set up JDK 21
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '21'
         distribution: 'temurin'
@@ -38,13 +39,13 @@ jobs:
     # Configure Gradle for optimal use in GiHub Actions, including caching of downloaded dependencies.
     # See: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
     - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@417ae3ccd767c252f5661f1ace9f835f9654f2b5 # v3.1.0
+      uses: gradle/actions/setup-gradle@v6
 
     - name: Build with Gradle Wrapper
       run: ./gradlew test build jacocoTestReport
 
     - name: Upload test results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: ${{ !cancelled() }}
       with:
         name: gradle-test-results
@@ -54,7 +55,7 @@ jobs:
           dropseq/build/reports/tests/test/
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v7
       env:
         CODECOV_TOKEN:
           ${{ secrets.CODECOV_TOKEN }}
@@ -63,7 +64,7 @@ jobs:
     # If your project does not have the Gradle Wrapper configured, you can use the following configuration to run Gradle with a specified version.
     #
     # - name: Setup Gradle
-    #   uses: gradle/actions/setup-gradle@417ae3ccd767c252f5661f1ace9f835f9654f2b5 # v3.1.0
+    #   uses: gradle/actions/setup-gradle@v6
     #   with:
     #     gradle-version: '8.5'
     #
@@ -77,9 +78,9 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Set up JDK 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '17'
         distribution: 'temurin'
@@ -87,4 +88,4 @@ jobs:
     # Generates and submits a dependency graph, enabling Dependabot Alerts for all project dependencies.
     # See: https://github.com/gradle/actions/blob/main/dependency-submission/README.md
     - name: Generate and submit dependency graph
-      uses: gradle/actions/dependency-submission@417ae3ccd767c252f5661f1ace9f835f9654f2b5 # v3.1.0
+      uses: gradle/actions/dependency-submission@v6
