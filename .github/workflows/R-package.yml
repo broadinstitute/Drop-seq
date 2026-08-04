@@ -39,7 +39,7 @@ jobs:
           apt-get -qq install git
           git --version
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: SessionInfo
         run: |

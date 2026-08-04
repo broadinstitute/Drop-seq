@@ -59,7 +59,7 @@ class TestCatTsvs(unittest.TestCase):
 
     def test_fewer_columns(self):
         dfToClip = pd.read_csv(self.inputs[0], sep="\t", index_col=self.index_cols)
-        dfToClip = dfToClip.drop(columns="doublet", axis=1)
+        dfToClip = dfToClip.drop(columns="doublet")
         clippedFile = os.path.join(self.tmpDir, "clipped.tsv")
         dfToClip.to_csv(clippedFile, sep="\t")
         inputs = [clippedFile, self.inputs[1]]
@@ -74,4 +74,3 @@ class TestCatTsvs(unittest.TestCase):
         inputs = [self.inputs[0], os.path.join(self. testDataDir, "conflicting_column_type.joined_filtered_cell_metadata.tsv")]
         self.options = self.options._replace(index_col=self.index_cols, input=[open(f) for f in inputs])
         self.assertRaisesRegex(Exception, 'Column types disagree', dropseq.aggregation.cat_tsvs.run, self.options)
-
