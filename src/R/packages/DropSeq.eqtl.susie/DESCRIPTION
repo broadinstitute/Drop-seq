@@ -16,5 +16,4 @@ Suggests: testthat, Rfast
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-Config/roxygen2/version: 8.0.0
-RoxygenNote: 8.0.0
+Config/roxygen2/version: 8.1.0

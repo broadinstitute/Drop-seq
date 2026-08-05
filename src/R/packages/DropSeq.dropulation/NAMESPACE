@@ -15,8 +15,10 @@ import(scales)
 import(stats)
 import(utils)
 import(vegan)
-importFrom(data.table,fread)
-importFrom(data.table,rbindlist)
+importFrom(data.table,
+  fread,
+  rbindlist
+)
 importFrom(ggrepel,geom_label_repel)
 importFrom(purrr,compose)
 importFrom(stringr,str_remove)
