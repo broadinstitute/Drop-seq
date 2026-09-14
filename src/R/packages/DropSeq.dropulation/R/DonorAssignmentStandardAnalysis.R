@@ -426,7 +426,7 @@ calculateMeanUMIsPerDonor<-function (expName, cellDF, dgeSummaryFile=NULL, donor
     
     umisAndCellsPerDonorPlot=ggplot(donors, aes(x = count, y = medianUMIs)) +
     	geom_point(size = 4) +
-    	labs(x = "number of cels per donor", y = "median UMIs per donor") +
+    	labs(x = "number of cells per donor", y = "median UMIs per donor") +
     	coord_cartesian(ylim=c(0, max (donors$medianUMIs)*1.1)) +
     	ggtitle(expName) +
     	theme(axis.text.x = element_text(size = 10), 
