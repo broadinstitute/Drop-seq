@@ -33,7 +33,7 @@ import pandas as pd
 
 def count_mmc_celltypes(input_csv) -> pd.DataFrame:
     """
-    Count the number of cells of each supercluster_name in a MapMyCells csv file.
+    Count the number of cells of each top-level cell type in a MapMyCells csv file.
 
     Parameters
     ----------
@@ -43,14 +43,17 @@ def count_mmc_celltypes(input_csv) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        A data frame indexed by supercluster_name with 'count' and 'fraction' columns,
+        A data frame indexed by the top-level cell type with 'count' and 'fraction' columns,
         sorted by count in descending order.
     """
     df = pd.read_csv(input_csv, comment='#', dtype=str)
-    counts = df['supercluster_name'].value_counts()
+    # The column name for the top-level cell type varies depending on the MMC hierarchy, but the first column that ends with '_name' should be the top-level cell type.
+    colnameToCount = next(c for c in df.columns if c.endswith('_name'))
+    counts = df[colnameToCount].value_counts()
     counts.name = 'count'
     result = counts.to_frame()
     result['fraction'] = (result['count'] / result['count'].sum()).round(4)
+    result.index.name = colnameToCount
     return result
 
 
@@ -63,7 +66,7 @@ def main(args=None):
     options = parser.parse_args(args)
 
     result = count_mmc_celltypes(options.input)
-    result.to_csv(options.output, sep='\t', index_label='supercluster_name')
+    result.to_csv(options.output, sep='\t')
     options.output.close()
     return 0
 
