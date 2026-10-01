@@ -36,8 +36,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 OptionsTuple = collections.namedtuple("OptionsTuple", ["output", "input", "join", "set", "min",
                                                        "max", "include_file", "exclude_file", "include", "exclude",
-                                                       "drop", "rename"],
-                                      defaults=(None, [], [], [], [], [], [], [], [], [], []))
+                                                       "drop", "rename", "no_header"],
+                                      defaults=(None, [], [], [], [], [], [], [], [], [], [], [], False))
 
 class TestJoinAndFilterTSV(unittest.TestCase):
     def setUp(self):
