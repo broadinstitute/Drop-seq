@@ -104,6 +104,8 @@ def parse_args(args):
                         help="Column to drop from the output.  May be specified multiple times.")
     parser.add_argument("--rename", nargs=2, action='append', default=[], metavar=('OLD', 'NEW'),
                         help="Rename column.  May be specified multiple times.")
+    parser.add_argument("--no-header", action='store_true', default=False,
+                        help="Do not write a header row.")
     return parser.parse_args(args)
 
 def main(args=None):
@@ -162,7 +164,7 @@ def run(options):
     for column, value in options.rename:
         primary.rename(columns={column: value}, inplace=True)
     # write the output
-    primary.to_csv(options.output, sep='\t', index=False)
+    primary.to_csv(options.output, sep='\t', index=False, header=not options.no_header)
     options.output.close()
     return 0
 
