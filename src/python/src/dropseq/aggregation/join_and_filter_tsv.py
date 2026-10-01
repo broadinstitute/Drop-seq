@@ -111,7 +111,7 @@ def main(args=None):
 
 def run(options):
     # load the primary file
-    primary = pd.read_csv(options.input, sep='\t')
+    primary = pd.read_csv(options.input, sep='\t', comment='#')
     options.input.close()
     # load each secondary file, and join it to the primary file, dropping secondary columns that are already in the primary
     for join_file, input_col, join_col in options.join:
