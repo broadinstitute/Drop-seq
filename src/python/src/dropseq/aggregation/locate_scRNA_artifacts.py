@@ -47,8 +47,6 @@ MMC outputs are keyed by MMC model (the mmc/<model> directory name), with the fi
 """
 
 import argparse
-import gzip
-import io
 import os
 import posixpath
 import re
@@ -57,9 +55,9 @@ import sys
 import yaml
 
 from dropseq.aggregation import logger, add_log_argument, dctLogLevel
+from dropseq.util.storage import default_store
 
 NA = "NA"
-GCS_SCHEME = "gs://"
 PROPERTIES_FILE = "properties.yaml"
 DGE_SUFFIX = ".digital_expression.txt.gz"
 DGE_SUMMARY_SUFFIX = ".digital_expression_summary.txt"
@@ -161,108 +159,6 @@ MMC_FILES = [
     ("mmc_json", "{uei}.json"),
     ("mmc_cell_type_counts", "{uei}.cell_type_counts.tsv"),
 ]
-
-
-class GcsStore:
-    """
-    Read-only access to Google Cloud Storage.  The client is created on first use.
-    """
-
-    def __init__(self, client=None):
-        self._client = client
-
-    @property
-    def client(self):
-        if self._client is None:
-            import google.cloud.storage
-            self._client = google.cloud.storage.Client()
-        return self._client
-
-    @staticmethod
-    def _split(url):
-        bucket, _, name = url[len(GCS_SCHEME):].partition("/")
-        return bucket, name
-
-    def list_dir(self, url):
-        """
-        :return: (set of file basenames, sorted list of subdirectory names) directly under url.
-        """
-        bucket, prefix = self._split(url.rstrip("/") + "/")
-        blobs = self.client.list_blobs(bucket, prefix=prefix, delimiter="/")
-        files = {blob.name[len(prefix):] for blob in blobs if blob.name != prefix}
-        # prefixes is only populated once the iterator has been consumed.
-        subdirs = sorted(p[len(prefix):].rstrip("/") for p in blobs.prefixes)
-        return files, subdirs
-
-    def read_text(self, url):
-        import google.cloud.storage
-        return google.cloud.storage.Blob.from_string(url, self.client).download_as_text()
-
-    def open_text(self, url):
-        """
-        :return: text file object for url, decompressed if url ends with .gz.
-        """
-        import google.cloud.storage
-        return _text_stream(google.cloud.storage.Blob.from_string(url, self.client).open("rb"), url)
-
-
-class LocalStore:
-    """
-    Access to the local filesystem, with the same interface as GcsStore.
-    """
-
-    def list_dir(self, url):
-        if not os.path.isdir(url):
-            return set(), []
-        entries = os.listdir(url)
-        files = {e for e in entries if os.path.isfile(os.path.join(url, e))}
-        subdirs = sorted(e for e in entries if os.path.isdir(os.path.join(url, e)))
-        return files, subdirs
-
-    def read_text(self, url):
-        with open(url) as f:
-            return f.read()
-
-    def open_text(self, url):
-        """
-        :return: text file object for url, decompressed if url ends with .gz.
-        """
-        return _text_stream(open(url, "rb"), url)
-
-
-class _ClosingGzipFile(gzip.GzipFile):
-    """
-    GzipFile that also closes the file object it reads from.
-    """
-
-    def close(self):
-        source = self.fileobj
-        try:
-            super().close()
-        finally:
-            if source is not None:
-                source.close()
-
-
-def _text_stream(binary, url):
-    if url.endswith(".gz"):
-        binary = _ClosingGzipFile(fileobj=binary)
-    return io.TextIOWrapper(binary)
-
-
-def default_store(url):
-    return GcsStore() if url.startswith(GCS_SCHEME) else LocalStore()
-
-
-def cached_store(url, stores):
-    """
-    :param stores: dict used to share one store per storage type across calls.
-    :return: the store for url's storage type, created on first use.
-    """
-    is_gcs = url.startswith(GCS_SCHEME)
-    if is_gcs not in stores:
-        stores[is_gcs] = default_store(url)
-    return stores[is_gcs]
 
 
 def _parent(url):
@@ -431,11 +327,9 @@ def locate_datasets(dge_urls, store=None):
     :return: {'datasets': [...]} with one dataset dictionary per DGE, in input order.
     """
     datasets = []
-    # share one store per storage type across DGEs
-    stores = {}
     for dge_url in dge_urls:
         logger.info(f"Locating artifacts for {dge_url}")
-        dge_store = store if store is not None else cached_store(dge_url, stores)
+        dge_store = store if store is not None else default_store(dge_url)
         datasets.append(locate_scRNA_artifacts(dge_url, dge_store))
     return {"datasets": datasets}
 
