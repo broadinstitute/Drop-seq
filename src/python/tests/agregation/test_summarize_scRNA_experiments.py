@@ -34,6 +34,7 @@ import yaml
 import dropseq.aggregation.locate_scRNA_artifacts as locator
 import dropseq.aggregation.summarize_scRNA_experiments as summarizer
 from dropseq.aggregation.locate_scRNA_artifacts import NA
+from dropseq.util.storage import LocalStore
 
 UEI = "exp"
 ALIGNMENT_REL = "GRCh38_ensembl_v43"
@@ -108,7 +109,7 @@ class TestSummarizeScRNAExperiments(unittest.TestCase):
             opener = gzip.open if path.endswith(".gz") else open
             with opener(path, "wt") as f:
                 f.write(content)
-        self.store = locator.LocalStore()
+        self.store = LocalStore()
 
     def tearDown(self):
         shutil.rmtree(self.tmpDir)

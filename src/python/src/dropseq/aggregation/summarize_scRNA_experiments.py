@@ -48,6 +48,7 @@ import yaml
 from dropseq.aggregation import logger, add_log_argument, dctLogLevel
 import dropseq.aggregation.locate_scRNA_artifacts as locator
 from dropseq.aggregation.locate_scRNA_artifacts import NA
+from dropseq.util.storage import default_store
 
 SELECTED_CELL_STAT_COLUMNS = ["pct_genic", "pct_exonic", "pct_intronic", "pct_intergenic", "pct_ribosomal", "pct_mt"]
 
@@ -402,11 +403,10 @@ def summarize_datasets(datasets, store=None):
     """
     :return: DataFrame with SUMMARY_COLUMNS and one row per dataset, in input order.
     """
-    stores = {}
     rows = []
     for record in datasets:
         logger.info(f"Summarizing {record['uei']}")
-        rows.append(summarize_experiment(record, store or locator.cached_store(record["alignment_dir"], stores)))
+        rows.append(summarize_experiment(record, store or default_store(record["alignment_dir"])))
     return pd.DataFrame(rows, columns=SUMMARY_COLUMNS)
 
 
@@ -431,9 +431,8 @@ def write_tearsheets(datasets, output_dir, store=None):
     if duplicates:
         raise ValueError(f"Cannot write one tear sheet per experiment; duplicate uei values: {duplicates}")
     os.makedirs(output_dir, exist_ok=True)
-    stores = {}
     for record in datasets:
-        rows = standard_analysis_tearsheet(record, store or locator.cached_store(record["alignment_dir"], stores))
+        rows = standard_analysis_tearsheet(record, store or default_store(record["alignment_dir"]))
         with open(os.path.join(output_dir, tearsheet_filename(record["uei"])), "w") as out:
             out.write("label\tvalue\n")
             for label, value in rows:

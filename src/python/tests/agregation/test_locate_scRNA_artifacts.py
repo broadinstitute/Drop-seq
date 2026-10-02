@@ -30,6 +30,7 @@ import yaml
 
 import dropseq.aggregation.locate_scRNA_artifacts as locator
 from dropseq.aggregation.locate_scRNA_artifacts import NA
+from dropseq.util.storage import LocalStore
 
 ALIGNMENT_REL = "GRCh38_ensembl_v43"
 CBRB_REL = ALIGNMENT_REL + "/cbrb/auto"
@@ -222,7 +223,7 @@ class TestLocateScRNAArtifacts(unittest.TestCase):
         path = os.path.join(self.tmpDir, "a.txt.gz")
         with gzip.open(path, "wt") as f:
             f.write("x\ty\n")
-        with locator.LocalStore().open_text(path) as f:
+        with LocalStore().open_text(path) as f:
             self.assertEqual(f.read(), "x\ty\n")
 
     def test_dge_not_named_for_uei_raises(self):
