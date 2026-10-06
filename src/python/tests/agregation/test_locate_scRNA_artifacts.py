@@ -74,10 +74,15 @@ class TestLocateScRNAArtifacts(unittest.TestCase):
         for name in names:
             open(os.path.join(directory, name.format(uei=uei)), "w").close()
 
+    def reference_dir(self):
+        return os.path.join(self.tmpDir, "reference", "GRCh38")
+
     def make_experiment(self, uei, mmc_references=("HMBA_Human_WB_v0.5",), villages=(VILLAGE_NAME,),
-                        library=None):
+                        library=None, reference_files=("GRCh38.fasta.gz", "GRCh38.reduced.gtf")):
         """
-        Build a Nextflow output tree for one experiment and return the selected DGE path.
+        Build a Nextflow output tree for one experiment and return the selected DGE path.  The reference of the
+        alignment is in a directory shared by the experiments that has reference_files, or is not recorded if
+        reference_files is None.
         """
         root = os.path.join(self.tmpDir, uei + "_output")
         os.makedirs(root)
@@ -85,7 +90,14 @@ class TestLocateScRNAArtifacts(unittest.TestCase):
             yaml.safe_dump({"library": library or uei, "stage": "beginning"}, f)
         self.touch(root, ROOT_FILES, uei)
         self.touch(os.path.join(root, "pipeline_info"), PIPELINE_INFO_FILES, uei)
-        self.touch(os.path.join(root, ALIGNMENT_REL), ALIGNMENT_FILES, uei)
+        alignment = os.path.join(root, ALIGNMENT_REL)
+        self.touch(alignment, ALIGNMENT_FILES, uei)
+        alignment_properties = {"stage": "alignment"}
+        if reference_files is not None:
+            self.touch(self.reference_dir(), reference_files, uei)
+            alignment_properties["reference"] = os.path.join(self.reference_dir(), "GRCh38.fasta.gz")
+        with open(os.path.join(alignment, "properties.yaml"), "w") as f:
+            yaml.safe_dump(alignment_properties, f)
         self.touch(os.path.join(root, CBRB_REL), CBRB_FILES, uei)
         self.touch(os.path.join(root, CELL_SELECTION_REL), CELL_SELECTION_FILES, uei)
         std = os.path.join(root, STD_REL)
@@ -180,8 +192,11 @@ class TestLocateScRNAArtifacts(unittest.TestCase):
         self.assertEqual(record["dropulation_tearsheet"], os.path.join(village, f"{uei}.dropulation_tearsheet.pdf"))
         self.assertEqual(record["mmc"]["HMBA_Human_WB_v0.5"]["mmc_annotations"],
                          os.path.join(std, "mmc", "HMBA_Human_WB_v0.5", f"{uei}.csv"))
+        # donor is only set by the user, so it is NA when none is given
+        self.assertEqual(record["donor"], NA)
         for field in locator.CANONICAL_FIELDS:
-            self.assertNotEqual(record[field], NA, field)
+            if field != "donor":
+                self.assertNotEqual(record[field], NA, field)
 
     def test_other_dge_type(self):
         uei = "exp"
@@ -293,6 +308,25 @@ class TestLocateScRNAArtifacts(unittest.TestCase):
         self.assertEqual(record["mmc"]["refB"]["mmc_properties"], os.path.join(mmc, "refB", "properties.yaml"))
         self.assertEqual(record["mmc"]["refB"]["mmc_annotations"], NA)
 
+    def test_reference_and_reduced_gtf(self):
+        record = locator.locate_scRNA_artifacts(self.make_experiment("exp"))
+        self.assertEqual(record["reference"], os.path.join(self.reference_dir(), "GRCh38.fasta.gz"))
+        self.assertEqual(record["reduced_gtf"], os.path.join(self.reference_dir(), "GRCh38.reduced.gtf"))
+
+    def test_reference_without_reduced_gtf(self):
+        record = locator.locate_scRNA_artifacts(self.make_experiment("exp", reference_files=("GRCh38.fasta.gz",)))
+        self.assertEqual(record["reference"], os.path.join(self.reference_dir(), "GRCh38.fasta.gz"))
+        self.assertEqual(record["reduced_gtf"], NA)
+
+    def test_more_than_one_reduced_gtf(self):
+        dge = self.make_experiment("exp", reference_files=("GRCh38.fasta.gz", "a.reduced.gtf", "b.reduced.gtf"))
+        with self.assertRaises(ValueError):
+            locator.locate_scRNA_artifacts(dge)
+
+    def test_no_reference_in_alignment_properties(self):
+        record = locator.locate_scRNA_artifacts(self.make_experiment("exp", reference_files=None))
+        self.assertEqual((record["reference"], record["reduced_gtf"]), (NA, NA))
+
     def test_no_mmc(self):
         record = locator.locate_scRNA_artifacts(self.make_experiment("exp", mmc_references=()))
         self.assertEqual(record["mmc"], NA)
@@ -391,6 +425,77 @@ class TestLocateScRNAArtifacts(unittest.TestCase):
         output_dir = os.path.join(self.tmpDir, "manifests")
         self.assertEqual(locator.main(["--manifest", manifest, "--output-dir", output_dir]), 0)
         self.assertEqual(sorted(os.listdir(output_dir)), ["A.yaml", "B.yaml"])
+
+    def test_user_dge_and_donor_default_to_na(self):
+        dge = self.make_experiment("A")
+        record = locator.locate_scRNA_artifacts(dge)
+        self.assertEqual(record["user_dge"], dge)
+        self.assertEqual(record["donor"], NA)
+
+    def test_user_dge_is_the_input_dge_of_any_type(self):
+        selected = self.make_experiment("A")
+        village = os.path.join(os.path.dirname(selected), "village", VILLAGE_NAME, "A.donors.digital_expression.txt.gz")
+        self.assertEqual(locator.locate_scRNA_artifacts(village)["user_dge"], village)
+        self.assertEqual(locator.locate_scRNA_artifacts(selected)["user_dge"], selected)
+
+    def test_donor(self):
+        record = locator.locate_scRNA_artifacts(self.make_experiment("A"), donor="N1")
+        self.assertEqual(record["donor"], "N1")
+        # a donor that YAML parses as a number is still a string
+        self.assertEqual(locator.locate_scRNA_artifacts(self.make_experiment("B"), donor=12)["donor"], "12")
+
+    def test_read_dge_entries_applies_defaults(self):
+        manifest = {"dgeDefaults": {"donor": "D0", "filters": {"x": {"min": 1}}},
+                    "dges": [{"dge": "a"}, {"dge": "b", "donor": "D1"}]}
+        entries = locator.read_dge_entries(io.StringIO(yaml.safe_dump(manifest)))
+        self.assertEqual([e["donor"] for e in entries], ["D0", "D1"])
+        self.assertEqual(locator.read_dge_manifest(io.StringIO(yaml.safe_dump(manifest))), ["a", "b"])
+        entries[0]["filters"]["x"]["min"] = 2
+        self.assertEqual(entries[1]["filters"]["x"]["min"], 1)
+
+    def test_read_dge_entries_dge_in_defaults(self):
+        with self.assertRaises(ValueError):
+            locator.read_dge_entries(io.StringIO(yaml.safe_dump({"dgeDefaults": {"dge": "a"}, "dges": [{"dge": "b"}]})))
+
+    def test_locate_datasets_donors(self):
+        dges = [self.make_experiment("A"), self.make_experiment("B")]
+        result = locator.locate_datasets(dges, donors=["N1", None])
+        self.assertEqual([d["donor"] for d in result["datasets"]], ["N1", NA])
+        with self.assertRaises(ValueError):
+            locator.locate_datasets(dges, donors=["N1"])
+
+    def test_main_manifest_donors(self):
+        manifest = os.path.join(self.tmpDir, "dges.yaml")
+        with open(manifest, "w") as f:
+            yaml.safe_dump({"dgeDefaults": {"donor": "D0"},
+                            "dges": [{"dge": self.make_experiment("A")}, {"dge": self.make_experiment("B"), "donor": 7}]}, f)
+        output = os.path.join(self.tmpDir, "out.yaml")
+        self.assertEqual(locator.main(["--manifest", manifest, "--output", output]), 0)
+        self.assertEqual([d["donor"] for d in locator.load_artifact_manifest(output)], ["D0", "7"])
+
+    def test_main_dge_donor(self):
+        output = os.path.join(self.tmpDir, "out.yaml")
+        self.assertEqual(locator.main(["--dge", self.make_experiment("A"), "--donor", "N1", "--output", output]), 0)
+        self.assertEqual(locator.load_artifact_manifest(output)[0]["donor"], "N1")
+
+    def test_main_donor_requires_dge(self):
+        manifest = os.path.join(self.tmpDir, "dges.yaml")
+        with open(manifest, "w") as f:
+            yaml.safe_dump({"dges": [{"dge": self.make_experiment("A")}]}, f)
+        with self.assertRaises(SystemExit):
+            locator.main(["--manifest", manifest, "--donor", "N1"])
+
+    def test_main_duplicate_uei(self):
+        dge = self.make_experiment("A")
+        village = os.path.join(os.path.dirname(dge), "village", VILLAGE_NAME, "A.donors.digital_expression.txt.gz")
+        manifest = os.path.join(self.tmpDir, "dges.yaml")
+        with open(manifest, "w") as f:
+            yaml.safe_dump({"dges": [{"dge": dge}, {"dge": village}]}, f)
+        output = os.path.join(self.tmpDir, "out.yaml")
+        with self.assertRaises(ValueError):
+            locator.main(["--manifest", manifest, "--output", output])
+        # nothing was written to the output
+        self.assertEqual(os.path.getsize(output), 0)
 
 
 if __name__ == '__main__':

@@ -36,8 +36,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 OptionsTuple = collections.namedtuple("OptionsTuple", ["output", "input", "join", "set", "min",
                                                        "max", "include_file", "exclude_file", "include", "exclude",
-                                                       "drop", "rename", "no_header"],
-                                      defaults=(None, [], [], [], [], [], [], [], [], [], [], [], False))
+                                                       "drop", "rename", "no_header", "set_first"],
+                                      defaults=(None, [], [], [], [], [], [], [], [], [], [], [], False, False))
 
 class TestJoinAndFilterTSV(unittest.TestCase):
     def setUp(self):
@@ -101,6 +101,23 @@ class TestJoinAndFilterTSV(unittest.TestCase):
             self.assertTrue((outputDf[column] == value).all())
         self.assertSharedColumnsEqual(self.outputFile, primary, dropColumns = [column for column, _ in setTuples])
         self.assertSharedColumnsEqual(self.outputFile, secondary)
+
+    def test_set_first(self):
+        primary = os.path.join(self.testDataDir, "sample1.100.cell_metadata.txt")
+        setTuples = [("LIBRARY", "library1"), ("SUFFIX", "brary1")]
+        options = self.options._replace(input=open(primary), set=setTuples, set_first=True)
+        self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 0)
+        outputDf = pd.read_csv(self.outputFile, sep='\t')
+        primaryDf = pd.read_csv(primary, sep='\t')
+        self.assertEqual(list(outputDf.columns), ["LIBRARY", "SUFFIX"] + list(primaryDf.columns))
+        self.assertEqual(len(outputDf), len(primaryDf))
+
+    def test_set_default_is_last(self):
+        primary = os.path.join(self.testDataDir, "sample1.100.cell_metadata.txt")
+        options = self.options._replace(input=open(primary), set=[("LIBRARY", "library1")])
+        self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 0)
+        outputDf = pd.read_csv(self.outputFile, sep='\t')
+        self.assertEqual(outputDf.columns[-1], "LIBRARY")
 
     def test_min(self):
         primary = os.path.join(self.testDataDir, "sample1.100.cell_metadata.txt")

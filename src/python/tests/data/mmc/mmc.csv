@@ -1,0 +1,23 @@
+# metadata = SMRI_V11_rxn1.svm_nuclei_noCbrbInit_10X.HMBA_Human_WB_v0.5.json
+# taxonomy hierarchy = ["neighborhood", "class", "subclass", "cluster"]
+# algorithm: 'hierarchical'; codebase: http://github.com/AllenInstitute/cell_type_mapper; version: 1.6.1
+cell_id,neighborhood_label,neighborhood_name,neighborhood_bootstrapping_probability,class_label,class_name,class_bootstrapping_probability,subclass_label,subclass_name,subclass_bootstrapping_probability,cluster_label,cluster_name,cluster_alias,cluster_bootstrapping_probability
+ACACAGTCACAATGCT,Pallium-Glut,Pallium-Glut,0.9900,001 IT-ET Glut,001 IT-ET Glut,1.0000,002 L2/3-IT-CTX_Glut,002 L2/3-IT-CTX_Glut,0.8600,human:Pallium-Glut:11,human:Pallium-Glut:11,human:Pallium-Glut:11,0.6600
+GAGCTGCAGGCCTGCT,P-MY-CB-GABA,P-MY-CB-GABA,0.5000,032 MY-P sen GABA,032 MY-P sen GABA,0.8800,338 NTS-PARN_Neurod2_Gly-Gaba,338 NTS-PARN_Neurod2_Gly-Gaba,0.8200,human:MB-HB:2403,human:MB-HB:2403,human:MB-HB:2403,0.4500
+TGACCCTCACGCCAGT,Pallium-Glut,Pallium-Glut,0.7500,001 IT-ET Glut,001 IT-ET Glut,0.8600,005 L6-IT-CTX_Glut,005 L6-IT-CTX_Glut,0.3700,human:Pallium-Glut:668,human:Pallium-Glut:668,human:Pallium-Glut:668,0.2700
+CACGAATTCGTTGCCT,Pallium-Glut,Pallium-Glut,0.8700,001 IT-ET Glut,001 IT-ET Glut,0.9200,005 L6-IT-CTX_Glut,005 L6-IT-CTX_Glut,0.3200,human:Pallium-Glut:593,human:Pallium-Glut:593,human:Pallium-Glut:593,0.2100
+GTTGAACCACGGTGCT,Subpallium-GABA,Subpallium-GABA,0.5500,006 CTX-CGE GABA,006 CTX-CGE GABA,0.5000,054 Vip_Gaba,054 Vip_Gaba,0.4600,human:Subpallium-GABA:158,human:Subpallium-GABA:158,human:Subpallium-GABA:158,0.2000
+TTCGATTCACTAACCA,Pallium-Glut,Pallium-Glut,0.8100,001 IT-ET Glut,001 IT-ET Glut,0.8600,005 L6-IT-CTX_Glut,005 L6-IT-CTX_Glut,0.3100,human:Pallium-Glut:32,human:Pallium-Glut:32,human:Pallium-Glut:32,0.4800
+AACCATGTCGGAACTT,Pallium-Glut,Pallium-Glut,0.6800,001 IT-ET Glut,001 IT-ET Glut,1.0000,004 L5-IT-CTX_Glut,004 L5-IT-CTX_Glut,0.4800,human:Pallium-Glut:567,human:Pallium-Glut:567,human:Pallium-Glut:567,0.2700
+CCGATGGAGCCTCATA,Pallium-Glut,Pallium-Glut,0.2400,001 IT-ET Glut,001 IT-ET Glut,0.7700,028 CA2-FC-IG_Glut,028 CA2-FC-IG_Glut,0.2200,human:Pallium-Glut:503,human:Pallium-Glut:503,human:Pallium-Glut:503,0.7800
+ATAGGCTCACATCCCT,Pallium-Glut,Pallium-Glut,0.4300,001 IT-ET Glut,001 IT-ET Glut,0.9800,003 L4/5-IT-CTX_Glut,003 L4/5-IT-CTX_Glut,0.3100,human:Pallium-Glut:734,human:Pallium-Glut:734,human:Pallium-Glut:734,0.3800
+TGACAGTAGTATGACA,Pallium-Glut,Pallium-Glut,0.8800,001 IT-ET Glut,001 IT-ET Glut,0.8600,002 L2/3-IT-CTX_Glut,002 L2/3-IT-CTX_Glut,0.5800,human:Pallium-Glut:11,human:Pallium-Glut:11,human:Pallium-Glut:11,0.3900
+AGGTGTTTCCCTCTTT,Pallium-Glut,Pallium-Glut,0.7900,001 IT-ET Glut,001 IT-ET Glut,0.9500,003 L4/5-IT-CTX_Glut,003 L4/5-IT-CTX_Glut,0.4700,human:Pallium-Glut:678,human:Pallium-Glut:678,human:Pallium-Glut:678,0.6300
+TTTCAGTCAAGCCTGC,Pallium-Glut,Pallium-Glut,0.7700,001 IT-ET Glut,001 IT-ET Glut,0.9200,004 L5-IT-CTX_Glut,004 L5-IT-CTX_Glut,0.2900,human:Pallium-Glut:384,human:Pallium-Glut:384,human:Pallium-Glut:384,0.4100
+CTACCCACACCCTGAG,Pallium-Glut,Pallium-Glut,0.4600,001 IT-ET Glut,001 IT-ET Glut,0.8600,003 L4/5-IT-CTX_Glut,003 L4/5-IT-CTX_Glut,0.2600,human:Pallium-Glut:424,human:Pallium-Glut:424,human:Pallium-Glut:424,0.2100
+CCTTGTGCAGTAACCT,NN-IMN,NN-IMN,0.8500,037 Astro-Epen,037 Astro-Epen,0.7100,393 Astro-TE_NN,393 Astro-TE_NN,0.3400,human:NN-IMN:118,human:NN-IMN:118,human:NN-IMN:118,0.3100
+TTCTAGTCATTCCTCG,Pallium-Glut,Pallium-Glut,0.9400,001 IT-ET Glut,001 IT-ET Glut,0.9600,002 L2/3-IT-CTX_Glut,002 L2/3-IT-CTX_Glut,0.3000,human:Pallium-Glut:185,human:Pallium-Glut:185,human:Pallium-Glut:185,0.4500
+ACCATTTAGTCCTACA,Pallium-Glut,Pallium-Glut,0.8400,001 IT-ET Glut,001 IT-ET Glut,0.6700,002 L2/3-IT-CTX_Glut,002 L2/3-IT-CTX_Glut,0.4700,human:Pallium-Glut:171,human:Pallium-Glut:171,human:Pallium-Glut:171,0.2300
+GTTGCGGTCAGGTAAA,Pallium-Glut,Pallium-Glut,0.9600,001 IT-ET Glut,001 IT-ET Glut,0.7400,004 L5-IT-CTX_Glut,004 L5-IT-CTX_Glut,0.4300,human:Pallium-Glut:243,human:Pallium-Glut:243,human:Pallium-Glut:243,0.1800
+GGGACCTGTTACACTG,Pallium-Glut,Pallium-Glut,0.8800,001 IT-ET Glut,001 IT-ET Glut,0.9800,004 L5-IT-CTX_Glut,004 L5-IT-CTX_Glut,0.5600,human:Pallium-Glut:88,human:Pallium-Glut:88,human:Pallium-Glut:88,0.1500
+CCTACGTGTCTACAAC,Pallium-Glut,Pallium-Glut,0.4800,001 IT-ET Glut,001 IT-ET Glut,0.8700,029 CA3_Glut,029 CA3_Glut,0.3000,human:Pallium-Glut:704,human:Pallium-Glut:704,human:Pallium-Glut:704,0.4000
