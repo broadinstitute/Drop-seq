@@ -88,6 +88,8 @@ def parse_args(args):
                              "and join file to join on. May be specified multiple times.")
     parser.add_argument("--set", "-s", nargs=2, action='append', default=[], metavar=('COLUMN', 'VALUE'),
                         help="Set a column to a constant value.  May be specified multiple times.")
+    parser.add_argument("--set-first", action='store_true', default=False,
+                        help="Put the columns specified with --set first, in the order given, rather than last.")
     parser.add_argument("--min", nargs=2, action='append', default=[], metavar=('COLUMN', 'VALUE'),
                         help="Filter out rows where COLUMN is less than VALUE.  May be specified multiple times.")
     parser.add_argument("--max", nargs=2, action='append', default=[], metavar=('COLUMN', 'VALUE'),
@@ -163,6 +165,10 @@ def run(options):
     # rename columns
     for column, value in options.rename:
         primary.rename(columns={column: value}, inplace=True)
+    # move the columns set to constant values to the front
+    if options.set_first:
+        set_columns = list(dict.fromkeys(column for column, _ in options.set if column in primary.columns))
+        primary = primary[set_columns + [c for c in primary.columns if c not in set_columns]]
     # write the output
     primary.to_csv(options.output, sep='\t', index=False, header=not options.no_header)
     options.output.close()

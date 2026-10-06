@@ -28,7 +28,13 @@ The input is either a single DGE URL (--dge) or a YAML manifest (--manifest) of 
 
     dges:
       - dge: gs://bucket/.../experiment1.selected.digital_expression.txt.gz
-      - dge: gs://bucket/.../experiment2.selected.digital_expression.txt.gz
+      - dge: gs://bucket/.../experiment2.donors.digital_expression.txt.gz
+        donor: N1
+
+A dgeDefaults dictionary is projected onto each entry that does not set the value itself.  Only dge and donor are
+used here, and the other keys of the aggregation manifest (filters, joins, ...) are ignored.  The DGE of each entry is
+recorded as user_dge, and its donor as donor (NA if not set).  The command line run fails if two DGEs are from the same
+experiment, i.e. have the same uei.
 
 Ancestor stage directories (root, alignment, cbrb, cell_selection) are derived from the DGE path.  Optional
 descendants of standard_analysis (mmc, village) are discovered by listing.  The output is a YAML document with a
@@ -47,6 +53,7 @@ MMC outputs are keyed by MMC model (the mmc/<model> directory name), with the fi
 """
 
 import argparse
+import copy
 import os
 import posixpath
 import re
@@ -62,6 +69,7 @@ PROPERTIES_FILE = "properties.yaml"
 DGE_SUFFIX = ".digital_expression.txt.gz"
 DGE_SUMMARY_SUFFIX = ".digital_expression_summary.txt"
 CELL_METADATA_TEMPLATE = "{uei}.cmd.tsv"
+REDUCED_GTF_SUFFIX = ".reduced.gtf"
 PIPELINE_INFO_DIR = "pipeline_info"
 PIPELINE_TRACE_PATTERN = r"^execution_trace_.*\.txt$"
 
@@ -93,10 +101,11 @@ def dge_summary_field(dge_type):
 # Every dataset record contains these fields, in this order.  A non-standard input DGE type adds its pair after
 # dge_summary_gmg.
 CANONICAL_FIELDS = [
-    # UEI / root
-    "uei", "root_properties", "corrected_barcode_metrics", "pipeline_trace",
+    # UEI / the DGE and donor given by the user / root
+    "uei", "user_dge", "donor", "root_properties", "corrected_barcode_metrics", "pipeline_trace",
     # Alignment
-    "alignment_dir", "alignment_properties", "dge_unfiltered", "dge_summary_unfiltered", "frac_intronic_exonic",
+    "alignment_dir", "alignment_properties", "reference", "reduced_gtf", "dge_unfiltered", "dge_summary_unfiltered",
+    "frac_intronic_exonic",
     "read_quality_metrics", "reads_per_cell", "cell_features", "chimeric_metrics", "alignment_pdf",
     # CBRB
     "cbrb_dir", "cbrb_properties", "cbrb_cell_features", "cbrb_report", "cbrb_tearsheet",
@@ -210,17 +219,46 @@ def derive_stage_dirs(dge_url):
     return stage_dirs
 
 
+def locate_reference(alignment_properties, store=None):
+    """
+    Find the reference of an alignment, and the reduced GTF in the reference directory.
+
+    :param alignment_properties: the alignment properties.yaml, or NA.
+    :return: (reference, reduced_gtf), where reference is the 'reference' of the alignment properties, and
+    reduced_gtf is the one *.reduced.gtf file in its directory.  Each is NA if it cannot be found.
+    :raise ValueError: if there is more than one reduced GTF.
+    """
+    if alignment_properties == NA:
+        return NA, NA
+    if store is None:
+        store = default_store(alignment_properties)
+    reference = (yaml.safe_load(store.read_text(alignment_properties)) or {}).get("reference")
+    if not reference:
+        logger.warning(f"No reference in {alignment_properties}")
+        return NA, NA
+    reference = str(reference)
+    reference_dir = _parent(reference)
+    gtfs = sorted(f for f in default_store(reference_dir).list_dir(reference_dir)[0] if f.endswith(REDUCED_GTF_SUFFIX))
+    if len(gtfs) > 1:
+        raise ValueError(f"Expected one {REDUCED_GTF_SUFFIX} file in {reference_dir}, found {gtfs}")
+    if not gtfs:
+        logger.warning(f"No {REDUCED_GTF_SUFFIX} file in {reference_dir}")
+        return reference, NA
+    return reference, posixpath.join(reference_dir, gtfs[0])
+
+
 def _resolve(stage_dir, listing, filename):
     return posixpath.join(stage_dir, filename) if filename in listing else NA
 
 
-def locate_scRNA_artifacts(dge_url, store=None):
+def locate_scRNA_artifacts(dge_url, store=None, donor=None):
     """
     Resolve the artifacts related to one DGE in a standard_analysis or village directory.
 
     :param dge_url: the DGE, named <uei>.<type>.digital_expression.txt.gz.  It is returned unchanged as
-    dge_<type>.
+    dge_<type>, and as user_dge.
     :param store: GcsStore or LocalStore.  Chosen from the URL scheme if not given.
+    :param donor: the donor of a library that is not a village, returned as donor.  NA if not given.
     :return: dataset dictionary with every field in CANONICAL_FIELDS, plus dge_<type> and dge_summary_<type> for a
     non-standard type (inserted after dge_summary_gmg).  Missing artifacts are NA.
     """
@@ -265,9 +303,12 @@ def locate_scRNA_artifacts(dge_url, store=None):
         fields[insert_at:insert_at] = [dge_field(dge_type), dge_summary_field(dge_type)]
     record = {field: NA for field in fields}
     record["uei"] = uei
+    record["user_dge"] = dge_url
+    record["donor"] = NA if donor is None else str(donor)
     for field, stage, template in STAGE_FILES:
         if stage in stage_dirs:
             record[field] = _resolve(stage_dirs[stage], listings[stage][0], template.format(uei=uei))
+    record["reference"], record["reduced_gtf"] = locate_reference(record["alignment_properties"], store)
     record["alignment_dir"] = stage_dirs["alignment"]
     record["cbrb_dir"] = stage_dirs["cbrb"]
     record["standard_analysis_dir"] = stage_dirs["std_analysis"]
@@ -306,32 +347,57 @@ def locate_scRNA_artifacts(dge_url, store=None):
     return record
 
 
+def read_dge_entries(file):
+    """
+    :param file: open file containing a YAML document with a top-level 'dges' list of {dge: URL} entries, and
+    optionally a dgeDefaults dictionary, which is projected onto each entry that does not set the value itself.
+    :return: list of entry dictionaries, in manifest order.
+    """
+    manifest = yaml.safe_load(file)
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("dges"), list):
+        raise ValueError("DGE manifest must have a top-level 'dges' list")
+    defaults = manifest.get("dgeDefaults") or {}
+    if not isinstance(defaults, dict) or "dge" in defaults:
+        raise ValueError("dgeDefaults must be a dictionary without 'dge'")
+    entries = []
+    for entry in manifest["dges"]:
+        if not isinstance(entry, dict) or "dge" not in entry:
+            raise ValueError(f"DGE manifest entry has no 'dge' key: {entry}")
+        entries.append({**copy.deepcopy(defaults), **entry})
+    return entries
+
+
 def read_dge_manifest(file):
     """
     :param file: open file containing a YAML document with a top-level 'dges' list of {dge: URL} entries.
     :return: list of DGE URLs, in manifest order.
     """
-    manifest = yaml.safe_load(file)
-    if not isinstance(manifest, dict) or not isinstance(manifest.get("dges"), list):
-        raise ValueError("DGE manifest must have a top-level 'dges' list")
-    dges = []
-    for entry in manifest["dges"]:
-        if not isinstance(entry, dict) or "dge" not in entry:
-            raise ValueError(f"DGE manifest entry has no 'dge' key: {entry}")
-        dges.append(entry["dge"])
-    return dges
+    return [entry["dge"] for entry in read_dge_entries(file)]
 
 
-def locate_datasets(dge_urls, store=None):
+def locate_datasets(dge_urls, store=None, donors=None):
     """
+    :param donors: donor of each DGE, or None for no donors.  An element may be None for no donor.
     :return: {'datasets': [...]} with one dataset dictionary per DGE, in input order.
     """
+    if donors is not None and len(donors) != len(dge_urls):
+        raise ValueError(f"{len(donors)} donors for {len(dge_urls)} DGEs")
     datasets = []
-    for dge_url in dge_urls:
+    for i, dge_url in enumerate(dge_urls):
         logger.info(f"Locating artifacts for {dge_url}")
         dge_store = store if store is not None else default_store(dge_url)
-        datasets.append(locate_scRNA_artifacts(dge_url, dge_store))
+        datasets.append(locate_scRNA_artifacts(dge_url, dge_store, None if donors is None else donors[i]))
     return {"datasets": datasets}
+
+
+def check_unique_ueis(result):
+    """
+    :raise ValueError: if two datasets have the same uei, i.e. two DGEs are from the same experiment.
+    """
+    ueis = [dataset["uei"] for dataset in result["datasets"]]
+    duplicates = sorted({uei for uei in ueis if ueis.count(uei) > 1})
+    if duplicates:
+        raise ValueError(f"More than one DGE for the same experiment; duplicate uei values: {duplicates}")
 
 
 def _dump_yaml(result, out):
@@ -381,6 +447,7 @@ def parse_args(args):
     add_log_argument(parser)
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument("--dge", help="Standard-analysis DGE URL.")
+    parser.add_argument("--donor", help="Donor of the --dge DGE, for a library that is not a village.")
     input_group.add_argument("--manifest", type=argparse.FileType('r'),
                              help="YAML manifest with a top-level 'dges' list of 'dge' entries.")
     output_group = parser.add_mutually_exclusive_group()
@@ -388,7 +455,10 @@ def parse_args(args):
                               help="Write all datasets to this YAML file.  Default: stdout")
     output_group.add_argument("--output-dir",
                               help="Write one <uei>.yaml file per dataset to this directory.")
-    return parser.parse_args(args)
+    options = parser.parse_args(args)
+    if options.donor is not None and options.dge is None:
+        parser.error("--donor can only be used with --dge; use a donor entry in the manifest")
+    return options
 
 
 def main(args=None):
@@ -398,11 +468,12 @@ def main(args=None):
 def run(options):
     logger.setLevel(dctLogLevel[options.log_level])
     if options.manifest is not None:
-        dge_urls = read_dge_manifest(options.manifest)
+        entries = read_dge_entries(options.manifest)
         options.manifest.close()
     else:
-        dge_urls = [options.dge]
-    result = locate_datasets(dge_urls)
+        entries = [{"dge": options.dge, "donor": options.donor}]
+    result = locate_datasets([entry["dge"] for entry in entries], donors=[entry.get("donor") for entry in entries])
+    check_unique_ueis(result)
     if options.output_dir is not None:
         write_artifact_manifest_dir(result, options.output_dir)
     else:
