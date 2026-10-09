@@ -38,4 +38,8 @@ RUN R -e "install.packages(c('argparser','qvalue'), repos='http://cran.us.r-proj
 
 COPY src/R/PEER/run_PEER.R /scripts/run_PEER.R
 
+ARG SRCVERSION=unknown
+
+RUN printf '%s\n' "$SRCVERSION" > /etc/dropseq-version
+
 ENTRYPOINT ["Rscript", "/scripts/run_PEER.R"]

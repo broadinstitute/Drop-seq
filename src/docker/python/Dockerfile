@@ -39,3 +39,5 @@ FROM common AS runtime
 ARG BASEDIR=/usr/local/dropseq
 ENV PATH=$BASEDIR:$PATH
 COPY --from=build $BASEDIR $BASEDIR
+ARG SRCVERSION=unknown
+RUN printf '%s\n' "$SRCVERSION" > /etc/dropseq-version
