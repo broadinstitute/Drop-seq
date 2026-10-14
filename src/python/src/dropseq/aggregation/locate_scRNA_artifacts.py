@@ -465,6 +465,23 @@ def main(args=None):
     return run(parse_args(args))
 
 
+def find_missing_dges(dge_urls, store=None):
+    """
+    Pre-flight check that every DGE exists.  Each distinct parent directory is listed once.
+
+    :return: the DGE URLs that do not exist, in input order.
+    """
+    listings = {}
+    missing = []
+    for dge_url in dge_urls:
+        dge_dir = _parent(dge_url)
+        if dge_dir not in listings:
+            listings[dge_dir] = (store if store is not None else default_store(dge_dir)).list_dir(dge_dir)[0]
+        if _basename(dge_url) not in listings[dge_dir]:
+            missing.append(dge_url)
+    return missing
+
+
 def run(options):
     logger.setLevel(dctLogLevel[options.log_level])
     if options.manifest is not None:
@@ -472,6 +489,10 @@ def run(options):
         options.manifest.close()
     else:
         entries = [{"dge": options.dge, "donor": options.donor}]
+    missing = find_missing_dges([entry["dge"] for entry in entries])
+    if missing:
+        logger.error(f"{len(missing)} DGE file(s) not found:\n" + "\n".join(missing))
+        return 1
     result = locate_datasets([entry["dge"] for entry in entries], donors=[entry.get("donor") for entry in entries])
     check_unique_ueis(result)
     if options.output_dir is not None:
