@@ -35,6 +35,11 @@ In addition, there may be zero or more (column name, column value) pairs that ar
 Each resulting row is passed through zero more filters, which can apply a min or a max threshold to a column,
 have a list of values to match against, or have a list of values to exclude, which may be specified on the command
 line or in a file.
+
+Any of the options can also be read from a file with --args-file, which has one argument per line, taken exactly as
+written (no quoting, no trimming; a blank line is an empty argument).  The arguments of the file replace the
+--args-file option where it appears, so the result is the same as typing them there, and the order of repeated options
+is kept.  --args-file may be given more than once, but a file cannot name another --args-file.
 """
 
 import argparse
@@ -75,7 +80,51 @@ def try_convert_string(s):
 def load_values_file(file):
     return pd.read_csv(file, sep='\t', header=None).iloc[:,0]
 
-def parse_args(args):
+ARGS_FILE_OPTION = "--args-file"
+
+
+def read_args_file(parser, file_name):
+    """
+    :return: list of the arguments in the file, one per line, verbatim
+    """
+    try:
+        with open(file_name, newline='') as f:
+            text = f.read()
+    except OSError as e:
+        parser.error(f"Cannot read {ARGS_FILE_OPTION} {file_name}: {e}")
+    lines = text.split('\n')
+    if lines[-1] == '':
+        # the newline that ends the last line (or an empty file)
+        lines.pop()
+    for line in lines:
+        if line == ARGS_FILE_OPTION or line.startswith(ARGS_FILE_OPTION + '='):
+            parser.error(f"{ARGS_FILE_OPTION} {file_name} cannot contain {ARGS_FILE_OPTION}")
+    return lines
+
+
+def expand_args_files(parser, args):
+    """
+    :return: args with each --args-file FILE (or --args-file=FILE) replaced by the arguments in the file
+    """
+    expanded = []
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == ARGS_FILE_OPTION:
+            if i + 1 >= len(args):
+                parser.error(f"argument {ARGS_FILE_OPTION}: expected one argument")
+            expanded += read_args_file(parser, args[i + 1])
+            i += 2
+        elif arg.startswith(ARGS_FILE_OPTION + '='):
+            expanded += read_args_file(parser, arg[len(ARGS_FILE_OPTION) + 1:])
+            i += 1
+        else:
+            expanded.append(arg)
+            i += 1
+    return expanded
+
+
+def parse_args(args=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     add_log_argument(parser)
     parser.add_argument("--input", "-i", type=argparse.FileType('r'),
@@ -108,7 +157,16 @@ def parse_args(args):
                         help="Rename column.  May be specified multiple times.")
     parser.add_argument("--no-header", action='store_true', default=False,
                         help="Do not write a header row.")
-    return parser.parse_args(args)
+    # Expanded before parsing, so this only documents the option (and catches an abbreviation, see below).
+    parser.add_argument(ARGS_FILE_OPTION, action='append', default=[], metavar='FILE',
+                        help="File of arguments, one per line, taken verbatim and used in place of this option.  "
+                             "May be specified multiple times.  The file cannot contain --args-file.")
+    options = parser.parse_args(expand_args_files(parser, sys.argv[1:] if args is None else args))
+    if options.args_file:
+        # only reachable through an abbreviation such as --args-f, which would otherwise be silently ignored
+        parser.error(f"write {ARGS_FILE_OPTION} in full")
+    del options.args_file
+    return options
 
 def main(args=None):
     run(parse_args(args))
