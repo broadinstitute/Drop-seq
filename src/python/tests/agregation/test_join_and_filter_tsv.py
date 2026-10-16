@@ -211,6 +211,88 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         self.assertTrue(newName in outputDf.columns)
 
 
+    # --args-file: one argument per line, expanded in place as if typed on the command line
+
+    def writeArgsFile(self, lines, name="args.txt"):
+        path = os.path.join(self.tmpDir, name)
+        with open(path, "w") as out:
+            out.writelines(line + "\n" for line in lines)
+        return path
+
+    def test_args_file_every_option_type(self):
+        secondary = os.path.join(self.testDataDir, "sample1.100.scPred.txt")
+        includeFile = os.path.join(self.testDataDir, "donor_subset.txt")
+        arguments = ["--join", secondary, "CELL_BARCODE", "CELL_BARCODE",
+                     "--set", "LIBRARY", "library1",
+                     "--min", "max.prob", "0.5",
+                     "--max", "pct_mt", "0.1",
+                     "--include", "DONOR", "donor1", "donor2",
+                     "--exclude", "predClass", "gabaergic",
+                     "--include-file", "DONOR", includeFile,
+                     "--exclude-file", "DONOR", includeFile]
+        fromFile = dropseq.aggregation.join_and_filter_tsv.parse_args(
+            ["--args-file", self.writeArgsFile(arguments)])
+        onCommandLine = dropseq.aggregation.join_and_filter_tsv.parse_args(arguments)
+        self.assertEqual(vars(fromFile), vars(onCommandLine))
+        # guard against comparing two empty parses
+        self.assertEqual(len(fromFile.join), 1)
+        self.assertEqual(fromFile.include, [["DONOR", "donor1", "donor2"]])
+        self.assertEqual(fromFile.exclude_file, [["DONOR", includeFile]])
+
+    def test_args_file_keeps_order_with_command_line(self):
+        argsFile = self.writeArgsFile(["--set", "donor", "N1", "--join", "b.tsv", "x", "y"])
+        options = dropseq.aggregation.join_and_filter_tsv.parse_args(
+            ["--set", "PREFIX", "lib", "--join", "a.tsv", "x", "y", "--args-file", argsFile,
+             "--set", "LAST", "z", "--join", "c.tsv", "x", "y"])
+        self.assertEqual(options.set, [["PREFIX", "lib"], ["donor", "N1"], ["LAST", "z"]])
+        self.assertEqual(options.join, [["a.tsv", "x", "y"], ["b.tsv", "x", "y"], ["c.tsv", "x", "y"]])
+
+    def test_args_file_values_are_verbatim(self):
+        values = ["a b", "x'y", 'say "hi"', "$HOME", "@foo", "with\ttab", "  padded  "]
+        argsFile = self.writeArgsFile(["--include", "predClass"] + values)
+        options = dropseq.aggregation.join_and_filter_tsv.parse_args(["--args-file", argsFile])
+        self.assertEqual(options.include, [["predClass"] + values])
+
+    def test_args_file_empty(self):
+        argsFile = self.writeArgsFile([])
+        self.assertEqual(os.path.getsize(argsFile), 0)
+        options = dropseq.aggregation.join_and_filter_tsv.parse_args(
+            ["--set", "PREFIX", "lib", "--args-file", argsFile])
+        self.assertEqual(options.set, [["PREFIX", "lib"]])
+        self.assertEqual(options.join, [])
+        self.assertEqual(options.min, [])
+
+    def test_args_file_gives_same_output_as_command_line(self):
+        primary = os.path.join(self.testDataDir, "sample1.100.cell_metadata.txt")
+        includeFile = os.path.join(self.testDataDir, "donor_subset.txt")
+        arguments = ["--set-first", "--set", "LIBRARY", "library1", "--set", "donor", "N1",
+                     "--max", "pct_mt", "0.001", "--exclude", "predClass", "gabaergic",
+                     "--include-file", "DONOR", includeFile]
+        outputs = {}
+        for name, extra in (("file", ["--args-file", self.writeArgsFile(arguments)]), ("command_line", arguments)):
+            output = os.path.join(self.tmpDir, name + ".tsv")
+            options = dropseq.aggregation.join_and_filter_tsv.parse_args(
+                ["--input", primary, "--output", output] + extra)
+            self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 0)
+            outputs[name] = pd.read_csv(output, sep='\t')
+        self.assertGreater(len(outputs["file"]), 0)
+        self.assertLess(len(outputs["file"]), len(pd.read_csv(primary, sep='\t')))
+        self.assertEqual(list(outputs["file"].columns[:2]), ["LIBRARY", "donor"])
+        pandas.testing.assert_frame_equal(outputs["file"], outputs["command_line"])
+
+    def test_args_file_missing(self):
+        with self.assertRaises(SystemExit) as cm:
+            dropseq.aggregation.join_and_filter_tsv.parse_args(
+                ["--args-file", os.path.join(self.tmpDir, "no_such_file.txt")])
+        self.assertNotEqual(cm.exception.code, 0)
+
+    def test_args_file_nested_is_rejected(self):
+        inner = self.writeArgsFile(["--set", "a", "b"], "inner.txt")
+        outer = self.writeArgsFile(["--args-file", inner], "outer.txt")
+        with self.assertRaises(SystemExit) as cm:
+            dropseq.aggregation.join_and_filter_tsv.parse_args(["--args-file", outer])
+        self.assertNotEqual(cm.exception.code, 0)
+
     def assertSharedColumnsEqual(self, wideFile, narrowFile, wideRows = None, narrowRows = None, dropColumns = None):
         wideDf = pd.read_csv(wideFile, sep='\t', index_col=False)
         if wideRows is not None:
