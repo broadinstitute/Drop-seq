@@ -28,9 +28,16 @@ cells of the aggregated matrix, so that the h5ad files of several libraries can 
 the gene symbols of the DGE, and is indexed by gene ID (index name gene_ids) if there is a reduced GTF, otherwise by
 gene symbol.  This is the layout of the h5ad files of the CAP freeze.  obs and var are sanitized with
 aggregate_filter_adata.sanitize_dataframe, so that missing values are encoded in a way that h5ad can store.
+
+Columns that are not categories are written as plain string arrays, which every h5ad reader understands, not as
+the nullable string arrays (a group with a mask and values) that anndata 0.12 and later write for pandas strings.
+
+--uppercase-column renames obs columns to upper case, for readers that expect names such as CELL_BARCODE.  The index is
+not changed.
 """
 
 import argparse
+import contextlib
 import gzip
 import sys
 
@@ -113,9 +120,34 @@ def make_var(gene_names, reduced_gtf=None):
     return var
 
 
-def build_library_h5ad(dge, cell_metadata, reduced_gtf=None, prefix_column="PREFIX", barcode_column="cell_barcode"):
+def uppercase_columns(obs, columns):
+    """
+    :return: obs with each of the columns renamed to its upper case name
+    """
+    for column in columns:
+        if column not in obs.columns:
+            raise ValueError(f"No column {column} in the cell metadata to write in upper case")
+        if column.upper() != column and column.upper() in obs.columns:
+            raise ValueError(f"Cannot write {column} as {column.upper()}: the cell metadata has that column too")
+    return obs.rename(columns={column: column.upper() for column in columns})
+
+
+def write_h5ad(adata, path):
+    """
+    Write with gzip compression, and strings as plain string arrays.  anndata 0.12 and later write the strings of pandas
+    string columns as nullable string arrays unless that is turned off.  The strings of obs and var have no missing
+    values after sanitize_dataframe.
+    """
+    can_turn_off = hasattr(ad.settings, "allow_write_nullable_strings")
+    with ad.settings.override(allow_write_nullable_strings=False) if can_turn_off else contextlib.nullcontext():
+        adata.write_h5ad(path, compression="gzip")
+
+
+def build_library_h5ad(dge, cell_metadata, reduced_gtf=None, prefix_column="PREFIX", barcode_column="cell_barcode",
+                       uppercase=()):
     """
     :param cell_metadata: DataFrame with one row per cell
+    :param uppercase: names of obs columns to write in upper case
     :return: AnnData with obs from cell_metadata, indexed by <prefix>_<barcode>, and with the genes of the DGE
     """
     obs = cell_metadata.copy()
@@ -124,6 +156,7 @@ def build_library_h5ad(dge, cell_metadata, reduced_gtf=None, prefix_column="PREF
     obs.index = pd.Index((obs[prefix_column] + "_" + obs[barcode_column]).to_numpy())
     genes, matrix = read_dge(dge, obs[barcode_column].tolist())
     var = make_var(genes, reduced_gtf)
+    obs = uppercase_columns(obs, uppercase)
     return ad.AnnData(X=matrix, obs=sanitize_dataframe(obs), var=sanitize_dataframe(var))
 
 
@@ -140,6 +173,9 @@ def parse_args(args):
     parser.add_argument("--output", "-o", required=True, help="Output h5ad file.")
     parser.add_argument("--prefix-column", default="PREFIX", help="Cell metadata column with the library name.")
     parser.add_argument("--barcode-column", default="cell_barcode", help="Cell metadata column with the cell barcode.")
+    parser.add_argument("--uppercase-column", action="append", default=[], metavar="COLUMN",
+                        help="Write this cell metadata column in upper case in obs, for example cell_barcode as "
+                             "CELL_BARCODE.  May be repeated.  The obs index is not changed.")
     return parser.parse_args(args)
 
 
@@ -151,9 +187,10 @@ def main(args=None):
     if missing:
         logger.error(f"No {missing} column(s) in {options.cell_metadata}")
         return 1
-    adata = build_library_h5ad(options.dge, cell_metadata, options.reduced_gtf, options.prefix_column, options.barcode_column)
+    adata = build_library_h5ad(options.dge, cell_metadata, options.reduced_gtf, options.prefix_column,
+                               options.barcode_column, options.uppercase_column)
     logger.info(f"Writing {adata.n_obs} cells x {adata.n_vars} genes to {options.output}")
-    adata.write_h5ad(options.output, compression="gzip")
+    write_h5ad(adata, options.output)
     return 0
 
 
