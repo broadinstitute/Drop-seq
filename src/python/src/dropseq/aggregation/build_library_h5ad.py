@@ -62,7 +62,6 @@ def read_dge(path, barcodes):
     :return: genes (list of gene names), CSR matrix of cells (the barcodes) x genes
     """
     genes = []
-    rows, cols, values = [], [], []
     with open_text(path) as dge:
         line = dge.readline()
         while line.startswith("#"):
@@ -73,17 +72,21 @@ def read_dge(path, barcodes):
         if missing:
             raise ValueError(f"{len(missing)} of the {len(barcodes)} cells of the cell metadata are not in {path}, "
                              f"for example {missing[:3]}")
-        keep = np.array([position[b] for b in barcodes]) + 1  # +1 for the gene column
+        keep = np.array([position[b] for b in barcodes])
+        # Per gene, only the non-zero entries are kept, in numpy arrays: lists of Python numbers would need several
+        # times the memory of the matrix.
+        rows, cols, values = [], [], []
         for line in dge:
-            fields = line.rstrip("\n").split("\t")
-            counts = np.array(fields, dtype=object)[keep].astype(float)
+            gene, _, counts = line.rstrip("\n").partition("\t")
+            counts = np.fromstring(counts, dtype=np.float64, sep="\t")[keep]
             nonzero = np.flatnonzero(counts)
-            rows.extend([len(genes)] * len(nonzero))
-            cols.extend(nonzero)
-            values.extend(counts[nonzero])
-            genes.append(fields[0])
+            rows.append(np.full(len(nonzero), len(genes), dtype=np.int32))
+            cols.append(nonzero.astype(np.int32))
+            values.append(counts[nonzero])
+            genes.append(gene)
     # genes x cells, then transposed to the cells x genes of h5ad
-    matrix = sp.coo_matrix((values, (rows, cols)), shape=(len(genes), len(barcodes))).T.tocsr()
+    matrix = sp.coo_matrix((np.concatenate(values) if values else [], (np.concatenate(rows) if rows else [],
+                            np.concatenate(cols) if cols else [])), shape=(len(genes), len(barcodes))).T.tocsr()
     if np.all(np.equal(np.mod(matrix.data, 1), 0)):
         matrix = matrix.astype(np.uint32)
     return genes, matrix
