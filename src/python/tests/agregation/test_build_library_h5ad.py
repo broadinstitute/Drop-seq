@@ -25,6 +25,7 @@ import tempfile
 import unittest
 
 import anndata as ad
+import h5py
 import pandas as pd
 
 from dropseq.aggregation import build_library_h5ad as bl
@@ -95,6 +96,41 @@ class TestBuildLibraryH5ad(unittest.TestCase):
         metadata = pd.DataFrame({"PREFIX": ["L1"], "cell_barcode": ["AAAA"]})
         with self.assertRaisesRegex(ValueError, "not in"):
             bl.build_library_h5ad(self.dge, metadata, gtf)
+
+    def build(self, *extra):
+        out = os.path.join(self.tmpDir, "out.h5ad")
+        self.assertEqual(bl.main(["--dge", self.dge, "--cell-metadata", self.metadata, "--reduced-gtf",
+                                  self.write("ref.gtf", GTF), "--output", out, *extra]), 0)
+        return out
+
+    def test_uppercase_column(self):
+        adata = ad.read_h5ad(self.build("--uppercase-column", "cell_barcode"))
+        self.assertIn("CELL_BARCODE", adata.obs.columns)
+        self.assertNotIn("cell_barcode", adata.obs.columns)
+        self.assertEqual(list(adata.obs["CELL_BARCODE"].astype(str)), ["GGGG", "AAAA"])
+        # only the named column is renamed, and the cell names are not changed
+        self.assertIn("PREFIX", adata.obs.columns)
+        self.assertEqual(list(adata.obs_names), ["L1_GGGG", "L1_AAAA"])
+
+    def test_uppercase_column_not_in_cell_metadata(self):
+        with self.assertRaisesRegex(ValueError, "No column nope"):
+            bl.build_library_h5ad(self.dge, pd.read_csv(self.metadata, sep="\t"), None, uppercase=["nope"])
+
+    def test_uppercase_column_already_exists(self):
+        metadata = pd.read_csv(self.metadata, sep="\t")
+        metadata["CELL_BARCODE"] = "x"
+        with self.assertRaisesRegex(ValueError, "has that column too"):
+            bl.build_library_h5ad(self.dge, metadata, None, uppercase=["cell_barcode"])
+
+    def test_strings_are_plain_string_arrays(self):
+        # the cell names, the barcodes and the genes are datasets of strings, not nullable string groups (a mask and values)
+        with h5py.File(self.build("--uppercase-column", "cell_barcode")) as f:
+            for path in ["obs/_index", "obs/CELL_BARCODE", "var/gene_ids", "var/gene_symbol"]:
+                self.assertIsInstance(f[path], h5py.Dataset, path)
+                self.assertEqual(f[path].attrs["encoding-type"], "string-array", path)
+            self.assertEqual(f["X"].attrs["encoding-type"], "csr_matrix")
+            # categories are unaffected
+            self.assertEqual(f["obs/PREFIX"].attrs["encoding-type"], "categorical")
 
     def test_cell_not_in_dge(self):
         metadata = pd.DataFrame({"PREFIX": ["L1"], "cell_barcode": ["TTTT"]})
