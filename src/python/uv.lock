@@ -328,6 +328,7 @@ dependencies = [
     { name = "anndata" },
     { name = "google-auth" },
     { name = "google-cloud-storage" },
+    { name = "matplotlib" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "psutil" },
@@ -337,6 +338,7 @@ dependencies = [
     { name = "requests" },
     { name = "scanpy" },
     { name = "scipy" },
+    { name = "seaborn" },
     { name = "tables" },
     { name = "urllib3" },
 ]
@@ -351,6 +353,7 @@ requires-dist = [
     { name = "anndata" },
     { name = "google-auth" },
     { name = "google-cloud-storage" },
+    { name = "matplotlib", specifier = ">=3.11.2" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "psutil" },
@@ -360,6 +363,7 @@ requires-dist = [
     { name = "requests" },
     { name = "scanpy", specifier = ">=1.11.2" },
     { name = "scipy" },
+    { name = "seaborn", specifier = ">=0.13.2" },
     { name = "tables" },
     { name = "urllib3" },
 ]
