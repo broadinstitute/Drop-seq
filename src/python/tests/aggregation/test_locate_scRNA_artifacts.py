@@ -62,6 +62,9 @@ VILLAGE_FILES = ["properties.yaml", "{uei}.cmd.tsv", "{uei}.dropulation_summary_
                  "{uei}.donors.metacells.txt", "{uei}.dropulation_report.pdf", "{uei}.dropulation_tearsheet.pdf"]
 
 
+DONOR_FILE = "gs://bucket/experiment.donors.txt"
+
+
 class TestLocateScRNAArtifacts(unittest.TestCase):
     def setUp(self):
         self.tmpDir = tempfile.mkdtemp(".tmp", "locate_scRNA_artifacts.")
@@ -106,6 +109,8 @@ class TestLocateScRNAArtifacts(unittest.TestCase):
             self.touch(os.path.join(std, "mmc", reference), MMC_FILES, uei)
         for village in villages:
             self.touch(os.path.join(std, "village", village), VILLAGE_FILES, uei)
+            with open(os.path.join(std, "village", village, "properties.yaml"), "w") as f:
+                yaml.safe_dump({"donorFile": DONOR_FILE}, f)
         return os.path.join(std, f"{uei}.selected.digital_expression.txt.gz")
 
     def test_derive_stage_dirs(self):
@@ -126,6 +131,25 @@ class TestLocateScRNAArtifacts(unittest.TestCase):
         self.assertEqual(stage_dirs["std_analysis"], f"{root}/{STD_REL}")
         self.assertEqual(stage_dirs["village"], village)
         self.assertEqual(stage_dirs["root"], root)
+
+    def write_village_properties(self, dge, properties):
+        village = os.path.join(os.path.dirname(dge), "village", VILLAGE_NAME)
+        with open(os.path.join(village, "properties.yaml"), "w") as f:
+            yaml.safe_dump(properties, f)
+
+    def test_donor_file(self):
+        dge = self.make_experiment("exp")
+        self.write_village_properties(dge, {"donorFile": "gs://bucket/donors.txt", "vcf": "gs://bucket/all.vcf.gz"})
+        record = locator.locate_scRNA_artifacts(dge)
+        self.assertEqual(record["donor_file"], "gs://bucket/donors.txt")
+
+    def test_donor_file_not_recorded_is_na(self):
+        dge = self.make_experiment("exp")
+        self.write_village_properties(dge, {"vcf": "gs://bucket/all.vcf.gz"})
+        self.assertEqual(locator.locate_scRNA_artifacts(dge)["donor_file"], locator.NA)
+        # an empty properties file is the same
+        open(os.path.join(os.path.dirname(dge), "village", VILLAGE_NAME, "properties.yaml"), "w").close()
+        self.assertEqual(locator.locate_scRNA_artifacts(dge)["donor_file"], locator.NA)
 
     def test_village_dge(self):
         uei = "SMRI_V11_rxn1"
@@ -186,6 +210,7 @@ class TestLocateScRNAArtifacts(unittest.TestCase):
         # the most recent of the two traces
         self.assertEqual(record["pipeline_trace"],
                          os.path.join(root, "pipeline_info", "execution_trace_2026-10-01_17-08-40.txt"))
+        self.assertEqual(record["donor_file"], DONOR_FILE)
         self.assertEqual(record["dge_donors"], os.path.join(village, f"{uei}.donors.digital_expression.txt.gz"))
         self.assertEqual(record["dge_summary_donors"],
                          os.path.join(village, f"{uei}.donors.digital_expression_summary.txt"))

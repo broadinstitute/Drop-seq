@@ -49,6 +49,9 @@ cell_metadata is the village cell metadata if there is one, else the standard_an
 selected_cell_metadata is always the standard_analysis cell metadata, which covers all selected cells.
 pipeline_trace is the most recent Nextflow execution trace in <root>/pipeline_info.
 
+donor_file is the donorFile recorded in the village properties.yaml, i.e. the list of donors expected in the
+experiment, or NA if there is no village or it records none.
+
 MMC outputs are keyed by MMC model (the mmc/<model> directory name), with the files in that directory nested below.
 """
 
@@ -118,7 +121,7 @@ CANONICAL_FIELDS = [
     # MMC: {model: {MMC_FIELDS}}, or NA
     "mmc",
     # Village / donor assignment
-    "village_properties", "dge_donors", "dge_summary_donors", "dropulation_summary_stats", "donor_cell_map",
+    "village_properties", "donor_file", "dge_donors", "dge_summary_donors", "dropulation_summary_stats", "donor_cell_map",
     "donor_assignments", "meta_cell", "dropulation_report", "dropulation_tearsheet",
 ]
 
@@ -308,6 +311,9 @@ def locate_scRNA_artifacts(dge_url, store=None, donor=None):
     for field, stage, template in STAGE_FILES:
         if stage in stage_dirs:
             record[field] = _resolve(stage_dirs[stage], listings[stage][0], template.format(uei=uei))
+    if record["village_properties"] != NA:
+        village_properties = yaml.safe_load(store.read_text(record["village_properties"])) or {}
+        record["donor_file"] = village_properties.get("donorFile") or NA
     record["reference"], record["reduced_gtf"] = locate_reference(record["alignment_properties"], store)
     record["alignment_dir"] = stage_dirs["alignment"]
     record["cbrb_dir"] = stage_dirs["cbrb"]

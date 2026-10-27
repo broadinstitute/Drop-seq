@@ -18,7 +18,9 @@ dependencies = [
     "pyarrow",
     "anndata",
     "tables",
-    "psutil"
+    "psutil",
+    "matplotlib>=3.11.2",
+    "seaborn>=0.13.2",
 ]
 authors = [
   { name="Alec Wysoker", email="alecw@broadinstitute.org" },
@@ -70,3 +72,9 @@ count_mmc_celltypes = "dropseq.mmc.count_mmc_celltypes:main"
 convert_mmc_csv = "dropseq.mmc.convert_mmc_csv:main"
 donor_cell_type_report = "dropseq.aggregation.donor_cell_type_report:main"
 build_library_h5ad = "dropseq.aggregation.build_library_h5ad:main"
+aggregation_qc = "dropseq.aggregation.plots.aggregation_qc:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
