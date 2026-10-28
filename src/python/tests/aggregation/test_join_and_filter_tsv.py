@@ -91,7 +91,8 @@ class TestJoinAndFilterTSV(unittest.TestCase):
     def test_set(self):
         primary = os.path.join(self.testDataDir, "sample1.100.cell_metadata.txt")
         secondary = os.path.join(self.testDataDir, "sample1.100.scPred.txt")
-        setTuples = [("PREFIX", "library1"), ("SUFFIX", "brary1")]
+        # new columns: the primary file already has PREFIX, which --set does not replace (see test_set_column_already_in_input_is_an_error)
+        setTuples = [("LIBRARY", "library1"), ("SUFFIX", "brary1")]
         options = self.options._replace(input=open(primary),
                                         join=[(secondary, "CELL_BARCODE", "CELL_BARCODE")],
                                         set=setTuples)
@@ -118,6 +119,93 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 0)
         outputDf = pd.read_csv(self.outputFile, sep='\t')
         self.assertEqual(outputDf.columns[-1], "LIBRARY")
+
+    def writeTsv(self, name, text):
+        path = os.path.join(self.tmpDir, name)
+        with open(path, "w") as f:
+            f.write(text)
+        return path
+
+    def donorFile(self, extra=""):
+        return self.writeTsv("donors.tsv", "donor\tage\tsex\nN1\t63\tmale\nN2\t41\tfemale\n" + extra)
+
+    def test_set_column_as_join_column(self):
+        # the cells have no donor column: --set creates it, and the join on it is done with the set value
+        primary = self.writeTsv("cells.tsv", "cell_barcode\tnum_transcripts\nAAAA\t10\nCCCC\t20\nGGGG\t30\n")
+        options = self.options._replace(input=open(primary), set=[("donor", "N1")],
+                                        join=[(self.donorFile(), "donor", "donor")])
+        self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 0)
+        outputDf = pd.read_csv(self.outputFile, sep='\t')
+        self.assertEqual(set(outputDf.columns), {"cell_barcode", "num_transcripts", "donor", "age", "sex"})
+        self.assertEqual(list(outputDf["cell_barcode"]), ["AAAA", "CCCC", "GGGG"])
+        self.assertTrue((outputDf["donor"] == "N1").all())
+        self.assertTrue((outputDf["age"] == 63).all())
+        self.assertTrue((outputDf["sex"] == "male").all())
+
+    def test_set_column_as_join_column_with_set_first(self):
+        primary = self.writeTsv("cells.tsv", "cell_barcode\tnum_transcripts\nAAAA\t10\nCCCC\t20\n")
+        options = self.options._replace(input=open(primary), set=[("donor", "N2")], set_first=True,
+                                        join=[(self.donorFile(), "donor", "donor")])
+        self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 0)
+        outputDf = pd.read_csv(self.outputFile, sep='\t')
+        self.assertEqual(outputDf.columns[0], "donor")
+        self.assertTrue((outputDf["age"] == 41).all())
+        self.assertTrue((outputDf["sex"] == "female").all())
+
+    def test_set_column_as_join_column_value_not_in_join_file(self):
+        # a donor that has no row in the join file keeps all its cells and gets missing values
+        primary = self.writeTsv("cells.tsv", "cell_barcode\tnum_transcripts\nAAAA\t10\nCCCC\t20\n")
+        options = self.options._replace(input=open(primary), set=[("donor", "N3")],
+                                        join=[(self.donorFile(), "donor", "donor")])
+        self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 0)
+        outputDf = pd.read_csv(self.outputFile, sep='\t')
+        self.assertEqual(len(outputDf), 2)
+        self.assertTrue((outputDf["donor"] == "N3").all())
+        self.assertTrue(outputDf["age"].isna().all())
+        self.assertTrue(outputDf["sex"].isna().all())
+
+    def test_set_column_as_join_column_non_unique_join_file(self):
+        primary = self.writeTsv("cells.tsv", "cell_barcode\tnum_transcripts\nAAAA\t10\n")
+        options = self.options._replace(input=open(primary), set=[("donor", "N1")],
+                                        join=[(self.donorFile("N1\t64\tfemale\n"), "donor", "donor")])
+        self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 1)
+
+    def test_set_column_already_in_input_is_an_error(self):
+        # the donor of each cell is in the input: it is trusted data and --set must not replace it
+        primary = self.writeTsv("cells.tsv", "cell_barcode\tdonor\nAAAA\tN1\nCCCC\tN2\n")
+        options = self.options._replace(input=open(primary), set=[("donor", "N7")],
+                                        join=[(self.donorFile(), "donor", "donor")])
+        with self.assertLogs(level="ERROR") as logs:
+            self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 1)
+        self.assertIn("donor", "\n".join(logs.output))
+
+    def test_join_on_existing_column_with_other_set_column(self):
+        # a --set of a column that is not in the input does not change a join on a column that is
+        primary = self.writeTsv("cells.tsv", "cell_barcode\tdonor\nAAAA\tN1\nCCCC\tN2\n")
+        options = self.options._replace(input=open(primary), set=[("library", "L1")],
+                                        join=[(self.donorFile(), "donor", "donor")])
+        self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 0)
+        outputDf = pd.read_csv(self.outputFile, sep='\t')
+        self.assertEqual(list(outputDf["donor"]), ["N1", "N2"])
+        self.assertEqual(list(outputDf["age"]), [63, 41])
+        self.assertEqual(list(outputDf["sex"]), ["male", "female"])
+        self.assertTrue((outputDf["library"] == "L1").all())
+
+    def test_main_returns_the_exit_status_of_an_error(self):
+        # the command line program exits with the status of run(): a failed join or --set must not look like success
+        primary = self.writeTsv("cells.tsv", "cell_barcode\tdonor\nAAAA\tN1\n")
+        args = ["--input", primary, "--output", self.outputFile, "--set", "donor", "N7"]
+        with self.assertLogs(level="ERROR"):
+            self.assertEqual(dropseq.aggregation.join_and_filter_tsv.main(args), 1)
+        nonUnique = ["--input", primary, "--output", self.outputFile, "--join", self.donorFile("N1\t64\tfemale\n"), "donor", "donor"]
+        with self.assertLogs(level="ERROR"):
+            self.assertEqual(dropseq.aggregation.join_and_filter_tsv.main(nonUnique), 1)
+
+    def test_main_returns_zero_on_success(self):
+        primary = self.writeTsv("cells.tsv", "cell_barcode\tnum_transcripts\nAAAA\t10\n")
+        args = ["--input", primary, "--output", self.outputFile, "--set", "donor", "N1", "--join", self.donorFile(), "donor", "donor"]
+        self.assertEqual(dropseq.aggregation.join_and_filter_tsv.main(args), 0)
+        self.assertEqual(list(pd.read_csv(self.outputFile, sep='\t')["age"]), [63])
 
     def test_min(self):
         primary = os.path.join(self.testDataDir, "sample1.100.cell_metadata.txt")
