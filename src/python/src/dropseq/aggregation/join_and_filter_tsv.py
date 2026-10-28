@@ -30,7 +30,9 @@ If there is a collision between the column names in the primary and secondary fi
 file is used.  If there is a collision between the column names in the secondary files, the column in the earlier
 file is used.
 
-In addition, there may be zero or more (column name, column value) pairs that are set on each line unconditionally.
+In addition, there may be zero or more (column name, column value) pairs that are set on each line.  The primary file must not
+already have a column of that name (the tool fails rather than replace data).  A column that is set can be the input column of
+a join: it exists, with its value, before that join is done.
 
 Each resulting row is passed through zero more filters, which can apply a min or a max threshold to a column,
 have a list of values to match against, or have a list of values to exclude, which may be specified on the command
@@ -136,7 +138,10 @@ def parse_args(args=None):
                         help="Secondary tab-separated file to join, and the columns in the primary input "
                              "and join file to join on. May be specified multiple times.")
     parser.add_argument("--set", "-s", nargs=2, action='append', default=[], metavar=('COLUMN', 'VALUE'),
-                        help="Set a column to a constant value.  May be specified multiple times.")
+                        help="Set a new column to a constant value.  The primary input must not already have a column "
+                             "of that name: a --set never replaces data (the tool fails instead).  A --set column can be "
+                             "the input column of a --join, so that, for example, a donor set here can be joined to a "
+                             "file of donor attributes.  May be specified multiple times.")
     parser.add_argument("--set-first", action='store_true', default=False,
                         help="Put the columns specified with --set first, in the order given, rather than last.")
     parser.add_argument("--min", nargs=2, action='append', default=[], metavar=('COLUMN', 'VALUE'),
@@ -169,14 +174,24 @@ def parse_args(args=None):
     return options
 
 def main(args=None):
-    run(parse_args(args))
+    return run(parse_args(args))
 
 def run(options):
     # load the primary file
     primary = pd.read_csv(options.input, sep='\t', comment='#')
     options.input.close()
+    # a --set column is new: data already in the primary file is not replaced
+    set_values = {}
+    for column, value in options.set:
+        if column in primary.columns:
+            logger.error(f"--set {column}: the input file already has a column named {column}, and --set does not replace data")
+            return 1
+        set_values[column] = try_convert_string(value)
     # load each secondary file, and join it to the primary file, dropping secondary columns that are already in the primary
     for join_file, input_col, join_col in options.join:
+        if input_col in set_values and input_col not in primary.columns:
+            # a column set to a constant can be joined on: it exists before the join, with the value given to --set
+            primary[input_col] = set_values[input_col]
         join_col_in_left = join_col in primary.columns
         secondary = pd.read_csv(join_file, sep='\t', comment='#')
         try:
@@ -194,8 +209,8 @@ def run(options):
             if col.endswith(DELETEME_COLUMN_SUFFIX):
                 primary.drop(col, axis=1, inplace=True)
     # set columns to constant values
-    for column, value in options.set:
-        primary[column] = try_convert_string(value)
+    for column, value in set_values.items():
+        primary[column] = value
     # filter out rows based on column values
     for column, value in options.min:
         primary = primary[primary[column] >= try_convert_string(value)]
