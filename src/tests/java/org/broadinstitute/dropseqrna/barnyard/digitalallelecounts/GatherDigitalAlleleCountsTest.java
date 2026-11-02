@@ -8,6 +8,7 @@ import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.GatherDigitalAlleleCounts;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import htsjdk.samtools.util.TestUtil;
@@ -40,10 +41,17 @@ public class GatherDigitalAlleleCountsTest {
 	private final File EXPECTED_SPLIT_SUMMARY=new File (rootDir, "includeUntaggedReadsTrueSplitByStrand.summary.txt");
 	
 	
+	@DataProvider(name = "numThreads")
+	public Object[][] numThreads() {
+		return new Object[][]{{1}, {4}};
+	}
+
 	// See MultiCellDigitalAlleleCountsIteratorTest:bigDataTestED1 for more fine grained validation of the large BAM file data.
-	@Test 
-	public void testDoWork() throws IOException {
+	// Runs single-threaded and with a multi-threaded VCF scan; both must produce the same expected outputs.
+	@Test(dataProvider = "numThreads")
+	public void testDoWork(final int numThreads) throws IOException {
 		GatherDigitalAlleleCounts g = new GatherDigitalAlleleCounts();
+		g.NUM_THREADS = numThreads;
 		g.CELL_BC_FILE=cellBCFile;
 		g.INPUT = Collections.singletonList(new PicardHtsPath(largeBAMFile));
 		g.VCF = new PicardHtsPath(vcfFile);

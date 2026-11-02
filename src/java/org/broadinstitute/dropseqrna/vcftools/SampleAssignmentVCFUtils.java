@@ -70,7 +70,16 @@ public class SampleAssignmentVCFUtils {
      *
 	 */
 	public static PeekableIterator<VariantContext> getVCFIterator (final VCFFileReader vcfReader, final List<String> samples, final boolean retainMonomorphicSNPs, final int genotypeGCThreshold, final double fractionPassing,  final List<String> ignoredChromosomes, final Log log) {
-		Iterator<VariantContext> filteredIter=vcfReader.iterator(); 
+		return getVCFIterator(vcfReader, vcfReader.iterator(), samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing, ignoredChromosomes, log);
+	}
+
+	/**
+	 * As {@link #getVCFIterator(VCFFileReader, List, boolean, int, double, List, Log)}, but filters the records
+	 * from {@code records} (for example a {@link ParallelVCFReader}'s iterator over the same VCF) instead of
+	 * {@code vcfReader.iterator()}.  {@code vcfReader} is only used to validate the samples against the header.
+	 */
+	public static PeekableIterator<VariantContext> getVCFIterator (final VCFFileReader vcfReader, final Iterator<VariantContext> records, final List<String> samples, final boolean retainMonomorphicSNPs, final int genotypeGCThreshold, final double fractionPassing,  final List<String> ignoredChromosomes, final Log log) {
+		Iterator<VariantContext> filteredIter=records;
 		List<String> finalSamples = samples;
 		if (samples.size()>0) {
 			finalSamples = validateSampleNamesInVCF(vcfReader, samples, log);
@@ -159,15 +168,25 @@ public class SampleAssignmentVCFUtils {
 			final Path vcfPath, final List<String> samples, final boolean retainMonomorphicSNPs,
 			final int genotypeGCThreshold, final double fractionPassing, final List<String> ignoredChromosomes,
 			final VariantContextWriter vcfWriter, final boolean preserveIntervalNames, final Log log) {
+		return getSNPInfoCollection(vcfPath, samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing,
+				ignoredChromosomes, vcfWriter, preserveIntervalNames, 1, log);
+	}
 
-		final VCFFileReader vcfReader = new VCFFileReader(vcfPath, false);
-		// List<String> finalSamples=validateSampleNamesInVCF(vcfReader, samples, log);
-		
-		PeekableIterator<VariantContext> vcfIterator = getVCFIterator(vcfReader, samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing, ignoredChromosomes, log);
-				
-		// Begin optional work to remove duplicates		
-		SNPInfoCollection result = new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), preserveIntervalNames, vcfWriter, log);				
-		return result;
+	/**
+	 * As {@link #getSNPInfoCollection(Path, List, boolean, int, double, List, VariantContextWriter, boolean, Log)},
+	 * decoding the VCF records on {@code numThreads} threads (see {@link ParallelVCFReader}).
+	 */
+	public static SNPInfoCollection getSNPInfoCollection(
+			final Path vcfPath, final List<String> samples, final boolean retainMonomorphicSNPs,
+			final int genotypeGCThreshold, final double fractionPassing, final List<String> ignoredChromosomes,
+			final VariantContextWriter vcfWriter, final boolean preserveIntervalNames, final int numThreads, final Log log) {
+
+		// vcfReader is used for the sample checks; recordReader supplies the records.
+		try (final VCFFileReader vcfReader = new VCFFileReader(vcfPath, false);
+			 final ParallelVCFReader recordReader = new ParallelVCFReader(vcfPath, numThreads)) {
+			PeekableIterator<VariantContext> vcfIterator = getVCFIterator(vcfReader, recordReader.iterator(), samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing, ignoredChromosomes, log);
+			return new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), preserveIntervalNames, vcfWriter, log);
+		}
 	}
 
 	/**

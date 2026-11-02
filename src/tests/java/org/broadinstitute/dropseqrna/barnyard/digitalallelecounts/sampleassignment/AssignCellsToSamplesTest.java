@@ -39,6 +39,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignme
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import picard.nio.PicardHtsPath;
 
@@ -175,9 +176,16 @@ public class AssignCellsToSamplesTest {
 		Assert.assertTrue(TestUtils.testTabularFilesSame(expected, actual, VerboseOutputTransformerMap));
 	}
 
-	@Test
-	public void testEndToEnd() throws IOException {
+	@DataProvider(name = "numThreads")
+	public Object[][] numThreads() {
+		return new Object[][]{{1}, {4}};
+	}
+
+	// Runs single-threaded and with multi-threaded VCF decoding; both must produce the same expected outputs.
+	@Test(dataProvider = "numThreads")
+	public void testEndToEnd(final int numThreads) throws IOException {
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.NUM_THREADS = numThreads;
 		assigner.GQ_THRESHOLD=30;
 		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
 		assigner.VCF = new PicardHtsPath(this.VCFC);
