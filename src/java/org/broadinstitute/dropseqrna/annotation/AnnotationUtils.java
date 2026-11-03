@@ -50,7 +50,11 @@ public class AnnotationUtils {
 	@SuppressWarnings("unused")
 	private final Log log = Log.getInstance(AnnotationUtils.class);
 
-	private static AnnotationUtils singleton=null;
+	// Initialization-on-demand holder: the instance is created once, safely, even if the first calls to getInstance()
+	// come from several threads at the same time.
+	private static class SingletonHolder {
+		private static final AnnotationUtils INSTANCE = new AnnotationUtils();
+	}
 
 	private static Map<LocusFunction, Integer> functionScores;
 
@@ -64,9 +68,7 @@ public class AnnotationUtils {
 	}
 
 	public static AnnotationUtils getInstance() {
-		if (singleton==null)
-			singleton=new AnnotationUtils();
-		return singleton;
+		return SingletonHolder.INSTANCE;
 	}
 
 
