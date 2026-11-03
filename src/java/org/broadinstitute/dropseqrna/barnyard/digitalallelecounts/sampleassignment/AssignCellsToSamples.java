@@ -215,7 +215,7 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 			+ "testing new data sets.")
 	public Integer TRANSCRIBED_SNP_FAIL_FAST_THRESHOLD=-1;
 
-	@Argument(doc = "Number of threads used to decode VCF records, in both passes over the VCF.  With 1, the VCF is read on the main thread as before.")
+	@Argument(doc = "Number of threads used to decode VCF records, in both passes over the VCF.  With more than 1, VCF_OUTPUT is also written on its own thread.  With 1, everything runs on the main thread as before.")
 	public int NUM_THREADS = 1;
 
 	// This isn't fully implemented yet so is disabled.
@@ -742,13 +742,16 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		 * genotypeProbability=LikelihoodUtils.getInstance().phredScoreToErrorProbability(Double.valueOf(meanGQ).byteValue()); }
 		 */
 
+		// The donors without a genotype at this SNP are the same for every cell, so compute them once.
+		final Collection<String> samplesNotObserved = applyToMissingDonors ? gm.getSamplesNotObserved() : null;
+
 		// for each cell, update the samples where we have no genotype assigned for this variant.
 		for (SampleGenotypeProbabilities p : sgpList) {
 			double globalPenaltyLogLikelihood = likelihoodCollection.getMissingLikelihood(p, gm.getRefAllele(), gm.getAltAllele(), gm.getRefCount(),
 					gm.getHetCount(), gm.getAltCount(), genotypeProbability);
 			likelihoodCollection.incrementGlobalPenaltyAllDonors(p, globalPenaltyLogLikelihood);
 			if (applyToMissingDonors)
-				likelihoodCollection.applyMissingLikelihoodToDonors(p, globalPenaltyLogLikelihood, gm.getSamplesNotObserved());
+				likelihoodCollection.applyMissingLikelihoodToDonors(p, globalPenaltyLogLikelihood, samplesNotObserved);
 		}
 		return (likelihoodCollection);
 	}
@@ -1176,7 +1179,9 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		VariantContextWriter vcfWriter = null;
 		if (this.VCF_OUTPUT != null) {
 			IOUtil.assertFileIsWritable(this.VCF_OUTPUT);
-			vcfWriter = SampleAssignmentVCFUtils.getVCFWriter(vcfReader, this.VCF_OUTPUT);
+			// With more than one thread, write on a background thread.  Records from ParallelVCFReader then have
+			// fully decoded genotypes, so the writer thread doesn't need to decode them.
+			vcfWriter = SampleAssignmentVCFUtils.getVCFWriter(vcfReader, this.VCF_OUTPUT, this.NUM_THREADS > 1);
 			VCFHeader header = vcfReader.getFileHeader();
 			VCFHeader h2 = new VCFHeader(header.getMetaDataInInputOrder(), vcfSamples);
 			vcfWriter.writeHeader(h2);

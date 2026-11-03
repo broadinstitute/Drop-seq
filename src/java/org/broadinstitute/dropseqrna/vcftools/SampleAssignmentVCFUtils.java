@@ -369,6 +369,16 @@ public class SampleAssignmentVCFUtils {
 	 * @return
 	 */
 	public static VariantContextWriter getVCFWriter(final VCFFileReader vcfReader, final File out) {
+		return getVCFWriter(vcfReader, out, false);
+	}
+
+	/**
+	 * As {@link #getVCFWriter(VCFFileReader, File)}, optionally encoding and writing records on a background thread.
+	 * With asyncIO, records passed to the writer must not be modified afterwards, and their genotypes should already
+	 * be decoded (as {@link ParallelVCFReader} does with more than one thread), so the writer thread never decodes them.
+	 * @param asyncIO true to write on a background thread
+	 */
+	public static VariantContextWriter getVCFWriter(final VCFFileReader vcfReader, final File out, final boolean asyncIO) {
 		if (out == null)
 			return null;
 		VariantContextWriterBuilder builder = new VariantContextWriterBuilder()
@@ -376,6 +386,8 @@ public class SampleAssignmentVCFUtils {
 						vcfReader.getFileHeader().getSequenceDictionary())
 				.setOption(Options.INDEX_ON_THE_FLY).setBuffer(8192)
 				.setOutputFile(out);
+		if (asyncIO)
+			builder.setOption(Options.USE_ASYNC_IO);
 		// don't need this
 		// TODO: remove after testing.
 		/*
