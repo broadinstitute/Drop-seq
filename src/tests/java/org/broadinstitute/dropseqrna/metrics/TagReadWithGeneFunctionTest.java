@@ -139,6 +139,60 @@ public class TagReadWithGeneFunctionTest {
 	}
 
 	@Test
+	// A read that is partly UTR exon and partly past the end of the gene: the gene keeps both UTR and INTERGENIC annotations.
+	public void testPartiallyIntergenicRead () {
+		SAMRecord r = getFakeRecord(testBAMFile, 95, 105, false);
+		// gene with 2 exons, 1 coding from 1-10, one UTR from 91-100.  Positive strand gene.
+		GeneFromGTF gene = new GeneFromGTF(r.getContig(), 1, 100, false, "A", "coding", "A", "coding", 1);
+		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 90, 2, "trans1", "trans1", "coding");
+		tx.addExon(1, 10);
+		tx.addExon(91, 100);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
+		geneOverlapDetector.addLhs(gene, gene);
+		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
+		r=tagger.setAnnotations(r, geneOverlapDetector, false);
+		Assert.assertEquals(r.getStringAttribute("gn"), "A,A");
+		Assert.assertEquals(r.getStringAttribute("gs"), "+,+");
+		Assert.assertEquals(r.getStringAttribute("gf"), LocusFunction.UTR.name() + "," + LocusFunction.INTERGENIC.name());
+		Assert.assertEquals(r.getStringAttribute("XF"), LocusFunction.UTR.name());
+	}
+
+	@Test
+	// A read that is partly intronic and partly before the start of the gene.
+	public void testPartiallyIntergenicIntronicRead () {
+		SAMRecord r = getFakeRecord(testBAMFile, 20, 40, false);
+		GeneFromGTF gene = new GeneFromGTF(r.getContig(), 31, 100, false, "A", "coding", "A", "coding", 1);
+		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 31, 100, 31, 90, 2, "trans1", "trans1", "coding");
+		tx.addExon(31, 35);
+		tx.addExon(91, 100);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
+		geneOverlapDetector.addLhs(gene, gene);
+		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
+		r=tagger.setAnnotations(r, geneOverlapDetector, false);
+		// bases 20-30 intergenic, 31-35 coding, 36-40 intronic.
+		Assert.assertEquals(r.getStringAttribute("gn"), "A,A,A");
+		Assert.assertEquals(r.getStringAttribute("gf"), "CODING,INTRONIC,INTERGENIC");
+		Assert.assertEquals(r.getStringAttribute("XF"), LocusFunction.CODING.name());
+	}
+
+	@Test
+	// A split read where one alignment block is in the gene and the other is intergenic: no gene is common to both blocks.
+	public void testSplitReadOneBlockIntergenic () {
+		SAMRecord r = getFakeSplitRecord(testBAMFile, 5, 10, 200, 210, false);
+		GeneFromGTF gene = new GeneFromGTF(r.getContig(), 1, 100, false, "A", "coding", "A", "coding", 1);
+		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 1, 100, 1, 90, 2, "trans1", "trans1", "coding");
+		tx.addExon(1, 10);
+		tx.addExon(91, 100);
+		OverlapDetector<Gene> geneOverlapDetector = new OverlapDetector<>(0, 0);
+		geneOverlapDetector.addLhs(gene, gene);
+		TagReadWithGeneFunction tagger = new TagReadWithGeneFunction();
+		r=tagger.setAnnotations(r, geneOverlapDetector, false);
+		Assert.assertEquals(r.getStringAttribute("gn"), null);
+		Assert.assertEquals(r.getStringAttribute("gf"), null);
+		Assert.assertEquals(r.getStringAttribute("XF"), LocusFunction.INTERGENIC.name());
+	}
+
+	@Test
 	// 	2) One intronic read (no other gene models overlapping)
 	public void testIntronicRead () {
 		SAMRecord r = getFakeRecord(testBAMFile, 50, 75, false);
