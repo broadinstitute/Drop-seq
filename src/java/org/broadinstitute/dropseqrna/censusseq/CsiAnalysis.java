@@ -239,7 +239,7 @@ public class CsiAnalysis extends CommandLineProgram {
 
 	private boolean validateSampleList (final VCFFileReader vcfReader, final List<String> donorsInPool) {
 		List<String> copy = new ArrayList<>(donorsInPool);
-		List<String> validVcfSamples = SampleAssignmentVCFUtils.validateSampleNamesInVCF(vcfReader, donorsInPool, log);
+		List<String> validVcfSamples = SampleAssignmentVCFUtils.validateSampleNamesInVCF(vcfReader.getFileHeader(), donorsInPool, log);
 		copy.removeAll(validVcfSamples);
 		if (copy.size()>0) {
 			log.info("Samples found in sample list but not VCF " + copy.toString()+"");

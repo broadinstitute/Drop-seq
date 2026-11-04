@@ -39,6 +39,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalallelecounts.sampleassignme
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import picard.nio.PicardHtsPath;
 
@@ -175,9 +176,25 @@ public class AssignCellsToSamplesTest {
 		Assert.assertTrue(TestUtils.testTabularFilesSame(expected, actual, VerboseOutputTransformerMap));
 	}
 
-	@Test
-	public void testEndToEnd() throws IOException {
+	@DataProvider(name = "numThreads")
+	public Object[][] numThreads() {
+		return new Object[][]{{1}, {4}};
+	}
+
+	// Runs single-threaded and with multi-threaded VCF decoding; both must produce the same expected outputs.
+	// With more than one thread VCF_OUTPUT is written on a background thread, so it is also compared to a 1-thread run.
+	@Test(dataProvider = "numThreads")
+	public void testEndToEnd(final int numThreads) throws IOException {
+		AssignCellsToSamples assigner = runEndToEnd(numThreads);
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));
+		assertVerboseOutputSame(EXPECTED_VERBOSE_OUTPUT, assigner.VERBOSE_OUTPUT);
+		if (numThreads > 1)
+			Assert.assertTrue(TestUtils.testFilesSame(runEndToEnd(1).VCF_OUTPUT, assigner.VCF_OUTPUT));
+	}
+
+	private AssignCellsToSamples runEndToEnd(final int numThreads) {
 		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.NUM_THREADS = numThreads;
 		assigner.GQ_THRESHOLD=30;
 		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
 		assigner.VCF = new PicardHtsPath(this.VCFC);
@@ -187,12 +204,8 @@ public class AssignCellsToSamplesTest {
 		assigner.BAM_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".informative.bam");
 		assigner.VERBOSE_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".verbose.gz");
 		assigner.VERBOSE_BEST_DONOR_OUTPUT=TestUtils.getTempReportFile("AssignCellsToSamples.", ".best_verbose.gz");
-		
-		int result = assigner.doWork();
-		Assert.assertEquals(result, 0);
-		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));	
-		assertVerboseOutputSame(EXPECTED_VERBOSE_OUTPUT, assigner.VERBOSE_OUTPUT);
-		
+		Assert.assertEquals(assigner.doWork(), 0);
+		return assigner;
 	}
 
 	

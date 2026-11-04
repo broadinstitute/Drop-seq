@@ -87,6 +87,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder.OutputType;
 import htsjdk.variant.vcf.VCFFileReader;
+import org.broadinstitute.dropseqrna.vcftools.ParallelVCFReader;
 import htsjdk.variant.vcf.VCFHeader;
 import picard.annotation.LocusFunction;
 import picard.cmdline.StandardOptionDefinitions;
@@ -213,7 +214,10 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 			+ "contain transcribed SNPs, the value for this should probably be set to a fairly large number, like 10% of the total UMIs in your experiment.  Mostly useful for debugging / or "
 			+ "testing new data sets.")
 	public Integer TRANSCRIBED_SNP_FAIL_FAST_THRESHOLD=-1;
-	
+
+	@Argument(doc = "Number of threads used to decode VCF records, in both passes over the VCF.  With more than 1, VCF_OUTPUT is also written on its own thread.  With 1, everything runs on the main thread as before.")
+	public int NUM_THREADS = 1;
+
 	// This isn't fully implemented yet so is disabled.
 	// @Argument(doc = "on a per-genotype basis, use the GQ score to weigh how much we believe the data given genotype.
 	// Weights the likelihood (D|G) by the GQ score, which is converted from phred quality to a probability [0-1].")
@@ -232,111 +236,105 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		// get the verbose output writer if not null, or return null.
 		PrintStream verboseWriter = getVerboseWriter(this.VERBOSE_OUTPUT);
 
-		final VCFFileReader vcfReader = new VCFFileReader(this.VCF.toPath(), true);
-
 		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputPaths(
 				PicardHtsPath.toPaths(this.INPUT_BAM), false, SamReaderFactory.makeDefault());
 		AssertSequenceDictionaryIntersection.assertIntersectionObjectVcf(
 				headerAndIter.header, "BAM INPUT(S)", this.VCF.toPath(), log);
 
-		// disable GQ filter if it's not in the header.
-		if (!VCFUtils.GQInHeader(vcfReader)) {
-			this.GQ_THRESHOLD = -1;
-			log.info("Genotype Quality [GQ] not found in header.  Disabling GQ_THRESHOLD parameter");
+		// This reader is only needed for the header, so it is closed before the records are iterated below.
+		final VCFHeader vcfHeader;
+		final List<String> vcfSamples;
+		final VariantContextWriter vcfWriter;
+		try (
+				final VCFFileReader vcfReader =
+						new VCFFileReader(this.VCF.toPath(), true)) {
+			vcfHeader = vcfReader.getFileHeader();
+
+			if (!VCFUtils.GQInHeader(vcfReader)) {
+				this.GQ_THRESHOLD = -1;
+				log.info("Genotype Quality [GQ] not found in header.  Disabling GQ_THRESHOLD parameter");
+			}
+
+			// subsetting the VCF by samples isn't generally needed for the standard way to run AssignCellsToSamples, but is super
+			// expensive to run. We need to get around this.
+			vcfSamples = SampleAssignmentVCFUtils.getVCFSamples(vcfReader, this.SAMPLE_FILE);
+
+			vcfWriter = getVcfWriter(vcfReader, vcfSamples);
 		}
 
-		// subsetting the VCF by samples isn't generally needed for the standard way to run AssignCellsToSamples, but is super
-		// expensive to run. We need to get around this.
-		List<String> vcfSamples = SampleAssignmentVCFUtils.getVCFSamples(vcfReader, this.SAMPLE_FILE);
-
-		// set up the VCF writer if needed.
-		VariantContextWriter vcfWriter = getVcfWriter(vcfReader, vcfSamples);
-
-		// populate the answer key if appropriate
 		Map<String, String> answerKey = readAnswerKey();
 
-		// set up the verbose output if needed
 		writeVerboseOutputHeader(vcfSamples, answerKey, this.CELL_CONTAMINATION_ESTIMATE_FILE, this.ALLELE_FREQUENCY_ESTIMATE_FILE, verboseWriter);
 
-		// get from the VCF!
 		final SNPInfoCollection snpIntervals = SampleAssignmentVCFUtils.getSNPInfoCollection(
 				this.VCF.toPath(), vcfSamples, this.RETAIN_MONOMORPIC_SNPS, this.GQ_THRESHOLD,
-				this.FRACTION_SAMPLES_PASSING, IGNORED_CHROMOSOMES, null, false, log);
+				this.FRACTION_SAMPLES_PASSING, IGNORED_CHROMOSOMES, null, false, this.NUM_THREADS, log);
 
-		// a requested early exit if there are no SNPs.
 		if (snpIntervals.isEmpty()) {
 			log.error("No SNP intervals detected!  Check to see if your VCF filter thresholds are too restrictive!");
 			return 1;
 		}
 			
-		// this is the same method of filtering used to generate the snpIntervals. Don't ask for a progress logger, we'll use
-		// the JointIteratorCounter below.
-		// final PeekableIterator<VariantContext> vcfIterator = getVCFIterator (vcfReader, vcfSamples,
-		// this.RETAIN_MONOMORPIC_SNPS, this.log);
-		PeekableIterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, this.RETAIN_MONOMORPIC_SNPS,
-				this.GQ_THRESHOLD, this.FRACTION_SAMPLES_PASSING, IGNORED_CHROMOSOMES, log);
-
-		// and the BAM iterator.
 		List<String> barcodes = getCellBarcodes();
 		PeekableIterator<List<SampleGenotypeProbabilities>> sampleGenotypeIterator = prepareIterator(snpIntervals, barcodes);
 
-		// load up the contamination and MAF if available.
 		Map<String, Double> contaminationMap = CellAssignmentUtils.getCellContamination(this.CELL_CONTAMINATION_ESTIMATE_FILE, barcodes);
 		Map<Interval, Double> variantMinorAlleleFrequency = CellAssignmentUtils.getMinorAlleleFrequencyMap(this.ALLELE_FREQUENCY_ESTIMATE_FILE);
 
-		// prepare the collection of likelihoods and other metrics
 		CellCollectionSampleLikelihoodCollection likelihoodCollection = initializeLikelihoodCollection(vcfSamples, contaminationMap,
 				variantMinorAlleleFrequency);
 
-		// some counters for information on what's being iterated on. Every sample genotype result *should* match up to a VCF
-		// entry
-		// so we expect those numbers to be the same at the end.
+		// Every sample genotype result *should* match up to a VCF entry, so we expect the counts to be the same at the end.
 		JointIteratorCounter counter = new JointIteratorCounter();
 
-		// We need the sequence dictionary in the interval list for all sorting of chromosomes.
 		SAMSequenceDictionary dict = snpIntervals.getIntervalList().getHeader().getSequenceDictionary();
 
-		// TODO: should be able to plug VCFPileupJointIterator <T extends SNPIntervalRecordI>
-		// Would have to wrap SampleGenotypeProbabilities in a collection that extends SNPIntervalRecordI for this to work,
-		// yuck.
+		// TODO: could use VCFPileupJointIterator<T extends SNPIntervalRecordI>, but SampleGenotypeProbabilities would have
+		// to be wrapped in something that extends SNPIntervalRecordI.
 
-		// walk through both the VCF and the BAM at the same time.
-		// the sampleGenotypeIterator gives all results for a SNP, so that's the results for every cell that had reads on the
-		// SNP.
-		while (vcfIterator.hasNext() && sampleGenotypeIterator.hasNext()) {
-			List<SampleGenotypeProbabilities> pileUpsSingleSNP = sampleGenotypeIterator.peek();
-			// only have to compare the first record.
-			int cmp = compareRecords(pileUpsSingleSNP.get(0), vcfIterator.peek(), dict);
-			if (cmp < 0) {
-				sampleGenotypeIterator.next();
-				counter.SAMPLE_GENE_ITER++;
-			} else if (cmp > 0) {
-				vcfIterator.next();
-				counter.VCF_ITER++;
-			} else if (cmp == 0) {
-				counter.BOTH++;
-				counter.SAMPLE_GENE_ITER++;
-				counter.VCF_ITER++;
-				if (counter.BOTH % this.SNP_LOG_RATE == 0)
-					log.info("Processed [" + counter.BOTH + "] SNPs in BAM + VCF");
+		// Walk the VCF and the BAM together.  The walk usually stops before the end of the VCF (when the BAM runs out),
+		// so the try-with-resources closes the reader, which also stops its decoding threads.
+		try (
+				final ParallelVCFReader recordReader =
+						new ParallelVCFReader(this.VCF.toPath(), true, this.NUM_THREADS);
+				final PeekableIterator<VariantContext> vcfIterator =
+						SampleAssignmentVCFUtils.getVCFIterator(vcfHeader, recordReader.iterator(), vcfSamples,
+								this.RETAIN_MONOMORPIC_SNPS, this.GQ_THRESHOLD, this.FRACTION_SAMPLES_PASSING,
+								IGNORED_CHROMOSOMES, log)) {
+			while (vcfIterator.hasNext() && sampleGenotypeIterator.hasNext()) {
+				List<SampleGenotypeProbabilities> pileUpsSingleSNP = sampleGenotypeIterator.peek();
+				// only have to compare the first record.
+				int cmp = compareRecords(pileUpsSingleSNP.get(0), vcfIterator.peek(), dict);
+				if (cmp < 0) {
+					sampleGenotypeIterator.next();
+					counter.SAMPLE_GENE_ITER++;
+				} else if (cmp > 0) {
+					vcfIterator.next();
+					counter.VCF_ITER++;
+				} else if (cmp == 0) {
+					counter.BOTH++;
+					counter.SAMPLE_GENE_ITER++;
+					counter.VCF_ITER++;
+					if (counter.BOTH % this.SNP_LOG_RATE == 0)
+						log.info("Processed [" + counter.BOTH + "] SNPs in BAM + VCF");
 
-				// grab the next record and process it.
-				VariantContext vc = vcfIterator.next();
-				// write the VCF record out if needed.
-				if (vcfWriter != null)
-					vcfWriter.add(vc);
-				pileUpsSingleSNP = sampleGenotypeIterator.next();
-				likelihoodCollection = processSNP(vc, pileUpsSingleSNP, likelihoodCollection, ADD_MISSING_VALUES);
-				if (verboseWriter != null) {
-					writeVerboseOutput(vc, pileUpsSingleSNP, answerKey, vcfSamples, contaminationMap, variantMinorAlleleFrequency, verboseWriter);
-				}
+					// grab the next record and process it.
+					VariantContext vc = vcfIterator.next();
+					// write the VCF record out if needed.
+					if (vcfWriter != null)
+						vcfWriter.add(vc);
+					pileUpsSingleSNP = sampleGenotypeIterator.next();
+					likelihoodCollection = processSNP(vc, pileUpsSingleSNP, likelihoodCollection, ADD_MISSING_VALUES);
+					if (verboseWriter != null) {
+						writeVerboseOutput(vc, pileUpsSingleSNP, answerKey, vcfSamples, contaminationMap, variantMinorAlleleFrequency, verboseWriter);
+					}
 
-				if (counter.SAMPLE_GENE_ITER != counter.BOTH) {
-					log.error("Expected counts don't match: SGICounter [" + counter.SAMPLE_GENE_ITER + "] both counter [" + counter.BOTH + "]");
-					log.error(
-							"VCF and BAM iteration have gone out of sync.  Iteration relies on the sequence dictonary order of the VCF file - make sure the body of the VCF is sorted in the order dictated by the VCF header.");
-					vcfIterator.close();
-					return 1;
+					if (counter.SAMPLE_GENE_ITER != counter.BOTH) {
+						log.error("Expected counts don't match: SGICounter [" + counter.SAMPLE_GENE_ITER + "] both counter [" + counter.BOTH + "]");
+						log.error(
+								"VCF and BAM iteration have gone out of sync.  Iteration relies on the sequence dictonary order of the VCF file - make sure the body of the VCF is sorted in the order dictated by the VCF header.");
+						return 1;
+					}
 				}
 			}
 		}
@@ -345,8 +343,6 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		if (counter.SAMPLE_GENE_ITER != counter.BOTH)
 			log.info("Expected counts don't match: SGICounter [" + counter.SAMPLE_GENE_ITER + "] both counter [" + counter.BOTH + "]");
 
-		vcfIterator.close();
-		vcfReader.close();
 		if (vcfWriter != null)
 			vcfWriter.close();
 		sampleGenotypeIterator.close();
@@ -730,13 +726,16 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		 * genotypeProbability=LikelihoodUtils.getInstance().phredScoreToErrorProbability(Double.valueOf(meanGQ).byteValue()); }
 		 */
 
+		// The donors without a genotype at this SNP are the same for every cell, so compute them once.
+		final Collection<String> samplesNotObserved = applyToMissingDonors ? gm.getSamplesNotObserved() : null;
+
 		// for each cell, update the samples where we have no genotype assigned for this variant.
 		for (SampleGenotypeProbabilities p : sgpList) {
 			double globalPenaltyLogLikelihood = likelihoodCollection.getMissingLikelihood(p, gm.getRefAllele(), gm.getAltAllele(), gm.getRefCount(),
 					gm.getHetCount(), gm.getAltCount(), genotypeProbability);
 			likelihoodCollection.incrementGlobalPenaltyAllDonors(p, globalPenaltyLogLikelihood);
 			if (applyToMissingDonors)
-				likelihoodCollection.applyMissingLikelihoodToDonors(p, globalPenaltyLogLikelihood, gm.getSamplesNotObserved());
+				likelihoodCollection.applyMissingLikelihoodToDonors(p, globalPenaltyLogLikelihood, samplesNotObserved);
 		}
 		return (likelihoodCollection);
 	}
@@ -1164,7 +1163,9 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 		VariantContextWriter vcfWriter = null;
 		if (this.VCF_OUTPUT != null) {
 			IOUtil.assertFileIsWritable(this.VCF_OUTPUT);
-			vcfWriter = SampleAssignmentVCFUtils.getVCFWriter(vcfReader, this.VCF_OUTPUT);
+			// With more than one thread, write on a background thread.  Records from ParallelVCFReader then have
+			// fully decoded genotypes, so the writer thread doesn't need to decode them.
+			vcfWriter = SampleAssignmentVCFUtils.getVCFWriter(vcfReader, this.VCF_OUTPUT, this.NUM_THREADS > 1);
 			VCFHeader header = vcfReader.getFileHeader();
 			VCFHeader h2 = new VCFHeader(header.getMetaDataInInputOrder(), vcfSamples);
 			vcfWriter.writeHeader(h2);
@@ -1227,7 +1228,10 @@ public class AssignCellsToSamples extends GeneFunctionCommandLineBase {
 
 		if (FRACTION_SAMPLES_PASSING < 0 | FRACTION_SAMPLES_PASSING > 1)
 			list.add("FRACTION_SAMPLES_PASSING must be between 0 and 1, value was " + Double.toString(this.FRACTION_SAMPLES_PASSING));
-		
+
+		if (NUM_THREADS < 1)
+			list.add("NUM_THREADS must be at least 1.");
+
 		if (DNA_MODE) {
 			log.info("IN DNA MODE.  Edit distance for UMI collapse disabled!");
 			this.EDIT_DISTANCE=0;

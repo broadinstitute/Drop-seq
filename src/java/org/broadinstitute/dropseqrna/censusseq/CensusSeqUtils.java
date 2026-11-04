@@ -113,7 +113,7 @@ public class CensusSeqUtils {
 		if (sampleFile!=null)  {
 			IOUtil.assertFileIsReadable(sampleFile);
 			vcfSamples=ParseBarcodeFile.readCellBarcodeFile(sampleFile);
-			List<String> validVcfSamples = SampleAssignmentVCFUtils.validateSampleNamesInVCF(vcfReader, vcfSamples, log);
+			List<String> validVcfSamples = SampleAssignmentVCFUtils.validateSampleNamesInVCF(vcfReader.getFileHeader(), vcfSamples, log);
 			vcfSamples.removeAll(validVcfSamples);
 			if (vcfSamples.size()>0) {
 				log.info("Samples found in sample list but not VCF, quitting " + vcfSamples.toString()+"");

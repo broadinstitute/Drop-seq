@@ -50,6 +50,7 @@ import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
+import htsjdk.variant.vcf.VCFHeader;
 
 /**
  * One stop shopping for consistently getting data from VCFs.
@@ -70,11 +71,21 @@ public class SampleAssignmentVCFUtils {
      *
 	 */
 	public static PeekableIterator<VariantContext> getVCFIterator (final VCFFileReader vcfReader, final List<String> samples, final boolean retainMonomorphicSNPs, final int genotypeGCThreshold, final double fractionPassing,  final List<String> ignoredChromosomes, final Log log) {
-		Iterator<VariantContext> filteredIter=vcfReader.iterator(); 
+		return getVCFIterator(vcfReader.getFileHeader(), vcfReader.iterator(), samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing, ignoredChromosomes, log);
+	}
+
+	/**
+	 * As {@link #getVCFIterator(VCFFileReader, List, boolean, int, double, List, Log)}, but filters the records
+	 * from {@code records} (for example a {@link ParallelVCFReader}'s iterator over the same VCF) instead of
+	 * {@code vcfReader.iterator()}.  {@code vcfHeader} (the header of the VCF that {@code records} came from) is only
+	 * used to validate the samples.
+	 */
+	public static PeekableIterator<VariantContext> getVCFIterator (final VCFHeader vcfHeader, final Iterator<VariantContext> records, final List<String> samples, final boolean retainMonomorphicSNPs, final int genotypeGCThreshold, final double fractionPassing,  final List<String> ignoredChromosomes, final Log log) {
+		Iterator<VariantContext> filteredIter=records;
 		List<String> finalSamples = samples;
 		if (samples.size()>0) {
-			finalSamples = validateSampleNamesInVCF(vcfReader, samples, log);
-			if (sampleListMatchesVcf(vcfReader, finalSamples)) finalSamples=Collections.EMPTY_LIST;
+			finalSamples = validateSampleNamesInVCF(vcfHeader, samples, log);
+			if (sampleListMatchesVcf(vcfHeader, finalSamples)) finalSamples=Collections.EMPTY_LIST;
 		}
 		
 		// filter by samples if requested AND if the samples are not the default VCF samples.  Otherwise make samples an empty list.
@@ -118,11 +129,22 @@ public class SampleAssignmentVCFUtils {
 	 * @param vcfReader
 	 * @param samples
 	 * @return
+	 * @deprecated use {@link #sampleListMatchesVcf(VCFHeader, List)}.  Only the header is needed.
 	 */
+	@Deprecated
 	public static boolean sampleListMatchesVcf (final VCFFileReader vcfReader, final List<String> samples) {
-		List<String> vcfSamples=vcfReader.getFileHeader().getSampleNamesInOrder();
+		return sampleListMatchesVcf(vcfReader.getFileHeader(), samples);
+	}
+
+	/**
+	 * Are the samples in list provided the complete list of samples in the VCF header, and in the same order?
+	 * @param vcfHeader
+	 * @param samples
+	 * @return
+	 */
+	public static boolean sampleListMatchesVcf (final VCFHeader vcfHeader, final List<String> samples) {
+		List<String> vcfSamples=vcfHeader.getSampleNamesInOrder();
 		return (vcfSamples.equals(samples));
-		
 	}
 
 	/**
@@ -159,15 +181,26 @@ public class SampleAssignmentVCFUtils {
 			final Path vcfPath, final List<String> samples, final boolean retainMonomorphicSNPs,
 			final int genotypeGCThreshold, final double fractionPassing, final List<String> ignoredChromosomes,
 			final VariantContextWriter vcfWriter, final boolean preserveIntervalNames, final Log log) {
+		return getSNPInfoCollection(vcfPath, samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing,
+				ignoredChromosomes, vcfWriter, preserveIntervalNames, 1, log);
+	}
 
-		final VCFFileReader vcfReader = new VCFFileReader(vcfPath, false);
-		// List<String> finalSamples=validateSampleNamesInVCF(vcfReader, samples, log);
-		
-		PeekableIterator<VariantContext> vcfIterator = getVCFIterator(vcfReader, samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing, ignoredChromosomes, log);
-				
-		// Begin optional work to remove duplicates		
-		SNPInfoCollection result = new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), preserveIntervalNames, vcfWriter, log);				
-		return result;
+	/**
+	 * As {@link #getSNPInfoCollection(Path, List, boolean, int, double, List, VariantContextWriter, boolean, Log)},
+	 * decoding the VCF records on {@code numThreads} threads (see {@link ParallelVCFReader}).
+	 */
+	public static SNPInfoCollection getSNPInfoCollection(
+			final Path vcfPath, final List<String> samples, final boolean retainMonomorphicSNPs,
+			final int genotypeGCThreshold, final double fractionPassing, final List<String> ignoredChromosomes,
+			final VariantContextWriter vcfWriter, final boolean preserveIntervalNames, final int numThreads, final Log log) {
+
+		try (
+				final ParallelVCFReader recordReader =
+						new ParallelVCFReader(vcfPath, false, numThreads)) {
+			final VCFHeader vcfHeader = recordReader.getFileHeader();
+			PeekableIterator<VariantContext> vcfIterator = getVCFIterator(vcfHeader, recordReader.iterator(), samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing, ignoredChromosomes, log);
+			return new SNPInfoCollection(vcfIterator, vcfHeader.getSequenceDictionary(), preserveIntervalNames, vcfWriter, log);
+		}
 	}
 
 	/**
@@ -255,14 +288,24 @@ public class SampleAssignmentVCFUtils {
 	 * If the intersect doesn't find all of the requested samples, something is very wrong so throw an error.
 	 * @param vcfReader The VCF reader
 	 * @param samples A set of strings of sample names expected to be in the VCF.  If this is empty, this operation is a no-op.
+	 * @deprecated use {@link #validateSampleNamesInVCF(VCFHeader, List, Log)}.  Only the header is needed.
 	 */
+	@Deprecated
 	public static List<String> validateSampleNamesInVCF (final VCFFileReader vcfReader, final List<String> samples, final Log log) {
+		return validateSampleNamesInVCF(vcfReader.getFileHeader(), samples, log);
+	}
+
+	/**
+	 * As {@link #validateSampleNamesInVCF(VCFFileReader, List, Log)}, using the sample names from the VCF header.
+	 * @param vcfHeader The VCF header
+	 */
+	public static List<String> validateSampleNamesInVCF (final VCFHeader vcfHeader, final List<String> samples, final Log log) {
 		// short circuit for no-op.
 		if (samples.isEmpty()) return samples;
-		Set<String> samplesInVCF = new HashSet<>(vcfReader.getFileHeader().getSampleNameToOffset().keySet());
+		Set<String> samplesInVCF = new HashSet<>(vcfHeader.getSampleNameToOffset().keySet());
 		samplesInVCF.retainAll(samples);
 		if (samplesInVCF.size()==0) {
-			samplesInVCF = vcfReader.getFileHeader().getSampleNameToOffset().keySet();
+			samplesInVCF = vcfHeader.getSampleNameToOffset().keySet();
 			throw new IllegalArgumentException("Didn't find any of these samples from the VCF:"+samplesInVCF +" in the submitted a list of samples " + samples.toString());
 		}
 		
@@ -287,12 +330,16 @@ public class SampleAssignmentVCFUtils {
 
 	/**
 	 * Validate that all samples in the sampleFile appear in the vcf
-	 * @see #validateSampleNamesInVCF(VCFFileReader, List, Log)
+	 * @see #validateSampleNamesInVCF(VCFHeader, List, Log)
 	 * @param vcf
 	 * @param sampleFile
 	 */
 	public static void validateSampleNamesInVCF (final File vcf, final File sampleFile) {
-		validateSampleNamesInVCF(new VCFFileReader(vcf, false), ParseBarcodeFile.readCellBarcodeFile(sampleFile), null);
+		try (
+				final VCFFileReader vcfReader =
+						new VCFFileReader(vcf, false)) {
+			validateSampleNamesInVCF(vcfReader.getFileHeader(), ParseBarcodeFile.readCellBarcodeFile(sampleFile), null);
+		}
 	}
 
 	/**
@@ -350,6 +397,16 @@ public class SampleAssignmentVCFUtils {
 	 * @return
 	 */
 	public static VariantContextWriter getVCFWriter(final VCFFileReader vcfReader, final File out) {
+		return getVCFWriter(vcfReader, out, false);
+	}
+
+	/**
+	 * As {@link #getVCFWriter(VCFFileReader, File)}, optionally encoding and writing records on a background thread.
+	 * With asyncIO, records passed to the writer must not be modified afterwards, and their genotypes should already
+	 * be decoded (as {@link ParallelVCFReader} does with more than one thread), so the writer thread never decodes them.
+	 * @param asyncIO true to write on a background thread
+	 */
+	public static VariantContextWriter getVCFWriter(final VCFFileReader vcfReader, final File out, final boolean asyncIO) {
 		if (out == null)
 			return null;
 		VariantContextWriterBuilder builder = new VariantContextWriterBuilder()
@@ -357,6 +414,8 @@ public class SampleAssignmentVCFUtils {
 						vcfReader.getFileHeader().getSequenceDictionary())
 				.setOption(Options.INDEX_ON_THE_FLY).setBuffer(8192)
 				.setOutputFile(out);
+		if (asyncIO)
+			builder.setOption(Options.USE_ASYNC_IO);
 		// don't need this
 		// TODO: remove after testing.
 		/*

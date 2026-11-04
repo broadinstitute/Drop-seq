@@ -55,6 +55,7 @@ import org.broadinstitute.dropseqrna.utils.readiterators.PCRDuplicateFilteringIt
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.statistics.BinomialStatistics;
+import org.broadinstitute.dropseqrna.vcftools.ParallelVCFReader;
 import org.broadinstitute.dropseqrna.vcftools.SampleAssignmentVCFUtils;
 import org.broadinstitute.dropseqrna.vcftools.filters.HetSNPFilter;
 
@@ -187,6 +188,9 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 	@Argument(doc = "Skip duplicate reads.")
 	public boolean FILTER_PCR_DUPES = true;
 
+	@Argument(doc = "Number of threads used to decode VCF records while scanning the VCF for SNPs.  With 1, the VCF is read on the main thread as before.")
+	public int NUM_THREADS = 1;
+
 	// private final boolean AUTO_FLUSH_OUTPUTS=true;
 	private final String SNP_TAG = "YS";
 	private final char[] BASES = { 'A', 'C', 'G', 'T', 'N' };
@@ -223,6 +227,9 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 		// VALIDATE that either CELL_BC_FILE or NUM_CORE_BARCODES is not null
 		if (this.CELL_BC_FILE == null && this.NUM_CORE_BARCODES == null)
 			list.add("Must set either CELL_BC_FILE or NUM_CORE_BARCODES argument!");
+
+		if (this.NUM_THREADS < 1)
+			list.add("NUM_THREADS must be at least 1.");
 
 		return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
 
@@ -495,25 +502,30 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 	}
 
 	private SNPInfoCollection getSNPInfoCollection() {
-		final VCFFileReader vcfReader = new VCFFileReader(this.VCF.toPath(), false);
+		// vcfReader is used for the header and sample checks; recordReader supplies the records, decoded on NUM_THREADS threads.
+		try (
+				final VCFFileReader vcfReader =
+						new VCFFileReader(this.VCF.toPath(), false);
+				final ParallelVCFReader recordReader =
+						new ParallelVCFReader(this.VCF.toPath(), false, this.NUM_THREADS)) {
 
-		if (!VCFUtils.GQInHeader(vcfReader)) {
-			this.GQ_THRESHOLD = -1;
-			log.info("Genotype Quality [GQ] not found in header.  Disabling GQ_THRESHOLD parameter");
+			if (!VCFUtils.GQInHeader(vcfReader)) {
+				this.GQ_THRESHOLD = -1;
+				log.info("Genotype Quality [GQ] not found in header.  Disabling GQ_THRESHOLD parameter");
+			}
+
+			List<String> vcfSamples = this.SAMPLEs;
+			// if the vcfSamples isn't set, use the sample filee
+			if (vcfSamples == null || vcfSamples.size() == 0)
+				vcfSamples = SampleAssignmentVCFUtils.getVCFSamples(vcfReader, this.SAMPLE_FILE);
+
+			Iterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(recordReader.getFileHeader(), recordReader.iterator(), vcfSamples, !POLYMORPHIC_SNPS_ONLY, GQ_THRESHOLD,
+					this.FRACTION_SAMPLES_PASSING, this.IGNORED_CHROMOSOMES, log);
+			if (this.HET_SNPS_ONLY)
+				vcfIterator = new HetSNPFilter(vcfIterator);
+
+			return new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), false, null, log);
 		}
-
-		List<String> vcfSamples = this.SAMPLEs;
-		// if the vcfSamples isn't set, use the sample filee
-		if (vcfSamples == null || vcfSamples.size() == 0)
-			vcfSamples = SampleAssignmentVCFUtils.getVCFSamples(vcfReader, this.SAMPLE_FILE);
-
-		Iterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, vcfSamples, !POLYMORPHIC_SNPS_ONLY, GQ_THRESHOLD,
-				this.FRACTION_SAMPLES_PASSING, this.IGNORED_CHROMOSOMES, log);
-		if (this.HET_SNPS_ONLY)
-			vcfIterator = new HetSNPFilter(vcfIterator);
-
-		SNPInfoCollection result = new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), false, null, log);
-		return (result);
 	}
 
 	private MultiCellDigitalAlleleCountsIterator getDACIterator(SNPUMIBasePileupIterator sbpi, boolean multiGenesPerRead, SNPInfoCollection snpInfo) {
