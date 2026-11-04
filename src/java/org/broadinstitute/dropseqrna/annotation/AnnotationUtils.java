@@ -29,13 +29,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.collections4.map.HashedMap;
-import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 
 import htsjdk.samtools.AlignmentBlock;
 import htsjdk.samtools.SAMRecord;
@@ -52,7 +50,11 @@ public class AnnotationUtils {
 	@SuppressWarnings("unused")
 	private final Log log = Log.getInstance(AnnotationUtils.class);
 
-	private static AnnotationUtils singleton=null;
+	// Initialization-on-demand holder: the instance is created once, safely, even if the first calls to getInstance()
+	// come from several threads at the same time.
+	private static class SingletonHolder {
+		private static final AnnotationUtils INSTANCE = new AnnotationUtils();
+	}
 
 	private static Map<LocusFunction, Integer> functionScores;
 
@@ -66,9 +68,7 @@ public class AnnotationUtils {
 	}
 
 	public static AnnotationUtils getInstance() {
-		if (singleton==null)
-			singleton=new AnnotationUtils();
-		return singleton;
+		return SingletonHolder.INSTANCE;
 	}
 
 
@@ -89,25 +89,23 @@ public class AnnotationUtils {
 	 *                           of multiple annotations (coding + intronic).
 	 */
 	public Map<Gene, List<LocusFunction>> getFunctionalDataForRead (final SAMRecord rec, final OverlapDetector<Gene> geneOverlapDetector, double pcrRequiredOverlap) {
-		if (rec.getReadName().equals("LH00118:69:22CNFNLT3:1:1254:15184:25514"))
-			log.info("STOP");
-
 		List<AlignmentBlock> alignmentBlocks = rec.getAlignmentBlocks();
 
-		Map<AlignmentBlock,Map<Gene, ObjectCounter<LocusFunction>>> map = new HashMap<>();
+		List<Map<Gene, int[]>> map = new ArrayList<>(alignmentBlocks.size());
 		// the effective read length is the sum of the alignment block lengths.
 		int readLength=0;
 		// gather the locus functions for each alignment block.
 		for (AlignmentBlock block: alignmentBlocks) {
 			readLength+=block.getLength();
 			Interval interval = getInterval(rec.getReferenceName(), block);
-			Map<Gene, ObjectCounter<LocusFunction>> locusFunctionsForGeneMap = getFunctionalDataForInterval(interval, geneOverlapDetector);
-			map.put(block, locusFunctionsForGeneMap);
+			map.add(getFunctionalDataForInterval(interval, geneOverlapDetector));
 		}
 		// simplify genes by only using genes that are common to all alignment blocks that pass the required number of bases of total overlap
 		Map<Gene, List<LocusFunction>> result = simplifyFunctionalDataAcrossAlignmentBlocks(map, readLength, pcrRequiredOverlap);
 		return result;
 	}
+
+	private static final LocusFunction[] LOCUS_FUNCTIONS = LocusFunction.values();
 
 	/**
 	 * Get a list of functional data - genes and their locus functions for an interval.
@@ -116,21 +114,19 @@ public class AnnotationUtils {
 	 * @param geneOverlapDetector The gene model to interrogate.
 	 * @return A map from each gene that is overlapped to its functional annotation(s).
 	 */
-	private Map<Gene, ObjectCounter<LocusFunction>> getFunctionalDataForInterval (final Interval interval, final OverlapDetector<Gene> geneOverlapDetector) {
+	private Map<Gene, int[]> getFunctionalDataForInterval (final Interval interval, final OverlapDetector<Gene> geneOverlapDetector) {
 
-		Map<Gene, ObjectCounter<LocusFunction>> result = new HashMap<>();
+		Map<Gene, int[]> result = new HashMap<>();
 
 		final Collection<Gene> overlappingGenes = geneOverlapDetector.getOverlaps(interval);
 		for (Gene g: overlappingGenes) {
-			List<LocusFunction> locusFunctionsForGene = new ArrayList<>();
-
 			LocusFunction [] locusFunctionArray = getLocusFunctionsByInterval(interval, g);
-			// update: don't simplify to the unique list of functions.
-			// simply return the number of counts of each LocusFunction for each gene in this interval.
-			ObjectCounter<LocusFunction> o = new ObjectCounter<>();
+			// don't simplify to the unique list of functions.
+			// simply return the number of counts of each LocusFunction (indexed by ordinal) for each gene in this interval.
+			int[] counts = new int[LOCUS_FUNCTIONS.length];
 			for (LocusFunction f: locusFunctionArray)
-				o.increment(f);
-			result.put(g,o);
+				counts[f.ordinal()]++;
+			result.put(g, counts);
 		}
 		return (result);
 	}
@@ -138,10 +134,18 @@ public class AnnotationUtils {
 	/**
 	 * Given the genes and functional annotations for each alignment block, simplify results to the read.
 	 * Only retain genes that are common across alignment blocks.
-	 * @param map
-	 * @return
+	 *
+	 * Locus function counts are held in int[] arrays indexed by LocusFunction.ordinal() (see LOCUS_FUNCTIONS) rather than
+	 * in per-gene maps, which avoids allocating and boxing a HashMap for every gene of every alignment block of every read.
+	 * Note that this method modifies its input: the gene maps are pruned to the common genes.
+	 *
+	 * @param map One entry per alignment block, in read order.  Each maps a gene overlapped by that block to the number of
+	 *            bases in the block with each locus function (counts indexed by LocusFunction.ordinal()).
+	 * @param readLength the sum of the alignment block lengths.
+	 * @param pcrRequiredOverlap see getFunctionalDataForRead.
+	 * @return For each gene common to all blocks, the locus functions retained for it, in LocusFunction ordinal order.
 	 */
-	Map<Gene, List<LocusFunction>> simplifyFunctionalDataAcrossAlignmentBlocks (Map<AlignmentBlock,Map<Gene, ObjectCounter<LocusFunction>>> map,
+	Map<Gene, List<LocusFunction>> simplifyFunctionalDataAcrossAlignmentBlocks (List<Map<Gene, int[]>> map,
 																						int readLength, double pcrRequiredOverlap) {
 
 		// remove Alignment blocks with empty gene maps.
@@ -156,26 +160,33 @@ public class AnnotationUtils {
 		// Now that you have blocks with genes,
 		// initialize with the genes from the first alignment block.
 		// find the genes common to all blocks.
-		Iterator<Map<Gene, ObjectCounter<LocusFunction>>> iter = map.values().iterator();
-		Set<Gene> commonGenes = iter.next().keySet();
-		while (iter.hasNext()) {
-			Set<Gene> next = iter.next().keySet();
-			commonGenes.retainAll(next);
-		}
+		// Note this is a live view of the first block's map, so the first block's map is pruned as a side effect.
+		Set<Gene> commonGenes = map.get(0).keySet();
+		for (int i=1; i<map.size(); i++)
+			commonGenes.retainAll(map.get(i).keySet());
+
+		// no genes in common (including reads that overlap no genes at all.)
+		// Return before allocating any of the merge structures below: this is the common case for intergenic reads.
+		// The result is read-only to callers, so a shared immutable empty map is fine.
+		if (commonGenes.isEmpty())
+			return Collections.emptyMap();
 
 		// Prune the alignment blocks to the common gene set.
-		map.forEach((alignmentBlock, geneObjectCounterMap) ->
-				geneObjectCounterMap.keySet().retainAll(commonGenes));
+		for (Map<Gene, int[]> blockMap: map)
+			blockMap.keySet().retainAll(commonGenes);
 
 		// merge the locus function counts for each gene across blocks.
-		Map<Gene, ObjectCounter<LocusFunction>> readMap = new HashMap<>();
-		for (AlignmentBlock b: map.keySet()) {
-			Map<Gene, ObjectCounter<LocusFunction>> blockMap=map.get(b);
-			for (Gene gene: blockMap.keySet()) {
-				if (!commonGenes.contains(gene))
-					log.info("I see a gene that isn't common.  This should never happen!");
-				ObjectCounter<LocusFunction> lf = readMap.computeIfAbsent(gene, k -> new ObjectCounter<LocusFunction>());
-				lf.increment(blockMap.get(gene));
+		// Each gene gets one int[] (indexed by LocusFunction ordinal) that the block counts are summed into
+		// element by element, instead of merging per-gene maps of boxed Integers.
+		// This stays a HashMap keyed by Gene (not an array/LinkedHashMap) so that gene iteration order,
+		// which decides the order of genes with identical names after sorting downstream, is unchanged.
+		Map<Gene, int[]> readMap = new HashMap<>();
+		for (Map<Gene, int[]> blockMap: map) {
+			for (Map.Entry<Gene, int[]> entry: blockMap.entrySet()) {
+				int[] blockCounts = entry.getValue();
+				int[] lf = readMap.computeIfAbsent(entry.getKey(), k -> new int[LOCUS_FUNCTIONS.length]);
+				for (int i=0; i<lf.length; i++)
+					lf[i]+=blockCounts[i];
 			}
 		}
 
@@ -189,23 +200,27 @@ public class AnnotationUtils {
 
 		Map<Gene, List<LocusFunction>> result = new HashMap<>();
 
-		for (Gene gene: readMap.keySet()) {
-			ObjectCounter<LocusFunction> lf = readMap.get(gene);
-			List<LocusFunction> resultGene = result.computeIfAbsent(gene, k-> new ArrayList<>());
+		for (Map.Entry<Gene, int[]> entry: readMap.entrySet()) {
+			int[] lf = entry.getValue();
+			List<LocusFunction> resultGene = result.computeIfAbsent(entry.getKey(), k-> new ArrayList<>());
 
 			// sum the coding + UTR for those weird edge cases.
-			int codingPlusUTR=lf.getCountForKey(LocusFunction.CODING)+lf.getCountForKey(LocusFunction.UTR);
+			int codingPlusUTR=lf[LocusFunction.CODING.ordinal()]+lf[LocusFunction.UTR.ordinal()];
 
-			for (LocusFunction locusFunction: lf.getKeys()) {
-				int size = lf.getCountForKey(locusFunction);
+			// walk the locus functions in ordinal order, so the list for each gene has a deterministic order.
+			// Each locus function is visited exactly once, so it can't be added to a gene's list twice.
+			for (LocusFunction locusFunction: LOCUS_FUNCTIONS) {
+				int size = lf[locusFunction.ordinal()];
+				// only locus functions that were seen at least once.  (The old per-gene counters only held keys that
+				// had been incremented; a zero in the array means the same thing as a missing key did.)
+				if (size==0) continue;
 				// if you're in CODING or UTR, use the summed value if it's larger.
 				if ((locusFunction==LocusFunction.CODING || locusFunction==LocusFunction.UTR) && codingPlusUTR > size)
 					size=codingPlusUTR;
 				double pct = ((double) size/ (double) readLength)*100;
 				// special case: INTERGENIC annotation of any length is retained.
 				// this mimics STARsolo (I hope).
-				// don't add the locus function if it was added by both.
-				if ((pct > pcrRequiredOverlap || locusFunction==LocusFunction.INTERGENIC) && !resultGene.contains(locusFunction)) {
+				if (pct > pcrRequiredOverlap || locusFunction==LocusFunction.INTERGENIC) {
 					resultGene.add(locusFunction);
 				}
 			}
@@ -407,9 +422,51 @@ public class AnnotationUtils {
         // By default, if base does not overlap with rRNA or gene, it is intergenic.
         Arrays.fill(locusFunctions, 0, locusFunctions.length, LocusFunction.INTERGENIC);
 
+		final int start = i.getStart();
+		final int end = start + locusFunctions.length - 1;
 		for (final Gene.Transcript transcript : gene)
-			transcript.assignLocusFunctionForRange(i.getStart(), locusFunctions);
+			assignLocusFunctionForRange(transcript, start, end, locusFunctions);
         return locusFunctions;
+	}
+
+	/**
+	 * Equivalent to Transcript.assignLocusFunctionForRange(start, locusFunctions), but works on ranges rather than
+	 * testing every base against every exon, which is O(bases * exons).
+	 * A base inside the transcript is INTRONIC, upgraded to UTR if inside an exon, upgraded to CODING if the
+	 * exon base is also inside the coding region.  A base is only ever upgraded, never downgraded.
+	 * Does not depend on the exons being sorted.
+	 */
+	private static void assignLocusFunctionForRange(final Transcript transcript, final int start, final int end,
+													final LocusFunction[] locusFunctions) {
+		final int lo = Math.max(start, transcript.transcriptionStart);
+		final int hi = Math.min(end, transcript.transcriptionEnd);
+		if (lo > hi) return;
+		raise(locusFunctions, start, lo, hi, LocusFunction.INTRONIC);
+		for (final Exon exon : transcript.exons) {
+			final int exonLo = Math.max(lo, exon.start);
+			final int exonHi = Math.min(hi, exon.end);
+			if (exonLo > exonHi) continue;
+			final int codingLo = Math.max(exonLo, transcript.codingStart);
+			final int codingHi = Math.min(exonHi, transcript.codingEnd);
+			if (codingLo > codingHi) {
+				raise(locusFunctions, start, exonLo, exonHi, LocusFunction.UTR);
+			} else {
+				raise(locusFunctions, start, exonLo, codingLo - 1, LocusFunction.UTR);
+				raise(locusFunctions, start, codingLo, codingHi, LocusFunction.CODING);
+				raise(locusFunctions, start, codingHi + 1, exonHi, LocusFunction.UTR);
+			}
+		}
+	}
+
+	/** Set locusFunctions for reference positions [from, to] to f where f outranks the current value. */
+	private static void raise(final LocusFunction[] locusFunctions, final int start, final int from, final int to,
+							  final LocusFunction f) {
+		final int rank = f.ordinal();
+		for (int pos = from; pos <= to; pos++) {
+			final int idx = pos - start;
+			if (locusFunctions[idx].ordinal() < rank)
+				locusFunctions[idx] = f;
+		}
 	}
 
 

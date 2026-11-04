@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
 import org.testng.Assert;
@@ -239,6 +240,68 @@ public class AnnotationUtilsTest {
 
 
 
+	}
+
+	@Test
+	// A block that is a mix of INTERGENIC, INTRONIC, UTR and CODING bases must keep the per-base mix.
+	public void testGetLocusFunctionsByIntervalMixed() {
+		AnnotationUtils u = AnnotationUtils.getInstance();
+		GeneFromGTF gene = new GeneFromGTF("1", 11, 100, false, "A", "coding", "A", "coding", 1);
+		// exons 11-20 (UTR 11-14, coding 15-20), 41-50 (coding), 81-100 (coding 81-90, UTR 91-100)
+		final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("trans1", 11, 100, 15, 90, 3, "trans1", "trans1", "coding");
+		tx.addExon(11, 20);
+		tx.addExon(41, 50);
+		tx.addExon(81, 100);
+		LocusFunction[] actual = u.getLocusFunctionsByInterval(new Interval("1", 8, 105), gene);
+		Assert.assertEquals(actual.length, 98);
+		for (int pos=8; pos<=105; pos++) {
+			LocusFunction expected;
+			if (pos<11 || pos>100) expected=LocusFunction.INTERGENIC;
+			else if (pos<=14) expected=LocusFunction.UTR;
+			else if (pos<=20) expected=LocusFunction.CODING;
+			else if (pos<41) expected=LocusFunction.INTRONIC;
+			else if (pos<=50) expected=LocusFunction.CODING;
+			else if (pos<81) expected=LocusFunction.INTRONIC;
+			else if (pos<=90) expected=LocusFunction.CODING;
+			else expected=LocusFunction.UTR;
+			Assert.assertEquals(actual[pos-8], expected, "position " + pos);
+		}
+	}
+
+	@Test
+	// The range based implementation must give the same per-base answer as picard's Transcript.assignLocusFunctionForRange.
+	public void testGetLocusFunctionsByIntervalMatchesPicard() {
+		AnnotationUtils u = AnnotationUtils.getInstance();
+		Random random = new Random(42);
+		for (int g=0; g<300; g++) {
+			GeneFromGTF gene = new GeneFromGTF("1", 100, 400, false, "G"+g, "coding", "G"+g, "coding", 1);
+			int numTranscripts = 1 + random.nextInt(3);
+			for (int t=0; t<numTranscripts; t++) {
+				int txStart = 100 + random.nextInt(100);
+				int txEnd = 300 + random.nextInt(100);
+				// exons sorted by start, may overlap each other.
+				int numExons = 1 + random.nextInt(5);
+				int[] starts = new int[numExons];
+				for (int e=0; e<numExons; e++) starts[e]=txStart + random.nextInt(txEnd-txStart);
+				Arrays.sort(starts);
+				// coding region is sometimes degenerate (non-coding transcript).
+				int codingStart = txStart + random.nextInt(txEnd-txStart);
+				int codingEnd = random.nextInt(4)==0 ? codingStart-1 : Math.min(txEnd, codingStart + random.nextInt(150));
+				final GeneFromGTF.TranscriptFromGTF tx = gene.addTranscript("t"+t, txStart, txEnd, codingStart, codingEnd, numExons, "t"+t, "t"+t, "coding");
+				for (int e=0; e<numExons; e++)
+					tx.addExon(starts[e], Math.min(txEnd, starts[e] + random.nextInt(60)));
+			}
+			for (int k=0; k<30; k++) {
+				int start = 50 + random.nextInt(400);
+				int end = start + random.nextInt(120);
+				LocusFunction[] expected = new LocusFunction[end-start+1];
+				Arrays.fill(expected, LocusFunction.INTERGENIC);
+				for (Gene.Transcript t: gene)
+					t.assignLocusFunctionForRange(start, expected);
+				LocusFunction[] actual = u.getLocusFunctionsByInterval(new Interval("1", start, end), gene);
+				Assert.assertEquals(actual, expected, "gene " + g + " interval " + start + "-" + end);
+			}
+		}
 	}
 
 	/**

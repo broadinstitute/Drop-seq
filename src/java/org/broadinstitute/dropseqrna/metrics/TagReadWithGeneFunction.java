@@ -29,10 +29,11 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.dropseqrna.annotation.AnnotationUtils;
+import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.dropseqrna.annotation.GeneAnnotationReader;
-import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.BatchingIterable;
+import org.broadinstitute.dropseqrna.utils.OrderedConcurrentMapper;
 import org.broadinstitute.dropseqrna.utils.SamHeaderUtil;
 import picard.annotation.Gene;
 import picard.annotation.LocusFunction;
@@ -99,13 +100,34 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
 			"of multiple annotations (coding + intronic). Set to 0 to reproduce the DropSeq standard, or 50 to emulate StarSolo.")
 	public double PCT_REQUIRED_OVERLAP=0;
 
+	@Argument(doc="The number of threads used to tag reads.  Reads are read and written in their original order, and the output is" +
+			" identical regardless of this value.  With 1 (the default) reads are tagged one at a time on the main thread.  With more than 1, " +
+			"that many threads tag reads in parallel, in addition to the thread that reads the input and the thread that writes the output.  " +
+			"More threads help most when the input and output are uncompressed, since otherwise reading and writing the BAM is the bottleneck.")
+	public int NUM_THREADS=1;
+
+	@Hidden
+	@Argument(doc="The number of reads handed to a tagging thread at a time when NUM_THREADS > 1.  The default is fine for almost all data.")
+	public int BATCH_SIZE=1000;
+
 	// @Option(doc="Allow a read to span the exons of multiple genes.  If set to true, the gene name will be set to all of the gene/exons the read spans.  In that case, the gene names will be comma separated.")
 	private boolean ALLOW_MULTI_GENE_READS=false;
+
+	// in-flight batches allowed per tagging thread when NUM_THREADS > 1.
+	private static final int MAX_BATCHES_PER_THREAD = 4;
 
 	private ReadTaggingMetric metrics = new ReadTaggingMetric();
 
 	public TagReadWithGeneFunction() {
 		VALIDATION_STRINGENCY = ValidationStringency.LENIENT;
+	}
+
+	@Override
+	protected String[] customCommandLineValidation() {
+		final List<String> errors = new ArrayList<>();
+		if (NUM_THREADS < 1) errors.add("NUM_THREADS must be at least 1: " + NUM_THREADS);
+		if (BATCH_SIZE < 1) errors.add("BATCH_SIZE must be at least 1: " + BATCH_SIZE);
+		return errors.isEmpty() ? super.customCommandLineValidation() : errors.toArray(new String[0]);
 	}
 
 	@Override
@@ -125,14 +147,10 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
 				VALIDATION_STRINGENCY);
         SAMFileWriter writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(header, true, OUTPUT);
 
-        for (SAMRecord r: inputSam) {
-        	pl.record(r);
-
-        	if (!r.getReadUnmappedFlag())
-				// r=	setGeneExons(r, geneOverlapDetector, this.ALLOW_MULTI_GENE_READS);
-        		r= setAnnotations(r, geneOverlapDetector, this.ALLOW_MULTI_GENE_READS);
-        	writer.addAlignment(r);
-        }
+        if (NUM_THREADS == 1)
+        	tagReads(inputSam, writer, geneOverlapDetector);
+        else
+        	tagReadsConcurrently(inputSam, writer, geneOverlapDetector);
 
 		CloserUtil.close(inputSam);
 		writer.close();
@@ -183,56 +201,85 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
 		return (r);
 	}
 	*/
+	private ReadGeneFunctionTagger newTagger(final OverlapDetector<Gene> geneOverlapDetector) {
+		return new ReadGeneFunctionTagger(geneOverlapDetector, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
+				READ_FUNCTION_TAG, USE_STRAND_INFO, PCT_REQUIRED_OVERLAP);
+	}
+
 	/**
-	 * Add functional annotations for this read.
-	 * @param r
-	 * @param geneOverlapDetector
-	 * @return
+	 * Tag the reads one at a time on this thread, writing them in the order they were read.
+	 */
+	private void tagReads(final SamReader inputSam, final SAMFileWriter writer, final OverlapDetector<Gene> geneOverlapDetector) {
+		final ReadGeneFunctionTagger tagger = newTagger(geneOverlapDetector);
+		for (SAMRecord r: inputSam) {
+			pl.record(r);
+			if (!r.getReadUnmappedFlag())
+				tagger.tag(r);
+			writer.addAlignment(r);
+		}
+		this.metrics.merge(tagger.getMetrics());
+	}
+
+	/**
+	 * Tag the reads on NUM_THREADS threads, writing them in the order they were read.
+	 *
+	 * The calling thread reads the input and hands batches of reads to the tagging threads.  Each tagging thread has its
+	 * own tagger (which accumulates its own metrics), over the same read-only gene models.  A single thread writes
+	 * the tagged batches in the original order.  OrderedConcurrentMapper counts that writing thread as one of its
+	 * threads, hence NUM_THREADS + 1.
+	 */
+	private void tagReadsConcurrently(final SamReader inputSam, final SAMFileWriter writer, final OverlapDetector<Gene> geneOverlapDetector) {
+		final List<ReadGeneFunctionTagger> taggers = Collections.synchronizedList(new ArrayList<>());
+		final Iterator<SAMRecord> progressLoggingIterator = new Iterator<>() {
+			private final Iterator<SAMRecord> it = inputSam.iterator();
+			@Override
+			public boolean hasNext() { return it.hasNext(); }
+			@Override
+			public SAMRecord next() {
+				final SAMRecord r = it.next();
+				pl.record(r);
+				return r;
+			}
+		};
+
+		new OrderedConcurrentMapper.Builder<List<SAMRecord>, ReadGeneFunctionTagger, List<SAMRecord>>()
+				.withIterable(new BatchingIterable<>(progressLoggingIterator, BATCH_SIZE))
+				.withNumThreads(NUM_THREADS + 1)
+				// bounds the batches that have been read but not yet written.  OrderedConcurrentMapper's default
+				// counts items, and is meant for single records, not batches of them.
+				.withMaxItems(MAX_BATCHES_PER_THREAD * NUM_THREADS)
+				.withPerThreadFactory(() -> {
+					final ReadGeneFunctionTagger tagger = newTagger(geneOverlapDetector);
+					taggers.add(tagger);
+					return tagger;
+				})
+				.withMapper((final List<SAMRecord> batch, final ReadGeneFunctionTagger tagger) -> {
+					for (final SAMRecord r : batch)
+						if (!r.getReadUnmappedFlag())
+							tagger.tag(r);
+					return batch;
+				})
+				.withConsumer(batch -> batch.forEach(writer::addAlignment))
+				.build()
+				.execute();
+
+		// every tagging thread has finished, so the taggers' metrics are safe to read.
+		for (final ReadGeneFunctionTagger tagger : taggers)
+			this.metrics.merge(tagger.getMetrics());
+	}
+
+	/**
+	 * Add functional annotations for this read.  Convenience for tagging a single read.
+	 * @param r a mapped read
+	 * @param geneOverlapDetector the gene models
+	 * @param allowMultiReadGenes unused
+	 * @return The read.
 	 */
 	public SAMRecord setAnnotations (final SAMRecord r, final OverlapDetector<Gene> geneOverlapDetector, final boolean allowMultiReadGenes) {
-		Map<Gene, List<LocusFunction>> map = AnnotationUtils.getInstance().getFunctionalDataForRead (r, geneOverlapDetector, this.PCT_REQUIRED_OVERLAP);
-		List<Gene> genes = new ArrayList<Gene>(map.keySet());
-		// sort genes by name alphabetically to maintain some consistent ordering.
-		Collections.sort(genes, GENE_NAME_COMPARATOR);
-
-
-		// populate a list of genes and loci functions.  Get rid of intergenic annotations.
-		List<Gene> geneList = new ArrayList<Gene>();
-
-		// ensure the loci are sorted in the same output order as the genes!
-		List<LocusFunction> functionList = new ArrayList<LocusFunction>();
-		for (Gene g: genes) {
-			List<LocusFunction> fa = map.get(g);
-			Collections.sort(fa, Collections.reverseOrder());
-			for (LocusFunction lf: fa) {
-				geneList.add(g);
-				functionList.add(lf);
-			}
-		}
-
-		String finalGeneName = getCompoundName(geneList);
-		String finalGeneStrand = getCompoundStrand(geneList);
-		String finalLociFunctions=getCompoundFunctionName(functionList);
-
-		r.setAttribute(this.GENE_FUNCTION_TAG, finalLociFunctions);
-		r.setAttribute(this.GENE_NAME_TAG, finalGeneName);
-		r.setAttribute(this.GENE_STRAND_TAG, finalGeneStrand);
-
-		// filter Gene/Locus Function map down to correct strand for read tags for the summary function
-
-		if (USE_STRAND_INFO)
-			genes = getGenesConsistentWithReadStrand(genes, r);
-
-
-		List<LocusFunction> finalFunctionList = new ArrayList<LocusFunction>();
-		for (Gene g: genes) {
-			List<LocusFunction> lf = map.get(g);
-			finalFunctionList.addAll(lf);
-		}
-		// pick the summary locus function for genes that were consistent.
-		LocusFunction f = AnnotationUtils.getInstance().getLocusFunction(finalFunctionList, false);
-		r.setAttribute(this.READ_FUNCTION_TAG, f.name());
-		return (r);
+		final ReadGeneFunctionTagger tagger = newTagger(geneOverlapDetector);
+		tagger.tag(r);
+		this.metrics.merge(tagger.getMetrics());
+		return r;
 	}
 
 	/**
@@ -250,12 +297,8 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
 		return (result);
 	}
 
-	public static final Comparator<Gene> GENE_NAME_COMPARATOR =  new Comparator<Gene>() {
-        @Override
-		public int compare(final Gene g1, final Gene g2) {
-            return (g1.getName().compareTo(g2.getName()));
-        }
-    };
+	public static final Comparator<Gene> GENE_NAME_COMPARATOR = ReadGeneFunctionTagger.GENE_NAME_COMPARATOR;
+
 
     public static final Comparator<LocusFunction> LOCUS_FUNCTION_COMPARATOR =  new Comparator<LocusFunction>() {
         @Override
@@ -264,113 +307,33 @@ public class TagReadWithGeneFunction extends CommandLineProgram {
         }
     };
 
-    // LocusFunction
-
-	/**
-	 * If a read overlaps 1 gene, accept it.
-	 * If the read overlaps two genes that are on opposite strands, then the read should be tagged with only the gene on the correct strand.
-	 * If the read overlaps two genes on the same strand, then it's ambiguous and no genes should be tagged.
-	 * This method also gathers metrics on the strand/gene assignment.
-	 * @param genes
-	 * @param r
-	 * @return returns the gene the read is consistent with.
-	 */
-	private List<Gene> getGenesConsistentWithReadStrand(final List<Gene> genes, final SAMRecord r) {
-		this.metrics.TOTAL_READS++;
-
-		List<Gene> sameStrand = new ArrayList<Gene>();
-		List<Gene> oppositeStrand = new ArrayList<Gene>();
-
-		boolean negativeStrandRead = r.getReadNegativeStrandFlag();
-		for (Gene g: genes) {
-			boolean geneNegativeStrand = g.isNegativeStrand();
-			// if the read and gene are on the same strand, both positive or negative...
-			if ((negativeStrandRead && geneNegativeStrand) || (!negativeStrandRead && !geneNegativeStrand))
-				sameStrand.add(g);
-			else
-				oppositeStrand.add(g);
-		}
-
-		if (sameStrand.size()==0 && oppositeStrand.size()>0) {
-			this.metrics.READS_WRONG_STRAND++;
-			return new ArrayList<Gene>();
-		}
-
-		/**
-		if (sameStrand.size()>1) {
-			this.metrics.AMBIGUOUS_READS_REJECTED++;
-			return new ArrayList<Gene>();
-		}
-		*/
-		// otherwise, the read is unambiguously assigned to a gene on the correct strand - the sameStrandSize must be 1 as it's not 0 and not > 1.
-		if (oppositeStrand.size()>0)
-			this.metrics.READ_AMBIGUOUS_GENE_FIXED++;
-
-		this.metrics.READS_RIGHT_STRAND++;
-		return sameStrand;
-
-	}
-
 	public static String getCompoundName (final Collection<Gene> genes) {
-
-		if (genes.isEmpty()) return (null);
-
-
-		StringBuilder result = new StringBuilder();
-		Iterator<Gene> iter = genes.iterator();
-		result.append(iter.next().getName());
-
-
-		while (iter.hasNext()) {
-			result.append(",");
-			result.append(iter.next().getName());
-		}
-
-		return (result.toString());
+		return ReadGeneFunctionTagger.getCompoundName(genes);
 	}
 
 	public static String getCompoundFunctionName (final Collection<LocusFunction> functions) {
-
-		if (functions.isEmpty()) return (null);
-
-		StringBuilder result = new StringBuilder();
-		Iterator<LocusFunction> iter = functions.iterator();
-		result.append(iter.next().name());
-
-
-		while (iter.hasNext()) {
-			result.append(",");
-			result.append(iter.next().name());
-		}
-
-		return (result.toString());
+		return ReadGeneFunctionTagger.getCompoundFunctionName(functions);
 	}
-
 
 	public static String getCompoundStrand (final Collection<Gene> genes) {
-
-		if (genes.isEmpty()) return (null);
-
-		StringBuilder result = new StringBuilder();
-		Iterator<Gene> iter = genes.iterator();
-		result.append(Utils.negativeStrandToString(iter.next().isNegativeStrand()));
-
-		while (iter.hasNext()) {
-			result.append(",");
-			result.append(Utils.negativeStrandToString(iter.next().isNegativeStrand()));
-		}
-
-		return (result.toString());
+		return ReadGeneFunctionTagger.getCompoundStrand(genes);
 	}
 
-
-
-	public class ReadTaggingMetric extends MetricBase {
+	public static class ReadTaggingMetric extends MetricBase {
 		public int TOTAL_READS=0;
 		public int READS_WRONG_STRAND=0;
 		public int READS_RIGHT_STRAND=0;
 		public int READ_AMBIGUOUS_GENE_FIXED=0;
 		public int AMBIGUOUS_READS_REJECTED=0;
+
+		/** Add the counts of another metric to this one. */
+		public void merge(final ReadTaggingMetric other) {
+			this.TOTAL_READS += other.TOTAL_READS;
+			this.READS_WRONG_STRAND += other.READS_WRONG_STRAND;
+			this.READS_RIGHT_STRAND += other.READS_RIGHT_STRAND;
+			this.READ_AMBIGUOUS_GENE_FIXED += other.READ_AMBIGUOUS_GENE_FIXED;
+			this.AMBIGUOUS_READS_REJECTED += other.AMBIGUOUS_READS_REJECTED;
+		}
 
 		@Override
 		public String toString () {
