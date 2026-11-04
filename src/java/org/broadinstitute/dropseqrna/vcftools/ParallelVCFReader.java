@@ -86,6 +86,11 @@ import java.util.function.IntConsumer;
  * <p>One thread reads the file and splits it into batches of records.  Worker threads decode the batches, and
  * the iterator returns them in file order.  With one thread, this just uses {@link VCFFileReader}.
  *
+ * <p><b>Differences from {@link VCFFileReader}:</b> this class only reads the file from start to end; it has no
+ * {@code query()} to jump to a region.  Iterating never needs the index, with either reader.  Like {@code VCFFileReader},
+ * the constructors fail if the index is missing unless you pass {@code requireIndex = false}, but with more than one
+ * thread that is only an existence check.  With one thread this simply wraps {@link VCFFileReader}.
+ *
  * <p>Supported files: VCF (plain or gzipped) and uncompressed BCF (named {@code *.bcf}).
  * BGZF-compressed BCF is not supported until htsjdk 6.
  *
@@ -110,6 +115,9 @@ public class ParallelVCFReader implements Closeable, Iterable<VariantContext> {
 	private static final Future<List<VariantContext>> END = CompletableFuture.completedFuture(Collections.emptyList());
 	private static final AtomicInteger INSTANCE_COUNTER = new AtomicInteger();
 	private static final int INPUT_BUFFER_SIZE = 1 << 20;
+	// How long close() waits for each of the reader thread and the workers to stop.  They are daemon threads, so one that
+	// doesn't stop in time (a stuck read, say) is reported and abandoned rather than blocking close() or JVM exit.
+	private static final long CLOSE_WAIT_SECONDS = 10;
 
 	/** Default number of records per batch. */
 	public static final int DEFAULT_BATCH_SIZE = 100;
@@ -132,19 +140,20 @@ public class ParallelVCFReader implements Closeable, Iterable<VariantContext> {
 	private final AtomicLong readerBlockedNanos = new AtomicLong();
 
 	/**
-	 * Opens a VCF or BCF using the default tuning.  No index is required.
+	 * Opens a VCF or BCF using the default tuning.  As with {@link VCFFileReader}, an index is required; use
+	 * {@link #ParallelVCFReader(Path, boolean, int)} with {@code requireIndex = false} to read a file without one.
 	 * @param vcf the VCF or BCF to read
 	 * @param numThreads number of decoding threads; 1 means read with {@link VCFFileReader}
 	 */
 	public ParallelVCFReader(final Path vcf, final int numThreads) {
-		this(vcf, false, numThreads);
+		this(vcf, true, numThreads);
 	}
 
 	/**
 	 * Opens a VCF or BCF using the default tuning.
 	 * @param vcf the VCF or BCF to read
 	 * @param requireIndex if true, fail if the file has no index, as {@link VCFFileReader} does.
-	 * Reading with more than one thread doesn't use the index.
+	 * Reading with more than one thread never uses the index; this is only an existence check.
 	 * @param numThreads number of decoding threads; 1 means read with {@link VCFFileReader}
 	 */
 	public ParallelVCFReader(final Path vcf, final boolean requireIndex, final int numThreads) {
@@ -155,7 +164,7 @@ public class ParallelVCFReader implements Closeable, Iterable<VariantContext> {
 	 * Opens a VCF or BCF with explicit tuning.  The tuning is ignored when numThreads is 1.
 	 * @param vcf the VCF or BCF to read
 	 * @param requireIndex if true, fail if the file has no index, as {@link VCFFileReader} does.
-	 * Reading with more than one thread doesn't use the index.
+	 * Reading with more than one thread never uses the index; this is only an existence check.
 	 * @param numThreads number of decoding threads; 1 means read with {@link VCFFileReader}
 	 * @param batchSize records per batch
 	 * @param queueDepth batches decoded ahead of the caller; use at least numThreads
@@ -189,8 +198,7 @@ public class ParallelVCFReader implements Closeable, Iterable<VariantContext> {
 		}
 		this.serialReader = null;
 		if (requireIndex) {
-			// The parallel path streams the file and never uses the index, but honor the request the same way
-			// VCFFileReader does: opening one that requires an index throws if it's missing.
+			// The parallel path never uses the index, but fail on a missing one the same way VCFFileReader does.
 			new VCFFileReader(vcf, true).close();
 		}
 		try {
@@ -294,8 +302,11 @@ public class ParallelVCFReader implements Closeable, Iterable<VariantContext> {
 		Future<List<VariantContext>> f;
 		while ((f = queue.poll()) != null) f.cancel(true);
 		try {
-			if (readerThread.isAlive()) readerThread.join(10_000);
-			workers.awaitTermination(10, TimeUnit.SECONDS);
+			readerThread.join(TimeUnit.SECONDS.toMillis(CLOSE_WAIT_SECONDS));
+			if (readerThread.isAlive())
+				log.warn("Reader thread ", readerThread.getName(), " did not stop within ", CLOSE_WAIT_SECONDS, "s of close(); abandoning it.");
+			if (!workers.awaitTermination(CLOSE_WAIT_SECONDS, TimeUnit.SECONDS))
+				log.warn("Decoding threads did not stop within ", CLOSE_WAIT_SECONDS, "s of close(); abandoning them.");
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		}

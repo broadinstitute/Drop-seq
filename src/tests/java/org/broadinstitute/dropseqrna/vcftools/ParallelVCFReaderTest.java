@@ -49,6 +49,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ParallelVCFReaderTest {
 
+	// These only bound a hung test; a passing test never waits for them.  They are generous so that a slow or busy
+	// machine doesn't turn into a spurious failure.
+	private static final long TEST_TIMEOUT_MS = 120_000;
+	private static final long HELD_BATCH_WAIT_SECONDS = 60;
+
 	private static final Path DATA_DIR = Path.of("testdata/org/broadinstitute/dropseq/barnyard/digitalallelecounts");
 	// 399 records, 23 contigs, 129 samples, bgzipped.
 	private static final Path MULTI_CONTIG_VCF = DATA_DIR.resolve("sampleassignment/multisample/TTTGCGCGGAGC:ATTGTTTAGGAG.vcf.gz");
@@ -103,7 +108,7 @@ public class ParallelVCFReaderTest {
 	 * Batch size 10 gives 40 batches (the last one partial) for the 399-record VCF and BCF,
 	 * and a single partial batch for the 6-record plain VCF.
 	 */
-	@Test(dataProvider = "vcfs", timeOut = 30_000)
+	@Test(dataProvider = "vcfs", timeOut = TEST_TIMEOUT_MS)
 	public void testMatchesVCFFileReader(final Path vcf) {
 		final int numThreads = 4;
 		try (ParallelVCFReader reader = new ParallelVCFReader(vcf, false, numThreads, 10, 2 * numThreads);
@@ -121,7 +126,7 @@ public class ParallelVCFReaderTest {
 	 * With 2 workers, batch 0 blocks one worker until batch 3 starts.  The other worker must therefore
 	 * finish batches 1 and 2 (and start 3) before batch 0 is decoded, so completion is guaranteed to be out of order.
 	 */
-	@Test(timeOut = 30_000)
+	@Test(timeOut = TEST_TIMEOUT_MS)
 	public void testOutOfOrderCompletionKeepsFileOrder() {
 		final CountDownLatch batch3Started = new CountDownLatch(1);
 		final AtomicBoolean batch0Waited = new AtomicBoolean(false);
@@ -131,7 +136,7 @@ public class ParallelVCFReaderTest {
 			if (batchIndex == 3) batch3Started.countDown();
 			if (batchIndex == 0) {
 				try {
-					if (!batch3Started.await(10, TimeUnit.SECONDS))
+					if (!batch3Started.await(HELD_BATCH_WAIT_SECONDS, TimeUnit.SECONDS))
 						throw new AssertionError("batch 3 never started while batch 0 was held");
 				} catch (InterruptedException e) {
 					throw new RuntimeException(e);
@@ -145,7 +150,7 @@ public class ParallelVCFReaderTest {
 	}
 
 	/** A VCF with a header and no records. */
-	@Test(timeOut = 30_000)
+	@Test(timeOut = TEST_TIMEOUT_MS)
 	public void testHeaderOnlyVcf() throws IOException {
 		final Path headerOnly = Files.createTempFile("ParallelVCFReaderTest.headerOnly.", ".vcf");
 		headerOnly.toFile().deleteOnExit();
@@ -159,7 +164,7 @@ public class ParallelVCFReaderTest {
 	}
 
 	/** A malformed record mid-file throws from the iterator, after the records before it, without hanging. */
-	@Test(timeOut = 30_000)
+	@Test(timeOut = TEST_TIMEOUT_MS)
 	public void testMalformedRecordThrows() throws IOException {
 		final Path malformed = Files.createTempFile("ParallelVCFReaderTest.malformed.", ".vcf");
 		malformed.toFile().deleteOnExit();
@@ -193,7 +198,7 @@ public class ParallelVCFReaderTest {
 	}
 
 	/** Closing after reading only part of the file returns promptly and stops every thread. */
-	@Test(timeOut = 30_000)
+	@Test(timeOut = TEST_TIMEOUT_MS)
 	public void testCloseEarly() {
 		// Small batches and a short queue, so the reader thread is blocked on a full queue when close() is called.
 		final ParallelVCFReader reader = new ParallelVCFReader(MULTI_CONTIG_VCF, false, 4, 1, 2);
@@ -218,10 +223,19 @@ public class ParallelVCFReaderTest {
 		new ParallelVCFReader(unindexed, true, numThreads).close();
 	}
 
+	/** Like VCFFileReader, the constructor without a requireIndex argument requires an index. */
+	@Test(dataProvider = "oneAndFourThreads", expectedExceptions = TribbleException.class)
+	public void testDefaultRequiresIndex(final int numThreads) throws IOException {
+		final Path unindexed = Files.createTempFile("ParallelVCFReaderTest.unindexedDefault.", ".vcf");
+		unindexed.toFile().deleteOnExit();
+		Files.copy(PLAIN_VCF, unindexed, StandardCopyOption.REPLACE_EXISTING);
+		new ParallelVCFReader(unindexed, numThreads).close();
+	}
+
 	/** iterator() may only be called once. */
 	@Test(expectedExceptions = IllegalStateException.class)
 	public void testIteratorTwiceThrows() {
-		try (ParallelVCFReader reader = new ParallelVCFReader(PLAIN_VCF, 2)) {
+		try (ParallelVCFReader reader = new ParallelVCFReader(PLAIN_VCF, false, 2)) {
 			reader.iterator();
 			reader.iterator();
 		}

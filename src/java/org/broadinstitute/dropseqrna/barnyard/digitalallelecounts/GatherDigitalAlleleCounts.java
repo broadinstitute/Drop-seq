@@ -503,8 +503,11 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 
 	private SNPInfoCollection getSNPInfoCollection() {
 		// vcfReader is used for the header and sample checks; recordReader supplies the records, decoded on NUM_THREADS threads.
-		try (final VCFFileReader vcfReader = new VCFFileReader(this.VCF.toPath(), false);
-			 final ParallelVCFReader recordReader = new ParallelVCFReader(this.VCF.toPath(), this.NUM_THREADS)) {
+		try (
+				final VCFFileReader vcfReader =
+						new VCFFileReader(this.VCF.toPath(), false);
+				final ParallelVCFReader recordReader =
+						new ParallelVCFReader(this.VCF.toPath(), false, this.NUM_THREADS)) {
 
 			if (!VCFUtils.GQInHeader(vcfReader)) {
 				this.GQ_THRESHOLD = -1;
@@ -516,7 +519,7 @@ public class GatherDigitalAlleleCounts extends GeneFunctionCommandLineBase {
 			if (vcfSamples == null || vcfSamples.size() == 0)
 				vcfSamples = SampleAssignmentVCFUtils.getVCFSamples(vcfReader, this.SAMPLE_FILE);
 
-			Iterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(vcfReader, recordReader.iterator(), vcfSamples, !POLYMORPHIC_SNPS_ONLY, GQ_THRESHOLD,
+			Iterator<VariantContext> vcfIterator = SampleAssignmentVCFUtils.getVCFIterator(recordReader.getFileHeader(), recordReader.iterator(), vcfSamples, !POLYMORPHIC_SNPS_ONLY, GQ_THRESHOLD,
 					this.FRACTION_SAMPLES_PASSING, this.IGNORED_CHROMOSOMES, log);
 			if (this.HET_SNPS_ONLY)
 				vcfIterator = new HetSNPFilter(vcfIterator);

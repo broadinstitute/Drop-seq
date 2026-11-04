@@ -50,6 +50,7 @@ import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFFileReader;
+import htsjdk.variant.vcf.VCFHeader;
 
 /**
  * One stop shopping for consistently getting data from VCFs.
@@ -70,20 +71,21 @@ public class SampleAssignmentVCFUtils {
      *
 	 */
 	public static PeekableIterator<VariantContext> getVCFIterator (final VCFFileReader vcfReader, final List<String> samples, final boolean retainMonomorphicSNPs, final int genotypeGCThreshold, final double fractionPassing,  final List<String> ignoredChromosomes, final Log log) {
-		return getVCFIterator(vcfReader, vcfReader.iterator(), samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing, ignoredChromosomes, log);
+		return getVCFIterator(vcfReader.getFileHeader(), vcfReader.iterator(), samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing, ignoredChromosomes, log);
 	}
 
 	/**
 	 * As {@link #getVCFIterator(VCFFileReader, List, boolean, int, double, List, Log)}, but filters the records
 	 * from {@code records} (for example a {@link ParallelVCFReader}'s iterator over the same VCF) instead of
-	 * {@code vcfReader.iterator()}.  {@code vcfReader} is only used to validate the samples against the header.
+	 * {@code vcfReader.iterator()}.  {@code vcfHeader} (the header of the VCF that {@code records} came from) is only
+	 * used to validate the samples.
 	 */
-	public static PeekableIterator<VariantContext> getVCFIterator (final VCFFileReader vcfReader, final Iterator<VariantContext> records, final List<String> samples, final boolean retainMonomorphicSNPs, final int genotypeGCThreshold, final double fractionPassing,  final List<String> ignoredChromosomes, final Log log) {
+	public static PeekableIterator<VariantContext> getVCFIterator (final VCFHeader vcfHeader, final Iterator<VariantContext> records, final List<String> samples, final boolean retainMonomorphicSNPs, final int genotypeGCThreshold, final double fractionPassing,  final List<String> ignoredChromosomes, final Log log) {
 		Iterator<VariantContext> filteredIter=records;
 		List<String> finalSamples = samples;
 		if (samples.size()>0) {
-			finalSamples = validateSampleNamesInVCF(vcfReader, samples, log);
-			if (sampleListMatchesVcf(vcfReader, finalSamples)) finalSamples=Collections.EMPTY_LIST;
+			finalSamples = validateSampleNamesInVCF(vcfHeader, samples, log);
+			if (sampleListMatchesVcf(vcfHeader, finalSamples)) finalSamples=Collections.EMPTY_LIST;
 		}
 		
 		// filter by samples if requested AND if the samples are not the default VCF samples.  Otherwise make samples an empty list.
@@ -127,11 +129,22 @@ public class SampleAssignmentVCFUtils {
 	 * @param vcfReader
 	 * @param samples
 	 * @return
+	 * @deprecated use {@link #sampleListMatchesVcf(VCFHeader, List)}.  Only the header is needed.
 	 */
+	@Deprecated
 	public static boolean sampleListMatchesVcf (final VCFFileReader vcfReader, final List<String> samples) {
-		List<String> vcfSamples=vcfReader.getFileHeader().getSampleNamesInOrder();
+		return sampleListMatchesVcf(vcfReader.getFileHeader(), samples);
+	}
+
+	/**
+	 * Are the samples in list provided the complete list of samples in the VCF header, and in the same order?
+	 * @param vcfHeader
+	 * @param samples
+	 * @return
+	 */
+	public static boolean sampleListMatchesVcf (final VCFHeader vcfHeader, final List<String> samples) {
+		List<String> vcfSamples=vcfHeader.getSampleNamesInOrder();
 		return (vcfSamples.equals(samples));
-		
 	}
 
 	/**
@@ -181,11 +194,12 @@ public class SampleAssignmentVCFUtils {
 			final int genotypeGCThreshold, final double fractionPassing, final List<String> ignoredChromosomes,
 			final VariantContextWriter vcfWriter, final boolean preserveIntervalNames, final int numThreads, final Log log) {
 
-		// vcfReader is used for the sample checks; recordReader supplies the records.
-		try (final VCFFileReader vcfReader = new VCFFileReader(vcfPath, false);
-			 final ParallelVCFReader recordReader = new ParallelVCFReader(vcfPath, numThreads)) {
-			PeekableIterator<VariantContext> vcfIterator = getVCFIterator(vcfReader, recordReader.iterator(), samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing, ignoredChromosomes, log);
-			return new SNPInfoCollection(vcfIterator, vcfReader.getFileHeader().getSequenceDictionary(), preserveIntervalNames, vcfWriter, log);
+		try (
+				final ParallelVCFReader recordReader =
+						new ParallelVCFReader(vcfPath, false, numThreads)) {
+			final VCFHeader vcfHeader = recordReader.getFileHeader();
+			PeekableIterator<VariantContext> vcfIterator = getVCFIterator(vcfHeader, recordReader.iterator(), samples, retainMonomorphicSNPs, genotypeGCThreshold, fractionPassing, ignoredChromosomes, log);
+			return new SNPInfoCollection(vcfIterator, vcfHeader.getSequenceDictionary(), preserveIntervalNames, vcfWriter, log);
 		}
 	}
 
@@ -274,14 +288,24 @@ public class SampleAssignmentVCFUtils {
 	 * If the intersect doesn't find all of the requested samples, something is very wrong so throw an error.
 	 * @param vcfReader The VCF reader
 	 * @param samples A set of strings of sample names expected to be in the VCF.  If this is empty, this operation is a no-op.
+	 * @deprecated use {@link #validateSampleNamesInVCF(VCFHeader, List, Log)}.  Only the header is needed.
 	 */
+	@Deprecated
 	public static List<String> validateSampleNamesInVCF (final VCFFileReader vcfReader, final List<String> samples, final Log log) {
+		return validateSampleNamesInVCF(vcfReader.getFileHeader(), samples, log);
+	}
+
+	/**
+	 * As {@link #validateSampleNamesInVCF(VCFFileReader, List, Log)}, using the sample names from the VCF header.
+	 * @param vcfHeader The VCF header
+	 */
+	public static List<String> validateSampleNamesInVCF (final VCFHeader vcfHeader, final List<String> samples, final Log log) {
 		// short circuit for no-op.
 		if (samples.isEmpty()) return samples;
-		Set<String> samplesInVCF = new HashSet<>(vcfReader.getFileHeader().getSampleNameToOffset().keySet());
+		Set<String> samplesInVCF = new HashSet<>(vcfHeader.getSampleNameToOffset().keySet());
 		samplesInVCF.retainAll(samples);
 		if (samplesInVCF.size()==0) {
-			samplesInVCF = vcfReader.getFileHeader().getSampleNameToOffset().keySet();
+			samplesInVCF = vcfHeader.getSampleNameToOffset().keySet();
 			throw new IllegalArgumentException("Didn't find any of these samples from the VCF:"+samplesInVCF +" in the submitted a list of samples " + samples.toString());
 		}
 		
@@ -306,12 +330,16 @@ public class SampleAssignmentVCFUtils {
 
 	/**
 	 * Validate that all samples in the sampleFile appear in the vcf
-	 * @see #validateSampleNamesInVCF(VCFFileReader, List, Log)
+	 * @see #validateSampleNamesInVCF(VCFHeader, List, Log)
 	 * @param vcf
 	 * @param sampleFile
 	 */
 	public static void validateSampleNamesInVCF (final File vcf, final File sampleFile) {
-		validateSampleNamesInVCF(new VCFFileReader(vcf, false), ParseBarcodeFile.readCellBarcodeFile(sampleFile), null);
+		try (
+				final VCFFileReader vcfReader =
+						new VCFFileReader(vcf, false)) {
+			validateSampleNamesInVCF(vcfReader.getFileHeader(), ParseBarcodeFile.readCellBarcodeFile(sampleFile), null);
+		}
 	}
 
 	/**
