@@ -21,7 +21,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v7
       with:
-        python-version: ${{ inputs.python_version }}
+        python-version: '3.13'
     - name: Install package including dependencies
       run: |
         cd src/python
