@@ -30,6 +30,7 @@ import htsjdk.samtools.util.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
+import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
@@ -42,6 +43,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -70,12 +72,23 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
     @Argument(doc="Include non-PF reads when gathering metrics")
     public boolean INCLUDE_NON_PF_READS=false;
 
+    @Argument(doc="Number of threads used to read and decode the input BAMs.  With 1, the BAMs are read on the main thread as before.")
+    public int NUM_THREADS = 1;
+
     // The key used to output the global metrics collected for all the cell barcodes
     public final static String GLOBAL = "all";
 
 	/** Stock main method. */
 	public static void main(final String[] args) {
 		System.exit(new GatherReadQualityMetrics().instanceMain(args));
+	}
+
+	@Override
+	protected String[] customCommandLineValidation() {
+		final ArrayList<String> list = new ArrayList<>(1);
+		if (this.NUM_THREADS < 1)
+			list.add("NUM_THREADS must be at least 1.");
+		return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
 	}
 
 	/**
@@ -112,7 +125,7 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
 
 		ReadQualityMetrics globalMetrics = new ReadQualityMetrics(this.MINIMUM_MAPPING_QUALITY, GLOBAL, true);
 
-		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputPaths(inputSamOrBamFile, false, SamReaderFactory.makeDefault());
+		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputPaths(inputSamOrBamFile, false, SamReaderFactory.makeDefault(), this.NUM_THREADS);
 		CloseableIterator<SAMRecord> in = headerAndIter.iterator;
 
 		for (final SAMRecord r : new IterableAdapter<>(in))
