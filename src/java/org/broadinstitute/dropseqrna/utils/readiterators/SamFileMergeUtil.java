@@ -127,11 +127,11 @@ public class SamFileMergeUtil {
      *                   Whether more threads help depends on the input (from benchmarks; check it against your own
      *                   data):
      *                   <ul>
-     *                   <li>Reading scales with many threads: several inputs.  They are read at the same time, so
+     *                   <li>Several inputs: reading scales with many threads.  They are read at the same time, so
      *                   the gain follows the number of inputs, roughly one thread per input.</li>
-     *                   <li>Reading scales with up to 2 threads: one aligned input.  An uncompressed input kept
+     *                   <li>One aligned input: reading scales with up to 2 threads.  An uncompressed input kept
      *                   gaining up to about 4 threads.</li>
-     *                   <li>Asynchronous IO is better: one unaligned input.  Such reads are cheap to decode, so
+     *                   <li>One unaligned input: asynchronous IO is better.  Such reads are cheap to decode, so
      *                   extra threads gain little.  With more than 1 thread this input is read with htsjdk's
      *                   asynchronous IO instead, see {@link ReadMode#AUTO}, and numThreads does not set its number
      *                   of threads.</li>
