@@ -230,7 +230,7 @@ public class ParallelBamReaderTest {
     }
 
     private static Observed observe(final List<Path> bams, final boolean maintainSort, final int numThreads,
-                                    final SamFileMergeUtil.ReadMode mode) {
+                                    final ReadMode mode) {
         final Observed observed = new Observed();
         try (final CloseableIterator<SAMRecord> it = SamFileMergeUtil.mergeInputPaths(
                 bams, maintainSort, SamReaderFactory.makeDefault(), numThreads, mode).iterator) {
@@ -247,29 +247,29 @@ public class ParallelBamReaderTest {
         final Path unaligned = writeUnalignedBam(100);
         final Path aligned = writeRepeatedBam(1);
         final SamReaderFactory f = SamReaderFactory.makeDefault();
-        final SamFileMergeUtil.ReadMode auto = SamFileMergeUtil.ReadMode.AUTO;
+        final ReadMode auto = ReadMode.AUTO;
         // AUTO: one thread is always stock; several threads use the pool except for one unaligned input.
-        Assert.assertEquals(SamFileMergeUtil.resolveReadMode(List.of(unaligned), f, 1, auto), SamFileMergeUtil.ReadMode.STOCK);
-        Assert.assertEquals(SamFileMergeUtil.resolveReadMode(List.of(unaligned), f, 4, auto), SamFileMergeUtil.ReadMode.ASYNC);
-        Assert.assertEquals(SamFileMergeUtil.resolveReadMode(List.of(aligned), f, 4, auto), SamFileMergeUtil.ReadMode.POOL);
-        Assert.assertEquals(SamFileMergeUtil.resolveReadMode(List.of(unaligned, unaligned), f, 4, auto), SamFileMergeUtil.ReadMode.POOL);
-        Assert.assertEquals(SamFileMergeUtil.resolveReadMode(List.of(unaligned, aligned), f, 4, auto), SamFileMergeUtil.ReadMode.POOL);
+        Assert.assertEquals(auto.resolve(List.of(unaligned), f, 1), ReadMode.STOCK);
+        Assert.assertEquals(auto.resolve(List.of(unaligned), f, 4), ReadMode.ASYNC);
+        Assert.assertEquals(auto.resolve(List.of(aligned), f, 4), ReadMode.POOL);
+        Assert.assertEquals(auto.resolve(List.of(unaligned, unaligned), f, 4), ReadMode.POOL);
+        Assert.assertEquals(auto.resolve(List.of(unaligned, aligned), f, 4), ReadMode.POOL);
         // Explicit modes.
         for (final int threads : new int[]{1, 4}) {
             for (final Path p : List.of(unaligned, aligned)) {
-                Assert.assertEquals(SamFileMergeUtil.resolveReadMode(List.of(p), f, threads, SamFileMergeUtil.ReadMode.ASYNC), SamFileMergeUtil.ReadMode.ASYNC);
-                Assert.assertEquals(SamFileMergeUtil.resolveReadMode(List.of(p), f, threads, SamFileMergeUtil.ReadMode.STOCK), SamFileMergeUtil.ReadMode.STOCK);
+                Assert.assertEquals(ReadMode.ASYNC.resolve(List.of(p), f, threads), ReadMode.ASYNC);
+                Assert.assertEquals(ReadMode.STOCK.resolve(List.of(p), f, threads), ReadMode.STOCK);
             }
         }
-        Assert.assertEquals(SamFileMergeUtil.resolveReadMode(List.of(unaligned), f, 4, SamFileMergeUtil.ReadMode.POOL), SamFileMergeUtil.ReadMode.POOL);
-        Assert.assertEquals(SamFileMergeUtil.resolveReadMode(List.of(unaligned), f, 1, SamFileMergeUtil.ReadMode.POOL), SamFileMergeUtil.ReadMode.STOCK);
+        Assert.assertEquals(ReadMode.POOL.resolve(List.of(unaligned), f, 4), ReadMode.POOL);
+        Assert.assertEquals(ReadMode.POOL.resolve(List.of(unaligned), f, 1), ReadMode.STOCK);
     }
 
     @Test
     public void testAutoReadsOneUnalignedInputWithoutPool() throws IOException {
         final Path bam = writeUnalignedBam(5000);
         final List<String> expected = readStock(bam);
-        final Observed observed = observe(List.of(bam), false, 4, SamFileMergeUtil.ReadMode.AUTO);
+        final Observed observed = observe(List.of(bam), false, 4, ReadMode.AUTO);
         Assert.assertEquals(observed.records, expected);
         Assert.assertFalse(observed.sawPool, "an unaligned single input must not use the pool");
         Assert.assertEquals(poolThreadCount(), 0);
@@ -278,7 +278,7 @@ public class ParallelBamReaderTest {
     @Test
     public void testAutoReadsOneAlignedInputOnPool() throws IOException {
         final Path bam = writeRepeatedBam(30);
-        final Observed observed = observe(List.of(bam), false, 4, SamFileMergeUtil.ReadMode.AUTO);
+        final Observed observed = observe(List.of(bam), false, 4, ReadMode.AUTO);
         Assert.assertEquals(observed.records, readStock(bam));
         Assert.assertTrue(observed.sawPool, "an aligned single input must use the pool");
     }
@@ -286,7 +286,7 @@ public class ParallelBamReaderTest {
     @Test
     public void testAutoWithOneThreadUsesNoThreadsEvenForUnalignedInput() throws IOException {
         final Path bam = writeUnalignedBam(3000);
-        final Observed observed = observe(List.of(bam), false, 1, SamFileMergeUtil.ReadMode.AUTO);
+        final Observed observed = observe(List.of(bam), false, 1, ReadMode.AUTO);
         Assert.assertEquals(observed.records, readStock(bam));
         Assert.assertFalse(observed.sawPool);
     }
@@ -294,7 +294,7 @@ public class ParallelBamReaderTest {
     @Test
     public void testAutoDoesNotUseAsyncForSeveralUnalignedInputs() throws IOException {
         final List<Path> bams = List.of(writeUnalignedBam(1000), writeUnalignedBam(1000));
-        final Observed observed = observe(bams, false, 4, SamFileMergeUtil.ReadMode.AUTO);
+        final Observed observed = observe(bams, false, 4, ReadMode.AUTO);
         Assert.assertEquals(observed.records.size(), 2000);
         Assert.assertTrue(observed.sawPool);
     }
@@ -302,7 +302,7 @@ public class ParallelBamReaderTest {
     @Test
     public void testPoolModeForcesPoolOnUnalignedInput() throws IOException {
         final Path bam = writeUnalignedBam(5000);
-        final Observed observed = observe(List.of(bam), false, 4, SamFileMergeUtil.ReadMode.POOL);
+        final Observed observed = observe(List.of(bam), false, 4, ReadMode.POOL);
         Assert.assertEquals(observed.records, readStock(bam));
         Assert.assertTrue(observed.sawPool);
     }
@@ -315,8 +315,8 @@ public class ParallelBamReaderTest {
             expected.addAll(readStock(bam));
         }
         for (final int threads : new int[]{1, 4}) {
-            for (final SamFileMergeUtil.ReadMode mode : new SamFileMergeUtil.ReadMode[]{
-                    SamFileMergeUtil.ReadMode.ASYNC, SamFileMergeUtil.ReadMode.STOCK}) {
+            for (final ReadMode mode : new ReadMode[]{
+                    ReadMode.ASYNC, ReadMode.STOCK}) {
                 final Observed observed = observe(bams, false, threads, mode);
                 Assert.assertEquals(observed.records, expected, mode + " threads " + threads);
                 Assert.assertFalse(observed.sawPool, mode + " must never use the pool");

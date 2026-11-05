@@ -27,11 +27,11 @@ import com.google.common.collect.Interner;
 import com.google.common.collect.Interners;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
-import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.dropseqrna.utils.CustomBAMIterators;
 import org.broadinstitute.dropseqrna.utils.FileUtils;
 import org.broadinstitute.dropseqrna.utils.readiterators.parallel.BamDecodePool;
+import org.broadinstitute.dropseqrna.utils.readiterators.parallel.ReadMode;
 import picard.PicardException;
 
 import java.io.File;
@@ -70,52 +70,6 @@ public class SamFileMergeUtil {
         return mergeInputPaths(inputs, maintainSort, samReaderFactory::open);
     }
 
-    /** How the overload with a {@link ReadMode} reads the inputs. */
-    public enum ReadMode {
-        /**
-         * The default.  With numThreads 1 this is {@link #STOCK}.  Otherwise it is {@link #POOL}, except for a single
-         * input whose header has an empty sequence dictionary (unaligned reads), which is read as {@link #ASYNC}.  Such
-         * an input is cheap to decode, so the pool helps little, and asynchronous IO was about as fast as the pool on
-         * uncompressed files and faster on compressed ones.  An input with a sequence dictionary but only unmapped
-         * reads counts as aligned.
-         */
-        AUTO,
-        /** The stock htsjdk reader on the calling thread, whatever numThreads is. */
-        STOCK,
-        /** Read and decode on a {@link BamDecodePool} when numThreads is above 1, whatever the inputs; else {@link #STOCK}. */
-        POOL,
-        /**
-         * htsjdk's asynchronous IO, whatever numThreads is, and never a pool.  It uses its own reader threads, so the
-         * thread count is not numThreads.  Records are decoded eagerly, and validated with the validation stringency of
-         * the given factory.  Its other options are not applied, as for {@link BamDecodePool}.  The given factory is
-         * not changed.
-         */
-        ASYNC
-    }
-
-    /**
-     * @return what {@link #mergeInputPaths(List, boolean, SamReaderFactory, int, ReadMode)} will use for these
-     * arguments: {@link ReadMode#STOCK}, {@link ReadMode#POOL} or {@link ReadMode#ASYNC}, never
-     * {@link ReadMode#AUTO}.  Only {@link ReadMode#AUTO} with several threads and one input opens a file, to read its
-     * header.
-     */
-    public static ReadMode resolveReadMode(final List<Path> inputs, final SamReaderFactory samReaderFactory,
-                                           final int numThreads, final ReadMode mode) {
-        switch (mode) {
-            case STOCK:
-            case ASYNC:
-                return mode;
-            case POOL:
-                return numThreads > 1 ? ReadMode.POOL : ReadMode.STOCK;
-            default:
-                if (numThreads == 1) {
-                    return ReadMode.STOCK;
-                }
-                return inputs.size() == 1 && isUnaligned(inputs.getFirst(), samReaderFactory)
-                        ? ReadMode.ASYNC : ReadMode.POOL;
-        }
-    }
-
     /**
      * Use this overload to read and decode BAM records on multiple threads.  Same as
      * {@link #mergeInputPaths(List, boolean, SamReaderFactory, int, ReadMode)} with {@link ReadMode#AUTO}.
@@ -151,7 +105,7 @@ public class SamFileMergeUtil {
 
     /**
      * As {@link #mergeInputPaths(List, boolean, SamReaderFactory, int)}, with a choice of how the inputs are read.
-     * See {@link ReadMode}, and {@link #resolveReadMode} for what is used.  With {@link ReadMode#STOCK} or
+     * See {@link ReadMode}, and {@link ReadMode#resolve} for what is used.  With {@link ReadMode#STOCK} or
      * {@link ReadMode#ASYNC}, and several unsorted inputs, the inputs are read one after another in file order.
      */
     public static SamHeaderAndIterator mergeInputPaths(final List<Path> inputs,
@@ -159,7 +113,7 @@ public class SamFileMergeUtil {
                                                        final SamReaderFactory samReaderFactory,
                                                        final int numThreads,
                                                        final ReadMode mode) {
-        switch (resolveReadMode(inputs, samReaderFactory, numThreads, mode)) {
+        switch (mode.resolve(inputs, samReaderFactory, numThreads)) {
             case ASYNC:
                 return mergeInputPaths(inputs, maintainSort, asyncFactory(samReaderFactory));
             case STOCK:
@@ -169,14 +123,6 @@ public class SamFileMergeUtil {
                 final SamHeaderAndIterator merged = mergeInputPaths(inputs, maintainSort, pool::open, pool::interleave);
                 return new SamHeaderAndIterator(merged.header, pool.closeWhenClosed(merged.iterator));
         }
-    }
-
-    /** @return true if the header of the file has no sequence dictionary, which is what unaligned reads have. */
-    private static boolean isUnaligned(final Path input, final SamReaderFactory samReaderFactory) {
-        final SamReader reader = samReaderFactory.open(input);
-        final boolean unaligned = reader.getFileHeader().getSequenceDictionary().isEmpty();
-        CloserUtil.close(reader);
-        return unaligned;
     }
 
     /** A new factory, so that the caller's is not changed: eager decode, async IO, the caller's validation. */
