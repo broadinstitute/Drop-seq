@@ -30,6 +30,7 @@ import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.dropseqrna.utils.CustomBAMIterators;
 import org.broadinstitute.dropseqrna.utils.FileUtils;
+import org.broadinstitute.dropseqrna.utils.readiterators.parallel.BamDecodePool;
 import picard.PicardException;
 
 import java.io.File;
@@ -38,6 +39,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Utilities for creating a single stream of SAMRecords from multiple input files.
@@ -63,6 +65,38 @@ public class SamFileMergeUtil {
     public static SamHeaderAndIterator mergeInputPaths(final List<Path> inputs,
                                                        final boolean maintainSort,
                                                        final SamReaderFactory samReaderFactory) {
+        return mergeInputPaths(inputs, maintainSort, samReaderFactory::open);
+    }
+
+    /**
+     * Use this overload to read and decode BAM records on multiple threads.
+     * @param maintainSort If true, all inputs must be sorted the same way, and they are merge sorted.  If false, inputs
+     *                     are merged in arbitrary order.
+     * @param numThreads Number of threads that read and decode BAM records, shared by all inputs.  1 is the same as
+     *                   the overload without this argument.  With more than 1, closing the returned iterator also
+     *                   stops the threads, so close it.  See {@link BamDecodePool}.
+     */
+    public static SamHeaderAndIterator mergeInputPaths(final List<Path> inputs,
+                                                       final boolean maintainSort,
+                                                       final SamReaderFactory samReaderFactory,
+                                                       final int numThreads) {
+        if (numThreads == 1) {
+            return mergeInputPaths(inputs, maintainSort, samReaderFactory);
+        }
+        final BamDecodePool pool = new BamDecodePool(numThreads, samReaderFactory);
+        final SamHeaderAndIterator merged = mergeInputPaths(inputs, maintainSort, pool::open);
+        return new SamHeaderAndIterator(merged.header, pool.closeWhenClosed(merged.iterator));
+    }
+
+    /**
+     * Use this overload to control how each input is opened, e.g. with a thread pool that decodes records in parallel.
+     * @param maintainSort If true, all inputs must be sorted the same way, and they are merge sorted.  If false, inputs
+     *                     are merged in arbitrary order.
+     * @param opener Opens one input.  The readers it returns are closed when the returned iterator is closed.
+     */
+    public static SamHeaderAndIterator mergeInputPaths(final List<Path> inputs,
+                                                       final boolean maintainSort,
+                                                       final Function<Path, SamReader> opener) {
         if (inputs.isEmpty()) {
             throw new IllegalArgumentException("At least one input must be provided");
         }
@@ -72,7 +106,7 @@ public class SamFileMergeUtil {
         SAMFileHeader.SortOrder inputSortOrder = null;
         for (final Path inFile : inputs) {
             IOUtil.assertFileIsReadable(inFile);
-            final SamReader in = samReaderFactory.open(inFile);
+            final SamReader in = opener.apply(inFile);
             readers.add(in);
             final SAMFileHeader header = in.getFileHeader();
             header.setSequenceDictionary(sequenceDictionaryInterner.intern(header.getSequenceDictionary()));
