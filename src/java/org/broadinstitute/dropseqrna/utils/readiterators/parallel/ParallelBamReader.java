@@ -53,11 +53,11 @@ import java.util.concurrent.ExecutionException;
  * <h2>When more threads help</h2>
  * Based on benchmarks, so check it against your own data.
  * <ul>
- * <li><b>Several input files: reading scales with many threads.</b>  The files are read at the same time, so the gain
+ * <li><b>Several input files: reading scales with many threads.</b>  The files are read at the same time, so the speedup
  * follows the number of files, roughly one thread per file.</li>
- * <li><b>One aligned file: reading scales with up to 2 threads.</b>  An uncompressed file kept gaining up to about
+ * <li><b>One aligned file: reading scales with up to 2 threads.</b>  An uncompressed file kept speeding up to about
  * 4 threads.</li>
- * <li><b>One unaligned file: asynchronous IO is better.</b>  Such records are cheap to decode, so extra threads gain
+ * <li><b>One unaligned file: asynchronous IO is better.</b>  Such records are cheap to decode, so extra threads help
  * little, and htsjdk's asynchronous IO is as fast or faster.  SamFileMergeUtil uses it for a single unaligned
  * input.</li>
  * </ul>

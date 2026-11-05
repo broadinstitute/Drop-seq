@@ -75,7 +75,7 @@ public class SamFileMergeUtil {
         /**
          * The default.  With numThreads 1 this is {@link #STOCK}.  Otherwise it is {@link #POOL}, except for a single
          * input whose header has an empty sequence dictionary (unaligned reads), which is read as {@link #ASYNC}.  Such
-         * an input is cheap to decode, so the pool gains little, and asynchronous IO was about as fast as the pool on
+         * an input is cheap to decode, so the pool helps little, and asynchronous IO was about as fast as the pool on
          * uncompressed files and faster on compressed ones.  An input with a sequence dictionary but only unmapped
          * reads counts as aligned.
          */
@@ -128,11 +128,11 @@ public class SamFileMergeUtil {
      *                   data):
      *                   <ul>
      *                   <li>Several inputs: reading scales with many threads.  They are read at the same time, so
-     *                   the gain follows the number of inputs, roughly one thread per input.</li>
+     *                   the speedup follows the number of inputs, roughly one thread per input.</li>
      *                   <li>One aligned input: reading scales with up to 2 threads.  An uncompressed input kept
-     *                   gaining up to about 4 threads.</li>
+     *                   speeding up to about 4 threads.</li>
      *                   <li>One unaligned input: asynchronous IO is better.  Such reads are cheap to decode, so
-     *                   extra threads gain little.  With more than 1 thread this input is read with htsjdk's
+     *                   extra threads help little.  With more than 1 thread this input is read with htsjdk's
      *                   asynchronous IO instead, see {@link ReadMode#AUTO}, and numThreads does not set its number
      *                   of threads.</li>
      *                   </ul>
