@@ -33,6 +33,7 @@ import htsjdk.samtools.util.CloserUtil;
 
 import java.io.Closeable;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -49,6 +50,9 @@ import java.util.function.IntConsumer;
  * The readers returned by {@link #open(Path)} have no threads of their own: all reading and decoding is done by
  * tasks on this pool, so the thread count stays at {@code numThreads} however many files are open.  Nothing is
  * read, and no thread is started, until {@link SamReader#iterator()} is called on a reader.
+ * <p>
+ * For when more threads help, and when they do not, see the numThreads documentation of
+ * {@link org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil}.
  * <p>
  * Only plain BAM files are read in parallel.  Anything else (SAM, CRAM, ...) is opened with the
  * {@link SamReaderFactory} given to the pool.  Records are always fully decoded on the pool threads, as with
@@ -151,6 +155,16 @@ public class BamDecodePool implements Closeable {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /**
+     * Merge unsorted readers opened by this pool so that all of them are read at the same time, taking one batch from
+     * each in turn.  Records are not in the order of the files; use only where order does not matter.  Closing the
+     * returned iterator closes the readers.
+     * @param outputHeader If non-null, each record has its header set to this.
+     */
+    public CloseableIterator<SAMRecord> interleave(final SAMFileHeader outputHeader, final List<SamReader> readers) {
+        return new InterleavingSamRecordIterator(outputHeader, readers, batchSize);
     }
 
     /** @return an iterator over the same records that also closes this pool when it is closed. */

@@ -72,7 +72,7 @@ public class GatherReadQualityMetrics extends CommandLineProgram {
     @Argument(doc="Include non-PF reads when gathering metrics")
     public boolean INCLUDE_NON_PF_READS=false;
 
-    @Argument(doc="Number of threads used to read and decode the input BAMs.  With 1, the BAMs are read on the main thread as before.")
+    @Argument(doc="Number of threads used to read and decode the input BAMs.  More threads help most with several input BAMs, roughly one thread per BAM.  A single BAM speeds up as threads are added, up to about 2 threads if compressed and about 4 if not.")
     public int NUM_THREADS = 1;
 
     // The key used to output the global metrics collected for all the cell barcodes

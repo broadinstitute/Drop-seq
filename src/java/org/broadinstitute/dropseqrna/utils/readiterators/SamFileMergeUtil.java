@@ -31,6 +31,7 @@ import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.dropseqrna.utils.CustomBAMIterators;
 import org.broadinstitute.dropseqrna.utils.FileUtils;
 import org.broadinstitute.dropseqrna.utils.readiterators.parallel.BamDecodePool;
+import org.broadinstitute.dropseqrna.utils.readiterators.parallel.ReadMode;
 import picard.PicardException;
 
 import java.io.File;
@@ -39,6 +40,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -69,23 +71,66 @@ public class SamFileMergeUtil {
     }
 
     /**
-     * Use this overload to read and decode BAM records on multiple threads.
+     * Use this overload to read and decode BAM records on multiple threads.  Same as
+     * {@link #mergeInputPaths(List, boolean, SamReaderFactory, int, ReadMode)} with {@link ReadMode#AUTO}.
      * @param maintainSort If true, all inputs must be sorted the same way, and they are merge sorted.  If false, inputs
      *                     are merged in arbitrary order.
      * @param numThreads Number of threads that read and decode BAM records, shared by all inputs.  1 is the same as
-     *                   the overload without this argument.  With more than 1, closing the returned iterator also
-     *                   stops the threads, so close it.  See {@link BamDecodePool}.
+     *                   the overload without this argument.
+     *                   <p>
+     *                   Whether more threads help depends on the input (from benchmarks; check it against your own
+     *                   data):
+     *                   <ul>
+     *                   <li>Several inputs: reading scales with many threads.  They are read at the same time, so
+     *                   the speedup follows the number of inputs, roughly one thread per input.</li>
+     *                   <li>One aligned input: reading scales with up to 2 threads.  An uncompressed input kept
+     *                   speeding up to about 4 threads.</li>
+     *                   <li>One unaligned input: asynchronous IO is better.  Such reads are cheap to decode, so
+     *                   extra threads help little.  With more than 1 thread this input is read with htsjdk's
+     *                   asynchronous IO instead, see {@link ReadMode#AUTO}, and numThreads does not set its number
+     *                   of threads.</li>
+     *                   </ul>
+     *                   <p>
+     *                   With more than 1 thread, several inputs and maintainSort false, all inputs are read at the
+     *                   same time and records come one batch from each input in turn, not in file order.  The order
+     *                   depends on numThreads being above 1 but is otherwise deterministic.  Callers that depend on
+     *                   record order must not combine this with maintainSort false.
      */
     public static SamHeaderAndIterator mergeInputPaths(final List<Path> inputs,
                                                        final boolean maintainSort,
                                                        final SamReaderFactory samReaderFactory,
                                                        final int numThreads) {
-        if (numThreads == 1) {
-            return mergeInputPaths(inputs, maintainSort, samReaderFactory);
+        return mergeInputPaths(inputs, maintainSort, samReaderFactory, numThreads, ReadMode.AUTO);
+    }
+
+    /**
+     * As {@link #mergeInputPaths(List, boolean, SamReaderFactory, int)}, with a choice of how the inputs are read.
+     * See {@link ReadMode}, and {@link ReadMode#resolve} for what is used.  With {@link ReadMode#STOCK} or
+     * {@link ReadMode#ASYNC}, and several unsorted inputs, the inputs are read one after another in file order.
+     */
+    public static SamHeaderAndIterator mergeInputPaths(final List<Path> inputs,
+                                                       final boolean maintainSort,
+                                                       final SamReaderFactory samReaderFactory,
+                                                       final int numThreads,
+                                                       final ReadMode mode) {
+        switch (mode.resolve(inputs, samReaderFactory, numThreads)) {
+            case ASYNC:
+                return mergeInputPaths(inputs, maintainSort, asyncFactory(samReaderFactory));
+            case STOCK:
+                return mergeInputPaths(inputs, maintainSort, samReaderFactory);
+            default:
+                final BamDecodePool pool = new BamDecodePool(numThreads, samReaderFactory);
+                final SamHeaderAndIterator merged = mergeInputPaths(inputs, maintainSort, pool::open, pool::interleave);
+                return new SamHeaderAndIterator(merged.header, pool.closeWhenClosed(merged.iterator));
         }
-        final BamDecodePool pool = new BamDecodePool(numThreads, samReaderFactory);
-        final SamHeaderAndIterator merged = mergeInputPaths(inputs, maintainSort, pool::open);
-        return new SamHeaderAndIterator(merged.header, pool.closeWhenClosed(merged.iterator));
+    }
+
+    /** A new factory, so that the caller's is not changed: eager decode, async IO, the caller's validation. */
+    private static SamReaderFactory asyncFactory(final SamReaderFactory samReaderFactory) {
+        return SamReaderFactory.makeDefault()
+                .validationStringency(samReaderFactory.validationStringency())
+                .enable(SamReaderFactory.Option.EAGERLY_DECODE)
+                .setUseAsyncIo(true);
     }
 
     /**
@@ -97,6 +142,13 @@ public class SamFileMergeUtil {
     public static SamHeaderAndIterator mergeInputPaths(final List<Path> inputs,
                                                        final boolean maintainSort,
                                                        final Function<Path, SamReader> opener) {
+        return mergeInputPaths(inputs, maintainSort, opener, UnsortedMergingSamRecordIterator::new);
+    }
+
+    private static SamHeaderAndIterator mergeInputPaths(final List<Path> inputs,
+                                                        final boolean maintainSort,
+                                                        final Function<Path, SamReader> opener,
+                                                        final BiFunction<SAMFileHeader, List<SamReader>, CloseableIterator<SAMRecord>> unsortedMerger) {
         if (inputs.isEmpty()) {
             throw new IllegalArgumentException("At least one input must be provided");
         }
@@ -134,10 +186,11 @@ public class SamFileMergeUtil {
             final SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(outputSortOrder, headers, false);
             final CloseableIterator<SAMRecord> iterator;
             if (outputSortOrder == SAMFileHeader.SortOrder.unsorted) {
-                // If unsorted, output the reads in the same order they came in.
+                // If unsorted, output the reads in the same order they came in, unless the caller supplied a
+                // different merger.
                 // In contrast, MergingSamRecordIterator re-orders in an arbitrary way based on
                 // identityHashCode.
-                iterator = new UnsortedMergingSamRecordIterator(headerMerger.getMergedHeader(), readers);
+                iterator = unsortedMerger.apply(headerMerger.getMergedHeader(), readers);
             } else {
                 iterator = new MergingSamRecordIterator(headerMerger, readers, true);
             }

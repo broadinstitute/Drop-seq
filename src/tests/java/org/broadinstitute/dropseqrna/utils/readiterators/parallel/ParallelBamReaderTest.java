@@ -163,9 +163,164 @@ public class ParallelBamReaderTest {
                 // merge order of equal records is arbitrary in htsjdk, so compare as sorted lists
                 Assert.assertEquals(actual.stream().sorted().toList(), expected.stream().sorted().toList());
             } else {
+                // Exact order holds only because every file is smaller than one batch, so the interleaved read
+                // takes each file whole, in file order.  See testUnsortedMultiFileInterleaves for larger files.
                 Assert.assertEquals(actual, expected);
             }
             Assert.assertEquals(poolThreadCount(), 0, "closing the iterator must stop the pool");
+        }
+    }
+
+    @Test
+    public void testUnsortedMultiFileInterleaves() throws IOException {
+        final int batch = 250;   // the pool's default batch size
+        final List<Path> bams = new ArrayList<>();
+        final List<List<String>> perFile = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            final Path bam = writeRepeatedBam(7);   // 287 records: more than one batch
+            bams.add(bam);
+            perFile.add(readStock(bam));
+        }
+        final List<String> serial = new ArrayList<>();
+        try (final CloseableIterator<SAMRecord> it =
+                     SamFileMergeUtil.mergeInputPaths(bams, false, SamReaderFactory.makeDefault()).iterator) {
+            it.forEachRemaining(r -> serial.add(r.getSAMString()));
+        }
+        // Expected: one batch from each file in turn, then the 37-record remainders.
+        final List<String> expected = new ArrayList<>();
+        for (final List<String> f : perFile) {
+            expected.addAll(f.subList(0, batch));
+        }
+        for (final List<String> f : perFile) {
+            expected.addAll(f.subList(batch, f.size()));
+        }
+        final List<String> actual = new ArrayList<>();
+        try (final CloseableIterator<SAMRecord> it =
+                     SamFileMergeUtil.mergeInputPaths(bams, false, SamReaderFactory.makeDefault(), 4).iterator) {
+            it.forEachRemaining(r -> actual.add(r.getSAMString()));
+        }
+        Assert.assertEquals(actual, expected);
+        Assert.assertEquals(actual.stream().sorted().toList(), serial.stream().sorted().toList());
+        Assert.assertEquals(poolThreadCount(), 0, "closing the iterator must stop the pool");
+    }
+
+    /** A BAM of unmapped reads whose header has no sequence dictionary, as a raw, unaligned BAM has. */
+    private static Path writeUnalignedBam(final int records) throws IOException {
+        final Path out = Files.createTempFile("ParallelBamReaderTest.unaligned", ".bam");
+        out.toFile().deleteOnExit();
+        final SAMFileHeader header = new SAMFileHeader();
+        header.setSortOrder(SAMFileHeader.SortOrder.unsorted);
+        try (final SAMFileWriter writer = new SAMFileWriterFactory().makeBAMWriter(header, true, out)) {
+            for (int i = 0; i < records; i++) {
+                final SAMRecord rec = new SAMRecord(header);
+                rec.setReadName("read" + i);
+                rec.setReadUnmappedFlag(true);
+                rec.setReadBases("ACGTACGTAC".getBytes());
+                rec.setBaseQualities("IIIIIIIIII".getBytes());
+                writer.addAlignment(rec);
+            }
+        }
+        return out;
+    }
+
+    /** Reads everything, and returns the records with whether a pool thread was seen. */
+    private static class Observed {
+        final List<String> records = new ArrayList<>();
+        boolean sawPool;
+    }
+
+    private static Observed observe(final List<Path> bams, final boolean maintainSort, final int numThreads,
+                                    final ReadMode mode) {
+        final Observed observed = new Observed();
+        try (final CloseableIterator<SAMRecord> it = SamFileMergeUtil.mergeInputPaths(
+                bams, maintainSort, SamReaderFactory.makeDefault(), numThreads, mode).iterator) {
+            while (it.hasNext()) {
+                observed.records.add(it.next().getSAMString());
+                observed.sawPool |= poolThreadCount() > 0;
+            }
+        }
+        return observed;
+    }
+
+    @Test
+    public void testResolveReadMode() throws IOException {
+        final Path unaligned = writeUnalignedBam(100);
+        final Path aligned = writeRepeatedBam(1);
+        final SamReaderFactory f = SamReaderFactory.makeDefault();
+        final ReadMode auto = ReadMode.AUTO;
+        // AUTO: one thread is always stock; several threads use the pool except for one unaligned input.
+        Assert.assertEquals(auto.resolve(List.of(unaligned), f, 1), ReadMode.STOCK);
+        Assert.assertEquals(auto.resolve(List.of(unaligned), f, 4), ReadMode.ASYNC);
+        Assert.assertEquals(auto.resolve(List.of(aligned), f, 4), ReadMode.POOL);
+        Assert.assertEquals(auto.resolve(List.of(unaligned, unaligned), f, 4), ReadMode.POOL);
+        Assert.assertEquals(auto.resolve(List.of(unaligned, aligned), f, 4), ReadMode.POOL);
+        // Explicit modes.
+        for (final int threads : new int[]{1, 4}) {
+            for (final Path p : List.of(unaligned, aligned)) {
+                Assert.assertEquals(ReadMode.ASYNC.resolve(List.of(p), f, threads), ReadMode.ASYNC);
+                Assert.assertEquals(ReadMode.STOCK.resolve(List.of(p), f, threads), ReadMode.STOCK);
+            }
+        }
+        Assert.assertEquals(ReadMode.POOL.resolve(List.of(unaligned), f, 4), ReadMode.POOL);
+        Assert.assertEquals(ReadMode.POOL.resolve(List.of(unaligned), f, 1), ReadMode.STOCK);
+    }
+
+    @Test
+    public void testAutoReadsOneUnalignedInputWithoutPool() throws IOException {
+        final Path bam = writeUnalignedBam(5000);
+        final List<String> expected = readStock(bam);
+        final Observed observed = observe(List.of(bam), false, 4, ReadMode.AUTO);
+        Assert.assertEquals(observed.records, expected);
+        Assert.assertFalse(observed.sawPool, "an unaligned single input must not use the pool");
+        Assert.assertEquals(poolThreadCount(), 0);
+    }
+
+    @Test
+    public void testAutoReadsOneAlignedInputOnPool() throws IOException {
+        final Path bam = writeRepeatedBam(30);
+        final Observed observed = observe(List.of(bam), false, 4, ReadMode.AUTO);
+        Assert.assertEquals(observed.records, readStock(bam));
+        Assert.assertTrue(observed.sawPool, "an aligned single input must use the pool");
+    }
+
+    @Test
+    public void testAutoWithOneThreadUsesNoThreadsEvenForUnalignedInput() throws IOException {
+        final Path bam = writeUnalignedBam(3000);
+        final Observed observed = observe(List.of(bam), false, 1, ReadMode.AUTO);
+        Assert.assertEquals(observed.records, readStock(bam));
+        Assert.assertFalse(observed.sawPool);
+    }
+
+    @Test
+    public void testAutoDoesNotUseAsyncForSeveralUnalignedInputs() throws IOException {
+        final List<Path> bams = List.of(writeUnalignedBam(1000), writeUnalignedBam(1000));
+        final Observed observed = observe(bams, false, 4, ReadMode.AUTO);
+        Assert.assertEquals(observed.records.size(), 2000);
+        Assert.assertTrue(observed.sawPool);
+    }
+
+    @Test
+    public void testPoolModeForcesPoolOnUnalignedInput() throws IOException {
+        final Path bam = writeUnalignedBam(5000);
+        final Observed observed = observe(List.of(bam), false, 4, ReadMode.POOL);
+        Assert.assertEquals(observed.records, readStock(bam));
+        Assert.assertTrue(observed.sawPool);
+    }
+
+    @Test
+    public void testAsyncAndStockModesIgnoreNumThreadsAndReadInFileOrder() throws IOException {
+        final List<Path> bams = List.of(writeRepeatedBam(7), writeRepeatedBam(3), writeRepeatedBam(5));
+        final List<String> expected = new ArrayList<>();
+        for (final Path bam : bams) {
+            expected.addAll(readStock(bam));
+        }
+        for (final int threads : new int[]{1, 4}) {
+            for (final ReadMode mode : new ReadMode[]{
+                    ReadMode.ASYNC, ReadMode.STOCK}) {
+                final Observed observed = observe(bams, false, threads, mode);
+                Assert.assertEquals(observed.records, expected, mode + " threads " + threads);
+                Assert.assertFalse(observed.sawPool, mode + " must never use the pool");
+            }
         }
     }
 

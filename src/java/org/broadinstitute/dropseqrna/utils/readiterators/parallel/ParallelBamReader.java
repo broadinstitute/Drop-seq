@@ -45,20 +45,23 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 /**
- * A {@link SamReader} for one BAM file whose records are decoded by tasks on a shared {@link BamDecodePool}.
- * It has no threads of its own, and supports only {@link #iterator()}, once.
- * <p>
- * Nothing here parses BAM.  The file is read by an ordinary htsjdk reader, private to this object, with validation
- * off and lazy record decoding, so htsjdk does the framing, the header and all of the format checking, and what it
- * returns is cheap to produce.  The expensive part, decoding each record's fields and validating it, is done by the
- * pool.
- * <p>
- * A file is read by at most one pool task at a time, because htsjdk's reader is sequential.  A task pulls a batch of
- * records, starts the next batch's read if there is room, and hands the batch to a decode task.  Decoded batches are
- * queued as futures in file order, and the caller's thread only waits for the head of the queue.
- * <p>
- * The private htsjdk reader has its own header, which the pool threads read and nobody changes.  The header
- * returned by {@link #getFileHeader()} is the caller's to modify at any time.  Every record handed out is bound to it.
+ * Reads BAM files with the decoding of their records spread over several threads, to speed up scanning every record.
+ * One or many files can be read, and all of them share the same threads.  Each file has its own instance of this class.
+ * Used by {@link org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil} when more than one thread is
+ * requested.
+ *
+ * <h2>When more threads help</h2>
+ * Based on benchmarks, so check it against your own data.
+ * <ul>
+ * <li><b>Several input files: reading scales with many threads.</b>  The files are read at the same time, so the speedup
+ * follows the number of files, roughly one thread per file.</li>
+ * <li><b>One aligned file: reading scales with up to 2 threads.</b>  An uncompressed file kept speeding up to about
+ * 4 threads.</li>
+ * <li><b>One unaligned file: asynchronous IO is better.</b>  Such records are cheap to decode, so extra threads help
+ * little, and htsjdk's asynchronous IO is as fast or faster.  SamFileMergeUtil uses it for a single unaligned
+ * input.</li>
+ * </ul>
+ * Only reading and decoding are done on the extra threads.  Work the caller does on each record is not sped up.
  */
 class ParallelBamReader implements SamReader {
     private final BamDecodePool pool;
