@@ -42,12 +42,13 @@ public class CountBarcodeSequencesTest {
  private static final File EXPECTED_ALLOW_LIST_PSEUDOCOUNT = new File(TEST_DATA_DIR, "allowListPseudoCount.count_barcode_sequences_metrics");
 
  @Test(dataProvider = "testBasicDataProvider")
- public void testBasic(final String testName, final File allowList, final int allowListPseudoCount, final File expectedMetricsFile)
+ public void testBasic(final String testName, final File allowList, final int allowListPseudoCount, final File expectedMetricsFile, final int numThreads)
          throws FileNotFoundException {
   final CountBarcodeSequences clp = new CountBarcodeSequences();
   clp.BARCODED_READ = 1;
   clp.OUTPUT = TestUtils.getTempReportFile(testName + ".", ".count_barcode_sequences_metrics");
   clp.INPUT = Collections.singletonList(PAIRED_BAM);
+  clp.NUM_THREADS = numThreads;
   clp.BASE_RANGE = "1-4";
   clp.ALLOWED_BARCODES = allowList;
   clp.ALLOWLIST_PSEUDOCOUNT = allowListPseudoCount;
@@ -58,10 +59,43 @@ public class CountBarcodeSequencesTest {
  @DataProvider(name = "testBasicDataProvider")
  public Object[][] testBasicDataProvider() {
   return new Object[][] {
-          {"noAllowList", null, 0, EXPECTED_NO_ALLOW_LIST},
-          {"allowList", ALLOW_LIST, 0, EXPECTED_ALLOW_LIST},
-          {"allowListPseudoCount", ALLOW_LIST, 1, EXPECTED_ALLOW_LIST_PSEUDOCOUNT},
+          {"noAllowList", null, 0, EXPECTED_NO_ALLOW_LIST, 1},
+          {"allowList", ALLOW_LIST, 0, EXPECTED_ALLOW_LIST, 1},
+          {"allowListPseudoCount", ALLOW_LIST, 1, EXPECTED_ALLOW_LIST_PSEUDOCOUNT, 1},
+          {"noAllowListThreads", null, 0, EXPECTED_NO_ALLOW_LIST, 4},
+          {"allowListThreads", ALLOW_LIST, 0, EXPECTED_ALLOW_LIST, 4},
+          {"allowListPseudoCountThreads", ALLOW_LIST, 1, EXPECTED_ALLOW_LIST_PSEUDOCOUNT, 4},
   };
 
+ }
+
+ @Test
+ public void testTwoInputsThreadCountsAgree() throws FileNotFoundException {
+  File[] outputs = new File[2];
+  int i = 0;
+  for (final int numThreads : new int[]{1, 4}) {
+   final CountBarcodeSequences clp = new CountBarcodeSequences();
+   clp.BARCODED_READ = 1;
+   clp.OUTPUT = TestUtils.getTempReportFile("twoInputs" + numThreads + ".", ".count_barcode_sequences_metrics");
+   clp.INPUT = Arrays.asList(PAIRED_BAM, PAIRED_BAM);
+   clp.NUM_THREADS = numThreads;
+   clp.BASE_RANGE = "1-4";
+   Assert.assertEquals(clp.doWork(), 0);
+   outputs[i++] = clp.OUTPUT;
+  }
+  Assert.assertTrue(TestUtils.testMetricsFilesEqual(outputs[0], outputs[1]));
+ }
+
+ @Test
+ public void testInvalidNumThreads() {
+  final CountBarcodeSequences clp = new CountBarcodeSequences();
+  clp.BARCODED_READ = 1;
+  clp.OUTPUT = TestUtils.getTempReportFile("badThreads.", ".count_barcode_sequences_metrics");
+  clp.INPUT = Collections.singletonList(PAIRED_BAM);
+  clp.BASE_RANGE = "1-4";
+  clp.NUM_THREADS = 0;
+  final String[] errors = clp.customCommandLineValidation();
+  Assert.assertNotNull(errors);
+  Assert.assertTrue(Arrays.stream(errors).anyMatch(e -> e.contains("NUM_THREADS")));
  }
 }

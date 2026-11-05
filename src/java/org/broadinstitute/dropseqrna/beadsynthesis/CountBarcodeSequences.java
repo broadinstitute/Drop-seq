@@ -37,7 +37,8 @@ import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.BaseRange;
 import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
 import org.broadinstitute.dropseqrna.utils.FilterBamByTag;
-import org.broadinstitute.dropseqrna.utils.readiterators.UnsortedMergingSamRecordIterator;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
+import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
@@ -45,7 +46,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @CommandLineProgramProperties(
@@ -75,6 +78,9 @@ extends CommandLineProgram {
          "every barcode in the allow list observed at least once.")
  public int ALLOWLIST_PSEUDOCOUNT = 0;
 
+ @Argument(doc="Number of threads used to read and decode the input BAMs.  With 1, the BAMs are read on the main thread as before.")
+ public int NUM_THREADS = 1;
+
  private final Log log = Log.getInstance(CountBarcodeSequences.class);
 
  @Override
@@ -84,6 +90,9 @@ extends CommandLineProgram {
    IOUtil.assertFileIsReadable(ALLOWED_BARCODES);
   }
   final ArrayList<String> list = new ArrayList<>(1);
+  if (NUM_THREADS < 1) {
+   list.add("NUM_THREADS must be at least 1.");
+  }
   if (BARCODED_READ != 1 && BARCODED_READ != 2) {
    list.add("Invalid BARCODED_READ value: " + BARCODED_READ);
   }
@@ -112,15 +121,20 @@ extends CommandLineProgram {
   } else {
    allowedBarcodes = null;
   }
-  final SamReaderFactory readerFactory = SamReaderFactory.makeDefault();
-  final List<SamReader> readers = INPUT.stream().map(readerFactory::open).toList();
-  // Header is not important, but we need one to iterate
-  final SAMFileHeader header = readers.getFirst().getFileHeader();
-  final CloseableIterator<SAMRecord> it = new UnsortedMergingSamRecordIterator(header, readers);
-  final Histogram<String> histogram = new Histogram<>("SEQUENCE", "COUNT");
-
-  if (allowedBarcodes != null && ALLOWLIST_PSEUDOCOUNT > 0) {
-   allowedBarcodes.stream().forEach(bc -> histogram.increment(bc, 1));
+  final SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputPaths(
+          IOUtil.filesToPaths(INPUT), false, SamReaderFactory.makeDefault(), NUM_THREADS);
+  final CloseableIterator<SAMRecord> it = headerAndIterator.iterator;
+  // Count in a hash map rather than directly in Histogram, which is backed by a TreeMap: with millions of distinct
+  // barcodes, a TreeMap lookup per read dominates run time.  The Histogram is built once at the end, and it
+  // sorts its keys, so the output is the same.
+  final Map<String, long[]> counts;
+  if (allowedBarcodes != null) {
+   // Pre-populate so that a single lookup both checks the allow list and finds the counter.
+   counts = new HashMap<>((int) (allowedBarcodes.size() / 0.75f) + 1);
+   final long initialCount = ALLOWLIST_PSEUDOCOUNT > 0 ? 1 : 0;
+   allowedBarcodes.forEach(bc -> counts.put(bc, new long[]{initialCount}));
+  } else {
+   counts = new HashMap<>();
   }
 
   CountBarcodeSequenceMetrics metrics = new CountBarcodeSequenceMetrics();
@@ -135,15 +149,27 @@ extends CommandLineProgram {
     continue;
    }
    ++metrics.NUM_READ_PAIRS;
-   final String barcode = BaseRange.getSequenceForBaseRange(baseRanges, rec.getReadString());
-   if (allowedBarcodes != null && !allowedBarcodes.contains(barcode)) {
-    ++metrics.NUM_NOT_ALLOWED;
-    continue;
+   final String barcode = BaseRange.getSequenceForBaseRange(baseRanges, rec.getReadBases());
+   long[] count = counts.get(barcode);
+   if (count == null) {
+    if (allowedBarcodes != null) {
+     ++metrics.NUM_NOT_ALLOWED;
+     continue;
+    }
+    count = new long[1];
+    counts.put(barcode, count);
    }
-   histogram.increment(barcode);
+   ++count[0];
   }
   CloserUtil.close(it);
   final MetricsFile<CountBarcodeSequenceMetrics, String> metricsFile = getMetricsFile();
+  final Histogram<String> histogram = new Histogram<>("SEQUENCE", "COUNT");
+  // Allowed barcodes that were never observed (and have no pseudocount) are not emitted, as before.
+  counts.forEach((bc, count) -> {
+   if (count[0] > 0) {
+    histogram.increment(bc, count[0]);
+   }
+  });
   metricsFile.addMetric(metrics);
   metricsFile.addHistogram(histogram);
   final Writer metricsWriter = IOUtil.openFileForBufferedWriting(OUTPUT); // Enables gzip writing
