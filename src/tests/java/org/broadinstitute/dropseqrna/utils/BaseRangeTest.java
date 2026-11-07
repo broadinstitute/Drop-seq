@@ -145,6 +145,29 @@ public class BaseRangeTest {
 
 	}
 
+	@Test(dataProvider = "testGetSequenceForBaseRangeBytesDataProvider")
+	public void testGetSequenceForBaseRangeBytes(final String ranges, final String seq) {
+		final List<BaseRange> baseRanges = BaseRange.parseBaseRange(ranges);
+		Assert.assertEquals(BaseRange.getSequenceForBaseRange(baseRanges, seq.getBytes(java.nio.charset.StandardCharsets.US_ASCII)),
+				BaseRange.getSequenceForBaseRange(baseRanges, seq));
+	}
+
+	@DataProvider(name = "testGetSequenceForBaseRangeBytesDataProvider")
+	public Object[][] testGetSequenceForBaseRangeBytesDataProvider() {
+		return new Object[][]{
+				{"1-4", "ACGTACGTAC"},
+				{"1-10", "ACGTACGTAC"},
+				{"3-6", "ACGTACGTAC"},
+				{"1-4:7-10", "ACGTACGTAC"},
+				{"2-3:5-5:9-10", "ACGTNCGTAC"}
+		};
+	}
+
+	@Test(expectedExceptions = StringIndexOutOfBoundsException.class)
+	public void testGetSequenceForBaseRangeBytesTooShort() {
+		BaseRange.getSequenceForBaseRange(BaseRange.parseBaseRange("1-16"), "ACGT".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+	}
+
 	@Test(dataProvider = "testReplaceSequenceForBaseRangeDataProvider")
 	public void testReplaceSequenceForBaseRange(
 			final String testName,

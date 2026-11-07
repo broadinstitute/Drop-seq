@@ -101,6 +101,24 @@ implements Comparable<BaseRange> {
 		return result.toString();
 	}
 
+	/**
+	 * Same as {@link #getSequenceForBaseRange(List, String)}, but reads the bases directly from an array such as
+	 * {@link htsjdk.samtools.SAMRecord#getReadBases()}, so that only the requested bases are turned into a String.
+	 * Like the String version, throws StringIndexOutOfBoundsException if a range extends past the end of the bases.
+	 * @param bases ASCII bases.
+	 */
+	public static String getSequenceForBaseRange (final List<BaseRange> baseRange, final byte[] bases) {
+		if (baseRange.size() == 1) {
+			final BaseRange b = baseRange.getFirst();
+			return new String(bases, b.start - 1, b.end - b.start + 1, java.nio.charset.StandardCharsets.ISO_8859_1);
+		}
+		final StringBuilder result = new StringBuilder();
+		for (BaseRange b: baseRange) {
+			result.append(new String(bases, b.start - 1, b.end - b.start + 1, java.nio.charset.StandardCharsets.ISO_8859_1));
+		}
+		return result.toString();
+	}
+
 	public static String replaceSequenceForBaseRange(final List<BaseRange> baseRange,
 													 final String sequence,
 													 final String replacement) {
