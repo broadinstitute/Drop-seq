@@ -122,8 +122,8 @@ extends CommandLineProgram {
         }
         final SamHeaderAndIterator  headerAndIterator = SamFileMergeUtil.mergeInputPaths(inputPaths, true,
                 SamReaderFactory.makeDefault(), Math.max(1, NUM_THREADS - 1));
-        log.info("Writing output with ", NUM_THREADS > 1 ? "asynchronous IO (separate writer thread)" :
-                "synchronous IO (calling thread)", " (NUM_THREADS ", NUM_THREADS, ")");
+        log.info("Writing output: ", NUM_THREADS > 1 ? "async IO, separate writer thread" :
+                "synchronous IO, calling thread");
         final SAMFileWriter samFileWriter = new SAMFileWriterFactory().setCreateIndex(CREATE_INDEX).
                 setUseAsyncIo(NUM_THREADS > 1).
                 makeSAMOrBAMWriter(headerAndIterator.header, true, OUTPUT);

@@ -117,10 +117,20 @@ public class SamFileMergeUtil {
                                                        final int numThreads,
                                                        final ReadMode mode) {
         final ReadMode resolved = mode.resolve(inputs, samReaderFactory, numThreads);
-        LOG.info("Reading ", inputs.size(), " input(s) with read mode ", resolved, " (requested ", mode,
-                ", numThreads ", numThreads, resolved == ReadMode.POOL ? ", decode pool" : "",
-                resolved == ReadMode.ASYNC ? ", htsjdk asynchronous IO" : "",
-                resolved == ReadMode.STOCK ? ", stock htsjdk reader on the calling thread" : "", ")");
+        final String detail;
+        switch (resolved) {
+            case POOL:
+                detail = "decode pool, " + numThreads + " thread(s)";
+                break;
+            case ASYNC:
+                detail = "htsjdk async IO" +
+                        (mode == ReadMode.AUTO ? ", single unaligned input overrides thread count" : "");
+                break;
+            default:
+                detail = "stock reader, calling thread";
+        }
+        LOG.info("Reading ", inputs.size(), " input(s): ", detail, " [mode ", resolved, ", requested ", mode,
+                ", numThreads ", numThreads, "]");
         switch (resolved) {
             case ASYNC:
                 return mergeInputPaths(inputs, maintainSort, asyncFactory(samReaderFactory));
