@@ -70,6 +70,18 @@ class TestCatTsvs(unittest.TestCase):
         self.assertEqual(len(outDf), sum(len(df) for df in inDfs))
         self.assertEqual(set(outDf.columns), set.union(*[set(df.columns) for df in inDfs]))
 
+    def test_int_and_float_column_promoted(self):
+        a = os.path.join(self.tmpDir, "a.tsv")
+        b = os.path.join(self.tmpDir, "b.tsv")
+        with open(a, "w") as f:
+            f.write("lib\tmedian\nA\t1\nB\t2\n")
+        with open(b, "w") as f:
+            f.write("lib\tmedian\nC\t0.5\n")
+        self.options = self.options._replace(index_col=["lib"], input=[open(a), open(b)])
+        self.assertEqual(dropseq.aggregation.cat_tsvs.run(self.options), 0)
+        outDf = pd.read_csv(self.outputFile, sep="\t")
+        self.assertEqual(list(outDf["median"]), [1.0, 2.0, 0.5])
+
     def test_conflicting_column_type(self):
         inputs = [self.inputs[0], os.path.join(self. testDataDir, "conflicting_column_type.joined_filtered_cell_metadata.tsv")]
         self.options = self.options._replace(index_col=self.index_cols, input=[open(f) for f in inputs])
