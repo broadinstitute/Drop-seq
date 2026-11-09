@@ -26,6 +26,7 @@ lack a column.  """
 
 import argparse
 import sys
+import numpy as np
 import pandas as pd
 
 from . import logger, add_log_argument
@@ -43,6 +44,9 @@ def main(args=None):
     options = parser.parse_args(args)
     return run(options)
 
+def _is_numeric(dtype):
+    return pd.api.types.is_numeric_dtype(dtype) and not pd.api.types.is_bool_dtype(dtype)
+
 def get_best_column_types(dfs):
     """If a column has all empty values in a dataframe, it seems to get dtype float64.
     Look at all the columns across the input data frames, and if they column types disagree, pick the one
@@ -55,6 +59,10 @@ def get_best_column_types(dfs):
             if col not in column_types:
                 column_types[col] = df[col].dtype
             elif df[col].dtype != column_types[col]:
+                if _is_numeric(df[col].dtype) and _is_numeric(column_types[col]):
+                    # e.g. int64 vs float64 (a median can be 0.5 in one file and 1 in another): widen.
+                    column_types[col] = np.promote_types(column_types[col], df[col].dtype)
+                    continue
                 raise Exception(f"Column types disagree across input files for column {col}. {df[col].dtype} != {column_types[col]}")
     for col in dfs[0].columns:
         if col not in column_types:
