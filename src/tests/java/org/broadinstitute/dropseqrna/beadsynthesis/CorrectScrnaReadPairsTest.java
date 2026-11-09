@@ -36,7 +36,7 @@ import java.util.Collections;
 
 public class CorrectScrnaReadPairsTest {
     @Test(dataProvider = "testBasicDataProvider")
-    public void testBasic(boolean tagBothReads) {
+    public void testBasic(boolean tagBothReads, int numThreads) {
         CorrectScrnaReadPairs clp = new CorrectScrnaReadPairs();
         clp.INPUT = Collections.singletonList(new PicardHtsPath(CorrectAndSplitScrnaReadPairsTest.INPUT_SAM));
         clp.ARGUMENT_COLLECTION.ALLOWED_BARCODE_COUNTS = CorrectAndSplitScrnaReadPairsTest.EXPECTED_BARCODES_HIST;
@@ -45,6 +45,7 @@ public class CorrectScrnaReadPairsTest {
         clp.ARGUMENT_COLLECTION.METRICS = TestUtils.getTempReportFile("test.", ".corrected_barcode_metrics");
         clp.OUTPUT = TestUtils.getTempReportFile("CorrectScrnaReadPairsTest.", ".sam");
         clp.ARGUMENT_COLLECTION.TAG_BOTH_READS = tagBothReads;
+        clp.NUM_THREADS = numThreads;
         Assert.assertEquals(clp.doWork(), 0);
         final SamReader reader = SamReaderFactory.makeDefault().open(clp.OUTPUT);
         for (final SAMRecord rec : reader) {
@@ -59,8 +60,19 @@ public class CorrectScrnaReadPairsTest {
     @DataProvider(name = "testBasicDataProvider")
     public Object[][] testBasicDataProvider() {
         return new Object[][]{
-                {false},
-                {true}
+                {false, 1},
+                {true, 1},
+                {false, 2},
+                {true, 4}
         };
+    }
+
+    @Test
+    public void testInvalidNumThreads() {
+        final CorrectScrnaReadPairs clp = new CorrectScrnaReadPairs();
+        clp.NUM_THREADS = 0;
+        final String[] errors = clp.customCommandLineValidation();
+        Assert.assertNotNull(errors);
+        Assert.assertEquals(errors.length, 1);
     }
 }
