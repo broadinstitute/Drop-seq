@@ -109,6 +109,9 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
 	@Argument(doc = "The molecular barcode tag.")
 	public String MOLECULAR_BARCODE_TAG = "XM";
 
+	@Argument(doc = "Number of threads used to read and decode the input BAM, in both passes.  With more than 1, the output BAM is also written on a separate thread.")
+	public int NUM_THREADS = 1;
+
 	@Override
 	protected String[] customCommandLineValidation() {
 		if (OUTPUT != null) {
@@ -121,6 +124,9 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
 		final ArrayList<String> list = new ArrayList<>(1);
 		if (OUTPUT == null && OUTPUT_REPORT == null) {
 			list.add("It does not make sense for neither OUTPUT nor OUTPUT_REPORT to be set.");
+		}
+		if (NUM_THREADS < 1) {
+			list.add("NUM_THREADS must be at least 1.");
 		}
 		return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
 	}
@@ -145,9 +151,9 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
 		final GeneFunctionProcessor p = new GeneFunctionProcessor(GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, false, STRAND_STRATEGY, LOCUS_FUNCTION_LIST, FUNCTIONAL_STRATEGY);
 		
 		long numMarked = 0;
-		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputPaths(PicardHtsPath.toPaths(this.INPUT), false, SamReaderFactory.makeDefault());
+		SamHeaderAndIterator headerAndIter = SamFileMergeUtil.mergeInputPaths(PicardHtsPath.toPaths(this.INPUT), false, SamReaderFactory.makeDefault(), NUM_THREADS);
 		SamHeaderUtil.addPgRecord(headerAndIter.header, this);
-		SAMFileWriter out = new SAMFileWriterFactory().makeSAMOrBAMWriter(headerAndIter.header, true, OUTPUT);
+		SAMFileWriter out = new SAMFileWriterFactory().setUseAsyncIo(NUM_THREADS > 1).makeSAMOrBAMWriter(headerAndIter.header, true, OUTPUT);
 		ProgressLogger progLog = new ProgressLogger(log, 1000000, "marked");
 		log.info("Marking chimeric UMIs in BAM");
 		for (final SAMRecord rec : new IterableAdapter<>(headerAndIter.iterator)) {
@@ -229,7 +235,7 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
 
 		final List<Path> inputPaths = PicardHtsPath.toPaths(this.INPUT);
         PeekableIterator<UMICollection> umiIterator = new PeekableIterator<>(
-                new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputPaths(inputPaths, false),
+                new UMIIterator.UMIIteratorBuilder(SamFileMergeUtil.mergeInputPaths(inputPaths, false, SamReaderFactory.makeDefault(), NUM_THREADS),
                         GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
                         this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
                         this.READ_MQ).setCellBarcodes(cellBarcodes).cellFirstSort(true).build());

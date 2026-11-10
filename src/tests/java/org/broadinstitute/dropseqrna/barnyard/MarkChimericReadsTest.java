@@ -75,6 +75,24 @@ public class MarkChimericReadsTest {
 		Assert.assertTrue(TestUtils.testFilesSame(clp.METRICS, new File(TEST_DATA_DIR, "umiReuse.chimeric_read_metrics")));
 	}
 
+	@Test
+	public void testUmiReuseMultipleThreads() {
+		final MarkChimericReads clp = new MarkChimericReads();
+		clp.OUTPUT = TestUtils.getTempReportFile("MarkChimericReads.", ".bam");
+		clp.OUTPUT.deleteOnExit();
+		clp.OUTPUT_REPORT = TestUtils.getTempReportFile("chimeric_report.", ".txt");
+		clp.OUTPUT_REPORT.deleteOnExit();
+		clp.METRICS = TestUtils.getTempReportFile("MarkChimericReads.", ".chimeric_read_metrics");
+		clp.METRICS.deleteOnExit();
+		clp.INPUT = Arrays.asList(new PicardHtsPath(new File(TEST_DATA_DIR, "MarkChimericReads.input.sam")));
+		clp.CELL_BC_FILE = CELL_BC_FILE;
+		clp.NUM_THREADS = 2;
+		Assert.assertEquals(clp.doWork(), 0);
+		TestUtils.assertSamFilesSame(clp.OUTPUT, new File(TEST_DATA_DIR, "MarkChimericReads.umiReuse.sam"), false);
+		Assert.assertTrue(TestUtils.testFilesSame(clp.OUTPUT_REPORT, EXPECTED_CHIMERIC_REPORT));
+		Assert.assertTrue(TestUtils.testFilesSame(clp.METRICS, new File(TEST_DATA_DIR, "umiReuse.chimeric_read_metrics")));
+	}
+
 	// MarkChimericReads.input2.sam
 	@Test(enabled = true)
 	public void testUmiReuse10xStrategy() {
