@@ -23,6 +23,9 @@
  */
 package org.broadinstitute.dropseqrna.utils;
 
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.StringUtil;
@@ -444,6 +447,94 @@ public class SplitBamByCellTest {
                 {null, true},
                 {null, false},
         };
+    }
+
+    /** What a run wrote: the records of each output in order, the manifest, and the report without its header. */
+    private record SplitResult(List<List<String>> records, Map<String, Integer> manifest, List<String> report) {
+    }
+
+    private SplitResult runSplit(final List<File> inputs, final String splitTag, final int numOutputs,
+                                 final int numThreads, final Integer readerThreads, final Integer writerThreads,
+                                 final int writerBatchSize) throws IOException {
+        final SplitBamByCell splitter = new SplitBamByCell();
+        splitter.INPUT = inputs.stream().map(PicardHtsPath::new).collect(Collectors.toList());
+        splitter.OUTPUT = TestUtils.getTempReportFile("SplitBamByCell.", "." + splitter.OUTPUT_SLUG + ".bam");
+        splitter.OUTPUT_LIST = TestUtils.getTempReportFile("SplitBamByCell.", ".list");
+        splitter.REPORT = TestUtils.getTempReportFile("SplitBamByCell.", ".report");
+        splitter.NUM_OUTPUTS = numOutputs;
+        splitter.OVERWRITE_EXISTING = true;
+        splitter.SPLIT_TAG = splitTag;
+        if (splitTag != null) {
+            splitter.OUTPUT_MANIFEST = TestUtils.getTempReportFile("SplitBamByCell.", ".split_bam_manifest");
+        }
+        splitter.NUM_THREADS = numThreads;
+        splitter.READER_THREADS = readerThreads;
+        splitter.WRITER_THREADS = writerThreads;
+        splitter.WRITER_BATCH_SIZE = writerBatchSize;
+        TestUtils.markBamsDeleteOnExit(splitter.OUTPUT, splitter.OUTPUT_SLUG, numOutputs);
+        TestUtils.setInflaterDeflaterIfMacOs();
+        Assert.assertEquals(splitter.doWork(), 0);
+
+        final List<List<String>> records = new ArrayList<>();
+        for (final File f : FileListParsingUtils.readFileList(splitter.OUTPUT_LIST)) {
+            final List<String> outputRecords = new ArrayList<>();
+            try (final SamReader reader = SamReaderFactory.makeDefault().open(f)) {
+                for (final SAMRecord r : reader) {
+                    outputRecords.add(r.getSAMString());
+                }
+            }
+            records.add(outputRecords);
+        }
+        final Map<String, Integer> manifest = splitTag == null ? null : loadCellBarcodeManifest(splitter.OUTPUT_MANIFEST);
+        final List<String> report = Files.readAllLines(splitter.REPORT.toPath()).stream()
+                .filter(line -> !line.startsWith("#")).collect(Collectors.toList());
+        return new SplitResult(records, manifest, report);
+    }
+
+    @DataProvider(name = "threadOptionsDataProvider")
+    public Object[][] threadOptionsDataProvider() {
+        // numThreads, readerThreads, writerThreads, writerBatchSize.  Small batches so that the small test data
+        // is handed over in many batches; the last row sets the split of the threads explicitly.  Fewer writer
+        // threads than outputs in the first.
+        return new Object[][]{
+                {2, null, null, 2},
+                {4, null, null, 1},
+                {1, 3, 5, 7},
+        };
+    }
+
+    @Test(dataProvider = "threadOptionsDataProvider")
+    public void testSplitByTagIsTheSameWithThreads(final int numThreads, final Integer readerThreads,
+                                                   final Integer writerThreads, final int batchSize) throws IOException {
+        // The same input twice, so that there are several inputs to merge.
+        final List<File> inputs = List.of(TEST_BAM, TEST_BAM);
+        final SplitResult expected = runSplit(inputs, "XC", 3, 1, null, null, 1000);
+        final SplitResult actual = runSplit(inputs, "XC", 3, numThreads, readerThreads, writerThreads, batchSize);
+        Assert.assertEquals(actual.records(), expected.records());
+        Assert.assertEquals(actual.manifest(), expected.manifest());
+        Assert.assertEquals(actual.report(), expected.report());
+        Assert.assertTrue(expected.records().stream().allMatch(r -> !r.isEmpty()), "every output should get reads");
+    }
+
+    @Test
+    public void testThreadOptionValidation() {
+        final SplitBamByCell onlyReaders = new SplitBamByCell();
+        onlyReaders.READER_THREADS = 2;
+        Assert.assertTrue(String.join(" ", onlyReaders.customCommandLineValidation()).contains("must be given together"));
+
+        final SplitBamByCell zeroWriters = new SplitBamByCell();
+        zeroWriters.READER_THREADS = 2;
+        zeroWriters.WRITER_THREADS = 0;
+        Assert.assertTrue(String.join(" ", zeroWriters.customCommandLineValidation()).contains("at least 1"));
+
+        final SplitBamByCell badBatchSize = new SplitBamByCell();
+        badBatchSize.WRITER_BATCH_SIZE = 0;
+        Assert.assertTrue(String.join(" ", badBatchSize.customCommandLineValidation()).contains("WRITER_BATCH_SIZE"));
+
+        final SplitBamByCell valid = new SplitBamByCell();
+        valid.READER_THREADS = 2;
+        valid.WRITER_THREADS = 3;
+        Assert.assertNull(valid.customCommandLineValidation());
     }
 
     private void compareBAMTagValues(File input1, File input2, List<String> tags, int expectedProgramValue) {

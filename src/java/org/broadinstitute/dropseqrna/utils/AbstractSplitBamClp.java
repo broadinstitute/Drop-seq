@@ -28,7 +28,10 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
 import org.apache.commons.math3.stat.StatUtils;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
+import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
+import org.broadinstitute.dropseqrna.utils.batchwriter.BatchSinkGroup;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
@@ -93,13 +96,31 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
     @Argument(optional = true, shortName = "DI", doc="Delete BAM indices corresponding to input BAMs.  Default: DELETE_INPUTS setting.")
     public Boolean DELETE_INPUT_INDICES;
 
-    @Argument(doc="Number of threads used to read and decode the input BAMs.  With 1, the calling thread does all the work, " +
-            "as before.  With more than 1, NUM_THREADS-1 threads read and decode the inputs, which helps most when there are " +
-            "several input BAMs, and each output BAM is also written on its own background thread, in addition to this " +
-            "number of threads.", minValue = 1)
+    @Argument(doc="Number of threads to use in addition to the calling thread, which reads the merged records and decides " +
+            "which output each one goes to.  With 1, the calling thread does all the work, as before.  With more, the threads " +
+            "are split between reading and decoding the input BAMs, which helps most when there are several input BAMs, and " +
+            "encoding and compressing the output BAMs, which are written in batches of records.  Several output BAMs " +
+            "share the writing threads.", minValue = 1)
     public int NUM_THREADS = 1;
 
-    private SAMFileWriterFactory samWriterFactory = null;
+    @Hidden
+    @Argument(doc = "For tuning: the number of threads that read and decode the input BAMs, at least 1.  Must be given " +
+            "together with WRITER_THREADS, and then NUM_THREADS is ignored.  By default NUM_THREADS is split " +
+            "between reading and writing.", optional = true)
+    public Integer READER_THREADS;
+
+    @Hidden
+    @Argument(doc = "For tuning: the number of threads that write the output BAMs, at least 1.  Must be given " +
+            "together with READER_THREADS.", optional = true)
+    public Integer WRITER_THREADS;
+
+    @Hidden
+    @Argument(doc = "For tuning: the number of records the writing threads are given at a time, at least 1.  " +
+            "Ignored with a single thread.", optional = true)
+    public int WRITER_BATCH_SIZE = BatchSinkGroup.DEFAULT_BATCH_SIZE;
+
+    // The output BAMs, created as they are needed.  Created in doWork, once the header is final.
+    private SamWriterGroup writers = null;
     /**
      * History of what cell barcodes go into what writers.  This is updated when a new cell barcode is encountered.
      */
@@ -108,7 +129,7 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
 
     protected SamHeaderAndIterator headerAndIterator;
     // Starts out empty, gets expanded to NUM_OUTPUTS writers
-    private final List<SAMFileInfo> writerInfoList = new ArrayList<>();
+    private final List<File> outputFiles = new ArrayList<>();
 
     public static final String BAM_EXTENSION = ".bam";
     public static final String BAM_LIST_EXTENSION = ".bam_list";
@@ -125,26 +146,60 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
         if (REPORT != null) {
             IOUtil.assertFileIsWritable(REPORT);
         }
-        return super.customCommandLineValidation();
+        final List<String> errors = new ArrayList<>();
+        if ((READER_THREADS == null) != (WRITER_THREADS == null)) {
+            errors.add("READER_THREADS and WRITER_THREADS must be given together.");
+        } else if (READER_THREADS != null && (READER_THREADS < 1 || WRITER_THREADS < 1)) {
+            errors.add("READER_THREADS and WRITER_THREADS must be at least 1.");
+        }
+        if (WRITER_BATCH_SIZE < 1) {
+            errors.add("WRITER_BATCH_SIZE must be at least 1.");
+        }
+        return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), errors);
+    }
+
+    /**
+     * How many threads read and decode the inputs, and how many write the outputs.  With a single thread, and no
+     * READER_THREADS and WRITER_THREADS, there is one reader and no writer threads, and the calling thread writes the
+     * outputs itself, as it always did.  READER_THREADS and WRITER_THREADS, if given, are used as they are and
+     * NUM_THREADS is ignored.  Otherwise the threads are split about evenly, and the readers get the extra one if
+     * there is an odd number.
+     * <p>
+     * The calling thread does the merging, splitting and handing over to the writers in addition to these threads.
+     */
+    private ThreadSplit getReaderAndWriterThreads() {
+        if (READER_THREADS != null) {
+            return new ThreadSplit(READER_THREADS, WRITER_THREADS);
+        }
+        if (NUM_THREADS == 1) {
+            return new ThreadSplit(1, 0);
+        }
+        final int readers = (NUM_THREADS + 1) / 2;
+        return new ThreadSplit(readers, NUM_THREADS - readers);
+    }
+
+    private record ThreadSplit(int readerThreads, int writerThreads) {
     }
 
     protected void writeRecord(final int writerIdx, final SAMRecord rec) {
-        writerInfoList.get(writerIdx).addRecord(rec);
+        writers.write(writerIdx, rec);
     }
 
     protected int addWriter() {
-        if (writerInfoList.size() >= NUM_OUTPUTS) {
+        if (writers.size() >= NUM_OUTPUTS) {
             throw new IllegalStateException("Should not be requesting another writer.");
         }
-        int writerIdx = writerInfoList.size();
-        writerInfoList.add(createWriterInfo(headerAndIterator.header, writerIdx));
+        final int writerIdx = writers.size();
+        final File samFile = getRelativeSplitBamFile(writerIdx);
+        outputFiles.add(samFile);
+        writers.addOutput(getActualSplitBamFile(samFile));
         return writerIdx;
     }
 
     protected void ensureWriter(final int writerIdx) {
-        if (writerIdx == writerInfoList.size()) {
+        if (writerIdx == writers.size()) {
             addWriter();
-        } else if (writerIdx > writerInfoList.size()) {
+        } else if (writerIdx > writers.size()) {
             throw new IllegalStateException("Requesting writer beyond the last one");
         }
         // else nothing to do.
@@ -154,18 +209,18 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
      * Find the existing writer for the given cell barcode, or create a new writer if we haven't created all of them
      * yet, or pick the existing writer with the fewest reads.
      * @param cellBarcode The barcode to be written.
-     * @return index into writerInfoList.
+     * @return index of the output.
      */
     protected int getWriterIdxForCellBarcode(String cellBarcode) {
         Integer writerIdx = cellBarcodeWriterIdxMap.get(cellBarcode);
         if (writerIdx == null) {
-            if (writerInfoList.size() < NUM_OUTPUTS) {
+            if (writers.size() < NUM_OUTPUTS) {
                 writerIdx = addWriter();
             } else {
                 // find writer with the fewest reads
-                Integer minCount = null;
-                for (int idx = 0; idx< writerInfoList.size(); idx++) {
-                    int readCount = writerInfoList.get(idx).getReadCount();
+                Long minCount = null;
+                for (int idx = 0; idx < writers.size(); idx++) {
+                    long readCount = writers.getReadCount(idx);
                     if (minCount == null || readCount < minCount) {
                         writerIdx = idx;
                         minCount = readCount;
@@ -238,21 +293,26 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
 
         checkOutputOverwrites();
 
-        samWriterFactory = new SAMFileWriterFactory().setCreateIndex(CREATE_INDEX);
-        if (NUM_THREADS > 1) {
-            // One writer thread per output BAM.
-            samWriterFactory.setUseAsyncIo(true);
+        final ThreadSplit threads = getReaderAndWriterThreads();
+        if (NUM_OUTPUTS == 1 && threads.writerThreads() > 1) {
+            log.warn(String.format("There is only one output, which only one writer thread can write at a time, so %d writer " +
+                    "threads will not make it faster, and only add CPU use.  Use fewer threads, for example NUM_THREADS 2.",
+                    threads.writerThreads()));
         }
-
-        headerAndIterator = NUM_THREADS == 1
-                ? SamFileMergeUtil.mergeInputPaths(inputPaths, true)
-                : SamFileMergeUtil.mergeInputPaths(inputPaths, true, SamReaderFactory.makeDefault(), Math.max(1, NUM_THREADS - 1));
+        if (threads.writerThreads() > 0) {
+            log.info(String.format("Using %d thread(s) to read and decode the inputs, and %d thread(s) to write the outputs " +
+                            "in batches of %d records.",
+                    threads.readerThreads(), threads.writerThreads(), WRITER_BATCH_SIZE));
+        }
+        headerAndIterator = SamFileMergeUtil.mergeInputPaths(inputPaths, true, SamReaderFactory.makeDefault(),
+                threads.readerThreads());
         SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
+        writers = threads.writerThreads() == 0
+                ? SamWriterGroup.direct(headerAndIterator.header, CREATE_INDEX)
+                : SamWriterGroup.batched(headerAndIterator.header, CREATE_INDEX, threads.writerThreads(), WRITER_BATCH_SIZE);
         splitBAMs();
         CloserUtil.close(headerAndIterator.iterator);
-        for (SAMFileInfo writerInfo : writerInfoList) {
-            writerInfo.getWriter().close();
-        }
+        writers.close();
         if (OUTPUT_MANIFEST != null) {
             writeManifest(OUTPUT_MANIFEST);
         }
@@ -322,14 +382,6 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
         }
     }
 
-    protected SAMFileInfo createWriterInfo(final SAMFileHeader header, int splitIdx) {
-        final File samFile = getRelativeSplitBamFile(splitIdx);
-        final File actualFileToOpen = getActualSplitBamFile(samFile);
-        final SAMFileWriter samFileWriter = samWriterFactory.makeSAMOrBAMWriter(header, true, actualFileToOpen);
-        return new SAMFileInfo(samFile, samFileWriter, 0);
-    }
-
-
     /**
      * Split inputs in whatever manner is appropriate
      */
@@ -340,7 +392,7 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
         for (final Map.Entry<String, Integer> entry : cellBarcodeWriterIdxMap.entrySet()) {
             final Integer fileIndex = entry.getValue();
             metricsFile.addMetric(new CellBarcodeSplitBamMetric(entry.getKey(), fileIndex,
-                    writerInfoList.get(fileIndex).samFile));
+                    outputFiles.get(fileIndex)));
         }
         final BufferedWriter writer = IOUtil.openFileForBufferedWriting(manifest);
         metricsFile.write(writer);
@@ -374,8 +426,8 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
             : OUTPUT_LIST;
         final PrintStream out = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(listFile));
 
-        for (SAMFileInfo writerInfo : writerInfoList) {
-            out.println(writerInfo.getSamFile().toString());
+        for (File outputFile : outputFiles) {
+            out.println(outputFile.toString());
         }
 
         out.close();
@@ -386,9 +438,9 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
         final MetricsFile<SplitBamSummaryMetric, Integer> metricsFile = new MetricsFile<>();
 
         Histogram<Integer> readCountHistogram = new Histogram<>("SPLIT_INDEX", "READ_COUNT");
-        final double[] readCounts = new double[writerInfoList.size()];
-        for (int idx=0; idx<writerInfoList.size(); idx++) {
-            readCounts[idx] = writerInfoList.get(idx).getReadCount();
+        final double[] readCounts = new double[writers.size()];
+        for (int idx=0; idx<writers.size(); idx++) {
+            readCounts[idx] = writers.getReadCount(idx);
             readCountHistogram.increment(idx, readCounts[idx]);
         }
         metricsFile.addMetric(new SplitBamSummaryMetric(StrictMath.round(StatUtils.mean(readCounts)), StrictMath.round(StatUtils.variance(readCounts))));
@@ -485,37 +537,5 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
         }
 
         return size;
-    }
-
-    protected static class SAMFileInfo {
-        private final File samFile;
-        private final SAMFileWriter writer;
-        int readCount;
-
-        private SAMFileInfo(File samFile, SAMFileWriter writer, int readCount) {
-            this.samFile = samFile;
-            this.writer = writer;
-            this.readCount = readCount;
-        }
-
-        public File getSamFile() {
-            return samFile;
-        }
-
-        public SAMFileWriter getWriter() {
-            return writer;
-        }
-
-        public int getReadCount() {
-            return readCount;
-        }
-
-        public void addRecord(final SAMRecord r) {
-            writer.addAlignment(r);
-            incrementReadCount();
-        }
-        private void incrementReadCount() {
-            readCount++;
-        }
     }
 }
