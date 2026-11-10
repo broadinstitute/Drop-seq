@@ -93,6 +93,12 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
     @Argument(optional = true, shortName = "DI", doc="Delete BAM indices corresponding to input BAMs.  Default: DELETE_INPUTS setting.")
     public Boolean DELETE_INPUT_INDICES;
 
+    @Argument(doc="Number of threads used to read and decode the input BAMs.  With 1, the calling thread does all the work, " +
+            "as before.  With more than 1, NUM_THREADS-1 threads read and decode the inputs, which helps most when there are " +
+            "several input BAMs, and each output BAM is also written on its own background thread, in addition to this " +
+            "number of threads.", minValue = 1)
+    public int NUM_THREADS = 1;
+
     private SAMFileWriterFactory samWriterFactory = null;
     /**
      * History of what cell barcodes go into what writers.  This is updated when a new cell barcode is encountered.
@@ -233,8 +239,14 @@ public abstract class AbstractSplitBamClp extends CommandLineProgram {
         checkOutputOverwrites();
 
         samWriterFactory = new SAMFileWriterFactory().setCreateIndex(CREATE_INDEX);
+        if (NUM_THREADS > 1) {
+            // One writer thread per output BAM.
+            samWriterFactory.setUseAsyncIo(true);
+        }
 
-        headerAndIterator = SamFileMergeUtil.mergeInputPaths(inputPaths, true);
+        headerAndIterator = NUM_THREADS == 1
+                ? SamFileMergeUtil.mergeInputPaths(inputPaths, true)
+                : SamFileMergeUtil.mergeInputPaths(inputPaths, true, SamReaderFactory.makeDefault(), Math.max(1, NUM_THREADS - 1));
         SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
         splitBAMs();
         CloserUtil.close(headerAndIterator.iterator);
