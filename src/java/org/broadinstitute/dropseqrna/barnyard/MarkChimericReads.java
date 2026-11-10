@@ -193,7 +193,11 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
 	private void writePerTranscriptStats(final String gene, final String cellBarcode, final ObjectCounter<String> counts, final ChimericUmiCollection chimerics,
 			final BufferedWriter out, final MarkChimericReadMetrics metrics) {
 				
-		for (String key : counts.getKeys()) {
+		// The counter is a HashMap, so sort the UMIs to make the report order deterministic.  Only the UMIs of one
+		// gene of one cell are sorted at a time.
+		final List<String> sortedKeys = new ArrayList<>(counts.getKeys());
+		Collections.sort(sortedKeys);
+		for (String key : sortedKeys) {
 			int value = counts.getCountForKey(key);
 			boolean chimeric = chimerics.isChimericOrProblematic(key, gene);
 			String[] line = { cellBarcode, gene, key, Integer.toString(value), Boolean.toString(chimeric) };
