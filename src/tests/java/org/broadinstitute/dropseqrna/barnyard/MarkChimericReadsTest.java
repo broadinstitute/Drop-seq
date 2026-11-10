@@ -31,15 +31,34 @@ import org.testng.annotations.Test;
 import picard.nio.PicardHtsPath;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.List;
 
 public class MarkChimericReadsTest {
 	public static File TEST_DATA_DIR = new File("testdata/org/broadinstitute/dropseq/barnyard");
 	public static final File CELL_BC_FILE = new File(TEST_DATA_DIR, "selectedCellBarcodes.txt");
 	public static final File EXPECTED_CHIMERIC_REPORT = new File(TEST_DATA_DIR, "umiReuse.chimeric_report.txt");
 
+	/** The report order must not depend on HashMap iteration order: UMIs are sorted within each cell and gene. */
+	private static void assertUmisSortedWithinCellAndGene(final File report) throws IOException {
+		String previousCellAndGene = null;
+		String previousUmi = null;
+		final List<String> lines = Files.readAllLines(report.toPath());
+		for (final String line : lines.subList(1, lines.size())) {
+			final String[] fields = line.split("\t");
+			final String cellAndGene = fields[0] + "\t" + fields[1];
+			if (cellAndGene.equals(previousCellAndGene)) {
+				Assert.assertTrue(previousUmi.compareTo(fields[2]) < 0, "UMIs out of order: " + previousUmi + " " + fields[2]);
+			}
+			previousCellAndGene = cellAndGene;
+			previousUmi = fields[2];
+		}
+	}
+
 	@Test(enabled = true)
-	public void testUmiReuse() {
+	public void testUmiReuse() throws IOException {
 		final MarkChimericReads clp = new MarkChimericReads();
 		clp.OUTPUT = TestUtils.getTempReportFile("MarkChimericReads.", ".sam");
 		clp.OUTPUT.deleteOnExit();
@@ -52,6 +71,7 @@ public class MarkChimericReadsTest {
 		Assert.assertEquals(clp.doWork(), 0);
 		TestUtils.assertSamFilesSame(clp.OUTPUT, new File(TEST_DATA_DIR, "MarkChimericReads.umiReuse.sam"), false);
 		Assert.assertTrue(TestUtils.testFilesSame(clp.OUTPUT_REPORT, EXPECTED_CHIMERIC_REPORT));
+		assertUmisSortedWithinCellAndGene(clp.OUTPUT_REPORT);
 		Assert.assertTrue(TestUtils.testFilesSame(clp.METRICS, new File(TEST_DATA_DIR, "umiReuse.chimeric_read_metrics")));
 	}
 
