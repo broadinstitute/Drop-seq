@@ -62,6 +62,11 @@ public class BarcodeCorrector {
                     }
             );
 
+    // Fast path for allowed barcodes that are all upper-case ACGT of the length of the cell barcode; null if the
+    // allowed barcodes can't be represented that way, in which case the String-based logic is used.
+    private PackedBarcodeSet packedAllowedBarcodes;
+    private ResourceLimitedMap<Long, List<String>> packedEd1MatchCache;
+
     private final List<BaseRange> baseRanges;
     private final int BARCODED_READ;
     private final String BARCODE_TAG;
@@ -95,6 +100,23 @@ public class BarcodeCorrector {
         for (final String allowedBarcode: allowedBarcodeHistogram.keySet()) {
             allowedBarcodeNormalizedOccurences.put(allowedBarcodeInterner.intern(allowedBarcode), allowedBarcodeHistogram.get(allowedBarcode).getValue()/allowedBarcodeOccurenceCount);
         }
+        final int barcodeLength = baseRanges.stream().mapToInt(BaseRange::getSize).sum();
+        packedAllowedBarcodes = PackedBarcodeSet.build(allowedBarcodeNormalizedOccurences.keySet(), barcodeLength);
+        if (packedAllowedBarcodes != null) {
+            packedEd1MatchCache = new ResourceLimitedMap<>(
+                    1_000_000,
+                    new ResourceLimitedMapFunctor<>() {
+                        @Override
+                        public List<String> makeValue(final Long key) {
+                            return packedAllowedBarcodes.getEd1Matches(key);
+                        }
+
+                        @Override
+                        public void finalizeValue(final Long key, final List<String> strings) {
+                        }
+                    }
+            );
+        }
     }
 
     /**
@@ -105,7 +127,7 @@ public class BarcodeCorrector {
         final SAMRecord readWithBarcode = BARCODED_READ == 1? pair.getFirstRead(): pair.getSecondRead();
         final SAMRecord otherRead = BARCODED_READ == 2? pair.getFirstRead(): pair.getSecondRead();
         if (RAW_BARCODE_TAG != null) {
-            final String rawBarcode = BaseRange.getSequenceForBaseRange(baseRanges, readWithBarcode.getReadString());
+            final String rawBarcode = BaseRange.getSequenceForBaseRange(baseRanges, readWithBarcode.getReadBases());
             otherRead.setAttribute(RAW_BARCODE_TAG, rawBarcode);
             if (TAG_BOTH_READS) {
                 readWithBarcode.setAttribute(RAW_BARCODE_TAG, rawBarcode);
@@ -143,60 +165,94 @@ public class BarcodeCorrector {
         return ret;
     }
 
+    /**
+     * Test hook: turn off the packed-barcode fast path, so the String-based logic can be compared with it.
+     */
+    void disablePackedLookup() {
+        packedAllowedBarcodes = null;
+        packedEd1MatchCache = null;
+    }
+
     private String getCorrectedCellBarcode(final SAMRecord readWithBarcode) {
-        final String cellBarcode = BaseRange.getSequenceForBaseRange(baseRanges, readWithBarcode.getReadString());
-        if (allowedBarcodeNormalizedOccurences.containsKey(cellBarcode)) {
-            // exact match -- no correction needed.
-            if (VERBOSITY == Log.LogLevel.DEBUG && metrics.NUM_READS_EXACT_MATCH == 0) {
-                log.debug("EXACT_MATCH " + readWithBarcode);
-            }
-            ++metrics.NUM_READS_EXACT_MATCH;
-            return cellBarcode;
-        } else {
-            List<String> ed1Matches = ed1MatchCache.get(cellBarcode);
-            if (ed1Matches.isEmpty()) {
-                if (VERBOSITY == Log.LogLevel.DEBUG && metrics.NUM_READS_UNCORRECTABLE_NO_ED1_BARCODES == 0) {
-                    log.debug("UNCORRECTABLE_NO_ED1 " + readWithBarcode);
+        if (packedAllowedBarcodes != null) {
+            final long packed = PackedBarcodeSet.packRead(baseRanges, readWithBarcode.getReadBases());
+            if (packed != PackedBarcodeSet.NOT_PACKABLE) {
+                final String exactMatch = packedAllowedBarcodes.get(packed);
+                if (exactMatch != null) {
+                    return recordExactMatch(readWithBarcode, exactMatch);
                 }
-                ++metrics.NUM_READS_UNCORRECTABLE_NO_ED1_BARCODES;
-                return cellBarcode;
-            } else if (ed1Matches.size() == 1) {
-                if (VERBOSITY == Log.LogLevel.DEBUG && metrics.NUM_READS_CORRECTED_SINGLE_ED1 == 0) {
-                    log.debug("CORRECTED_SINGLE_ED1 " + readWithBarcode);
-                }
-                ++metrics.NUM_READS_CORRECTED_SINGLE_ED1;
-                numCandidatesHist.increment(1);
-                return ed1Matches.getFirst();
-            } else {
-                String bestBarcode = null;
-                double bestBarcodeLikelihood = 0;
-                double sumLikelihoods = 0;
-                final byte[] baseQualities = BaseRange.getBytesForBaseRange(baseRanges, readWithBarcode.getBaseQualities());
-                for (final String candidateBarcode : ed1Matches) {
-                    double thisLikelihood = computeCandidateBarcodeLikelihood(cellBarcode, candidateBarcode, baseQualities);
-                    sumLikelihoods += thisLikelihood;
-                    if (thisLikelihood > bestBarcodeLikelihood) {
-                        bestBarcodeLikelihood = thisLikelihood;
-                        bestBarcode = candidateBarcode;
-                    }
-                }
-                if (bestBarcodeLikelihood / sumLikelihoods >= LIKELIHOOD_RATIO) {
-                    if (VERBOSITY == Log.LogLevel.DEBUG &&
-                            (metrics.NUM_READS_CORRECTED_MULTI_ED1 == 0 || ed1Matches.size() >= 4)) {
-                        log.debug("CORRECTED_MULTI_ED1 " + readWithBarcode);
-                    }
-                    ++metrics.NUM_READS_CORRECTED_MULTI_ED1;
-                    numCandidatesHist.increment(ed1Matches.size());
-                    return bestBarcode;
-                } else {
-                    if (VERBOSITY == Log.LogLevel.DEBUG && metrics.NUM_READS_UNCORRECTED_AMBIGUOUS == 0) {
-                        log.debug("UNCORRECTED_AMBIGUOUS " + readWithBarcode);
-                    }
-                    ++metrics.NUM_READS_UNCORRECTED_AMBIGUOUS;
-                    return cellBarcode;
-                }
+                return correctFromEd1Matches(readWithBarcode, packedEd1MatchCache.get(packed), null);
             }
         }
+        final String cellBarcode = BaseRange.getSequenceForBaseRange(baseRanges, readWithBarcode.getReadBases());
+        if (allowedBarcodeNormalizedOccurences.containsKey(cellBarcode)) {
+            return recordExactMatch(readWithBarcode, cellBarcode);
+        }
+        return correctFromEd1Matches(readWithBarcode, ed1MatchCache.get(cellBarcode), cellBarcode);
+    }
+
+    // exact match -- no correction needed.
+    private String recordExactMatch(final SAMRecord readWithBarcode, final String cellBarcode) {
+        if (VERBOSITY == Log.LogLevel.DEBUG && metrics.NUM_READS_EXACT_MATCH == 0) {
+            log.debug("EXACT_MATCH " + readWithBarcode);
+        }
+        ++metrics.NUM_READS_EXACT_MATCH;
+        return cellBarcode;
+    }
+
+    /**
+     * @param uncorrectedBarcode the barcode of the read, or null if it has not been made into a String yet.  It is
+     *                           only needed when no correction is made, or when candidates have to be compared.
+     */
+    private String correctFromEd1Matches(final SAMRecord readWithBarcode, final List<String> ed1Matches,
+                                         final String uncorrectedBarcode) {
+        if (ed1Matches.isEmpty()) {
+            if (VERBOSITY == Log.LogLevel.DEBUG && metrics.NUM_READS_UNCORRECTABLE_NO_ED1_BARCODES == 0) {
+                log.debug("UNCORRECTABLE_NO_ED1 " + readWithBarcode);
+            }
+            ++metrics.NUM_READS_UNCORRECTABLE_NO_ED1_BARCODES;
+            return uncorrectedBarcode != null? uncorrectedBarcode: getBarcodeString(readWithBarcode);
+        } else if (ed1Matches.size() == 1) {
+            if (VERBOSITY == Log.LogLevel.DEBUG && metrics.NUM_READS_CORRECTED_SINGLE_ED1 == 0) {
+                log.debug("CORRECTED_SINGLE_ED1 " + readWithBarcode);
+            }
+            ++metrics.NUM_READS_CORRECTED_SINGLE_ED1;
+            numCandidatesHist.increment(1);
+            return ed1Matches.getFirst();
+        } else {
+            final String cellBarcode = uncorrectedBarcode != null? uncorrectedBarcode: getBarcodeString(readWithBarcode);
+            String bestBarcode = null;
+            double bestBarcodeLikelihood = 0;
+            double sumLikelihoods = 0;
+            final byte[] baseQualities = BaseRange.getBytesForBaseRange(baseRanges, readWithBarcode.getBaseQualities());
+            for (final String candidateBarcode : ed1Matches) {
+                double thisLikelihood = computeCandidateBarcodeLikelihood(cellBarcode, candidateBarcode, baseQualities);
+                sumLikelihoods += thisLikelihood;
+                if (thisLikelihood > bestBarcodeLikelihood) {
+                    bestBarcodeLikelihood = thisLikelihood;
+                    bestBarcode = candidateBarcode;
+                }
+            }
+            if (bestBarcodeLikelihood / sumLikelihoods >= LIKELIHOOD_RATIO) {
+                if (VERBOSITY == Log.LogLevel.DEBUG &&
+                        (metrics.NUM_READS_CORRECTED_MULTI_ED1 == 0 || ed1Matches.size() >= 4)) {
+                    log.debug("CORRECTED_MULTI_ED1 " + readWithBarcode);
+                }
+                ++metrics.NUM_READS_CORRECTED_MULTI_ED1;
+                numCandidatesHist.increment(ed1Matches.size());
+                return bestBarcode;
+            } else {
+                if (VERBOSITY == Log.LogLevel.DEBUG && metrics.NUM_READS_UNCORRECTED_AMBIGUOUS == 0) {
+                    log.debug("UNCORRECTED_AMBIGUOUS " + readWithBarcode);
+                }
+                ++metrics.NUM_READS_UNCORRECTED_AMBIGUOUS;
+                return cellBarcode;
+            }
+        }
+    }
+
+    private String getBarcodeString(final SAMRecord readWithBarcode) {
+        return BaseRange.getSequenceForBaseRange(baseRanges, readWithBarcode.getReadBases());
     }
 
     private double computeCandidateBarcodeLikelihood(final String uncorrectedBarcode, final String candidateBarcode, final byte[] baseQualities) {

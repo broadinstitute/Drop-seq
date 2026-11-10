@@ -28,6 +28,7 @@ import com.google.common.collect.Interners;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.Log;
 import org.broadinstitute.dropseqrna.utils.CustomBAMIterators;
 import org.broadinstitute.dropseqrna.utils.FileUtils;
 import org.broadinstitute.dropseqrna.utils.readiterators.parallel.BamDecodePool;
@@ -47,6 +48,8 @@ import java.util.function.Function;
  * Utilities for creating a single stream of SAMRecords from multiple input files.
  */
 public class SamFileMergeUtil {
+
+    private static final Log LOG = Log.getInstance(SamFileMergeUtil.class);
 
     /**
      * Use this overload if you want to override defaults in SamReaderFactory, e.g. eager decode
@@ -113,7 +116,22 @@ public class SamFileMergeUtil {
                                                        final SamReaderFactory samReaderFactory,
                                                        final int numThreads,
                                                        final ReadMode mode) {
-        switch (mode.resolve(inputs, samReaderFactory, numThreads)) {
+        final ReadMode resolved = mode.resolve(inputs, samReaderFactory, numThreads);
+        final String detail;
+        switch (resolved) {
+            case POOL:
+                detail = "decode pool, " + numThreads + " thread(s)";
+                break;
+            case ASYNC:
+                detail = "htsjdk async IO" +
+                        (mode == ReadMode.AUTO ? ", single unaligned input overrides thread count" : "");
+                break;
+            default:
+                detail = "stock reader, calling thread";
+        }
+        LOG.info("Reading ", inputs.size(), " input(s): ", detail, " [mode ", resolved, ", requested ", mode,
+                ", numThreads ", numThreads, "]");
+        switch (resolved) {
             case ASYNC:
                 return mergeInputPaths(inputs, maintainSort, asyncFactory(samReaderFactory));
             case STOCK:

@@ -26,10 +26,12 @@ package org.broadinstitute.dropseqrna.beadsynthesis;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SamFiles;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.AbstractSplitBamClp;
 import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
@@ -46,6 +48,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 @CommandLineProgramProperties(
@@ -76,8 +79,22 @@ extends CommandLineProgram {
     @Argument(optional = true, shortName = "DI", doc="Delete BAM indices corresponding to input BAMs.  Default: DELETE_INPUTS setting.")
     public Boolean DELETE_INPUT_INDICES;
 
+    @Argument(optional = true, doc = "Number of threads to use.  With 1, everything is done on the calling thread.  " +
+            "With more than 1, the output is written on a separate thread, and the other NUM_THREADS - 1 threads are " +
+            "used for reading the input.")
+    public int NUM_THREADS = 1;
+
     @ArgumentCollection
     public CorrectScrnaReadPairsArgumentCollection ARGUMENT_COLLECTION = new CorrectScrnaReadPairsArgumentCollection();
+
+    @Override
+    protected String[] customCommandLineValidation() {
+        final List<String> errors = new ArrayList<>();
+        if (NUM_THREADS < 1) {
+            errors.add("NUM_THREADS must be at least 1.");
+        }
+        return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), errors);
+    }
 
     @Override
     protected int doWork() {
@@ -103,8 +120,12 @@ extends CommandLineProgram {
                 }
             }
         }
-        final SamHeaderAndIterator  headerAndIterator = SamFileMergeUtil.mergeInputPaths(inputPaths, true);
+        final SamHeaderAndIterator  headerAndIterator = SamFileMergeUtil.mergeInputPaths(inputPaths, true,
+                SamReaderFactory.makeDefault(), Math.max(1, NUM_THREADS - 1));
+        log.info("Writing output: ", NUM_THREADS > 1 ? "async IO, separate writer thread" :
+                "synchronous IO, calling thread");
         final SAMFileWriter samFileWriter = new SAMFileWriterFactory().setCreateIndex(CREATE_INDEX).
+                setUseAsyncIo(NUM_THREADS > 1).
                 makeSAMOrBAMWriter(headerAndIterator.header, true, OUTPUT);
 
         SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
