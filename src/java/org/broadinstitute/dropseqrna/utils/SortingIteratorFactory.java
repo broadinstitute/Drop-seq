@@ -26,9 +26,11 @@ package org.broadinstitute.dropseqrna.utils;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.SortingCollection;
+import org.broadinstitute.dropseqrna.utils.sorting.CombiningSortingCollection;
 
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.function.BinaryOperator;
 
 public class SortingIteratorFactory {
 
@@ -67,6 +69,30 @@ public class SortingIteratorFactory {
             sortingCollection.add(rec);
         }
         CloseableIterator<T> ret = sortingCollection.iterator();
+        CloserUtil.close(underlyingIterator);
+        return ret;
+    }
+
+    /**
+     * Like {@link #create} but records that compare equal are merged with combiner (see {@link CombiningSortingCollection}),
+     * so the result contains no two equal records.
+     * @param progressLogger Pass null if not interested in logging.
+     */
+    public static <T> CloseableIterator<T> createCombining(final Iterator<T> underlyingIterator,
+                                                           final Comparator<T> comparator,
+                                                           final SortingCollection.Codec<T> codec,
+                                                           final BinaryOperator<T> combiner,
+                                                           final int maxRecordsInRam,
+                                                           final ProgressCallback<T> progressLogger) {
+        final CombiningSortingCollection<T> collection =
+                new CombiningSortingCollection<>(codec, comparator, combiner, maxRecordsInRam);
+        while (underlyingIterator.hasNext()) {
+            final T rec = underlyingIterator.next();
+            if (progressLogger != null)
+                progressLogger.logProgress(rec);
+            collection.add(rec);
+        }
+        final CloseableIterator<T> ret = collection.iterator();
         CloserUtil.close(underlyingIterator);
         return ret;
     }

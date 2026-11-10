@@ -3,6 +3,7 @@ package org.broadinstitute.dropseqrna.utils.readiterators;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.dropseqrna.annotation.functionaldata.*;
 import org.broadinstitute.dropseqrna.barnyard.Utils;
+import org.broadinstitute.dropseqrna.utils.readiterators.umisort.UMIRead;
 import picard.annotation.LocusFunction;
 
 import java.util.*;
@@ -86,10 +87,115 @@ public class GeneFunctionProcessor {
 	 * @return A read with tags that best represents this group.  This can also return null if read group is ambiguous.
 	 */
 	public SAMRecord processReads (final List<SAMRecord> recs) {
-		List<FunctionalData> fdList = recs.stream()
+		final FunctionalData fd = resolveToSingleFunction(recs.stream()
 				.flatMap(r -> getReadFunctions(r, true).stream())
-				.collect(Collectors.toList());
+				.collect(Collectors.toList()));
+		if (fd == null) return null;
+		return (assignTagsToRead(recs.getFirst(), fd));
+	}
 
+	/**
+	 * For a SAMRecord, generate the list of functional data captured by this read.
+	 * This extracts the functional data tags from the read and converts it into the new domain.
+	 * If filter is true, defer to the functional data processor strategy for how to further process the functional data.
+	 * If filter is false, construct all functional data and pass it on.
+	 * @param r The read to process
+	 * @param filter Set to true to filter the output using the given FunctionalDataProcessorStrategy.
+	 * @return A list of 0 or more FunctionalData objects.
+	 */
+	public List<FunctionalData> getReadFunctions(final SAMRecord r, boolean filter) {
+		return getReadFunctions(r.getStringAttribute(this.geneTag), r.getStringAttribute(this.strandTag),
+				r.getStringAttribute(this.functionTag), r.getReadNegativeStrandFlag(), filter);
+	}
+
+
+
+
+
+	private SAMRecord assignTagsToRead(final SAMRecord r,
+			final FunctionalData fd) {
+		r.setAttribute(geneTag, fd.getGene());
+		r.setAttribute(strandTag, fd.getGeneStrand());
+		if (fd.getLocusFunction() != null) {
+			r.setAttribute(functionTag, fd.getLocusFunction().name());
+		}
+		return (r);
+	}
+
+	public static LocusFunction[] getLocusFunctionFromRead(final String functionList) {
+		String[] fl = functionList.split(DELIMITER);
+		LocusFunction[] result = new LocusFunction[fl.length];
+		for (int i = 0; i < fl.length; i++) {
+			LocusFunction lf = LocusFunction.valueOf(fl[i]);
+			result[i] = lf;
+		}
+		return result;
+	}
+
+	/**
+	 * Overload of {@link #getReadFunctions(SAMRecord, boolean)} for the compact {@link UMIRead}, which carries the
+	 * gene, strand and function tag values and the read strand but is not a SAMRecord.
+	 */
+	public List<FunctionalData> getReadFunctions(final UMIRead r, boolean filter) {
+		return getReadFunctions(r.gene, r.geneStrand, r.geneFunction, r.negativeStrand, filter);
+	}
+
+	/**
+	 * Overload of {@link #processReads(List)} for {@link UMIRead}s, with the same semantics: the reads are one
+	 * "unit" (such as primary/secondary alignments of the same read), and the result is the first read
+	 * re-assigned to the single preferred gene/strand/function, or null if the reads are ambiguous or none pass the filters.
+	 * <p>
+	 * This takes a Collection rather than a List only because List&lt;SAMRecord&gt; and List&lt;UMIRead&gt; have the same erasure.
+	 */
+	public UMIRead processReads(final Collection<UMIRead> recs) {
+		final FunctionalData fd = resolveToSingleFunction(recs.stream()
+				.flatMap(r -> getReadFunctions(r, true).stream())
+				.collect(Collectors.toList()));
+		if (fd == null) return null;
+		final String function = fd.getLocusFunction() == null ? null : fd.getLocusFunction().name();
+		return recs.iterator().next().withGeneAssignment(fd.getGene(), fd.getGeneStrand(), function);
+	}
+
+	/**
+	 * The single implementation of {@link #getReadFunctions(SAMRecord, boolean)} and {@link #getReadFunctions(UMIRead, boolean)}.
+	 * @param geneList the gene tag value, or null if the read has none
+	 * @param strandList the gene strand tag value, or null
+	 * @param functionList the gene function tag value, or null
+	 * @param negativeStrand true if the read maps to the negative strand
+	 */
+	private List<FunctionalData> getReadFunctions(final String geneList, final String strandList,
+			final String functionList, final boolean negativeStrand, boolean filter) {
+
+		// If you're missing the gene, you can't use this read.
+		// If care about strand, and you're missing the strand, you can't use this read.
+		// If care about function, and you're missing the  function, you can't use this read.
+		if ((geneList == null) ||
+				(fdp.getStrandStrategy() != null && strandList == null) ||
+				(!fdp.getAcceptedFunctions().isEmpty() && functionList == null)){
+			return Collections.emptyList();
+		}
+
+		// there's at least one good copy of the read. Does the read match on
+		// strand/gene, or is it assigned to multiple genes?
+		final String[] genes = geneList.split(DELIMITER);
+		final String[] strands = (strandList == null? null: strandList.split(DELIMITER));
+		final LocusFunction[] locusFunctions = (functionList == null? null: getLocusFunctionFromRead(functionList));
+		// if filtering is required, then apply filtering here.
+		// otherwise build all functional data.
+		List<FunctionalData> fdList;
+		if (filter)
+			fdList = fdp.getFilteredFunctionalData(genes, strands, locusFunctions, negativeStrand);
+		else
+			fdList = FunctionalData.buildFD(genes, strands, locusFunctions, fdp.getStrandStrategy(), fdp.getAcceptedFunctions(), negativeStrand);
+		return (fdList);
+	}
+
+	/**
+	 * The single implementation of the logic shared by {@link #processReads(List)} and {@link #processReads(Collection)}.
+	 * @param fdList the functional data of all reads of one "unit"
+	 * @return the one functional data that represents the unit, or null if none pass the filters or they are ambiguous.
+	 */
+	private FunctionalData resolveToSingleFunction(List<FunctionalData> fdList) {
 		// If there's no functional data that passes the filters, return.
 		if (fdList.isEmpty()) return null;
 
@@ -116,73 +222,11 @@ public class GeneFunctionProcessor {
 		// test if all functional annotations are the same as the first entry.
 		FunctionalData first = fdList.getFirst();
 		boolean allSame = fdList.stream().allMatch(first::sameGeneAndType);
-		// if so, assign and finish.
+		// if so, that is the answer.
 		if (allSame)
-            return (assignTagsToRead(recs.getFirst(), first));
+			return first;
 
 		return null;
-	}
-
-	/**
-	 * For a SAMRecord, generate the list of functional data captured by this read.
-	 * This extracts the functional data tags from the read and converts it into the new domain.
-	 * If filter is true, defer to the functional data processor strategy for how to further process the functional data.
-	 * If filter is false, construct all functional data and pass it on.
-	 * @param r The read to process
-	 * @param filter Set to true to filter the output using the given FunctionalDataProcessorStrategy.
-	 * @return A list of 0 or more FunctionalData objects.
-	 */
-	public List<FunctionalData> getReadFunctions(final SAMRecord r, boolean filter) {
-		String geneList = r.getStringAttribute(this.geneTag);
-		String strandList = r.getStringAttribute(this.strandTag);
-		String functionList = r.getStringAttribute(this.functionTag);
-
-		// If you're missing the gene, you can't use this read.
-		// If care about strand, and you're missing the strand, you can't use this read.
-		// If care about function, and you're missing the  function, you can't use this read.
-		if ((geneList == null) ||
-				(fdp.getStrandStrategy() != null && strandList == null) ||
-				(!fdp.getAcceptedFunctions().isEmpty() && functionList == null)){
-			return Collections.emptyList();
-		}
-
-		// there's at least one good copy of the read. Does the read match on
-		// strand/gene, or is it assigned to multiple genes?
-		final String[] genes = geneList.split(DELIMITER);
-		final String[] strands = (strandList == null? null: strandList.split(DELIMITER));
-		final LocusFunction[] locusFunctions = (functionList == null? null: getLocusFunctionFromRead(functionList));
-		// if filtering is required, then apply filtering here.
-		// otherwise build all functional data.
-		List<FunctionalData> fdList;
-		if (filter)
-			fdList = fdp.getFilteredFunctionalData(genes, strands, locusFunctions, r.getReadNegativeStrandFlag());
-		else
-			fdList = FunctionalData.buildFD(genes, strands, locusFunctions, fdp.getStrandStrategy(), fdp.getAcceptedFunctions(), r.getReadNegativeStrandFlag());
-		return (fdList);
-	}
-
-
-
-
-
-	private SAMRecord assignTagsToRead(final SAMRecord r,
-			final FunctionalData fd) {
-		r.setAttribute(geneTag, fd.getGene());
-		r.setAttribute(strandTag, fd.getGeneStrand());
-		if (fd.getLocusFunction() != null) {
-			r.setAttribute(functionTag, fd.getLocusFunction().name());
-		}
-		return (r);
-	}
-
-	public static LocusFunction[] getLocusFunctionFromRead(final String functionList) {
-		String[] fl = functionList.split(DELIMITER);
-		LocusFunction[] result = new LocusFunction[fl.length];
-		for (int i = 0; i < fl.length; i++) {
-			LocusFunction lf = LocusFunction.valueOf(fl[i]);
-			result[i] = lf;
-		}
-		return result;
 	}
 
 	public FunctionalDataProcessorI getFdp() {
