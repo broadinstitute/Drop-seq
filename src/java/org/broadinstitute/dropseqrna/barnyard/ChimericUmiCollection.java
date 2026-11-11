@@ -131,7 +131,10 @@ public class ChimericUmiCollection {
 	public void buildChimericUmis () {		
 		for (String molBC: umiGeneSupport.keySet()) {
 			ChimericUmi cu = new ChimericUmi(molBC, umiGeneSupport.get(molBC), this.strategy);
-			map.put(molBC, cu);
+			// UMIs with no chimeric genes are never reported as chimeric, and a missing entry gives the same answer
+			// as an empty one, so only retain the chimeric UMIs.  This keeps memory proportional to the number of chimeric UMIs.
+			if (!cu.getChimericGenes().isEmpty())
+				map.put(molBC, cu);
 		}
 		this.isFinal=true;
 		this.umiGeneSupport=null;
@@ -139,6 +142,15 @@ public class ChimericUmiCollection {
 
 	public String getCellBarcode() {
 		return cellBarcode;
+	}
+
+	/**
+	 * @return true if this cell has no chimeric UMIs and no problematic UMIs, so nothing needs to be retained for it.
+	 */
+	public boolean isEmpty() {
+		if (isFinal==false)
+			buildChimericUmis();
+		return map.isEmpty() && problematicUmis.isEmpty();
 	}
 
 	public int getTotalUMIs() {		

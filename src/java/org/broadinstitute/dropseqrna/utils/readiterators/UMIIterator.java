@@ -32,6 +32,7 @@ import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataPro
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.utils.*;
+import org.broadinstitute.dropseqrna.utils.readiterators.umisort.SortedUMICollectionIterator;
 import picard.annotation.LocusFunction;
 
 import java.util.*;
@@ -42,7 +43,10 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
     private static final Log log = Log.getInstance(UMIIterator.class);
     private static final ProgressLogger prog = new ProgressLogger(log);
 
+	// Exactly one of these is non-null.  atoi is the SAMRecord path, used when reads are retained in the UMICollections.
+	// umiKeyIter is used otherwise: only (cell, gene, UMI) counts are sorted, not whole reads.
 	private final GroupingIterator<SAMRecord> atoi;
+	private final SortedUMICollectionIterator umiKeyIter;
 	private final String geneTag;
 	private final String cellBarcodeTag;
 	private final String molecularBarcodeTag;
@@ -67,8 +71,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	 * @param recordCellsInInput While sorting the input, keep track of what cells appear in the input.  This record
 	 *                           is not complete until iteration is started.
 	 * @param retainReads If true the SAMRecords are added to the UMICollection.  This uses more memory than the standard UMICollection so exercise caution.  
-	 * This is false in other method signatures by default.  If false, reads can be simplified for faster serialization.
-	 * 
+	 * This is false in other method signatures by default.  If false, only cell, gene and UMI are sorted and spilled
+	 * (see {@link SortedUMICollectionIterator}), which is much cheaper than sorting SAMRecords.
 	 */
 	private UMIIterator(final SamHeaderAndIterator headerAndIterator,
 					   final String geneTag,
@@ -134,11 +138,13 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 				geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions, functionStrategy);
 		Iterator<SAMRecord> samRecordIter = wrapper;
 
-		// Strip down the reads to a more minimal set of TAGS, set reads to be empty on request
 		if (!retainReads) {
-			List<String> requiredTags = Arrays.asList(geneTag, geneStrandTag, geneFunctionTag, cellBarcodeTag, molecularBarcodeTag);
-			samRecordIter = new SimplifySAMRecordIterator(samRecordIter, requiredTags);
+			this.atoi = null;
+			this.umiKeyIter = new SortedUMICollectionIterator(samRecordIter, wrapper.getGeneFunctionProcessor(),
+					cellBarcodeTag, geneTag, geneStrandTag, geneFunctionTag, molecularBarcodeTag, readMQ, cellFirstSort, prog);
+			return;
 		}
+		this.umiKeyIter = null;
 
 		// if map quality < unique handle low map quality reads.
 		if (readMQ <=3) {
@@ -185,6 +191,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	 */
 	@Override
 	public UMICollection next () {
+		if (this.umiKeyIter != null)
+			return this.umiKeyIter.hasNext() ? this.umiKeyIter.next() : null;
 		if (!this.atoi.hasNext())
 			return null;
 
@@ -216,17 +224,21 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 
 	@Override
 	public void remove() {
-		this.atoi.remove();
+		if (this.umiKeyIter != null)
+			this.umiKeyIter.remove();
+		else
+			this.atoi.remove();
 	}
 
 	@Override
 	public void close() {
         CloserUtil.close(this.atoi);
+        CloserUtil.close(this.umiKeyIter);
 	}
 
 	@Override
 	public boolean hasNext() {
-		return this.atoi.hasNext();
+		return this.umiKeyIter != null ? this.umiKeyIter.hasNext() : this.atoi.hasNext();
 	}
 
 	public Set<String> getCellBarcodesSeen() {
@@ -280,28 +292,6 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 				queueRecordForOutput(Collections.singletonList(result));
 		}
 
-	}
-
-	private static class SimplifySAMRecordIterator extends TransformingIterator<SAMRecord, SAMRecord> {
-
-		private final Set<String> requiredTags;
-		public SimplifySAMRecordIterator(Iterator<SAMRecord> underlyingIterator, Collection<String> requiredTags) {
-			super(underlyingIterator);
-			this.requiredTags = new HashSet<>(requiredTags);
-		}
-
-		@Override
-		public SAMRecord next() {
-			SAMRecord r= this.underlyingIterator.next();
-			for (SAMRecord.SAMTagAndValue v: r.getAttributes()) {
-				if(!requiredTags.contains(v.tag))
-					r.setAttribute(v.tag, null);
-			}
-			r.setBaseQualities(SAMRecord.NULL_QUALS);
-			r.setReadBases(SAMRecord.NULL_SEQUENCE);
-			r.setCigarString(SAMRecord.NO_ALIGNMENT_CIGAR);
-			return r;
-		}
 	}
 
 	private static class SimpleQueryNameComparator implements Comparator<SAMRecord> {
