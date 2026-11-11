@@ -34,6 +34,7 @@ import htsjdk.samtools.util.*;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalData;
 import org.broadinstitute.dropseqrna.barnyard.ChimericUmi.CHIMERIC_STRATEGY;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
@@ -158,14 +159,13 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
 		log.info("Marking chimeric UMIs in BAM");
 		for (final SAMRecord rec : new IterableAdapter<>(headerAndIter.iterator)) {
 			progLog.record(rec);
-			// Parse the gene function tags, and get the interpreted tags for the given filters.
-			// Using a deep copy of the record because otherwise processRead alters the record as a side effect.
-			// TODO: should processRead  be making a deep copy internally to avoid the side effect?
-			List<SAMRecord> processedRec =  p.processRead (rec.deepCopy());
+			// Parse the gene function tags, and get the interpreted gene for the given filters.
+			// This does not modify the record, so no copy is needed.
+			final FunctionalData fd = p.getSingleFunction(rec);
 			
 			// only process the record for chimeric tags if the read can be interpreted with one consistent gene.
-			if (processedRec.size()==1) {
-				String geneName = processedRec.get(0) .getStringAttribute(GENE_NAME_TAG);
+			if (fd!=null) {
+				String geneName = fd.getGene();
 				String umi = rec.getStringAttribute(MOLECULAR_BARCODE_TAG);
 				ChimericUmiCollection cuc = chimerics.get(rec.getStringAttribute(CELL_BARCODE_TAG));	
 				if (cuc!=null && cuc.isChimericOrProblematic(umi, geneName)) {
@@ -289,7 +289,9 @@ public class MarkChimericReads extends GeneFunctionCommandLineBase {
                 polyTUmis.forEach(cuc::registerProblematicUmi);
             }
                         
-            chimerics.put(cellBarcode, cuc);
+            // Cells without chimeric or problematic UMIs are not needed when marking reads, so do not retain them.
+            if (!cuc.isEmpty())
+            	chimerics.put(cellBarcode, cuc);
             if (report_out != null) {
                 for (final UMICollection batch : umiCollectionsForCell) {
                 	

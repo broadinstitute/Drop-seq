@@ -51,15 +51,10 @@ public class GeneFunctionProcessor {
 	public List<SAMRecord> processRead (final SAMRecord r) {
 		List<SAMRecord> result = new ArrayList<>();
 
-		List<FunctionalData> fdList = getReadFunctions(r, true);
-		
+		List<FunctionalData> fdList = getPreferredFunctions(r);
+
 		// If there's no functional data that passes the filters, return.
 		if (fdList.isEmpty()) return result;
-
-		// filter to only the preferred class to resolve reads that overlap a coding region on one gene
-		// and an intronic region on a different gene.
-		// this filters the data to just the coding gene.
-		fdList = fdp.filterToPreferredAnnotations(fdList);
 
 		// If there's only one functional data result, re-tag the read, and
 		// queue it, then short circuit out.
@@ -77,6 +72,32 @@ public class GeneFunctionProcessor {
 				result.add(rr);
 			}
 		return result;
+	}
+
+	/**
+	 * Does the same interpretation as {@link #processRead(SAMRecord)}, but does not modify or copy the read.
+	 * Use this when only the resolved gene/strand/function is needed and not a re-tagged read.
+	 * 
+	 * @param r The read to interpret.  It is not modified.
+	 * @return The functional data when the read resolves to exactly one gene/strand/function, which is the case where
+	 * {@link #processRead(SAMRecord)} returns a single read.  Null if the read has no functional data that passes the filters,
+	 * or if it resolves to more than one.
+	 */
+	public FunctionalData getSingleFunction (final SAMRecord r) {
+		final List<FunctionalData> fdList = getPreferredFunctions(r);
+		return fdList.size() == 1 ? fdList.getFirst() : null;
+	}
+
+	/**
+	 * The functional data of the read that passes the filters, limited to the preferred class to resolve reads that
+	 * overlap a coding region on one gene and an intronic region on a different gene.
+	 * This filters the data to just the coding gene.
+	 * Shared by {@link #processRead(SAMRecord)} and {@link #getSingleFunction(SAMRecord)}.
+	 */
+	private List<FunctionalData> getPreferredFunctions (final SAMRecord r) {
+		final List<FunctionalData> fdList = getReadFunctions(r, true);
+		if (fdList.isEmpty()) return fdList;
+		return fdp.filterToPreferredAnnotations(fdList);
 	}
 
 	/**
