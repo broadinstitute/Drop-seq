@@ -90,34 +90,39 @@ def donor_nuclei_counts_report(cells, donor_qc, analysis_id, out_dir, donor_equi
     colors = pp.donor_palette(donor_qc[DONOR])
     has_conditions = CONDITION in cells.columns
     counts = donor_library_counts(cells)
-    library_colors = pp.palette_for(counts[LIBRARY])
+    # Libraries and conditions have ggplot's default hue palette and donors have the donor palette, as in R.
+    expected = donor_qc.set_index(DONOR)["expected"].map({True: "EXPECTED", False: "UNEXPECTED"})
+    counts_with_expected = counts.assign(expected_label=counts[DONOR].map(expected).fillna("UNEXPECTED"))
     donor_order = list(donor_qc.sort_values("num_nuclei", ascending=False, kind="stable")[DONOR])
     pages = [_donor_bar_page(donor_qc, "num_nuclei", "# nuclei", "Total nuclei counts per donor.", colors,
                              analysis_id)]
     if has_conditions:
-        condition_colors = pp.palette_for(counts[CONDITION])
-        pages.append(lambda: pp.stacked_bars(counts, DONOR, CONDITION, "num_nuclei", condition_colors, "# of nuclei",
+        pages.append(lambda: pp.stacked_bars(counts, DONOR, CONDITION, "num_nuclei", None, "# of nuclei",
                                              analysis_id, "Donor nuclei counts per condition.", DONOR_LABEL,
                                              normalize=False, label_min=0, x_order=donor_order))
-    pages.append(lambda: pp.box_with_points(counts, DONOR, "num_nuclei", "# of nuclei", analysis_id,
-                                            "Each point is a library.", DONOR_LABEL, color_by=LIBRARY,
-                                            colors=library_colors, order=donor_order, legend_title="Library"))
+    # As in R: the boxes are filled by donor and the points are black, or red for an unexpected donor.
+    pages.append(lambda: pp.box_with_points(counts_with_expected, DONOR, "num_nuclei", "# of nuclei", analysis_id,
+                                            "Each point is a library.", DONOR_LABEL, box_fill_by=DONOR,
+                                            box_colors=colors, point_color_by="expected_label", order=donor_order,
+                                            legend_title=DONOR_LABEL))
     if has_conditions:
         pages.append(lambda: pp.box_with_points(counts, DONOR, "num_nuclei", "# of nuclei", analysis_id,
                                                 "Each point is a library.", DONOR_LABEL, hue=CONDITION,
-                                                hue_colors=condition_colors, order=donor_order,
-                                                legend_title="Condition"))
+                                                order=donor_order, legend_title="Condition"))
     library_order = list(counts.groupby(LIBRARY)["num_nuclei"].sum().sort_values(ascending=False).index)
     pages.append(lambda: pp.box_with_points(counts, LIBRARY, "num_nuclei", "# of nuclei", analysis_id,
                                             "Each point is a donor.", "Library", color_by=DONOR, colors=colors,
-                                            facet=CONDITION if has_conditions else None, order=library_order,
-                                            legend_title=DONOR_LABEL))
+                                            facet=CONDITION if has_conditions else None, facet_kind="grid",
+                                            scales="free_x", order=library_order, legend_title=DONOR_LABEL,
+                                            jitter=0.05))
     annotations = None
     subtitle = "Donor composition per library."
     if donor_equitability:
         annotations = {library: f"{value:.2f}" for library, value in donor_equitability.items()}
         subtitle += " Number above each bar is the donor equitability."
-    pages.append(lambda: pp.stacked_bars(counts, LIBRARY, DONOR, "num_nuclei", colors, "% of nuclei", analysis_id,
-                                         subtitle, "Library", facet=CONDITION if has_conditions else None,
-                                         annotations=annotations))
+    # As in R: a fraction of 1 per library, with no labels on the segments.
+    pages.append(lambda: pp.stacked_bars(counts, LIBRARY, DONOR, "num_nuclei", colors, "Fraction of nuclei",
+                                         analysis_id, subtitle, "Library",
+                                         facet=CONDITION if has_conditions else None, annotations=annotations,
+                                         percent=False, label_segments=False))
     return pp.write_pdf(pages, os.path.join(out_dir, f"{analysis_id}.donor_nuclei_counts.pdf"))
