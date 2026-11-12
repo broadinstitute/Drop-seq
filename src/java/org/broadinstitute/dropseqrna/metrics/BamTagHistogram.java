@@ -80,6 +80,16 @@ public class BamTagHistogram extends CommandLineProgram {
 	@Argument(shortName="READ_MQ", doc = "Minimum mapping quality to include the read in the analysis. Set to 0 to not filter reads by map quality.")
 	public Integer MINIMUM_MAPPING_QUALITY=10;
 
+	@Argument(doc = "Number of threads used to read and decode the input BAMs.  More threads help most with several input BAMs, roughly one thread per BAM.  A single BAM speeds up as threads are added, up to about 2 threads if compressed and about 4 if not.")
+	public int NUM_THREADS = 1;
+
+	@Override
+	protected String[] customCommandLineValidation() {
+		if (NUM_THREADS < 1)
+			return new String[] { "NUM_THREADS must be >= 1" };
+		return super.customCommandLineValidation();
+	}
+
 	@Override
 	protected int doWork() {
 		this.INPUT = FileListParsingUtils.expandPicardHtsPathList(INPUT);
@@ -87,7 +97,7 @@ public class BamTagHistogram extends CommandLineProgram {
 
 		IOUtil.assertFileIsWritable(OUTPUT);
 
-		ObjectCounter<String> counter = getBamTagCountsHtsPath(inputPaths, this.TAG, this.MINIMUM_MAPPING_QUALITY, this.FILTER_PCR_DUPLICATES);
+		ObjectCounter<String> counter = getBamTagCountsHtsPath(inputPaths, this.TAG, this.MINIMUM_MAPPING_QUALITY, this.FILTER_PCR_DUPLICATES, this.NUM_THREADS);
 
         PrintStream writer = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(this.OUTPUT));
         writeHeader(inputPaths, writer);
@@ -138,8 +148,13 @@ public class BamTagHistogram extends CommandLineProgram {
     }
 
     public ObjectCounter<String> getBamTagCountsHtsPath(final List<Path> bamFile, final String tag, final int readQuality, final boolean filterPCRDuplicates) {
+        return getBamTagCountsHtsPath(bamFile, tag, readQuality, filterPCRDuplicates, 1);
+    }
+
+    public ObjectCounter<String> getBamTagCountsHtsPath(final List<Path> bamFile, final String tag, final int readQuality, final boolean filterPCRDuplicates, final int numThreads) {
+        // Counting does not depend on record order, so the unsorted merge is fine.
         final SamHeaderAndIterator headerAndIter =
-            SamFileMergeUtil.mergeInputPaths(bamFile, false, SamReaderFactory.makeDefault());
+            SamFileMergeUtil.mergeInputPaths(bamFile, false, SamReaderFactory.makeDefault(), numThreads);
         try {
             return getBamTagCounts(headerAndIter.iterator, tag, readQuality, filterPCRDuplicates);
         } finally {
