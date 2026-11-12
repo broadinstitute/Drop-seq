@@ -52,6 +52,10 @@ CELL_TYPE_LIBRARY_METRICS = [
     LibraryMetric("median_umis_per_labelled_nucleus", "Median UMIs/nucleus with a cell type"),
 ]
 
+# The library metrics pages are narrower than the others, as in the R report.
+LIBRARY_PAGE_WIDTH = 10
+LIBRARY_SUBTITLE = lambda metric: f"{metric.label} per library. Dashed line is median."
+
 NO_CONDITION = "same conditions"
 ALL_LIBRARIES = "All libraries"
 
@@ -70,15 +74,20 @@ def with_conditions(table, conditions, library_column=LIBRARY, no_condition=NO_C
     return table
 
 
-def _metric_pages(table, metrics, colors, analysis_id):
+def _metric_pages(table, metrics, analysis_id, subtitle, width, median):
+    """
+    The page of each metric that is available: a bar per library (coloured as in R, with ggplot's default hue
+    palette) and a box by condition.
+
+    :param subtitle: function from a LibraryMetric to the subtitle of its page
+    """
     pages = []
     for metric in metrics:
         if metric.column not in table.columns or table[metric.column].isna().all():
             logger.info(f"Skipping library metric {metric.column}: missing or all NA")
             continue
         pages.append(lambda m=metric: pp.bar_and_condition_box(
-            table, m.column, m.label, colors, analysis_id,
-            "Each point is a library." if table[CONDITION].nunique() > 1 else "", y_max=m.y_max))
+            table, m.column, m.label, None, analysis_id, subtitle(m), y_max=m.y_max, width=width, median=median))
     return pages
 
 
@@ -97,11 +106,11 @@ def library_metrics_report(library_metrics, conditions, analysis_id, out_dir, ce
     if "totalUMIs" in table.columns:
         table["totalUMIsM"] = (table["totalUMIs"] / 1e6).round(2)
     table = with_conditions(table, conditions, library_column)
-    colors = pp.palette_for(table[LIBRARY])
-    pages = _metric_pages(table, LIBRARY_METRICS, colors, analysis_id)
+    pages = _metric_pages(table, LIBRARY_METRICS, analysis_id, LIBRARY_SUBTITLE, LIBRARY_PAGE_WIDTH, True)
     if cell_summary is not None:
         summary = with_conditions(cell_summary, conditions)
-        pages += _metric_pages(summary, CELL_TYPE_LIBRARY_METRICS, pp.palette_for(summary[LIBRARY]), analysis_id)
+        pages += _metric_pages(summary, CELL_TYPE_LIBRARY_METRICS, analysis_id, LIBRARY_SUBTITLE,
+                               LIBRARY_PAGE_WIDTH, True)
     return pp.write_pdf(pages, os.path.join(out_dir, f"{analysis_id}.library_metrics.pdf"))
 
 
@@ -115,5 +124,7 @@ def filtered_library_metrics_report(library_summary, conditions, analysis_id, ou
     table = with_conditions(library_summary, conditions, no_condition=ALL_LIBRARIES)
     metrics = [LibraryMetric("num_nuclei", "# nuclei"),
                LibraryMetric("median_umis_per_nucleus", "Median UMIs/nucleus")]
-    pages = _metric_pages(table, metrics, pp.palette_for(table[LIBRARY]), analysis_id)
+    subtitles = {"num_nuclei": "Nuclei counts per library.",
+                 "median_umis_per_nucleus": "Median UMIs/nucleus per library."}
+    pages = _metric_pages(table, metrics, analysis_id, lambda m: subtitles[m.column], pp.PAGE_SIZE[0], False)
     return pp.write_pdf(pages, os.path.join(out_dir, f"{analysis_id}.filtered_library_metrics.pdf"))
