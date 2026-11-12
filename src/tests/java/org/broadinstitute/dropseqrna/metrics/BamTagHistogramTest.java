@@ -51,4 +51,26 @@ public class BamTagHistogramTest {
 		Assert.assertTrue(t1);
 	}
 
+	@Test
+	public void doWorkTwoThreads() throws IOException {
+		File outFile = File.createTempFile("BamTagHistogramTest.", ".counts_XC.txt");
+		outFile.deleteOnExit();
+		BamTagHistogram bth = new BamTagHistogram();
+		bth.INPUT = Collections.singletonList(PicardHtsPath.fromPath(IN_FILE));
+		bth.OUTPUT=outFile;
+		bth.MINIMUM_MAPPING_QUALITY=10;
+		bth.TAG="XC";
+		bth.NUM_THREADS=2;
+
+		Assert.assertEquals(bth.doWork(), 0);
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_RESULT, outFile));
+	}
+
+	@Test
+	public void rejectsZeroThreads() {
+		BamTagHistogram bth = new BamTagHistogram();
+		bth.NUM_THREADS=0;
+		Assert.assertNotNull(bth.customCommandLineValidation());
+	}
+
 }
