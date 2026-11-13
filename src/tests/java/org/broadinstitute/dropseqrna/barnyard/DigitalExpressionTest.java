@@ -84,7 +84,7 @@ public class DigitalExpressionTest {
 	// DigitalExpression I=5cell3gene_retagged.bam SUMMARY=5cell3gene.dge_summary.txt O=5cell3gene.dge.txt OUTPUT_LONG_FORMAT=5cell3gene.dge_long.txt CELL_BC_FILE=5cell3gene.cellbarcodes.txt
 
 	@Test(dataProvider = "testDoWorkDataProvider")
-	public void testDoWork (final File cellBCFile, final boolean omitMissingCells, final boolean testExpectedOutput) throws IOException {
+	public void testDoWork (final File cellBCFile, final boolean omitMissingCells, final boolean testExpectedOutput, final int numThreads) throws IOException {
 		final File outFile = File.createTempFile("testDigitalExpression.", ".digital_expression.txt");
 		final File summaryFile = File.createTempFile("testDigitalExpression.", ".digital_expression_summary.txt");
 		final File cellBarcodesFile = File.createTempFile("testDigitalExpression.", ".selectedCellBarcodes.txt");
@@ -101,6 +101,7 @@ public class DigitalExpressionTest {
 		de.SUMMARY = summaryFile;
 		de.OUTPUT_LONG_FORMAT=longOutput;
 		de.OMIT_MISSING_CELLS = omitMissingCells;
+		de.NUM_THREADS = numThreads;
 		// the headers aren't going to match up because they contain specific path info.
 		// de.UNIQUE_EXPERIMENT_ID = "test";
 
@@ -117,10 +118,11 @@ public class DigitalExpressionTest {
 	@DataProvider(name = "testDoWorkDataProvider")
 	public Object[][] testDoWorkDataProvider() {
 		return new Object[][] {
-				{IN_CELL_BARCODE_FILE, false, true},
-				{IN_CELL_BARCODE_FILE, true, true},
-				{IN_CELL_BARCODE_WITH_EXTRAS_FILE, true, true},
-				{IN_CELL_BARCODE_WITH_EXTRAS_FILE, false, false}
+				{IN_CELL_BARCODE_FILE, false, true, 1},
+				{IN_CELL_BARCODE_FILE, true, true, 1},
+				{IN_CELL_BARCODE_FILE, true, true, 2},
+				{IN_CELL_BARCODE_WITH_EXTRAS_FILE, true, true, 1},
+				{IN_CELL_BARCODE_WITH_EXTRAS_FILE, false, false, 1}
 		};
 	}
 
@@ -175,6 +177,16 @@ public class DigitalExpressionTest {
 
 
 
+	}
+
+	@Test
+	public void testNumThreadsValidation () {
+		final DigitalExpression de = new DigitalExpression();
+		de.OUTPUT_HEADER = false;
+		de.NUM_THREADS = 0;
+		Assert.assertNotNull(de.customCommandLineValidation());
+		de.NUM_THREADS = 2;
+		Assert.assertNull(de.customCommandLineValidation());
 	}
 
 	@Test(groups={"dropseq", "transcriptome"})

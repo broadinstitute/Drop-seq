@@ -117,6 +117,10 @@ public class DigitalExpression extends DGECommandLineBase {
             "does not appear in the input BAM.")
     public boolean OMIT_MISSING_CELLS = false;
 
+    @Argument(doc = "Number of threads used to read and decode the input BAM in the UMI pass.  " +
+            "A single BAM speeds up as threads are added, up to about 2 threads.")
+    public int NUM_THREADS = 1;
+
     private boolean OUTPUT_EXPRESSED_GENES_ONLY=false;
 
     @Override
@@ -172,6 +176,9 @@ public class DigitalExpression extends DGECommandLineBase {
             OUTPUT_HEADER = (UNIQUE_EXPERIMENT_ID != null);
         }
         final ArrayList<String> list = new ArrayList<>(1);
+        if (NUM_THREADS < 1) {
+            list.add("NUM_THREADS must be >= 1");
+        }
         if (UNIQUE_EXPERIMENT_ID == null && OUTPUT_HEADER) {
             list.add("If OUTPUT_HEADER==true, UNIQUE_EXPERIMENT_ID must be set");
         }
@@ -189,7 +196,8 @@ public class DigitalExpression extends DGECommandLineBase {
 
         // TODO should the ambiguous reads handling be a parameter?  It's set to false by default for DGE to get rid of ambiguous gene assignments on reads
         final UMIIterator realUMIIterator = new UMIIterator.UMIIteratorBuilder(
-                SamFileMergeUtil.mergeInputPaths(Collections.singletonList(this.INPUT.toPath()), false),
+                SamFileMergeUtil.mergeInputPaths(Collections.singletonList(this.INPUT.toPath()), false,
+                        SamReaderFactory.makeDefault(), this.NUM_THREADS),
                 GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY,
                 this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ).setCellBarcodes(cellBarcodes).
                 recordCellsInInput(OMIT_MISSING_CELLS).build();
