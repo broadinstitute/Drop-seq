@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -134,43 +133,35 @@ public class SelectCellsByNumTranscripts
         		this.READ_MQ).setCellBarcodes(cellBarcodes).build();
 
         cellBarcodes = selectCellsByReadCount(cellBarcodes);
-        // Reads of cells without enough reads were not filtered out of the input, so skip their groups.
-        final Set<String> cellsToCount = readCounter == null ? null : new HashSet<>(cellBarcodes);
 
-        final MapContainer mapContainer = ORGANISM != null && !ORGANISM.isEmpty()
-                ? new MultiOrganismMapContainer(cellBarcodes) : new SingleOrganismMapContainer(cellBarcodes);
-
-
-        String gene = null;
+        // Per organism, the transcripts and genes of each cell.  Groups of cells that are not in the list are not counted.
+        final String[] genePrefixes = getGenePrefixes();
+        final List<Map<String, DigitalExpression.DESummary>> summaries = new ArrayList<>();
+        for (int i = 0; i < Math.max(1, genePrefixes.length); i++)
+            summaries.add(DigitalExpression.initializeSummary(cellBarcodes));
 
         UMICollection batch;
         while ((batch=umiIterator.next())!=null) {
-            if (batch.isEmpty() || (cellsToCount != null && !cellsToCount.contains(batch.getCellBarcode())))
+            if (batch.isEmpty())
 				continue;
-            String currentGene = batch.getGeneName();
-            // if just starting the loop
-            if (gene==null) gene=currentGene;
-            // you've gathered all the data for the gene, write it out and start on the next.
-            if (!gene.equals(currentGene))
-				mapContainer.addToSummary(gene);
-            // Accumulate this gene
-            gene=currentGene;
-            mapContainer.countExpression(gene, batch.getCellBarcode(), batch.getDigitalExpression(0, this.EDIT_DISTANCE, false));
-
+            final int organism = getOrganismIndex(genePrefixes, batch.getGeneName());
+            final DigitalExpression.DESummary summary = organism < 0 ? null : summaries.get(organism).get(batch.getCellBarcode());
+            if (summary == null)
+				continue;
+            // every group is one gene in one cell, so it can be counted as it comes
+            summary.NUM_TRANSCRIPTS += batch.getDigitalExpression(0, this.EDIT_DISTANCE, false);
+            summary.NUM_GENES++;
         }
-        // write out remainder.  There is none if no read had a gene.
-        if (gene != null)
-			mapContainer.addToSummary(gene);
 
-        final Map<String, Integer> transcriptsPerCell = mapContainer.getTranscriptCountForCellBarcodesOverTranscriptThreshold(MIN_TRANSCRIPTS_PER_CELL);
+        final Map<String, Integer> transcriptsPerCell = getTranscriptsPerSelectedCell(summaries);
 
         log.info("Found " + transcriptsPerCell.size() + " cells with enough transcripts");
 
-        final Map.Entry<String, Integer>[] transcriptsPerCellArray = transcriptsPerCell.entrySet().toArray(new Map.Entry[transcriptsPerCell.size()]);
-        Arrays.sort(transcriptsPerCellArray, new EntryComparator());
+        final List<Map.Entry<String, Integer>> sortedCells = new ArrayList<>(transcriptsPerCell.entrySet());
+        sortedCells.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
 
-        final List<String> finalBarcodes = new ArrayList<>(transcriptsPerCellArray.length);
-        for (final Map.Entry<String, Integer> entry: transcriptsPerCellArray)
+        final List<String> finalBarcodes = new ArrayList<>(sortedCells.size());
+        for (final Map.Entry<String, Integer> entry: sortedCells)
 			finalBarcodes.add(entry.getKey());
 
         writeBarcodes(OUTPUT, finalBarcodes);
@@ -178,7 +169,10 @@ public class SelectCellsByNumTranscripts
         CloserUtil.close(umiIterator);
 
         if (METRICS != null) {
-            final Metrics m = mapContainer.accumulateMetrics(transcriptsPerCell.keySet());
+            final Metrics m = new Metrics();
+            for (final Map<String, DigitalExpression.DESummary> organismSummaries: summaries)
+				for (final DigitalExpression.DESummary summary: organismSummaries.values())
+					m.accumulate(summary, transcriptsPerCell.containsKey(summary.CELL_BARCODE));
             MetricsFile<Metrics, Integer> out = getMetricsFile();
             out.addMetric(m);
             out.write(METRICS);
@@ -267,146 +261,6 @@ public class SelectCellsByNumTranscripts
         public void remove() { it.remove(); }
     }
 
-    private interface MapContainer {
-        void addToSummary(final String gene);
-        void countExpression(final String gene, final String cellBarcode, final int molBCCount);
-        Map<String, Integer> getTranscriptCountForCellBarcodesOverTranscriptThreshold(final int minNumTranscripts);
-        Metrics accumulateMetrics(final Set<String> selectedCellBarcodes);
-    }
-
-    private class SingleOrganismMapContainer
-            implements MapContainer {
-        final Map<String, Integer> countMap = new HashMap<>();
-
-        final Map<String, DigitalExpression.DESummary> summaryMap;
-
-        public SingleOrganismMapContainer(final List<String> cellBarcodes) {
-            summaryMap = DigitalExpression.initializeSummary(cellBarcodes);
-        }
-
-        @Override
-        public void addToSummary(final String gene) {
-            DigitalExpression.addToSummary(getZeroValueMap(), countMap, summaryMap);
-            countMap.clear();
-        }
-
-        /**
-         * A bit of a work around for DESummary requiring a map of read counts that we don't record here because we don't use it.
-         * This creates a map with all cell barcode keys, with all values set to 0.
-         * Collections.emptyMap() wasn't cutting it, and changing DESummary to take null values seemed like a bad idea.
-         */
-        private Map<String, Integer> getZeroValueMap() {
-        	Map<String, Integer> result = new HashMap<>();
-        	for (String k: countMap.keySet())
-				result.put(k, 0);
-        	return result;
-        }
-
-        @Override
-        public void countExpression(final String gene, final String cellBarcode, final int molBCCount) {
-            countMap.put(cellBarcode, molBCCount);
-        }
-
-        @Override
-        public Map<String, Integer> getTranscriptCountForCellBarcodesOverTranscriptThreshold(final int minNumTranscripts) {
-            final Map<String, Integer> ret = new HashMap<>();
-            for (final DigitalExpression.DESummary summary : summaryMap.values())
-				if (summary.NUM_TRANSCRIPTS >= minNumTranscripts)
-					ret.put(summary.CELL_BARCODE, summary.NUM_TRANSCRIPTS);
-            return ret;
-        }
-
-        @Override
-        public Metrics accumulateMetrics(Set<String> selectedCellBarcodes) {
-            final Metrics m = new Metrics();
-            for (final String cellBarcode: summaryMap.keySet()) {
-                m.accumulate(summaryMap.get(cellBarcode), selectedCellBarcodes.contains(cellBarcode));
-            }
-            return m;
-        }
-    }
-
-    private class MultiOrganismMapContainer
-            implements MapContainer {
-        final SingleOrganismMapContainer[] innerMapContainer = new SingleOrganismMapContainer[ORGANISM.size()];
-        final String[] genePrefixes = new String[ORGANISM.size()];
-
-        public MultiOrganismMapContainer(final List<String> cellBarcodes) {
-            for (int i = 0; i < ORGANISM.size(); ++i) {
-                innerMapContainer[i] = new SingleOrganismMapContainer(cellBarcodes);
-                genePrefixes[i] = ORGANISM.get(i) + ORGANISM_SEPARATOR;
-            }
-        }
-
-        private int getOrganismIndex(final String gene) {
-            for (int i = 0; i < genePrefixes.length; ++i)
-				if (gene.startsWith(genePrefixes[i]))
-					return i;
-            return -1;
-        }
-
-        private SingleOrganismMapContainer getInnerMapContainer(final String gene) {
-            final int index = getOrganismIndex(gene);
-            if (index < 0)
-				throw new IllegalArgumentException("Gene '" + gene + "' is not countable");
-            return innerMapContainer[index];
-        }
-
-        private boolean countableGene(final String gene) {
-            return getOrganismIndex(gene) >= 0;
-        }
-
-        @Override
-        public void addToSummary(final String gene) {
-            if (countableGene(gene))
-				getInnerMapContainer(gene).addToSummary(gene);
-        }
-
-        @Override
-        public void countExpression(final String gene, final String cellBarcode, final int molBCCount) {
-            if (countableGene(gene))
-				getInnerMapContainer(gene).countExpression(gene, cellBarcode, molBCCount);
-        }
-
-        @Override
-        public Map<String, Integer> getTranscriptCountForCellBarcodesOverTranscriptThreshold(final int minNumTranscripts) {
-            Map<String, Integer> ret = null;
-            for (SingleOrganismMapContainer somc : innerMapContainer) {
-                final Map<String, Integer> organismSet = somc.getTranscriptCountForCellBarcodesOverTranscriptThreshold(minNumTranscripts);
-                if (ret == null)
-					ret = organismSet;
-				else
-					for (final Map.Entry<String, Integer> entry : organismSet.entrySet()) {
-                        final String cellBarcode = entry.getKey();
-                        final Integer numTranscripts = ret.get(cellBarcode);
-                        final Integer newNumTranscripts = entry.getValue();
-                        if (numTranscripts == null || numTranscripts < newNumTranscripts)
-							ret.put(cellBarcode, newNumTranscripts);
-                    }
-            }
-            return ret;
-        }
-
-        @Override
-        public Metrics accumulateMetrics(Set<String> selectedCellBarcodes) {
-            final Metrics m = innerMapContainer[0].accumulateMetrics(selectedCellBarcodes);
-            for (int i = 1; i < innerMapContainer.length; i++) {
-                m.accumulate(innerMapContainer[i].accumulateMetrics(selectedCellBarcodes));
-            }
-            return m;
-        }
-    }
-
-    /**
-     * Sorted in descending order by number of transcripts.
-     */
-    private class EntryComparator implements Comparator<Map.Entry<String, Integer>> {
-        @Override
-        public int compare(final Map.Entry<String, Integer> o1, final Map.Entry<String, Integer> o2) {
-            return o2.getValue().compareTo(o1.getValue());
-        }
-    }
-
     public static void writeBarcodes(final File file, final List<String> barcodes) {
         final BufferedWriter writer = IOUtil.openFileForBufferedWriting(file);
         try {
@@ -434,6 +288,39 @@ public class SelectCellsByNumTranscripts
         } catch (IOException e) {
             throw new RuntimeIOException("Exception reading " + file.getAbsolutePath());
         }
+    }
+
+    /** The prefix that the genes of each organism are given, empty if there is a single organism. */
+    private String[] getGenePrefixes() {
+        if (ORGANISM == null)
+			return new String[0];
+        return ORGANISM.stream().map(organism -> organism + ORGANISM_SEPARATOR).toArray(String[]::new);
+    }
+
+    /** @return the index of the organism of the gene, or -1 if the gene is not an organism's.  With a single organism, it is always 0. */
+    private static int getOrganismIndex(final String[] genePrefixes, final String gene) {
+        if (genePrefixes.length == 0)
+			return 0;
+        for (int i = 0; i < genePrefixes.length; ++i)
+			if (gene.startsWith(genePrefixes[i]))
+				return i;
+        return -1;
+    }
+
+    /**
+     * The cells with at least MIN_TRANSCRIPTS_PER_CELL transcripts in an organism, with their most transcripts in any organism.
+     * The cells are in the order of the iteration of the summaries, which decides the order of cells with the same number of transcripts.
+     */
+    private Map<String, Integer> getTranscriptsPerSelectedCell(final List<Map<String, DigitalExpression.DESummary>> summaries) {
+        final Map<String, Integer> result = new HashMap<>();
+        for (final DigitalExpression.DESummary first: summaries.get(0).values()) {
+            int transcripts = 0;
+            for (final Map<String, DigitalExpression.DESummary> organismSummaries: summaries)
+				transcripts = Math.max(transcripts, organismSummaries.get(first.CELL_BARCODE).NUM_TRANSCRIPTS);
+            if (transcripts >= MIN_TRANSCRIPTS_PER_CELL)
+				result.put(first.CELL_BARCODE, transcripts);
+        }
+        return result;
     }
 
     /** Counts the reads of each cell as they pass, null if the list of cells was given. */

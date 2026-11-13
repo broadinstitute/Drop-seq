@@ -31,6 +31,23 @@ public class SelectCellsByNumTranscriptsTest {
 	private final File DUAL_ORGANISM_BAM_EXPECTED_CB_100_READS=new File ("testdata/org/broadinstitute/dropseq/utils/human_mouse_smaller.cell_barcodes_100_reads.txt");
 	private final File DUAL_ORGANISM_BAM_EXPECTED_CB_100_TRANSCRIPTS=new File ("testdata/org/broadinstitute/dropseq/utils/human_mouse_smaller.cell_barcodes_100_transcripts.txt");
 
+	private static SelectCellsByNumTranscripts.Metrics readMetrics(final File file) throws IOException {
+		final MetricsFile<SelectCellsByNumTranscripts.Metrics, Integer> metrics = new MetricsFile<>();
+		try (Reader in = new FileReader(file)) {
+			metrics.read(in);
+		}
+		return metrics.getMetrics().getFirst();
+	}
+
+	private static void assertMetrics(final File file, final int numTranscripts, final int numGenes,
+									  final int numTranscriptsSelectedCells, final int numGenesSelectedCells) throws IOException {
+		final SelectCellsByNumTranscripts.Metrics m = readMetrics(file);
+		Assert.assertEquals(m.NUM_TRANSCRIPTS, numTranscripts);
+		Assert.assertEquals(m.NUM_GENES, numGenes);
+		Assert.assertEquals(m.NUM_TRANSCRIPTS_SELECTED_CELLS, numTranscriptsSelectedCells);
+		Assert.assertEquals(m.NUM_GENES_SELECTED_CELLS, numGenesSelectedCells);
+	}
+
 	@Test
 	public void testDoWorkSingleOrganism() throws IOException {
 		SelectCellsByNumTranscripts s = new SelectCellsByNumTranscripts();
@@ -50,6 +67,7 @@ public class SelectCellsByNumTranscriptsTest {
 		s.METRICS.deleteOnExit();
 
 		int success = s.doWork();
+		assertMetrics(s.METRICS, 13926, 7259, 12262, 5964);
 
 		try {
 			boolean t1 = FileUtils.contentEquals(outFileMinReads, SINGLE_ORGANISM_BAM_EXPECTED_CB_100_READS);
@@ -83,6 +101,7 @@ public class SelectCellsByNumTranscriptsTest {
 		s.METRICS = File.createTempFile("SelectCellsByNumTranscripts.", ".metrics");
 		s.METRICS.deleteOnExit();
 		int success = s.doWork();
+		assertMetrics(s.METRICS, 94068, 24948, 94011, 24896);
 
 		try {
 			boolean t1 = FileUtils.contentEquals(outFileMinReads, DUAL_ORGANISM_BAM_EXPECTED_CB_100_READS);
@@ -208,11 +227,7 @@ public class SelectCellsByNumTranscriptsTest {
 		Collections.sort(cells);
 		Assert.assertEquals(cells, Arrays.asList("AAAAAAAAAAAA", "CCCCCCCCCCCC", "GGGGGGGGGGGG"));
 
-		final MetricsFile<SelectCellsByNumTranscripts.Metrics, Integer> metrics = new MetricsFile<>();
-		try (Reader in = new FileReader(s.METRICS)) {
-			metrics.read(in);
-		}
-		Assert.assertEquals(metrics.getMetrics().getFirst().NUM_TRANSCRIPTS_SELECTED_CELLS, 9);
+		assertMetrics(s.METRICS, 9, 3, 9, 3);
 	}
 
 	/** No read has a gene, so no UMI group is produced.  The tool should write an empty cell list, not fail. */
