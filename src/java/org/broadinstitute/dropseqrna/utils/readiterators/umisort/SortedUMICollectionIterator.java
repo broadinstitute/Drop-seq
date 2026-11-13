@@ -61,7 +61,11 @@ public class SortedUMICollectionIterator implements CloseableIterator<UMICollect
     /** Number of reads held in memory before a chunk of UMI keys is combined and spilled. */
     private static final int UMI_KEY_MAX_RECORDS_IN_RAM = 2_000_000;
 
+    /** How often the consumption of the sorted groups is logged. */
+    private static final long GROUPS_PER_LOG_LINE = 5_000_000;
+
     private final GroupingIterator<UMIKeyCount> groups;
+    private long groupsReturned = 0;
     private final StringInterner geneCache = new StringInterner();
     private final StringInterner umiCache = new StringInterner();
     private final String cellBarcodeTag;
@@ -115,6 +119,7 @@ public class SortedUMICollectionIterator implements CloseableIterator<UMICollect
         final Comparator<UMIRead> byName = Comparator.comparing(r -> r.readName);
         final CloseableIterator<UMIRead> nameSorted = SortingIteratorFactory.create(UMIRead.class, reads, byName,
                 new UMIReadCodec(), SAMFileWriterImpl.getDefaultMaxRecordsInRam(), null);
+        log.info("Reads sorted by name.  Resolving multi-mapping reads and sorting by cell, gene and UMI.");
         final GroupingIterator<UMIRead> byNameGroups = new GroupingIterator<>(nameSorted, byName);
         return new Iterator<UMIRead>() {
             private UMIRead next = null;
@@ -174,6 +179,8 @@ public class SortedUMICollectionIterator implements CloseableIterator<UMICollect
     @Override
     public UMICollection next() {
         final List<UMIKeyCount> keys = groups.next();
+        if (++groupsReturned % GROUPS_PER_LOG_LINE == 0)
+            log.info("Returned " + String.format("%,d", groupsReturned) + " UMI groups");
         final UMIKeyCount first = keys.getFirst();
         final UMICollection umi = new UMICollection(first.cell, first.gene);
         // Sorting put the UMIs in alphabetical order.  Put them back in the order they first appeared in the input,

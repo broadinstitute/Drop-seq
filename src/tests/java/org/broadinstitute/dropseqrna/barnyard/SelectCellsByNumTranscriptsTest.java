@@ -1,12 +1,21 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.dropseqrna.beadsynthesis.GenerateRandomUMIs;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -131,5 +140,109 @@ public class SelectCellsByNumTranscriptsTest {
 		errors = s.customCommandLineValidation();
 		Assert.assertEquals(errors.length, 1);
 
+		s.ORGANISM = Arrays.asList("HUMAN", "MOUSE");
+		s.NUM_THREADS = 0;
+		errors = s.customCommandLineValidation();
+		Assert.assertEquals(errors.length, 1);
+	}
+
+	private static final String[] UMIS = {"AAAAAAAA", "CCCCCCCC", "GGGGGGGG"};
+
+	/** Adds one read per UMI for the cell.  The reads are forward strand, so a gene strand of + is sense. */
+	private static void addReads(final SAMFileHeader header, final List<SAMRecord> reads, final String cell,
+								 final String contig, final String genes, final String strands) {
+		for (final String umi : UMIS) {
+			final SAMRecord r = new SAMRecord(header);
+			r.setReadName(cell + "_" + contig + "_" + umi);
+			r.setReferenceName(contig);
+			r.setAlignmentStart(100);
+			r.setCigarString("10M");
+			r.setReadString("ACGTACGTAC");
+			r.setBaseQualityString("IIIIIIIIII");
+			r.setMappingQuality(255);
+			r.setAttribute("XC", cell);
+			r.setAttribute("XM", umi);
+			r.setAttribute("gn", genes);
+			r.setAttribute("gs", strands);
+			r.setAttribute("gf", genes.contains(",") ? "CODING,CODING" : "CODING");
+			reads.add(r);
+		}
+	}
+
+	/**
+	 * Reads that overlap more than one gene have a comma separated gene tag.  The organism prefix has to be on every
+	 * gene in the list, or a gene that is not first is not recognised as belonging to the organism.
+	 */
+	@Test(dataProvider = "numThreads")
+	public void testMultiGeneTagDualOrganism(final int numThreads) throws IOException {
+		final SAMFileHeader header = new SAMFileHeader();
+		header.addSequence(new SAMSequenceRecord("HUMAN_1", 1000));
+		header.addSequence(new SAMSequenceRecord("MOUSE_1", 1000));
+		final List<SAMRecord> reads = new ArrayList<>();
+		// Only B is on the read's strand, so the read resolves to the second gene in the list.
+		addReads(header, reads, "AAAAAAAAAAAA", "HUMAN_1", "A,B", "-,+");
+		addReads(header, reads, "CCCCCCCCCCCC", "MOUSE_1", "C,D", "-,+");
+		// Both entries are the same gene, so the read resolves to that gene.
+		addReads(header, reads, "GGGGGGGGGGGG", "HUMAN_1", "E,E", "+,+");
+
+		final File bam = File.createTempFile("SelectCellsByNumTranscripts.", ".bam");
+		bam.deleteOnExit();
+		try (SAMFileWriter writer = new SAMFileWriterFactory().makeBAMWriter(header, true, bam)) {
+			reads.forEach(writer::addAlignment);
+		}
+
+		final File outFile = File.createTempFile("SelectCellsByNumTranscripts.", ".cellBarcodes");
+		outFile.deleteOnExit();
+		final SelectCellsByNumTranscripts s = new SelectCellsByNumTranscripts();
+		s.INPUT = Collections.singletonList(bam);
+		s.ORGANISM = Arrays.asList("HUMAN", "MOUSE");
+		s.MIN_TRANSCRIPTS_PER_CELL = 3;
+		s.OUTPUT = outFile;
+		s.READ_MQ = 0;
+		s.NUM_THREADS = numThreads;
+		s.METRICS = File.createTempFile("SelectCellsByNumTranscripts.", ".metrics");
+		s.METRICS.deleteOnExit();
+		Assert.assertEquals(s.doWork(), 0);
+
+		final List<String> cells = new ArrayList<>(SelectCellsByNumTranscripts.readBarcodes(outFile));
+		Collections.sort(cells);
+		Assert.assertEquals(cells, Arrays.asList("AAAAAAAAAAAA", "CCCCCCCCCCCC", "GGGGGGGGGGGG"));
+
+		final MetricsFile<SelectCellsByNumTranscripts.Metrics, Integer> metrics = new MetricsFile<>();
+		try (Reader in = new FileReader(s.METRICS)) {
+			metrics.read(in);
+		}
+		Assert.assertEquals(metrics.getMetrics().getFirst().NUM_TRANSCRIPTS_SELECTED_CELLS, 9);
+	}
+
+	/** No read has a gene, so no UMI group is produced.  The tool should write an empty cell list, not fail. */
+	@Test
+	public void testNoGenesDualOrganism() throws IOException {
+		final SAMFileHeader header = new SAMFileHeader();
+		header.addSequence(new SAMSequenceRecord("HUMAN_1", 1000));
+		header.addSequence(new SAMSequenceRecord("MOUSE_1", 1000));
+		final List<SAMRecord> reads = new ArrayList<>();
+		addReads(header, reads, "AAAAAAAAAAAA", "HUMAN_1", "A", "+");
+		reads.forEach(r -> r.setAttribute("gn", null));
+		final File bam = File.createTempFile("SelectCellsByNumTranscripts.", ".bam");
+		bam.deleteOnExit();
+		try (SAMFileWriter writer = new SAMFileWriterFactory().makeBAMWriter(header, true, bam)) {
+			reads.forEach(writer::addAlignment);
+		}
+		final File outFile = File.createTempFile("SelectCellsByNumTranscripts.", ".cellBarcodes");
+		outFile.deleteOnExit();
+		final SelectCellsByNumTranscripts s = new SelectCellsByNumTranscripts();
+		s.INPUT = Collections.singletonList(bam);
+		s.ORGANISM = Arrays.asList("HUMAN", "MOUSE");
+		s.MIN_TRANSCRIPTS_PER_CELL = 3;
+		s.OUTPUT = outFile;
+		s.READ_MQ = 0;
+		Assert.assertEquals(s.doWork(), 0);
+		Assert.assertTrue(SelectCellsByNumTranscripts.readBarcodes(outFile).isEmpty());
+	}
+
+	@DataProvider(name = "numThreads")
+	public Object[][] numThreads() {
+		return new Object[][]{{1}, {2}};
 	}
 }

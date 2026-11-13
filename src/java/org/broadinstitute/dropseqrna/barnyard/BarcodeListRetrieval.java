@@ -124,8 +124,18 @@ public class BarcodeListRetrieval {
 	public List<String> getListCellBarcodesByReadCountFromPaths(
 			final List<Path> input, final String cellBarcodeTag, final int readQuality, final Integer minNumReads,
 			final Integer numReadsCore) {
+		return getListCellBarcodesByReadCountFromPaths(input, cellBarcodeTag, readQuality, minNumReads, numReadsCore, 1);
+	}
+
+	/**
+	 * As {@link #getListCellBarcodesByReadCountFromPaths(List, String, int, Integer, Integer)}, reading the input
+	 * with numThreads threads.  The counts do not depend on record order.
+	 */
+	public List<String> getListCellBarcodesByReadCountFromPaths(
+			final List<Path> input, final String cellBarcodeTag, final int readQuality, final Integer minNumReads,
+			final Integer numReadsCore, final int numThreads) {
 		SamHeaderAndIterator headerAndIter =
-				SamFileMergeUtil.mergeInputPaths(input, false, SamReaderFactory.makeDefault());
+				SamFileMergeUtil.mergeInputPaths(input, false, SamReaderFactory.makeDefault(), numThreads);
         return getListCellBarcodesByReadCount(
         		headerAndIter.iterator,
                 cellBarcodeTag,

@@ -42,11 +42,13 @@ import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
+import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionProcessor;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator;
 
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloseableIterator;
@@ -102,6 +104,10 @@ public class SelectCellsByNumTranscripts
     @Argument(doc="The edit distance that molecular barcodes should be combined at within a gene.")
     public Integer EDIT_DISTANCE=1;
 
+    @Argument(doc = "Number of threads used to read and decode the input BAMs, for both the read count pass and the UMI pass.  " +
+            "More threads help most with several input BAMs, roughly one thread per BAM.  A single BAM speeds up as threads are added, up to about 2 threads.")
+    public int NUM_THREADS = 1;
+
     private static final Log log = Log.getInstance(SelectCellsByNumTranscripts.class);
     static final String ORGANISM_SEPARATOR = "::";
 
@@ -113,15 +119,17 @@ public class SelectCellsByNumTranscripts
 			MIN_READS_PER_CELL = MIN_TRANSCRIPTS_PER_CELL;
         final List<String> cellBarcodes;
         if (INPUT_INTERIM_CELLS == null)
-			cellBarcodes = new BarcodeListRetrieval().getListCellBarcodesByReadCount(
-                    this.INPUT, this.CELL_BARCODE_TAG, this.READ_MQ, this.MIN_READS_PER_CELL, null);
+			cellBarcodes = new BarcodeListRetrieval().getListCellBarcodesByReadCountFromPaths(
+                    IOUtil.filesToPaths(this.INPUT), this.CELL_BARCODE_TAG, this.READ_MQ, this.MIN_READS_PER_CELL, null,
+                    this.NUM_THREADS);
 		else
 			cellBarcodes = readBarcodes(INPUT_INTERIM_CELLS);
 
         if (OUTPUT_INTERIM_CELLS != null)
 			writeBarcodes(OUTPUT_INTERIM_CELLS, cellBarcodes);
 
-        SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputs(this.INPUT, false);
+        SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputPaths(
+                IOUtil.filesToPaths(this.INPUT), false, SamReaderFactory.makeDefault(), this.NUM_THREADS);
 
         final MapContainer mapContainer;
         if (ORGANISM != null && !ORGANISM.isEmpty()) {
@@ -153,8 +161,9 @@ public class SelectCellsByNumTranscripts
             mapContainer.countExpression(gene, batch.getCellBarcode(), batch.getDigitalExpression(0, this.EDIT_DISTANCE, false));
 
         }
-        // write out remainder
-        mapContainer.addToSummary(gene);
+        // write out remainder.  There is none if no read had a gene.
+        if (gene != null)
+			mapContainer.addToSummary(gene);
 
         final Map<String, Integer> transcriptsPerCell = mapContainer.getTranscriptCountForCellBarcodesOverTranscriptThreshold(MIN_TRANSCRIPTS_PER_CELL);
 
@@ -210,7 +219,9 @@ public class SelectCellsByNumTranscripts
 				if (reference.startsWith(referenceSequencePrefix[i])) {
                     final String geneExon = rec.getStringAttribute(GENE_NAME_TAG);
                     if (geneExon != null) {
-                        rec.setAttribute(GENE_NAME_TAG, genePrefix[i] + geneExon);
+                        // A read that overlaps several genes has a comma separated list, every one needs the prefix.
+                        rec.setAttribute(GENE_NAME_TAG, genePrefix[i] +
+                                geneExon.replace(GeneFunctionProcessor.DELIMITER, GeneFunctionProcessor.DELIMITER + genePrefix[i]));
                         break;
                     }
                 }
@@ -393,7 +404,9 @@ public class SelectCellsByNumTranscripts
     @Override
     protected String[] customCommandLineValidation() {
         List<String> thisErrors = null;
-        if (ORGANISM.size() != new HashSet<>(ORGANISM).size())
+        if (NUM_THREADS < 1)
+			thisErrors = Arrays.asList("NUM_THREADS must be >= 1");
+        else if (ORGANISM.size() != new HashSet<>(ORGANISM).size())
 			thisErrors = Arrays.asList("Duplicates not allow in ORGANISM argument");
 		else
 			for (final String organism : ORGANISM)
