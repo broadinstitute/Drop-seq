@@ -41,7 +41,9 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.metrics.BamTagHistogram;
 import org.broadinstitute.dropseqrna.utils.FileListParsingUtils;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionProcessor;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamFileMergeUtil;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
@@ -117,38 +119,33 @@ public class SelectCellsByNumTranscripts
         IOUtil.assertFileIsWritable(OUTPUT);
         if (MIN_READS_PER_CELL == null || MIN_READS_PER_CELL < MIN_TRANSCRIPTS_PER_CELL)
 			MIN_READS_PER_CELL = MIN_TRANSCRIPTS_PER_CELL;
-        final List<String> cellBarcodes;
-        if (INPUT_INTERIM_CELLS == null)
-			cellBarcodes = new BarcodeListRetrieval().getListCellBarcodesByReadCountFromPaths(
-                    IOUtil.filesToPaths(this.INPUT), this.CELL_BARCODE_TAG, this.READ_MQ, this.MIN_READS_PER_CELL, null,
-                    this.NUM_THREADS);
-		else
-			cellBarcodes = readBarcodes(INPUT_INTERIM_CELLS);
+        // Cells with enough reads are found while the reads are being sorted, unless the list is given.
+        List<String> cellBarcodes = INPUT_INTERIM_CELLS == null ? null : readBarcodes(INPUT_INTERIM_CELLS);
 
-        if (OUTPUT_INTERIM_CELLS != null)
-			writeBarcodes(OUTPUT_INTERIM_CELLS, cellBarcodes);
+        SamHeaderAndIterator headerAndIterator = wrapWithReadCounter(SamFileMergeUtil.mergeInputPaths(
+                IOUtil.filesToPaths(this.INPUT), false, SamReaderFactory.makeDefault(), this.NUM_THREADS));
 
-        SamHeaderAndIterator headerAndIterator = SamFileMergeUtil.mergeInputPaths(
-                IOUtil.filesToPaths(this.INPUT), false, SamReaderFactory.makeDefault(), this.NUM_THREADS);
-
-        final MapContainer mapContainer;
-        if (ORGANISM != null && !ORGANISM.isEmpty()) {
+        if (ORGANISM != null && !ORGANISM.isEmpty())
             headerAndIterator = new SamHeaderAndIterator(headerAndIterator.header, new PrefixGeneWithOrganismIterator(headerAndIterator.iterator));
-            mapContainer = new MultiOrganismMapContainer(cellBarcodes);
-        } else
-			mapContainer = new SingleOrganismMapContainer(cellBarcodes);
 
         // gene/exon tags are sorted first, followed by cells
         UMIIterator umiIterator = new UMIIterator.UMIIteratorBuilder(headerAndIterator, GENE_NAME_TAG, GENE_STRAND_TAG, GENE_FUNCTION_TAG,
         		this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
         		this.READ_MQ).setCellBarcodes(cellBarcodes).build();
 
+        cellBarcodes = selectCellsByReadCount(cellBarcodes);
+        // Reads of cells without enough reads were not filtered out of the input, so skip their groups.
+        final Set<String> cellsToCount = readCounter == null ? null : new HashSet<>(cellBarcodes);
+
+        final MapContainer mapContainer = ORGANISM != null && !ORGANISM.isEmpty()
+                ? new MultiOrganismMapContainer(cellBarcodes) : new SingleOrganismMapContainer(cellBarcodes);
+
 
         String gene = null;
 
         UMICollection batch;
         while ((batch=umiIterator.next())!=null) {
-            if (batch.isEmpty())
+            if (batch.isEmpty() || (cellsToCount != null && !cellsToCount.contains(batch.getCellBarcode())))
 				continue;
             String currentGene = batch.getGeneName();
             // if just starting the loop
@@ -189,6 +186,44 @@ public class SelectCellsByNumTranscripts
         return 0;
     }
 
+
+    /** Counts the reads of each cell as they pass, in the same way as {@link org.broadinstitute.dropseqrna.metrics.BamTagHistogram}. */
+    private class ReadCountingIterator
+    implements CloseableIterator<SAMRecord> {
+        private final CloseableIterator<SAMRecord> it;
+        private final ObjectCounter<String> counts = new ObjectCounter<>();
+        private boolean exhausted = false;
+
+        public ReadCountingIterator(final CloseableIterator<SAMRecord> it) {
+            this.it = it;
+        }
+
+        public ObjectCounter<String> getCounts() { return counts; }
+
+        /** @return true once all reads have been passed on.  The underlying iterator may be closed by then. */
+        public boolean isExhausted() { return exhausted; }
+
+        @Override
+        public void close() { it.close(); }
+
+        @Override
+        public boolean hasNext() {
+            final boolean hasNext = it.hasNext();
+            if (!hasNext)
+                exhausted = true;
+            return hasNext;
+        }
+
+        @Override
+        public SAMRecord next() {
+            final SAMRecord rec = it.next();
+            BamTagHistogram.countRecord(counts, rec, CELL_BARCODE_TAG, READ_MQ, false);
+            return rec;
+        }
+
+        @Override
+        public void remove() { it.remove(); }
+    }
 
     private class PrefixGeneWithOrganismIterator
     implements CloseableIterator<SAMRecord> {
@@ -399,6 +434,39 @@ public class SelectCellsByNumTranscripts
         } catch (IOException e) {
             throw new RuntimeIOException("Exception reading " + file.getAbsolutePath());
         }
+    }
+
+    /** Counts the reads of each cell as they pass, null if the list of cells was given. */
+    private ReadCountingIterator readCounter = null;
+
+    /**
+     * If the cells with enough reads are not given, count the reads of each cell as they pass through, so that
+     * the input does not have to be read an extra time to find the cells.
+     */
+    private SamHeaderAndIterator wrapWithReadCounter(final SamHeaderAndIterator headerAndIterator) {
+        if (INPUT_INTERIM_CELLS != null)
+            return headerAndIterator;
+        readCounter = new ReadCountingIterator(headerAndIterator.iterator);
+        return new SamHeaderAndIterator(headerAndIterator.header, readCounter);
+    }
+
+    /**
+     * The cells with at least MIN_READS_PER_CELL reads, and write them to OUTPUT_INTERIM_CELLS if that is set.
+     * Call after all of the reads have passed through the read counter.
+     * @param givenCellBarcodes the cells from INPUT_INTERIM_CELLS, null if the reads were counted.
+     */
+    private List<String> selectCellsByReadCount(final List<String> givenCellBarcodes) {
+        final List<String> cellBarcodes;
+        if (readCounter == null)
+            cellBarcodes = givenCellBarcodes;
+        else {
+            if (!readCounter.isExhausted())
+                throw new IllegalStateException("The reads were not all read before the cells were selected.");
+            cellBarcodes = new BarcodeListRetrieval().getCoreBarcodesByReadCount(readCounter.getCounts(), MIN_READS_PER_CELL);
+        }
+        if (OUTPUT_INTERIM_CELLS != null)
+            writeBarcodes(OUTPUT_INTERIM_CELLS, cellBarcodes);
+        return cellBarcodes;
     }
 
     @Override
