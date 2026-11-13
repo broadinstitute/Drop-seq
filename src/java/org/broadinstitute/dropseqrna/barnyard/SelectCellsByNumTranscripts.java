@@ -158,7 +158,8 @@ public class SelectCellsByNumTranscripts
         log.info("Found " + transcriptsPerCell.size() + " cells with enough transcripts");
 
         final List<Map.Entry<String, Integer>> sortedCells = new ArrayList<>(transcriptsPerCell.entrySet());
-        sortedCells.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
+        // Most transcripts first.  Cells with the same number are in barcode order, so the order does not depend on hashing.
+        sortedCells.sort(Map.Entry.<String, Integer>comparingByValue(Comparator.reverseOrder()).thenComparing(Map.Entry.comparingByKey()));
 
         final List<String> finalBarcodes = new ArrayList<>(sortedCells.size());
         for (final Map.Entry<String, Integer> entry: sortedCells)

@@ -256,6 +256,50 @@ public class SelectCellsByNumTranscriptsTest {
 		Assert.assertTrue(SelectCellsByNumTranscripts.readBarcodes(outFile).isEmpty());
 	}
 
+	/** Cells with the same number of transcripts are in barcode order, so the output does not depend on hash order. */
+	@Test
+	public void testTiedCellsAreInBarcodeOrder() throws IOException {
+		final SAMFileHeader header = new SAMFileHeader();
+		header.addSequence(new SAMSequenceRecord("HUMAN_1", 1000));
+		header.addSequence(new SAMSequenceRecord("HUMAN_2", 1000));
+		final List<SAMRecord> reads = new ArrayList<>();
+		final java.util.Random random = new java.util.Random(7);
+		final java.util.TreeSet<String> tiedCells = new java.util.TreeSet<>();
+		while (tiedCells.size() < 30) {
+			final StringBuilder cell = new StringBuilder();
+			for (int i = 0; i < 12; i++)
+				cell.append("ACGT".charAt(random.nextInt(4)));
+			// the cell with more transcripts has the last barcode in order, and must still be first
+			if (!cell.toString().equals("TTTTTTTTTTTT"))
+				tiedCells.add(cell.toString());
+		}
+		// three UMIs in one gene is three transcripts
+		for (final String cell : tiedCells)
+			addReads(header, reads, cell, "HUMAN_1", "A", "+");
+		addReads(header, reads, "TTTTTTTTTTTT", "HUMAN_1", "A", "+");
+		// a different contig gives the reads different names, so they are not alignments of the same reads
+		addReads(header, reads, "TTTTTTTTTTTT", "HUMAN_2", "B", "+");
+
+		final File bam = File.createTempFile("SelectCellsByNumTranscripts.", ".bam");
+		bam.deleteOnExit();
+		try (SAMFileWriter writer = new SAMFileWriterFactory().makeBAMWriter(header, true, bam)) {
+			reads.forEach(writer::addAlignment);
+		}
+		final File outFile = File.createTempFile("SelectCellsByNumTranscripts.", ".cellBarcodes");
+		outFile.deleteOnExit();
+		final SelectCellsByNumTranscripts s = new SelectCellsByNumTranscripts();
+		s.INPUT = Collections.singletonList(bam);
+		s.MIN_TRANSCRIPTS_PER_CELL = 3;
+		s.OUTPUT = outFile;
+		s.READ_MQ = 0;
+		Assert.assertEquals(s.doWork(), 0);
+
+		final List<String> expected = new ArrayList<>();
+		expected.add("TTTTTTTTTTTT");
+		expected.addAll(tiedCells);
+		Assert.assertEquals(SelectCellsByNumTranscripts.readBarcodes(outFile), expected);
+	}
+
 	@DataProvider(name = "numThreads")
 	public Object[][] numThreads() {
 		return new Object[][]{{1}, {2}};
