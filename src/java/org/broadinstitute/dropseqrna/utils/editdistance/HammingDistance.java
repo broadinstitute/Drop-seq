@@ -34,6 +34,22 @@ public class HammingDistance {
 	    return getHammingDistance(s1,s2);
 	}
 
+	/**
+	 * Same result as <code>getHammingDistance(sequence1, sequence2) &lt;= maxDistance</code>, but the strings are compared in place
+	 * without copying them to char arrays, and the comparison stops as soon as the distance exceeds maxDistance.
+	 * As in {@link #getHammingDistance(String, String)}, each position of the longer string past the end of the shorter one counts as a difference.
+	 *
+	 * @return true if the Hamming distance of the two strings is at most maxDistance.
+	 */
+	public static boolean withinHammingDistance(final String sequence1, final String sequence2, final int maxDistance) {
+		final int shorter = Math.min(sequence1.length(), sequence2.length());
+		int result = Math.max(sequence1.length(), sequence2.length()) - shorter;
+		if (result > maxDistance) return false;
+		for (int i = 0; i < shorter; i++)
+			if (sequence1.charAt(i) != sequence2.charAt(i) && ++result > maxDistance) return false;
+		return true;
+	}
+
 	public static int getHammingDistance(final char[] sequence1, final char[] sequence2) {
 	    int shorter = Math.min(sequence1.length, sequence2.length);
 	    int longest = Math.max(sequence1.length, sequence2.length);

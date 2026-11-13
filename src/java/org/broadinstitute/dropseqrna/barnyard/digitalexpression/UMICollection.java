@@ -142,6 +142,9 @@ public class UMICollection {
 			int count = this.molecularBarcodeCounts.getTotalCount();
 			return (count);
 		}
+		// A single UMI has nothing to collapse with, so skip the collapse.
+		if (this.molecularBarcodeCounts.getSize() == 1)
+			return this.molecularBarcodeCounts.getTotalCount() >= minBCReadThreshold ? 1 : 0;
 		// harder, collapse molecular barcodes and count them.
 		ObjectCounter<String> counts = collapseByEditDistance(this.molecularBarcodeCounts, editDistance);
 		counts.filterByMinCount(minBCReadThreshold);

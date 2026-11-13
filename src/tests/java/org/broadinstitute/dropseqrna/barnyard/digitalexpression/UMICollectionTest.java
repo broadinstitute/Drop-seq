@@ -83,6 +83,19 @@ public class UMICollectionTest {
 	}
 
 	@Test()
+	public void testSingleUMI () {
+		// a single UMI is counted if it has at least the minimum number of reads, at any edit distance.
+		for (int editDistance = 0; editDistance <= 2; editDistance++) {
+			UMICollection c = new UMICollection("C", "G");
+			c.incrementMolecularBarcodeCount("FOO", 3);
+			Assert.assertEquals(c.getDigitalExpression(0, editDistance, false), 1);
+			Assert.assertEquals(c.getDigitalExpression(3, editDistance, false), 1);
+			Assert.assertEquals(c.getDigitalExpression(4, editDistance, false), 0);
+			Assert.assertEquals(c.getDigitalExpression(3, editDistance, true), 3);
+		}
+	}
+
+	@Test()
 	public void testFilter () {
 		// model a set that will get filtered.
 		UMICollection c = new UMICollection("C", "G");
