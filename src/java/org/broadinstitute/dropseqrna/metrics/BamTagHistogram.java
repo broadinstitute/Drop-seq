@@ -169,19 +169,26 @@ public class BamTagHistogram extends CommandLineProgram {
 
         for (final SAMRecord r : new IterableAdapter<>(iterator)) {
             pl.record(r);
-            if (filterPCRDuplicates && r.getDuplicateReadFlag()) continue;
-            if (r.getMappingQuality()<readQuality) continue;
-            if (r.isSecondaryOrSupplementary()) continue;
-            //String s1 = r.getStringAttribute(tag);
-            String s1 = getAnyTagAsString(r, tag);
-            if (s1!=null && s1!="") counter.increment(s1); // if the tag doesn't have a value, don't increment it.
-
+            countRecord(counter, r, tag, readQuality, filterPCRDuplicates);
         }
         return (counter);
     }
 
+    /**
+     * Counts the value of the tag on one read, if the read is counted: it passes the duplicate and map quality filters,
+     * is not a secondary or supplementary alignment, and has a value for the tag.
+     */
+    public static void countRecord(final ObjectCounter<String> counter, final SAMRecord r, final String tag, final int readQuality, final boolean filterPCRDuplicates) {
+        if (filterPCRDuplicates && r.getDuplicateReadFlag()) return;
+        if (r.getMappingQuality()<readQuality) return;
+        if (r.isSecondaryOrSupplementary()) return;
+        //String s1 = r.getStringAttribute(tag);
+        String s1 = getAnyTagAsString(r, tag);
+        if (s1!=null && s1!="") counter.increment(s1); // if the tag doesn't have a value, don't increment it.
+    }
 
-	public String getAnyTagAsString (final SAMRecord r, final String tag) {
+
+	public static String getAnyTagAsString (final SAMRecord r, final String tag) {
 		String s = null;
 		Object o = r.getAttribute(tag);
 		if (o==null) return (s);

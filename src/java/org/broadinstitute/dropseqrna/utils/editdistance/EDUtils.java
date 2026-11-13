@@ -60,7 +60,7 @@ public class EDUtils {
 	public Set<String> getStringsWithinEditDistance(final String baseString,
 			final List<String> comparisonStrings, final int editDistance) {
 
-		Set<String> result = comparisonStrings.stream().filter(x -> HammingDistance.getHammingDistance(baseString, x) <= editDistance).collect(Collectors.toSet());
+		Set<String> result = comparisonStrings.stream().filter(x -> HammingDistance.withinHammingDistance(baseString, x, editDistance)).collect(Collectors.toSet());
 		return (result);
 	}
 
