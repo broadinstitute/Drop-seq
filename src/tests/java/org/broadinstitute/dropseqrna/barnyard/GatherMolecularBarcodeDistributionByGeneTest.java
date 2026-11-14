@@ -1,10 +1,13 @@
 package org.broadinstitute.dropseqrna.barnyard;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.Collections;
 
 import org.apache.commons.io.FileUtils;
+import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import picard.nio.PicardHtsPath;
@@ -44,5 +47,20 @@ public class GatherMolecularBarcodeDistributionByGeneTest {
 			e.printStackTrace();
 		}
 
+	}
+
+	@Test
+	public void testWritePerTranscriptStatsOrder() throws IOException {
+		// Most supported UMI first, ties broken alphabetically, whatever order the UMIs were added in.
+		final ObjectCounter<String> counts = new ObjectCounter<>();
+		counts.incrementByCount("TTT", 2);
+		counts.incrementByCount("CCC", 5);
+		counts.incrementByCount("GGG", 2);
+		counts.incrementByCount("AAA", 1);
+		final StringWriter sw = new StringWriter();
+		final BufferedWriter out = new BufferedWriter(sw);
+		GatherMolecularBarcodeDistributionByGene.writePerTranscriptStats("G", "C", counts, out);
+		out.flush();
+		Assert.assertEquals(sw.toString().trim().split("\\R"), new String[]{"C\tG\tCCC\t5", "C\tG\tGGG\t2", "C\tG\tTTT\t2", "C\tG\tAAA\t1"});
 	}
 }

@@ -126,8 +126,9 @@ public class GatherMolecularBarcodeDistributionByGene extends DGECommandLineBase
 	}
 
 
+	/** Writes one row per UMI, most supported UMI first; ties are broken alphabetically so the output order is deterministic. */
 	public static void writePerTranscriptStats (final String gene, final String cellBarcode, final ObjectCounter<String> counts, final BufferedWriter out) {
-		for (String key: counts.getKeys()) {
+		for (String key: counts.getKeysOrderedByCount(true)) {
 			int value = counts.getCountForKey(key);
 			String [] line ={cellBarcode, gene, key, value+""};
 			String h = StringUtils.join(line, "\t");

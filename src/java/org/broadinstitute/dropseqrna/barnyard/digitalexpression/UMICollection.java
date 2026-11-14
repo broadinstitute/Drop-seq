@@ -254,7 +254,8 @@ public class UMICollection {
 		// Iterate over umis create a downsampled objectCounter that has umi counts at a given downsampleRate
         List<Pair<String, Integer>> res = new ArrayList<>(this.molecularBarcodeCounts.getSize());
 		int count; int downsampledCount;
-		for (String umi : this.molecularBarcodeCounts.getKeys()) {
+		// Fixed order so that a given seed always gives the same result.
+		for (String umi : this.molecularBarcodeCounts.getKeysOrderedByCount(true)) {
 			count = this.getMolecularBarcodeCounts().getCountForKey(umi);
 			downsampledCount =  (int)random.doubles(count).filter(r -> r < downsampleRate).count();
             if (downsampledCount >= minDownsampledCount) {
