@@ -179,4 +179,17 @@ public class UMICollectionTest {
 		}
 		Assert.assertEquals(umiCounts, expectedUmiCounts);
 	}
+
+    @Test
+    public void testDownsampleIndependentOfInsertionOrder() {
+        final String[] umis = {"AAA", "CCC", "GGG", "TTT", "ACG", "CGT"};
+        final UMICollection forward = new UMICollection("C", "G");
+        final UMICollection reverse = new UMICollection("C", "G");
+        for (int i = 0; i < umis.length; i++)
+            forward.incrementMolecularBarcodeCount(umis[i], 20 + i);
+        for (int i = umis.length - 1; i >= 0; i--)
+            reverse.incrementMolecularBarcodeCount(umis[i], 20 + i);
+        Assert.assertEquals(forward.getDownsampledMolecularBarcodeCounts(0.5, new SplittableRandom(7L), 1),
+                reverse.getDownsampledMolecularBarcodeCounts(0.5, new SplittableRandom(7L), 1));
+    }
 }

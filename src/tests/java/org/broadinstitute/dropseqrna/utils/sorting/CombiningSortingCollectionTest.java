@@ -64,7 +64,7 @@ public class CombiningSortingCollectionTest {
         final List<UMIKeyCount> in = new ArrayList<>();
         for (int i = 0; i < n; i++) {
             final int k = r.nextInt(distinct);
-            in.add(new UMIKeyCount("c" + k % 7, "g" + k % 5, "u" + k, 1 + r.nextInt(3), i));
+            in.add(new UMIKeyCount("c" + k % 7, "g" + k % 5, "u" + k, 1 + r.nextInt(3)));
         }
         return in;
     }
@@ -102,12 +102,11 @@ public class CombiningSortingCollectionTest {
     public void testAllEqualKeys() {
         final List<UMIKeyCount> in = new ArrayList<>();
         for (int i = 0; i < 5000; i++) {
-            in.add(new UMIKeyCount("c", "g", "u", 1, 7 + (4999 - i)));
+            in.add(new UMIKeyCount("c", "g", "u", 1));
         }
         final List<UMIKeyCount> out = run(in, 100, 50);
         Assert.assertEquals(out.size(), 1);
         Assert.assertEquals(out.get(0).getCount(), 5000);
-        Assert.assertEquals(out.get(0).getFirstSeen(), 7, "smallest firstSeen survives combining across spill files");
     }
 
     @Test
@@ -140,6 +139,6 @@ public class CombiningSortingCollectionTest {
         final CombiningSortingCollection<UMIKeyCount> c = new CombiningSortingCollection<>(new UMIKeyCountCodec(),
                 UMIKeyCount.sortOrder(true), UMIKeyCount::combine, 10);
         c.iterator();
-        c.add(new UMIKeyCount("c", "g", "u", 1, 0));
+        c.add(new UMIKeyCount("c", "g", "u", 1));
     }
 }

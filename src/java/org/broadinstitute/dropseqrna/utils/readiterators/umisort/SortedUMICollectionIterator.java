@@ -96,12 +96,10 @@ public class SortedUMICollectionIterator implements CloseableIterator<UMICollect
             umiReads = resolveMultiMappers(umiReads, geneFunctionProcessor);
 
         final Iterator<UMIKeyCount> keys = new TransformingIterator<UMIRead, UMIKeyCount>(umiReads) {
-            private long position = 0;
-
             @Override
             public UMIKeyCount next() {
                 final UMIRead r = this.underlyingIterator.next();
-                return new UMIKeyCount(r.cell, r.gene, r.umi, 1, position++);
+                return new UMIKeyCount(r.cell, r.gene, r.umi, 1);
             }
         };
         final CloseableIterator<UMIKeyCount> sorted = SortingIteratorFactory.createCombining(keys,
@@ -183,10 +181,6 @@ public class SortedUMICollectionIterator implements CloseableIterator<UMICollect
             log.info("Returned " + String.format("%,d", groupsReturned) + " UMI groups");
         final UMIKeyCount first = keys.getFirst();
         final UMICollection umi = new UMICollection(first.cell, first.gene);
-        // Sorting put the UMIs in alphabetical order.  Put them back in the order they first appeared in the input,
-        // which is the order they were added when SAMRecords were sorted.  The UMICollection's counter is a
-        // HashMap so its iteration order depends on this, and that order shows up in some output files.
-        keys.sort(UMIKeyCount.firstSeenOrder());
         for (final UMIKeyCount k : keys)
             umi.incrementMolecularBarcodeCount(umiCache.intern(k.umi), k.getCount());
         return umi;

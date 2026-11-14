@@ -76,6 +76,11 @@ public class DataProcessorUtils {
      */
     public List<FunctionalData> filterOnLocus(final List<FunctionalData> originalData) {
         List<FunctionalData> result = new ArrayList<>();
+        // Most reads have a single gene: there is nothing to group.
+        if (originalData.size() == 1) {
+            result.addAll(filterOnLocusFunctionByGene(acceptedFunctions, originalData));
+            return result;
+        }
         // collection data by gene.
         Map<String, List<FunctionalData>> originalDataByGene = new HashMap<>();
         for (FunctionalData sf : originalData) {
@@ -114,6 +119,12 @@ public class DataProcessorUtils {
      * Find the unique set of genes and set the best functional annotation for each gene.
      */
     public List<FunctionalData> simplifyFD(final List<FunctionalData> data) {
+        // Most reads have a single gene: there is nothing to group.
+        if (data.size() == 1) {
+            final List<FunctionalData> single = new ArrayList<FunctionalData>();
+            single.add(simplifyGene(data));
+            return single;
+        }
         // map each gene to the list of functional data, then reduce each gene.
         Map<String, List<FunctionalData>> map = new HashMap<String, List<FunctionalData>>();
         for (FunctionalData fd : data) {
@@ -128,22 +139,24 @@ public class DataProcessorUtils {
         List<FunctionalData> resultList = new ArrayList<FunctionalData>();
 
         // process each list.
-        for (String gene : map.keySet()) {
-            List<FunctionalData> l = map.get(gene);
-            final LocusFunction finalLF;
-            if (getAcceptedFunctions().isEmpty()) {
-                finalLF = null;
-            } else {
-                List<LocusFunction> lf = new ArrayList<LocusFunction>();
-                for (FunctionalData fd : l)
-                    lf.add(fd.getLocusFunction());
-                finalLF = AnnotationUtils.getInstance().getLocusFunction(lf, false);
-            }
-            // any instance of list l is fine.
-            FunctionalData result = new FunctionalData(l.getFirst().getGene(), l.getFirst().getGeneStrand(), finalLF, l.getFirst().getReadStrand());
-            resultList.add(result);
-        }
+        for (String gene : map.keySet())
+            resultList.add(simplifyGene(map.get(gene)));
         return (resultList);
+    }
+
+    /** Reduce the functional data of one gene to a single entry with the best locus function. */
+    private FunctionalData simplifyGene(final List<FunctionalData> l) {
+        final LocusFunction finalLF;
+        if (getAcceptedFunctions().isEmpty()) {
+            finalLF = null;
+        } else {
+            List<LocusFunction> lf = new ArrayList<LocusFunction>();
+            for (FunctionalData fd : l)
+                lf.add(fd.getLocusFunction());
+            finalLF = AnnotationUtils.getInstance().getLocusFunction(lf, false);
+        }
+        // any instance of list l is fine.
+        return new FunctionalData(l.getFirst().getGene(), l.getFirst().getGeneStrand(), finalLF, l.getFirst().getReadStrand());
     }
 
     /***
