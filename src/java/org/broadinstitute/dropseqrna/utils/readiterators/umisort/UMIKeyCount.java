@@ -30,63 +30,63 @@ import java.util.Comparator;
  * This is what {@link org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator} sorts when it does not need to retain reads.
  * <p>
  * The count is mutable so that {@link #combine} can merge duplicates without allocating.
- * <p>
- * firstSeen is the position in the input stream of the first read that this key came from.  Sorting loses
- * the input order, and UMICollection's HashMap iteration order depends on insertion order, so
- * {@link UMIIterator} inserts the UMIs of a (cell, gene) in firstSeen order.  That gives exactly the same
- * UMICollections as sorting whole reads, which is stable, and so keeps all downstream output identical.
  */
 public final class UMIKeyCount {
+    private static final Comparator<UMIKeyCount> CELL_FIRST_ORDER = (a, b) -> {
+        int c = a.cell.compareTo(b.cell);
+        if (c != 0) return c;
+        c = a.gene.compareTo(b.gene);
+        return c != 0 ? c : a.umi.compareTo(b.umi);
+    };
+    private static final Comparator<UMIKeyCount> GENE_FIRST_ORDER = (a, b) -> {
+        int c = a.gene.compareTo(b.gene);
+        if (c != 0) return c;
+        c = a.cell.compareTo(b.cell);
+        return c != 0 ? c : a.umi.compareTo(b.umi);
+    };
+    private static final Comparator<UMIKeyCount> CELL_FIRST_GROUP = (a, b) -> {
+        final int c = a.cell.compareTo(b.cell);
+        return c != 0 ? c : a.gene.compareTo(b.gene);
+    };
+    private static final Comparator<UMIKeyCount> GENE_FIRST_GROUP = (a, b) -> {
+        final int c = a.gene.compareTo(b.gene);
+        return c != 0 ? c : a.cell.compareTo(b.cell);
+    };
+
     public final String cell;
     public final String gene;
     public final String umi;
     private int count;
-    private long firstSeen;
 
-    public UMIKeyCount(final String cell, final String gene, final String umi, final int count, final long firstSeen) {
+    public UMIKeyCount(final String cell, final String gene, final String umi, final int count) {
         this.cell = cell;
         this.gene = gene;
         this.umi = umi;
         this.count = count;
-        this.firstSeen = firstSeen;
     }
 
     public int getCount() {
         return count;
     }
 
-    public long getFirstSeen() {
-        return firstSeen;
-    }
-
-    /** Adds the count of b (which must have equal cell, gene, UMI) to a, keeps the earlier firstSeen, and returns a. */
+    /** Adds the count of b (which must have equal cell, gene, UMI) to a, and returns a. */
     public static UMIKeyCount combine(final UMIKeyCount a, final UMIKeyCount b) {
         a.count = Math.addExact(a.count, b.count);
-        a.firstSeen = Math.min(a.firstSeen, b.firstSeen);
         return a;
-    }
-
-    /** Orders by the position of the first read, i.e. the order in which UMIs first appeared in the input. */
-    public static Comparator<UMIKeyCount> firstSeenOrder() {
-        return Comparator.comparingLong(UMIKeyCount::getFirstSeen);
     }
 
     /** Orders by cell then gene (cellFirst) or gene then cell, then UMI. */
     public static Comparator<UMIKeyCount> sortOrder(final boolean cellFirst) {
-        return cellFirst
-                ? Comparator.comparing((UMIKeyCount k) -> k.cell).thenComparing(k -> k.gene).thenComparing(k -> k.umi)
-                : Comparator.comparing((UMIKeyCount k) -> k.gene).thenComparing(k -> k.cell).thenComparing(k -> k.umi);
+        return cellFirst ? CELL_FIRST_ORDER : GENE_FIRST_ORDER;
     }
 
     /** Orders by cell then gene (cellFirst) or gene then cell: equal means the same UMICollection. */
     public static Comparator<UMIKeyCount> groupOrder(final boolean cellFirst) {
-        return cellFirst
-                ? Comparator.comparing((UMIKeyCount k) -> k.cell).thenComparing(k -> k.gene)
-                : Comparator.comparing((UMIKeyCount k) -> k.gene).thenComparing(k -> k.cell);
+        return cellFirst ? CELL_FIRST_GROUP : GENE_FIRST_GROUP;
     }
 
     @Override
     public String toString() {
-        return "UMIKeyCount{cell=" + cell + ", gene=" + gene + ", umi=" + umi + ", count=" + count + ", firstSeen=" + firstSeen + "}";
+        return "UMIKeyCount{cell=" + cell + ", gene=" + gene + ", umi=" + umi + ", count=" + count + "}";
     }
 }

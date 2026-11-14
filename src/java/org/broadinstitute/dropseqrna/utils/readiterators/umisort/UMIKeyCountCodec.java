@@ -33,7 +33,7 @@ import java.io.OutputStream;
 
 import static org.broadinstitute.dropseqrna.utils.readiterators.umisort.UMISortCodecIO.*;
 
-/** Spills {@link UMIKeyCount}s to disk: cell, gene, UMI strings, a varint count and a varlong firstSeen. */
+/** Spills {@link UMIKeyCount}s to disk: cell, gene, UMI strings, and a varint count. */
 public class UMIKeyCountCodec implements SortingCollection.Codec<UMIKeyCount> {
     private DataOutputStream out;
     private DataInputStream in;
@@ -55,7 +55,6 @@ public class UMIKeyCountCodec implements SortingCollection.Codec<UMIKeyCount> {
             writeString(out, k.gene);
             writeString(out, k.umi);
             writeVarInt(out, k.getCount());
-            writeVarLong(out, k.getFirstSeen());
         } catch (IOException e) {
             throw wrap(e);
         }
@@ -75,8 +74,7 @@ public class UMIKeyCountCodec implements SortingCollection.Codec<UMIKeyCount> {
             final String gene = readString(in);
             final String umi = readString(in);
             final int count = readVarInt(in);
-            final long firstSeen = readVarLong(in);
-            return new UMIKeyCount(cell, gene, umi, count, firstSeen);
+            return new UMIKeyCount(cell, gene, umi, count);
         } catch (IOException e) {
             throw wrap(e);
         }

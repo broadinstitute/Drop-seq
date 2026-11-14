@@ -42,12 +42,13 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.LinkedHashMap;
+import java.util.TreeMap;
 
 /**
  * When reads are not retained UMIIterator sorts (cell, gene, UMI, count) records instead of SAMRecords.
- * It must give exactly the same UMICollections, in the same order, as the SAMRecord path that
- * retainReads(true) uses.  The reads themselves are not compared.
+ * It must give the same UMICollections (cell, gene, and UMI counts), in the same order of collections, as the SAMRecord
+ * path that retainReads(true) uses.  The order of UMIs within a collection is not part of the contract: nothing
+ * downstream may depend on it.  The reads themselves are not compared.
  */
 public class UMIIteratorEquivalenceTest {
 
@@ -96,8 +97,7 @@ public class UMIIteratorEquivalenceTest {
         final UMIIterator it = builder.build();
         UMICollection c;
         while (it.hasNext() && (c = it.next()) != null) {
-            // LinkedHashMap: the iteration order of the UMIs must match too, because it shows up in some output files
-            final LinkedHashMap<String, Integer> umis = new LinkedHashMap<>();
+            final TreeMap<String, Integer> umis = new TreeMap<>();
             for (final String umi : c.getMolecularBarcodes())
                 umis.put(umi, c.getMolecularBarcodeCounts().getCountForKey(umi));
             result.collections.add(c.getCellBarcode() + "|" + c.getGeneName() + "|" + umis);

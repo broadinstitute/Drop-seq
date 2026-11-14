@@ -46,29 +46,6 @@ final class UMISortCodecIO {
         out.writeByte(value);
     }
 
-    static void writeVarLong(final DataOutputStream out, long value) throws IOException {
-        while ((value & ~0x7FL) != 0) {
-            out.writeByte((int) ((value & 0x7F) | 0x80));
-            value >>>= 7;
-        }
-        out.writeByte((int) value);
-    }
-
-    static long readVarLong(final DataInputStream in) throws IOException {
-        long value = 0;
-        int shift = 0;
-        int b;
-        do {
-            b = in.read();
-            if (b == -1) {
-                throw new EOFException("Truncated varlong");
-            }
-            value |= (long) (b & 0x7F) << shift;
-            shift += 7;
-        } while ((b & 0x80) != 0);
-        return value;
-    }
-
     /** @return the value, or -1 if the stream is at EOF before the first byte. Values must be non-negative. */
     static int readVarInt(final DataInputStream in) throws IOException {
         int b = in.read();
