@@ -53,6 +53,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
     private final StringInterner stringCache = new StringInterner();
     private final Set<String> cellBarcodesSeen;
     private final boolean retainReads;
+    // The records being read.  Closed with this iterator: a multi-threaded reader holds decode threads until it is closed.
+    private final CloseableIterator<SAMRecord> source;
 
 	/**
 	 * Construct an object that generates UMI objects from a BAM file
@@ -92,6 +94,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 					   final IntervalList intervals) {
 		
 		this.retainReads=retainReads;
+        this.source=headerAndIterator.iterator;
         this.geneTag=geneTag;
         this.cellBarcodeTag=cellBarcodeTag;
         this.molecularBarcodeTag=molecularBarcodeTag;
@@ -234,6 +237,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	public void close() {
         CloserUtil.close(this.atoi);
         CloserUtil.close(this.umiKeyIter);
+        CloserUtil.close(this.source);
 	}
 
 	@Override
