@@ -69,7 +69,7 @@ public class SingleCellRnaSeqMetricsCollectorTest {
 		int readMQ=0;
 
 		// c.MT_SEQUENCE=Arrays.asList("MT");
-		RnaSeqMetricsCollector collector = c.getRNASeqMetricsCollector(cellBarcodeTag, cellBarcodes, inBAM,
+		RnaSeqMetricsCollector collector = c.getRNASeqMetricsCollector(cellBarcodeTag, cellBarcodes, Arrays.asList(inBAM),
 	    		RnaSeqMetricsCollector.StrandSpecificity.NONE,0.8, readMQ, annotationsFile, rRNAIntervalsFile);
 
 		final MetricsFile<RnaSeqMetrics, Integer> file = new MetricsFile<>();
@@ -116,7 +116,7 @@ public class SingleCellRnaSeqMetricsCollectorTest {
 
 		outFile.deleteOnExit();
 
-		c.INPUT=this.IN_BAM;
+		c.INPUT=Arrays.asList(this.IN_BAM);
 		c.MT_SEQUENCE=Arrays.asList("MT");
 		c.OUTPUT=outFile;
 		c.ANNOTATIONS_FILE=annotationsFile;
@@ -150,7 +150,7 @@ public class SingleCellRnaSeqMetricsCollectorTest {
 		final File outFile = File.createTempFile("SingleCellRnaSeqMetricsCollector.", ".output.txt");
 		outFile.deleteOnExit();
 
-		c.INPUT = this.IN_BAM;
+		c.INPUT = Arrays.asList(this.IN_BAM);
 		c.OUTPUT = outFile;
 		c.ANNOTATIONS_FILE = annotationsFile;
 		c.RIBOSOMAL_INTERVALS = rRNAIntervalsFile;
@@ -163,10 +163,41 @@ public class SingleCellRnaSeqMetricsCollectorTest {
 	}
 
 	@Test
+	public void testDoWorkThreaded() throws IOException {
+		final File expectedOutFile = new File(
+				"testdata/org/broadinstitute/transcriptome/barnyard/SingleCellRnaSeqMetricsCollector.expected_output.txt");
+		for (final int threads : new int[] { 2, 4 }) {
+			final SingleCellRnaSeqMetricsCollector c = new SingleCellRnaSeqMetricsCollector();
+			final File outFile = File.createTempFile("SingleCellRnaSeqMetricsCollector.", ".output.txt");
+			outFile.deleteOnExit();
+			c.INPUT = Arrays.asList(this.IN_BAM);
+			c.MT_SEQUENCE = Arrays.asList("MT");
+			c.OUTPUT = outFile;
+			c.ANNOTATIONS_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/mm10.refFlat.gz");
+			c.RIBOSOMAL_INTERVALS = new File("testdata/org/broadinstitute/transcriptome/barnyard/mm10.rRNA.intervals");
+			c.STRAND_SPECIFICITY = RnaSeqMetricsCollector.StrandSpecificity.NONE;
+			c.CELL_BC_FILE = new File("testdata/org/broadinstitute/transcriptome/barnyard/SingleCellRnaSeqMetricsCollector.cellBarcodes.txt");
+			c.READ_MQ = 0;
+			c.NUM_THREADS = threads;
+			Assert.assertEquals(c.doWork(), 0);
+			Assert.assertTrue(FileUtils.contentEquals(outFile, expectedOutFile), "threads=" + threads);
+		}
+	}
+
+	@Test
+	public void testNumThreadsValidation() {
+		final SingleCellRnaSeqMetricsCollector c = new SingleCellRnaSeqMetricsCollector();
+		c.NUM_THREADS = 0;
+		Assert.assertNotNull(c.customCommandLineValidation());
+		c.NUM_THREADS = 2;
+		Assert.assertNull(c.customCommandLineValidation());
+	}
+
+	@Test
 	public void testGetCellBarcodes () {
 		// test the alternate path for getting cell barcodes.
 		SingleCellRnaSeqMetricsCollector c = new SingleCellRnaSeqMetricsCollector();
-		List<String> cb = c.getCellBarcodes(null, this.IN_BAM, "XC", 0, 10);
+		List<String> cb = c.getCellBarcodes(null, Arrays.asList(this.IN_BAM), "XC", 0, 10);
 		Assert.assertNotNull(cb);
 		List<String> expected = Arrays.asList("CGTCACTTGCAC", "TTCGCCCGGCTT");
 		Assert.assertEquals(expected, cb);
