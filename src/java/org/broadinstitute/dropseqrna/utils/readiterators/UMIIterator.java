@@ -23,36 +23,30 @@
  */
 package org.broadinstitute.dropseqrna.utils.readiterators;
 
-import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SAMRecordQueryNameComparator;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
-import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.utils.*;
+import org.broadinstitute.dropseqrna.utils.readiterators.umisort.ReadIntervalSummary;
 import org.broadinstitute.dropseqrna.utils.readiterators.umisort.SortedUMICollectionIterator;
 import picard.annotation.LocusFunction;
 
 import java.util.*;
-import java.util.stream.StreamSupport;
 
+/**
+ * Generates one {@link UMICollection} per (cell, gene), or (gene, cell), from a BAM file.  Reads are filtered, reduced to
+ * (cell, gene, UMI) and sorted by {@link SortedUMICollectionIterator}; whole SAMRecords are never sorted.
+ */
 public class UMIIterator implements CloseableIterator<UMICollection>  {
 
     private static final Log log = Log.getInstance(UMIIterator.class);
     private static final ProgressLogger prog = new ProgressLogger(log);
 
-	// Exactly one of these is non-null.  atoi is the SAMRecord path, used when reads are retained in the UMICollections.
-	// umiKeyIter is used otherwise: only (cell, gene, UMI) counts are sorted, not whole reads.
-	private final GroupingIterator<SAMRecord> atoi;
 	private final SortedUMICollectionIterator umiKeyIter;
-	private final String geneTag;
 	private final String cellBarcodeTag;
-	private final String molecularBarcodeTag;
-    private final StringInterner stringCache = new StringInterner();
     private final Set<String> cellBarcodesSeen;
-    private final boolean retainReads;
     // The records being read.  Closed with this iterator: a multi-threaded reader holds decode threads until it is closed.
     private final CloseableIterator<SAMRecord> source;
 
@@ -72,9 +66,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
      *                      If false, then gene/exon tags are sorted first, followed by cells.  false is the default and used in the other constructor.
 	 * @param recordCellsInInput While sorting the input, keep track of what cells appear in the input.  This record
 	 *                           is not complete until iteration is started.
-	 * @param retainReads If true the SAMRecords are added to the UMICollection.  This uses more memory than the standard UMICollection so exercise caution.  
-	 * This is false in other method signatures by default.  If false, only cell, gene and UMI are sorted and spilled
-	 * (see {@link SortedUMICollectionIterator}), which is much cheaper than sorting SAMRecords.
+	 * @param collectReadIntervals If true, each UMI of the UMICollections carries a {@link ReadIntervalSummary} of
+	 *                             where its reads aligned (see {@link UMICollection#getReadInterval}).
 	 */
 	private UMIIterator(final SamHeaderAndIterator headerAndIterator,
 					   final String geneTag,
@@ -89,23 +82,13 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final boolean assignReadsToAllGenes,
                        final Collection<String> cellBarcodes,
                        final boolean cellFirstSort,
-					   final boolean recordCellsInInput, 
-					   final boolean retainReads,
+					   final boolean recordCellsInInput,
+					   final boolean collectReadIntervals,
 					   final IntervalList intervals) {
-		
-		this.retainReads=retainReads;
-        this.source=headerAndIterator.iterator;
-        this.geneTag=geneTag;
-        this.cellBarcodeTag=cellBarcodeTag;
-        this.molecularBarcodeTag=molecularBarcodeTag;
 
-        final StringTagComparator cellBarcodeTagComparator = new StringTagComparator(cellBarcodeTag);
-        final StringTagComparator geneExonTagComparator = new StringTagComparator(geneTag);
-        final MultiComparator<SAMRecord> multiComparator;
-		if (cellFirstSort)
-			multiComparator = new MultiComparator<>(cellBarcodeTagComparator, geneExonTagComparator);
-		else
-			multiComparator = new MultiComparator<>(geneExonTagComparator, cellBarcodeTagComparator);
+        this.source=headerAndIterator.iterator;
+        this.cellBarcodeTag=cellBarcodeTag;
+
         // Filter records before sorting, to reduce I/O
 		Iterator<SAMRecord> filteringIterator =
                 new MissingTagFilteringIterator(headerAndIterator.iterator, cellBarcodeTag, geneTag, molecularBarcodeTag);
@@ -130,7 +113,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		// Filter reads on if the read contains a cell barcode, if cell barcodes have been specified.
 		if (cellBarcodes != null) {
 			filteringIterator =
-					new TagValueFilteringIterator<>(filteringIterator, this.cellBarcodeTag, cellBarcodes);
+					new TagValueFilteringIterator<>(filteringIterator, cellBarcodeTag, cellBarcodes);
 		}
 		if (intervals != null) {
 			filteringIterator = new IntervalFilteringIterator(filteringIterator, intervals, true);
@@ -139,110 +122,36 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		// Filter/assign reads based on functional annotations
 		GeneFunctionIteratorWrapper wrapper = new GeneFunctionIteratorWrapper(filteringIterator, geneTag,
 				geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions, functionStrategy);
-		Iterator<SAMRecord> samRecordIter = wrapper;
 
-		if (!retainReads) {
-			this.atoi = null;
-			this.umiKeyIter = new SortedUMICollectionIterator(samRecordIter, wrapper.getGeneFunctionProcessor(),
-					cellBarcodeTag, geneTag, geneStrandTag, geneFunctionTag, molecularBarcodeTag, readMQ, cellFirstSort, prog);
-			return;
-		}
-		this.umiKeyIter = null;
-
-		// if map quality < unique handle low map quality reads.
-		if (readMQ <=3) {
-			samRecordIter= processLowMapQuality (samRecordIter, headerAndIterator.header, wrapper.getGeneFunctionProcessor());
-		}
-
-		// now sort by bam tags.
-		CloseableIterator<SAMRecord> sortedAlignmentIterator = SamRecordSortingIteratorFactory.create(
-				headerAndIterator.header, samRecordIter, multiComparator, prog);
-
-		// Not really -- merge sort is ongoing.
-        log.info("Sorting finished.");
-
-		// get reads from the sink, sort by multiComparator, group
-		this.atoi = new GroupingIterator<>(sortedAlignmentIterator, multiComparator);
-
+		// Multi-mapping reads (readMQ <= 3) are resolved on the compact reads, not by sorting SAMRecords by name.
+		this.umiKeyIter = new SortedUMICollectionIterator(wrapper, wrapper.getGeneFunctionProcessor(),
+				cellBarcodeTag, geneTag, geneStrandTag, geneFunctionTag, molecularBarcodeTag, readMQ, cellFirstSort,
+				collectReadIntervals, prog);
 	}
-
-	/**
-	 * If map quality includes non-unique reads:
-	 * 1. sort the reads in query name order
-	 * 2. filter multimapping reads that are map to more than one gene
-	 * 3. return an interator for further sorting.
-	 * @return An iterator of SAMRecord objects
-	 */
-	private Iterator<SAMRecord> processLowMapQuality (Iterator<SAMRecord> readIter, SAMFileHeader header, GeneFunctionProcessor gfp) {
-		SimpleQueryNameComparator comp = new SimpleQueryNameComparator();
-
-		CloseableIterator<SAMRecord> queryNameSortedIterator = SamRecordSortingIteratorFactory.create(
-				header, readIter, comp, prog);
-
-		// now that the data is sorting in read name order you can group and process.
-		GroupingIterator<SAMRecord> qnGroup = new GroupingIterator<>(queryNameSortedIterator, comp);
-		Iterator<List<SAMRecord>> iter = new MultiMapFilteringIterator(qnGroup, gfp);
-		Iterator<SAMRecord> flatIterator = StreamSupport.stream(Spliterators.spliteratorUnknownSize(iter, Spliterator.ORDERED), false).flatMap(Collection::stream).iterator();
-		return flatIterator;
-	}
-
-
 
     /**
-	 * Gets the next UMI Collection - all the molecular barcodes and reads on those for a particular gene/cell.
+	 * Gets the next UMI Collection - all the molecular barcodes for a particular gene/cell.
 	 * @return Null if there are no reads left in the iterator.  Otherwise, returns a UMICollection.
 	 */
 	@Override
 	public UMICollection next () {
-		if (this.umiKeyIter != null)
-			return this.umiKeyIter.hasNext() ? this.umiKeyIter.next() : null;
-		if (!this.atoi.hasNext())
-			return null;
-
-		Collection<SAMRecord> records = this.atoi.next();
-		PeekableIterator<SAMRecord> recordCollectionIter = new PeekableIterator<>(records.iterator());
-
-		// the next record is the first of the "batch"
-		SAMRecord r = recordCollectionIter.peek();
-		String currentGene = r.getStringAttribute(geneTag);
-		String currentCell = Utils.getCellBC(r, cellBarcodeTag);
-		UMICollection umi = new UMICollection(currentCell, currentGene);
-
-		while (recordCollectionIter.hasNext()) {
-			// if there's a next read, set up the current gene/cell variables.
-			r=recordCollectionIter.next();
-            // Cache the UMI.  Note that within a single (cell, gene), the ObjectCounter effectively caches the UMI string,
-            // but they are not cached *across* (cell, gene), so this should help.
-			String molecularBarcode = stringCache.intern(r.getStringAttribute(this.molecularBarcodeTag));
-			umi.incrementMolecularBarcodeCount(molecularBarcode);
-			// optionally store the reads for a cell/gene 
-			if (retainReads)
-				umi.addRead(molecularBarcode, r);
-			
-		}
-		// I ran out of reads
-		recordCollectionIter.close();
-		return (umi);
+		return this.umiKeyIter.hasNext() ? this.umiKeyIter.next() : null;
 	}
 
 	@Override
 	public void remove() {
-		if (this.umiKeyIter != null)
-			this.umiKeyIter.remove();
-		else
-			this.atoi.remove();
+		this.umiKeyIter.remove();
 	}
 
 	@Override
 	public void close() {
-        CloserUtil.close(this.atoi);
         CloserUtil.close(this.umiKeyIter);
         CloserUtil.close(this.source);
 	}
 
 	@Override
 	public boolean hasNext() {
-		return this.umiKeyIter != null ? this.umiKeyIter.hasNext() : this.atoi.hasNext();
+		return this.umiKeyIter.hasNext();
 	}
 
 	public Set<String> getCellBarcodesSeen() {
@@ -272,40 +181,6 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		}
 	}
 
-	/**
-	 * Given an iterator that serves reads grouped by query name, process reads that map multiple times.
-	 * This tests if the interpreted GTF tags map to one gene, or more than one.  If only one gene, then
-	 * that read is selected for downstream analysis.  If reads are ambiguous, all reads are rejected.
-	 * <p>
-	 * This should enable capture of expression for reads that map to multiple locations, but only once to a gene.
-	 * This replicates how expression is counted in STARSolo.
-	 */
-	// change to TransformingIterator
-	private static class MultiMapFilteringIterator extends CountChangingIteratorWrapper<List<SAMRecord>> {
-
-		private final GeneFunctionProcessor gfp;
-		protected MultiMapFilteringIterator(Iterator<List<SAMRecord>> underlyingIterator, GeneFunctionProcessor gfp) {
-			super(underlyingIterator);
-			this.gfp = gfp;
-		}
-
-		@Override
-		protected void processRecord(List<SAMRecord> rec) {
-			SAMRecord result = gfp.processReads(rec);
-			if (result!=null)
-				queueRecordForOutput(Collections.singletonList(result));
-		}
-
-	}
-
-	private static class SimpleQueryNameComparator implements Comparator<SAMRecord> {
-		SAMRecordQueryNameComparator comp = new SAMRecordQueryNameComparator();
-		@Override
-		public int compare(SAMRecord o1, SAMRecord o2) {
-			return comp.fileOrderCompare(o1, o2);
-		}
-	}
-
 	public static class UMIIteratorBuilder {
 		// required parameters
 		private final SamHeaderAndIterator headerAndIterator;
@@ -323,7 +198,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		private boolean assignReadsToAllGenes=false;
 		private boolean cellFirstSort=false;
 		private boolean recordCellsInInput=false;
-		private boolean retainReads=false;
+		private boolean collectReadIntervals=false;
 
 		// nullable parameters
 		private Collection<String> cellBarcodes;
@@ -373,12 +248,16 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 			return this;
 		}
 
-		public boolean isRetainReads() {
-			return retainReads;
+		public boolean isCollectReadIntervals() {
+			return collectReadIntervals;
 		}
 
-		public UMIIteratorBuilder retainReads(boolean retainReads) {
-			this.retainReads = retainReads;
+		/**
+		 * @param collectReadIntervals If true, each UMI of the UMICollections carries a {@link ReadIntervalSummary} of
+		 *                             where its reads aligned.  Off by default, as it makes the sort larger.
+		 */
+		public UMIIteratorBuilder collectReadIntervals(boolean collectReadIntervals) {
+			this.collectReadIntervals = collectReadIntervals;
 			return this;
 		}
 
@@ -403,7 +282,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		public UMIIterator build() {
 			return new UMIIterator(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy,
 					acceptedLociFunctions, functionStrategy, cellBarcodeTag, molecularBarcodeTag, readMQ,
-					assignReadsToAllGenes, cellBarcodes, cellFirstSort, recordCellsInInput, retainReads, intervals);
+					assignReadsToAllGenes, cellBarcodes, cellFirstSort, recordCellsInInput, collectReadIntervals, intervals);
 		}
 	}
 }

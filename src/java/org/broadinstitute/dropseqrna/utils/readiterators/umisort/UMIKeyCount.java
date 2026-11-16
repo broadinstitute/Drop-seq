@@ -27,9 +27,10 @@ import java.util.Comparator;
 
 /**
  * One (cell, gene, UMI) observation with the number of reads that produced it.
- * This is what {@link org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator} sorts when it does not need to retain reads.
+ * This is what {@link org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator} sorts.
  * <p>
- * The count is mutable so that {@link #combine} can merge duplicates without allocating.
+ * The count is mutable so that {@link #combine} can merge duplicates without allocating.  When read intervals are
+ * collected, the interval summary of the reads is carried and merged along with the count; otherwise it is null.
  */
 public final class UMIKeyCount {
     private static final Comparator<UMIKeyCount> CELL_FIRST_ORDER = (a, b) -> {
@@ -57,21 +58,35 @@ public final class UMIKeyCount {
     public final String gene;
     public final String umi;
     private int count;
+    private final ReadIntervalSummary interval;
 
     public UMIKeyCount(final String cell, final String gene, final String umi, final int count) {
+        this(cell, gene, umi, count, null);
+    }
+
+    public UMIKeyCount(final String cell, final String gene, final String umi, final int count,
+                       final ReadIntervalSummary interval) {
         this.cell = cell;
         this.gene = gene;
         this.umi = umi;
         this.count = count;
+        this.interval = interval;
     }
 
     public int getCount() {
         return count;
     }
 
-    /** Adds the count of b (which must have equal cell, gene, UMI) to a, and returns a. */
+    /** @return the interval summary of the reads, or null if read intervals are not collected. */
+    public ReadIntervalSummary getInterval() {
+        return interval;
+    }
+
+    /** Adds the count (and interval, if collected) of b (which must have equal cell, gene, UMI) to a, and returns a. */
     public static UMIKeyCount combine(final UMIKeyCount a, final UMIKeyCount b) {
         a.count = Math.addExact(a.count, b.count);
+        if (a.interval != null)
+            a.interval.merge(b.interval);
         return a;
     }
 

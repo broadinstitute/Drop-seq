@@ -45,14 +45,13 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 /**
- * The fast path of {@link UMIIterator} for when reads do not need to be retained in the {@link UMICollection}s.
+ * How {@link UMIIterator} sorts and groups reads into {@link UMICollection}s.
  * <p>
  * Reads that have passed the SAMRecord filters are reduced to {@link UMIRead}s, and what is sorted and spilled to disk is
- * (cell, gene, UMI, count) rather than whole SAMRecords.  Duplicates are combined as the sort proceeds, see
- * {@link CombiningSortingCollection}.  When low map quality reads are kept (readMQ &lt;= 3), reads are first
- * sorted by name so that reads that map to more than one place can be resolved to at most one gene.
- * <p>
- * The UMICollections, and the order of the UMIs inside them, are the same as when SAMRecords are sorted.
+ * (cell, gene, UMI, count) rather than whole SAMRecords, plus a {@link ReadIntervalSummary} when read intervals are
+ * collected.  Duplicates are combined as the sort proceeds, see {@link CombiningSortingCollection}.  When low map
+ * quality reads are kept (readMQ &lt;= 3), reads are first sorted by name so that reads that map to more than one
+ * place can be resolved to at most one gene.
  */
 public class SortedUMICollectionIterator implements CloseableIterator<UMICollection> {
 
@@ -84,6 +83,19 @@ public class SortedUMICollectionIterator implements CloseableIterator<UMICollect
                                        final String cellBarcodeTag, final String geneTag, final String geneStrandTag,
                                        final String geneFunctionTag, final String molecularBarcodeTag,
                                        final int readMQ, final boolean cellFirstSort, final ProgressLogger progress) {
+        this(reads, geneFunctionProcessor, cellBarcodeTag, geneTag, geneStrandTag, geneFunctionTag, molecularBarcodeTag,
+                readMQ, cellFirstSort, false, progress);
+    }
+
+    /**
+     * @param collectReadIntervals if true, each UMI of the returned UMICollections carries the
+     *                             {@link ReadIntervalSummary} of its reads (see {@link UMICollection#getReadInterval}).
+     */
+    public SortedUMICollectionIterator(final Iterator<SAMRecord> reads, final GeneFunctionProcessor geneFunctionProcessor,
+                                       final String cellBarcodeTag, final String geneTag, final String geneStrandTag,
+                                       final String geneFunctionTag, final String molecularBarcodeTag,
+                                       final int readMQ, final boolean cellFirstSort, final boolean collectReadIntervals,
+                                       final ProgressLogger progress) {
         this.cellBarcodeTag = cellBarcodeTag;
         this.geneTag = geneTag;
         this.molecularBarcodeTag = molecularBarcodeTag;
@@ -91,7 +103,8 @@ public class SortedUMICollectionIterator implements CloseableIterator<UMICollect
 
         // The read name, strand and function are only needed to resolve reads that map to more than one place.
         final boolean multiMappersKept = readMQ <= 3;
-        Iterator<UMIRead> umiReads = new SAMToUMIReadIterator(reads, multiMappersKept, geneStrandTag, geneFunctionTag);
+        Iterator<UMIRead> umiReads = new SAMToUMIReadIterator(reads, multiMappersKept, collectReadIntervals,
+                geneStrandTag, geneFunctionTag);
         if (multiMappersKept)
             umiReads = resolveMultiMappers(umiReads, geneFunctionProcessor);
 
@@ -99,11 +112,11 @@ public class SortedUMICollectionIterator implements CloseableIterator<UMICollect
             @Override
             public UMIKeyCount next() {
                 final UMIRead r = this.underlyingIterator.next();
-                return new UMIKeyCount(r.cell, r.gene, r.umi, 1);
+                return new UMIKeyCount(r.cell, r.gene, r.umi, 1, r.interval);
             }
         };
         final CloseableIterator<UMIKeyCount> sorted = SortingIteratorFactory.createCombining(keys,
-                UMIKeyCount.sortOrder(cellFirstSort), new UMIKeyCountCodec(), UMIKeyCount::combine,
+                UMIKeyCount.sortOrder(cellFirstSort), new UMIKeyCountCodec(collectReadIntervals), UMIKeyCount::combine,
                 UMI_KEY_MAX_RECORDS_IN_RAM, null);
         log.info("Sorting finished.");
         this.groups = new GroupingIterator<>(sorted, UMIKeyCount.groupOrder(cellFirstSort));
@@ -143,13 +156,15 @@ public class SortedUMICollectionIterator implements CloseableIterator<UMICollect
     /** Reduces SAMRecords to {@link UMIRead}s, and logs progress as the SAMRecord sort would have. */
     private class SAMToUMIReadIterator extends TransformingIterator<SAMRecord, UMIRead> {
         private final boolean keepReadDetail;
+        private final boolean collectReadIntervals;
         private final String geneStrandTag;
         private final String geneFunctionTag;
 
         SAMToUMIReadIterator(final Iterator<SAMRecord> underlyingIterator, final boolean keepReadDetail,
-                             final String geneStrandTag, final String geneFunctionTag) {
+                             final boolean collectReadIntervals, final String geneStrandTag, final String geneFunctionTag) {
             super(underlyingIterator);
             this.keepReadDetail = keepReadDetail;
+            this.collectReadIntervals = collectReadIntervals;
             this.geneStrandTag = geneStrandTag;
             this.geneFunctionTag = geneFunctionTag;
         }
@@ -161,10 +176,11 @@ public class SortedUMICollectionIterator implements CloseableIterator<UMICollect
             final String cell = Utils.getCellBC(r, cellBarcodeTag);
             final String gene = geneCache.intern(r.getStringAttribute(geneTag));
             final String umi = r.getStringAttribute(molecularBarcodeTag);
+            final ReadIntervalSummary interval = collectReadIntervals ? ReadIntervalSummary.fromRead(r) : null;
             if (keepReadDetail)
                 return new UMIRead(r.getReadName(), r.getReadNegativeStrandFlag(), cell, gene,
-                        r.getStringAttribute(geneStrandTag), r.getStringAttribute(geneFunctionTag), umi);
-            return new UMIRead(null, r.getReadNegativeStrandFlag(), cell, gene, null, null, umi);
+                        r.getStringAttribute(geneStrandTag), r.getStringAttribute(geneFunctionTag), umi, interval);
+            return new UMIRead(null, r.getReadNegativeStrandFlag(), cell, gene, null, null, umi, interval);
         }
     }
 
@@ -181,8 +197,12 @@ public class SortedUMICollectionIterator implements CloseableIterator<UMICollect
             log.info("Returned " + String.format("%,d", groupsReturned) + " UMI groups");
         final UMIKeyCount first = keys.getFirst();
         final UMICollection umi = new UMICollection(first.cell, first.gene);
-        for (final UMIKeyCount k : keys)
-            umi.incrementMolecularBarcodeCount(umiCache.intern(k.umi), k.getCount());
+        for (final UMIKeyCount k : keys) {
+            final String molecularBarcode = umiCache.intern(k.umi);
+            umi.incrementMolecularBarcodeCount(molecularBarcode, k.getCount());
+            if (k.getInterval() != null)
+                umi.addReadInterval(molecularBarcode, k.getInterval());
+        }
         return umi;
     }
 

@@ -161,11 +161,11 @@ public class UMICollectionTest {
 				DigitalExpressionTest.GENE_STRAND_TAG, DigitalExpressionTest.GENE_FUNCTION_TAG, DigitalExpressionTest.STRAND_STRATEGY,
 				DigitalExpressionTest.LOCUS_FUNCTION_LIST, GeneFunctionCommandLineBase.DEFAULT_FUNCTIONAL_STRATEGY,
 				"XC", DigitalExpressionTest.MOLECULAR_BARCODE_TAG, DigitalExpressionTest.READ_MQ).
-				setCellBarcodes(Arrays.asList(DigitalExpressionTestUtil.barcodes)).retainReads(true).build();
+				setCellBarcodes(Arrays.asList(DigitalExpressionTestUtil.barcodes)).build();
 
 		final Map<Pair<String, String>, Integer> umiCounts = new HashMap<>();
 		for (final UMICollection c : new IterableAdapter<UMICollection>(umiIterator)) {
-			c.collapseThisByEditDistance(1, DigitalExpressionTest.MOLECULAR_BARCODE_TAG);
+			c.collapseThisByEditDistance(1);
 			final Pair<String, String> key = new Pair<>(c.getCellBarcode(), c.getGeneName());
 			umiCounts.put(key, c.getMolecularBarcodeCounts().getSize());
 		}

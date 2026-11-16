@@ -33,10 +33,25 @@ import java.io.OutputStream;
 
 import static org.broadinstitute.dropseqrna.utils.readiterators.umisort.UMISortCodecIO.*;
 
-/** Spills {@link UMIKeyCount}s to disk: cell, gene, UMI strings, and a varint count. */
+/**
+ * Spills {@link UMIKeyCount}s to disk: cell, gene, UMI strings, and a varint count, followed by the read interval
+ * summary when the codec is made to carry intervals.  Whether intervals are carried is fixed for the codec, so
+ * records without intervals are written exactly as before, with no per-record flag.
+ */
 public class UMIKeyCountCodec implements SortingCollection.Codec<UMIKeyCount> {
+    private final boolean withIntervals;
     private DataOutputStream out;
     private DataInputStream in;
+
+    /** A codec for records without read intervals. */
+    public UMIKeyCountCodec() {
+        this(false);
+    }
+
+    /** @param withIntervals if true, every record must carry a read interval summary, which is written and read. */
+    public UMIKeyCountCodec(final boolean withIntervals) {
+        this.withIntervals = withIntervals;
+    }
 
     @Override
     public void setOutputStream(final OutputStream os) {
@@ -55,6 +70,8 @@ public class UMIKeyCountCodec implements SortingCollection.Codec<UMIKeyCount> {
             writeString(out, k.gene);
             writeString(out, k.umi);
             writeVarInt(out, k.getCount());
+            if (withIntervals)
+                k.getInterval().encode(out);
         } catch (IOException e) {
             throw wrap(e);
         }
@@ -74,7 +91,8 @@ public class UMIKeyCountCodec implements SortingCollection.Codec<UMIKeyCount> {
             final String gene = readString(in);
             final String umi = readString(in);
             final int count = readVarInt(in);
-            return new UMIKeyCount(cell, gene, umi, count);
+            final ReadIntervalSummary interval = withIntervals ? ReadIntervalSummary.decode(in) : null;
+            return new UMIKeyCount(cell, gene, umi, count, interval);
         } catch (IOException e) {
             throw wrap(e);
         }
@@ -82,6 +100,6 @@ public class UMIKeyCountCodec implements SortingCollection.Codec<UMIKeyCount> {
 
     @Override
     public SortingCollection.Codec<UMIKeyCount> clone() {
-        return new UMIKeyCountCodec();
+        return new UMIKeyCountCodec(withIntervals);
     }
 }

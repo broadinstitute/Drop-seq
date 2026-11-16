@@ -12,7 +12,7 @@ import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.*;
 import org.broadinstitute.dropseqrna.utils.readiterators.*;
-import picard.annotation.LocusFunction;
+import org.broadinstitute.dropseqrna.utils.readiterators.umisort.ReadIntervalSummary;
 import picard.cmdline.StandardOptionDefinitions;
 import picard.nio.PicardHtsPath;
 
@@ -85,24 +85,34 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 
 		IntervalList intervals = getInputIntervals(headerAndIterator.header);
 
-		GroupingIterator<SAMRecord> iter = prepareIter(headerAndIterator, this.CELL_BARCODE_TAG, this.GENE_NAME_TAG, this.MOLECULAR_BARCODE_TAG, 
-				this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.READ_MQ, cellBarcodes, intervals);
-		
+		// Cell first, so the rows come out ordered by cell, gene, then UMI.
+		final UMIIterator umiIterator = new UMIIterator.UMIIteratorBuilder(headerAndIterator, this.GENE_NAME_TAG,
+				this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST,
+				this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG, this.READ_MQ)
+				.assignReadsToAllGenes(ASSIGN_READS_TO_ALL_GENES).setCellBarcodes(cellBarcodes).setIntervals(intervals)
+				.cellFirstSort(true).collectReadIntervals(true).build();
+
 		int counter=0;
-		while (iter.hasNext()) {			
-			if (counter%1000000==0)
-				log.info("Processed [" + Math.round(counter/1e6) + "] Million UMIs");
-			List<SAMRecord> recs = iter.next();
-			UmiReadInterval i = getInterval(recs, this.CELL_BARCODE_TAG, this.GENE_NAME_TAG, this.MOLECULAR_BARCODE_TAG);
-			writePerUMIStats(i, out);
-			counter++;
+		for (final UMICollection c : new IterableAdapter<>(umiIterator)) {
+			if (EDIT_DISTANCE > 0)
+				c.collapseThisByEditDistance(EDIT_DISTANCE);
+			final List<String> umis = new ArrayList<>(c.getMolecularBarcodes());
+			Collections.sort(umis);
+			for (final String umi : umis) {
+				if (counter%1000000==0)
+					log.info("Processed [" + Math.round(counter/1e6) + "] Million UMIs");
+				final UmiReadInterval i = new UmiReadInterval(c.getCellBarcode(), c.getGeneName(), umi,
+						c.getMolecularBarcodeCounts().getCountForKey(umi), c.getReadInterval(umi));
+				writePerUMIStats(i, out);
+				counter++;
+			}
 		}
 		log.info("Finished Scan. Processed [" + counter + "] UMIs");
-		
-		headerAndIterator.iterator.close();
-		CloserUtil.close(out);		
+
+		umiIterator.close();
+		CloserUtil.close(out);
 		return 0;
-		
+
 	}
 
 	@Override
@@ -152,81 +162,6 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 		return new Interval(contig, start, end);
 	}
 	
-	private UmiReadInterval getInterval (List<SAMRecord> recs, String cellBarcodeTag, String geneTag, String molecularBarcodeTag) {
-		UmiReadInterval result = new UmiReadInterval();
-		result.CELL_BARCODE=recs.getFirst().getStringAttribute(cellBarcodeTag);
-		result.GENE_NAME=recs.getFirst().getStringAttribute(geneTag);
-		result.MOLECULAR_BARCODE=recs.getFirst().getStringAttribute(molecularBarcodeTag);
-		result.NUM_READS=recs.size();
-		result.POSITIVE_STRAND=!recs.getFirst().getReadNegativeStrandFlag();
-		result.CONTIG=recs.getFirst().getContig();
-		
-		// gather up the alignment positions for the min/max
-		List<Integer> posList = new ArrayList<>();		
-		
-		for (SAMRecord r: recs) {
-			// get the min/max, count of reads with cigar string N
-			final List<AlignmentGap> gaps = getGaps(r);
-			if (!gaps.isEmpty()) {
-				result.NUM_SPLICED_READS++;
-				for (final AlignmentGap gap: gaps) {
-					if (result.GAPS.containsKey(gap)) {
-						result.GAPS.put(gap, result.GAPS.get(gap) + 1);
-					} else {
-						result.GAPS.put(gap, 1);
-					}
-				}
-			}
-			posList.add(r.getAlignmentStart());
-			posList.add(r.getAlignmentEnd());
-		}
-		
-		result.POSITION_MIN=posList.stream().mapToInt(x->x).min().getAsInt();
-		result.POSITION_MAX=posList.stream().mapToInt(x->x).max().getAsInt();
-				
-		return (result);
-	}
-	
-	private List<Integer> getIndicesOfAlignmentBlocksPrecedingGaps(final SAMRecord r) {
-		ArrayList<Integer> ret = null;
-		List<CigarElement> cigarElements = r.getCigar().getCigarElements();
-		int alignmentBlockIndex = -1;
-		for (final CigarElement ce: cigarElements) {
-			if (ce.getOperator() == CigarOperator.MATCH_OR_MISMATCH) {
-				++alignmentBlockIndex;
-			} else if (ce.getOperator() == CigarOperator.SKIPPED_REGION) {
-				if (ret == null) {
-					ret = new ArrayList<>();
-				}
-				ret.add(alignmentBlockIndex);
-			}
-		}
-		if (ret == null) {
-			return Collections.emptyList();
-		}
-		return ret;
-	}
-
-	private List<AlignmentGap> getGaps (final SAMRecord r) {
-		final List<Integer> alignmentBlocksPrecedingGaps = getIndicesOfAlignmentBlocksPrecedingGaps(r);
-		if (alignmentBlocksPrecedingGaps.isEmpty()) {
-			return Collections.emptyList();
-		} else {
-			List<AlignmentGap> ret = new ArrayList<>(alignmentBlocksPrecedingGaps.size());
-			final List<AlignmentBlock> alignmentBlocks = r.getAlignmentBlocks();
-			for (int alignmentBlockIndex : alignmentBlocksPrecedingGaps) {
-				final AlignmentBlock precedingAlignmentBlock = alignmentBlocks.get(alignmentBlockIndex);
-				if (alignmentBlockIndex == alignmentBlocks.size() - 1) {
-					throw new IllegalStateException("Strange CIGAR: " + r.getCigarString() +
-							" for read " + r.getReadName());
-				}
-				ret.add(new AlignmentGap(precedingAlignmentBlock.getReferenceStart() + precedingAlignmentBlock.getLength() - 1,
-						alignmentBlocks.get(alignmentBlockIndex + 1).getReferenceStart()));
-			}
-			return ret;
-		}
-	}
-
 	static void writePerUMIStats (UmiReadInterval interval, final BufferedWriter out) {
 		OutputWriterUtil.writeResult(interval.toTsv(), out);
 
@@ -248,85 +183,6 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 	}
 	
 	
-	private GroupingIterator<SAMRecord> prepareIter (SamHeaderAndIterator headerAndIterator, String cellBarcodeTag, String geneTag, String molecularBarcodeTag,
-													 String geneStrandTag, String geneFunctionTag, StrandStrategy strandStrategy,  List<LocusFunction> acceptedLociFunctions,
-													 Integer readMQ, Collection <String> cellBarcodes, IntervalList intervals) {
-
-		final StringTagComparator cellBarcodeTagComparator = new StringTagComparator(cellBarcodeTag);
-        final StringTagComparator geneExonTagComparator = new StringTagComparator(geneTag);
-        final StringTagComparator umiComparator = new StringTagComparator (molecularBarcodeTag);
-        
-        final MultiComparator<SAMRecord> multiComparator = new MultiComparator<>(cellBarcodeTagComparator, geneExonTagComparator, umiComparator);
-
-		final UMICollectionIteratorAdapter umiIterator = new UMICollectionIteratorAdapter(
-				new UMIIterator.UMIIteratorBuilder(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag,
-				strandStrategy, acceptedLociFunctions, this.FUNCTIONAL_STRATEGY, cellBarcodeTag, molecularBarcodeTag,
-				readMQ).assignReadsToAllGenes(ASSIGN_READS_TO_ALL_GENES).setCellBarcodes(cellBarcodes).retainReads(true).
-						setIntervals(intervals).build());
-
-		// Filter/assign reads based on functional annotations
-		GeneFunctionIteratorWrapper gfteratorWrapper = new GeneFunctionIteratorWrapper(umiIterator, geneTag,
-				geneStrandTag, geneFunctionTag, true, strandStrategy, acceptedLociFunctions, this.FUNCTIONAL_STRATEGY);
-
-
-        CloseableIterator<SAMRecord> sortedAlignmentIterator = SamRecordSortingIteratorFactory.create(
-                headerAndIterator.header, gfteratorWrapper, multiComparator, null);
-
-        GroupingIterator<SAMRecord> finalIter = new GroupingIterator<>(sortedAlignmentIterator, multiComparator);
-        return (finalIter);
-
-	}
-
-	/**
-	 * Convert a stream of UMICollections into a stream of SAMRecords, with the reads for each UMI and sorted
-	 * by UMI
-	 */
-	class UMICollectionIteratorAdapter
-			implements CloseableIterator<SAMRecord> {
-		private final UMIIterator umiCollectionIterator;
-		private Iterator<String> umiIterator = Collections.emptyIterator();
-		private Iterator<SAMRecord> readIterator = Collections.emptyIterator();
-		private UMICollection currentCollection = null;
-		public UMICollectionIteratorAdapter(final UMIIterator umiCollectionIterator) {
-			this.umiCollectionIterator = umiCollectionIterator;
-		}
-
-		@Override
-		public void close() {
-			this.umiCollectionIterator.close();
-		}
-
-		@Override
-		public boolean hasNext() {
-			return readIterator.hasNext() || umiIterator.hasNext() || umiCollectionIterator.hasNext();
-		}
-
-		@Override
-		public SAMRecord next() {
-			if (readIterator.hasNext()) return readIterator.next();
-			if (umiIterator.hasNext()) {
-				String umi = umiIterator.next();
-				readIterator = this.currentCollection.getReads(umi).iterator();
-				if (!readIterator.hasNext()) throw new IllegalStateException("No reads found for UMI [" + umi + "]");
-				return next();
-			}
-			if (!umiCollectionIterator.hasNext()) throw new IllegalStateException("Should not call next() if !hasNext()");
-			currentCollection = umiCollectionIterator.next();
-			if (EDIT_DISTANCE > 0) {
-				currentCollection.collapseThisByEditDistance(EDIT_DISTANCE, MOLECULAR_BARCODE_TAG);
-			}
-			final List<String> umis = new ArrayList<>(currentCollection.getMolecularBarcodes());
-			Collections.sort(umis);
-			umiIterator = umis.iterator();
-			if (!umiIterator.hasNext()) throw new IllegalStateException("No UMIs found for collection");
-			return next();
-		}
-	}
-
-	record AlignmentGap(int start, int end) {
-
-	}
-
 	static class UmiReadInterval {
 		public static final String CELL_BARCODE_HEADER = "Cell_Barcode";
 		public static final String GENE_HEADER = "Gene";
@@ -342,43 +198,42 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 				GENE_HEADER, MOLECULAR_BARCODE_HEADER, NUM_READS_HEADER, NUM_GAPPED_READS_HEADER, CONTIG_HEADER,
 				POSITION_MIN_HEADER, POSITION_MAX_HEADER, READ_POSITIVE_STRAND_HEADER, GAPS_HEADER};
 
-		String CELL_BARCODE;
-		String GENE_NAME;
-		String MOLECULAR_BARCODE;
-		int NUM_READS;
-		int NUM_SPLICED_READS=0;
-		String CONTIG;
-		int POSITION_MIN;
-		int POSITION_MAX;
-		boolean POSITIVE_STRAND;
-		Map<AlignmentGap, Integer> GAPS = new HashMap<>();
+		final String CELL_BARCODE;
+		final String GENE_NAME;
+		final String MOLECULAR_BARCODE;
+		final int NUM_READS;
+		final ReadIntervalSummary INTERVAL;
 
-		public UmiReadInterval() {
+		UmiReadInterval(final String cellBarcode, final String geneName, final String molecularBarcode,
+						final int numReads, final ReadIntervalSummary interval) {
+			this.CELL_BARCODE = cellBarcode;
+			this.GENE_NAME = geneName;
+			this.MOLECULAR_BARCODE = molecularBarcode;
+			this.NUM_READS = numReads;
+			this.INTERVAL = interval;
 		}
 
 		@Override
 		public String toString() {
 			return "UmiReadInterval [CELL_BARCODE=" + CELL_BARCODE + ", GENE_NAME=" + GENE_NAME + ", MOLECULAR_BARCODE="
-					+ MOLECULAR_BARCODE + ", NUM_READS=" + NUM_READS + ", NUM_SPLICED_READS=" + NUM_SPLICED_READS
-					+ ", CONTIG=" + CONTIG + ", POSITION_MIN=" + POSITION_MIN + ", POSITION_MAX=" + POSITION_MAX
-					+ ", POSITIVE_STRAND=" + POSITIVE_STRAND + "]";
-		}		
+					+ MOLECULAR_BARCODE + ", NUM_READS=" + NUM_READS + ", INTERVAL=" + INTERVAL + "]";
+		}
 
+		/** @return each gap as start:end:count, ordered by position, comma separated. */
 		private String makeGapsString() {
-			final String[] gapStrings = new String[GAPS.size()];
-			int i = 0;
-			for (Map.Entry<AlignmentGap, Integer> entry : GAPS.entrySet()) {
-				AlignmentGap gap = entry.getKey();
-				int count = entry.getValue();
-				gapStrings[i++] = gap.start + ":" + gap.end + ":" + count;
+			final List<String> gapStrings = new ArrayList<>(INTERVAL.getGaps().size());
+			for (Map.Entry<ReadIntervalSummary.Gap, Integer> entry : INTERVAL.getGaps().entrySet()) {
+				final ReadIntervalSummary.Gap gap = entry.getKey();
+				gapStrings.add(gap.start() + ":" + gap.end() + ":" + entry.getValue());
 			}
 			return StringUtils.join(gapStrings, ",");
 		}
 
 		public String toTsv() {
-			String [] body = {CELL_BARCODE, GENE_NAME, MOLECULAR_BARCODE, Integer.toString(NUM_READS), Integer.toString(NUM_SPLICED_READS),
-					CONTIG, Integer.toString(POSITION_MIN), Integer.toString(POSITION_MAX), Boolean.toString(POSITIVE_STRAND),
-					makeGapsString()};
+			String [] body = {CELL_BARCODE, GENE_NAME, MOLECULAR_BARCODE, Integer.toString(NUM_READS),
+					Integer.toString(INTERVAL.getNumGappedReads()), INTERVAL.getContig(),
+					Integer.toString(INTERVAL.getPositionMin()), Integer.toString(INTERVAL.getPositionMax()),
+					Boolean.toString(INTERVAL.isPositiveStrand()), makeGapsString()};
 			return StringUtils.join(body, "\t");
 		}
 	}

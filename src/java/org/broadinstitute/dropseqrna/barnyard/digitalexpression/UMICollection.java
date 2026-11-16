@@ -29,8 +29,8 @@ import java.util.*;
 import org.broadinstitute.dropseqrna.barnyard.GatherMolecularBarcodeDistributionByGene;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
+import org.broadinstitute.dropseqrna.utils.readiterators.umisort.ReadIntervalSummary;
 
-import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.PeekableIterator;
@@ -46,9 +46,10 @@ public class UMICollection {
 
 	private String cellBarcode;
 	private String geneName;
-	private ObjectCounter<String> molecularBarcodeCounts;	
+	private ObjectCounter<String> molecularBarcodeCounts;
 	private static MapBarcodesByEditDistance mbed =new MapBarcodesByEditDistance(false);
-	private Map<String, List<SAMRecord>> reads=null;
+	// Per UMI, where its reads aligned.  Null unless read intervals were added.
+	private Map<String, ReadIntervalSummary> readIntervals=null;
 
 	public UMICollection (final String cellBarcode, final String geneName) {
 		this.cellBarcode = cellBarcode;
@@ -89,27 +90,24 @@ public class UMICollection {
 		return counts;
 	}
 	
-	public void addRead (String molecularBarcode, SAMRecord rec) {
-		if (reads==null) {
-			reads=new HashMap<>();
-		}
-		List<SAMRecord> l = reads.get(molecularBarcode);
-		if (l==null) {
-			l = new ArrayList<>();
-			reads.put(molecularBarcode, l);
-		}
-		l.add(rec);
-	}
-	
 	/**
-	 * If reads were added to this collection via addRead, they can be retrieved for a given molecular barcode via this method.
-	 * @param molecularBarcode The molecular barcode to request reads from
-	 * @return The list of reads for this molecular barcode.  This will return null when there were no reads added for a requested barcode.
+	 * Adds where some reads of a molecular barcode aligned.  If the barcode already has a read interval, the two are merged.
 	 */
-	public List<SAMRecord> getReads (String molecularBarcode) {
-		if (this.reads==null)
+	public void addReadInterval (final String molecularBarcode, final ReadIntervalSummary interval) {
+		if (readIntervals==null) {
+			readIntervals=new HashMap<>();
+		}
+		readIntervals.merge(molecularBarcode, interval, ReadIntervalSummary::merge);
+	}
+
+	/**
+	 * @param molecularBarcode The molecular barcode to request the read interval of
+	 * @return where the reads of this molecular barcode aligned, or null if no read interval was added for it.
+	 */
+	public ReadIntervalSummary getReadInterval (final String molecularBarcode) {
+		if (this.readIntervals==null)
 			return null;
-		return this.reads.get(molecularBarcode);		
+		return this.readIntervals.get(molecularBarcode);
 	}
 
 	/**
@@ -164,34 +162,26 @@ public class UMICollection {
 	}
 
 	/**
-	 * Collapse the molecular barcodes in this collection by edit distance.  This only makes sense if reads != null,
-	 * because otherwise, one could just call getMolecularBarcodeCountsCollapsed to get collapsed read counts.
-	 * The reads are re-tagged with the collapsed molecular barcode, and re-grouped, and the molecular barcode counts are updated.
-	 * @param editDistance
-	 * @param molecularBarcodeTag
+	 * Collapse the molecular barcodes in this collection by edit distance, in place.  Each collapsed barcode is removed,
+	 * and its read count and read interval (if any) are added to the barcode it collapsed into.
+	 * @param editDistance How close two molecular barcodes should be in edit distance space to be collapsed.  Must be at least 1.
 	 */
-	public void collapseThisByEditDistance(final int editDistance, final String molecularBarcodeTag) {
-		if (reads == null) {
-			throw new IllegalStateException("It doesn't make sense to collapse in place without reads");
-		}
+	public void collapseThisByEditDistance(final int editDistance) {
 		if (editDistance < 1) {
 			throw new IllegalArgumentException("Edit distance must be at least 1");
 		}
 		Map<String, List<String>> collapsedToUncollapsed = mbed.collapseBarcodes(this.molecularBarcodeCounts, false, editDistance);
 		for (Map.Entry<String, List<String>> entry: collapsedToUncollapsed.entrySet()) {
 			final String goodUmi = entry.getKey();
-			final List<String> umisToBeCollapsed = entry.getValue();
-			final List<SAMRecord> readsForGoodUmi = reads.get(goodUmi);
-			for (final String umiToBeCollapsed : umisToBeCollapsed) {
-				final List<SAMRecord> readsToBeCollapsed = reads.get(umiToBeCollapsed);
-				readsToBeCollapsed.stream().forEach(r -> r.setAttribute(molecularBarcodeTag, goodUmi));
-				readsForGoodUmi.addAll(readsToBeCollapsed);
-				reads.remove(umiToBeCollapsed);
+			for (final String umiToBeCollapsed : entry.getValue()) {
+				molecularBarcodeCounts.incrementByCount(goodUmi, molecularBarcodeCounts.getCountForKey(umiToBeCollapsed));
+				molecularBarcodeCounts.remove(umiToBeCollapsed);
+				if (readIntervals != null) {
+					final ReadIntervalSummary collapsed = readIntervals.remove(umiToBeCollapsed);
+					if (collapsed != null)
+						addReadInterval(goodUmi, collapsed);
+				}
 			}
-		}
-		molecularBarcodeCounts = new ObjectCounter<>();
-		for (Map.Entry<String, List<SAMRecord>> entry: this.reads.entrySet()) {
-			molecularBarcodeCounts.setCount(entry.getKey(), entry.getValue().size());
 		}
 	}
 
