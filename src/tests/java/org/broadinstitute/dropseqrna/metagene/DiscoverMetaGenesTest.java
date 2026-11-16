@@ -1,15 +1,21 @@
 package org.broadinstitute.dropseqrna.metagene;
 
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.dropseqrna.barnyard.DigitalExpression;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import picard.nio.PicardHtsPath;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 public class DiscoverMetaGenesTest {
@@ -176,9 +182,10 @@ public class DiscoverMetaGenesTest {
 		Assert.assertNull(result);		
 	}
 	
-	@Test
-	public void testSMNManySelectedCells() throws IOException {
+	@Test(dataProvider = "numThreadsDataProvider")
+	public void testSMNManySelectedCells(final int numThreads) throws IOException {
 		DiscoverMetaGenes dmg = new DiscoverMetaGenes();
+		dmg.NUM_THREADS=numThreads;
 		dmg.CELL_BC_FILE=IN_SMN_CELL_BARCODE_FILE_BIG;
 		dmg.INPUT = new PicardHtsPath(IN_SMN_FILE_BIG);
 		dmg.MIN_READ_MQ=2;				
@@ -196,6 +203,56 @@ public class DiscoverMetaGenesTest {
 		
 	}
 	
+	/**
+	 * Without WRITE_ALL_READS, uniquely mapped reads are sorted compactly and joined to the other reads, see {@link UMIMetaGeneJointIterator}.
+	 * With it, all reads are sorted as records, see {@link UMIMetaGeneCollectionIterator}.
+	 * Both must give the same report and the same metagene reads.
+	 */
+	@Test
+	public void testJointIteratorEquivalence() throws IOException {
+		final DiscoverMetaGenes allReads = runDiscoverMetaGenes(true);
+		final DiscoverMetaGenes metaGeneReads = runDiscoverMetaGenes(false);
+		Assert.assertTrue(TestUtils.testFilesSame(allReads.REPORT, metaGeneReads.REPORT));
+		// the output of WRITE_ALL_READS also has reads that are not metagene reads.
+		final List<String> expectedReads = getSortedMetaGeneReads(allReads.OUTPUT, allReads.METAGENE_NAME);
+		Assert.assertFalse(expectedReads.isEmpty());
+		Assert.assertEquals(getSortedMetaGeneReads(metaGeneReads.OUTPUT, metaGeneReads.METAGENE_NAME), expectedReads);
+	}
+
+	private DiscoverMetaGenes runDiscoverMetaGenes(final boolean writeAllReads) throws IOException {
+		final DiscoverMetaGenes dmg = new DiscoverMetaGenes();
+		dmg.WRITE_ALL_READS=writeAllReads;
+		dmg.CELL_BC_FILE=IN_SMN_CELL_BARCODE_FILE_BIG;
+		dmg.INPUT = new PicardHtsPath(IN_SMN_FILE_BIG);
+		dmg.MIN_READ_MQ=2;
+		dmg.REPORT=File.createTempFile("DiscoverMetaGenes", ".report");
+		dmg.REPORT.deleteOnExit();
+		dmg.OUTPUT=File.createTempFile("DiscoverMetaGenes", ".SMN.bam");
+		dmg.OUTPUT.deleteOnExit();
+		dmg.META_GENE_RATIO=0d;
+		dmg.MAXIMUM_READ_EDIT_DISTANCE=null;
+		TestUtils.setInflaterDeflaterIfMacOs();
+		Assert.assertEquals(dmg.doWork(), 0);
+		return dmg;
+	}
+
+	/** The records that have the metagene tag as SAM text lines in a canonical order, so that files can be compared without regard to the order of records that sort equally. */
+	private List<String> getSortedMetaGeneReads(final File bam, final String metaGeneTag) throws IOException {
+		final List<String> result = new ArrayList<>();
+		try (SamReader reader = SamReaderFactory.makeDefault().open(bam)) {
+			for (SAMRecord r : reader)
+				if (r.getAttribute(metaGeneTag)!=null)
+					result.add(r.getSAMString());
+		}
+		Collections.sort(result);
+		return result;
+	}
+
+	@DataProvider(name = "numThreadsDataProvider")
+	Object[][] numThreadsDataProvider() {
+		return new Object[][] {{1}, {2}};
+	}
+
 	@Test
 	public void testSMNAllCells() throws IOException {
 		DiscoverMetaGenes dmg = new DiscoverMetaGenes();

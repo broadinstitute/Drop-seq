@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.metagene;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.commons.lang3.StringUtils;
@@ -34,6 +35,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
+import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
@@ -125,6 +127,10 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
     @Argument(doc="Should single gene UMI counts be written out as separate lines into the REPORT")
     public boolean WRITE_SINGLE_GENES = false;
 
+	@Argument(doc = "Number of threads used to read and decode the input BAM.  " +
+			"A single BAM speeds up as threads are added, up to about 2 threads.")
+	public int NUM_THREADS = 1;
+
     private final String BAM_TAG_DELIMITER=",";
 		
 	private static final String DELIMITER=":";
@@ -172,27 +178,33 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 	 */
 	public Set<MetaGene> umiLevelMetaGeneDiscovery(final List<String> cellBarcodes, final File report) {
 		final SamHeaderAndIterator headerAndIterator =
-				SamFileMergeUtil.mergeInputPaths(Collections.singletonList(this.INPUT.toPath()), false);
+				SamFileMergeUtil.mergeInputPaths(Collections.singletonList(this.INPUT.toPath()), false,
+					SamReaderFactory.makeDefault(), this.NUM_THREADS);
 		SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
 
 		UMIMetaGeneAggregation aggregator = new UMIMetaGeneAggregation();
 		log.info("Searching for meta genes");
 		
 		// filters out single reads that map to multiple genes on the same strand
-		UMIMetaGeneCollectionIterator iter = new UMIMetaGeneCollectionIterator(headerAndIterator, this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, 
-				this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-				this.MIN_READ_MQ, this.MAP_QUALITY_UNIQUE, this.MAXIMUM_READ_EDIT_DISTANCE, cellBarcodes, null, false);
-		
-		int totalCellBarcodes=0;
-		if (cellBarcodes!=null) totalCellBarcodes=cellBarcodes.size();
-		ProgressLoggingIterator pl = new ProgressLoggingIterator(iter, log, progressLogInterval, totalCellBarcodes);
+		AbstractUMIMetaGeneCollectionIterator iter;
+		if (!this.WRITE_ALL_READS)
+			iter = new UMIMetaGeneJointIterator(headerAndIterator, this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG,
+					this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+					this.MIN_READ_MQ, this.MAP_QUALITY_UNIQUE, this.MAXIMUM_READ_EDIT_DISTANCE, cellBarcodes, false, true);
+		else
+			iter = new UMIMetaGeneCollectionIterator(headerAndIterator, this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG,
+					this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+					this.MIN_READ_MQ, this.MAP_QUALITY_UNIQUE, this.MAXIMUM_READ_EDIT_DISTANCE, cellBarcodes, null, false);
+
+		ProgressLoggingIterator pl = new ProgressLoggingIterator(iter, log, progressLogInterval);
 
 		while (pl.hasNext()) {
 			UMIMetaGeneCollection c = pl.next();
 			// you only add data to the aggregator during discovery if there's informative data to add.
-			if (c.getNumInformativeReads()>0)
+			if (c.getNumInformativeReads()>0 || !c.getUniquelyMappedGenes().isEmpty())
 				aggregator.add(c, false);
 		}
+		pl.logCellsProcessed();
 		pl.close();		
 		if (report!=null) writeReport (aggregator, report, WRITE_SINGLE_GENES);
 
@@ -203,23 +215,27 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 
 	public int umiLevelMetaGeneTagging (final List<String> cellBarcodes, final Set<MetaGene> metaGenes) {
 		final SamHeaderAndIterator headerAndIterator =
-				SamFileMergeUtil.mergeInputPaths(Collections.singletonList(this.INPUT.toPath()), false);
+				SamFileMergeUtil.mergeInputPaths(Collections.singletonList(this.INPUT.toPath()), false,
+					SamReaderFactory.makeDefault(), this.NUM_THREADS);
 		SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
-		// set up the output writer and the sink.
 		SAMFileWriter writer=null;
-		SamWriterSink sink=null;	
 		if (this.OUTPUT!=null)
 			writer= new SAMFileWriterFactory().makeSAMOrBAMWriter(headerAndIterator.header, false, OUTPUT);	
-		if (this.OUTPUT!=null & this.WRITE_ALL_READS)
-			sink= new SamWriterSink(writer);
 		 		
-		UMIMetaGeneCollectionIterator iter = new UMIMetaGeneCollectionIterator(headerAndIterator, this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG, 
-				this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
-				this.MIN_READ_MQ, this.MAP_QUALITY_UNIQUE, null, cellBarcodes, sink, false);
-				
-		int totalCellBarcodes=0;
-		if (cellBarcodes!=null) totalCellBarcodes=cellBarcodes.size();
-		ProgressLoggingIterator pl = new ProgressLoggingIterator(iter, log, progressLogInterval, totalCellBarcodes);
+		AbstractUMIMetaGeneCollectionIterator iter;
+		if (!this.WRITE_ALL_READS)
+			iter = new UMIMetaGeneJointIterator(headerAndIterator, this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG,
+					this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+					this.MIN_READ_MQ, this.MAP_QUALITY_UNIQUE, null, cellBarcodes, false, false);
+		else {
+			// the sink receives the reads that are not metagene reads, when all reads are written.
+			final SamWriterSink sink = (this.OUTPUT!=null && this.WRITE_ALL_READS) ? new SamWriterSink(writer) : null;
+			iter = new UMIMetaGeneCollectionIterator(headerAndIterator, this.GENE_NAME_TAG, this.GENE_STRAND_TAG, this.GENE_FUNCTION_TAG,
+					this.STRAND_STRATEGY, this.LOCUS_FUNCTION_LIST, this.FUNCTIONAL_STRATEGY, this.CELL_BARCODE_TAG, this.MOLECULAR_BARCODE_TAG,
+					this.MIN_READ_MQ, this.MAP_QUALITY_UNIQUE, null, cellBarcodes, sink, false);
+		}
+
+		ProgressLoggingIterator pl = new ProgressLoggingIterator(iter, log, progressLogInterval);
 
 		log.info("Tagging BAM file");
 
@@ -227,6 +243,7 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 			UMIMetaGeneCollection c = pl.next();
 			writeMetaGenesToBAM(c, metaGenes, writer, this.WRITE_ALL_READS);
 		}		
+		pl.logCellsProcessed();
 		pl.close();
 		if (writer!=null) {
 			writer.close();
@@ -428,34 +445,48 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
         out.close();
 	}
 
+	/**
+	 * Logs the number of cells seen so far.  The input holds only some of the cells of CELL_BC_FILE (for example a slice of a data set),
+	 * so the number of cells to expect is not known.  Results arrive grouped by cell.
+	 */
 	private class ProgressLoggingIterator extends FilteredIterator<UMIMetaGeneCollection> {
 		private final Log log;
-		private final Set<String> cells;
 		private String currentCell;
+		private int numCells;
 		private final int interval;
-		private final int numCellsExpected;
-		public ProgressLoggingIterator (final Iterator<UMIMetaGeneCollection> underlyingIterator, final Log log, final int interval, final int numCellsExpected) {
+		public ProgressLoggingIterator (final Iterator<UMIMetaGeneCollection> underlyingIterator, final Log log, final int interval) {
 			super(underlyingIterator);
 			this.log=log;
-			this.cells=new HashSet<>();
 			this.currentCell="";
+			this.numCells=0;
 			this.interval=interval;
-			this.numCellsExpected=numCellsExpected;
 		}
 
 		@Override
 		public boolean filterOut(final UMIMetaGeneCollection rec) {
 			String newCell=rec.getCellBarcode();
-			if (newCell==null)
-				log.info("STOP");
 			if (!newCell.equals(currentCell)) {
-				cells.add(newCell);
-				if (cells.size()%this.interval==0 || cells.size()==this.numCellsExpected) log.info("Cells processed [" + cells.size() + "/" +  numCellsExpected+"]");
+				numCells++;
+				if (numCells%this.interval==0) log.info("Cells processed [" + numCells + "]");
 			}
 			currentCell=newCell;
 			return false;
 		}
-		
+
+		/** Log the total number of cells, once the results are exhausted. */
+		public void logCellsProcessed () {
+			log.info("Cells processed [" + numCells + "] in total");
+		}
+
+	}
+
+	@Override
+	protected String[] customCommandLineValidation() {
+		final ArrayList<String> list = new ArrayList<>();
+		if (this.NUM_THREADS < 1) {
+			list.add("NUM_THREADS must be >= 1");
+		}
+		return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
 	}
 
 	/** Stock main method. */
