@@ -69,6 +69,9 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 			"If false, reads that map to multiple genes are ignored.")
 	public boolean ASSIGN_READS_TO_ALL_GENES=true;
 
+	@Argument(doc = "Number of threads used to read and decode the input BAM.  " +
+			"A single BAM speeds up as threads are added, up to about 2 threads.")
+	public int NUM_THREADS = 1;
 
 	@Override
 	protected int doWork() {
@@ -81,7 +84,8 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 		
 		List<String> cellBarcodes=getCellBarcodes(this.CELL_BC_FILE);
 		final SamHeaderAndIterator headerAndIterator =
-				SamFileMergeUtil.mergeInputPaths(PicardHtsPath.toPaths(this.INPUT), false);
+				SamFileMergeUtil.mergeInputPaths(PicardHtsPath.toPaths(this.INPUT), false,
+						SamReaderFactory.makeDefault(), this.NUM_THREADS);
 
 		IntervalList intervals = getInputIntervals(headerAndIterator.header);
 
@@ -120,6 +124,9 @@ public class GatherUMIReadIntervals extends GeneFunctionCommandLineBase {
 		final ArrayList<String> list = new ArrayList<>();
 		if (this.EDIT_DISTANCE < 0) {
 			list.add("EDIT_DISTANCE cannot be negative.");
+		}
+		if (this.NUM_THREADS < 1) {
+			list.add("NUM_THREADS must be >= 1");
 		}
 		return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
 	}
