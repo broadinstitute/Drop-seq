@@ -54,6 +54,17 @@ public final class UMIKeyCount {
         return c != 0 ? c : a.cell.compareTo(b.cell);
     };
 
+    private static final Comparator<UMIKeyCount> CELL_UMI_ORDER = (a, b) -> {
+        int c = a.cell.compareTo(b.cell);
+        if (c != 0) return c;
+        c = a.umi.compareTo(b.umi);
+        return c != 0 ? c : a.gene.compareTo(b.gene);
+    };
+    private static final Comparator<UMIKeyCount> CELL_UMI_GROUP = (a, b) -> {
+        final int c = a.cell.compareTo(b.cell);
+        return c != 0 ? c : a.umi.compareTo(b.umi);
+    };
+
     public final String cell;
     public final String gene;
     public final String umi;
@@ -98,6 +109,16 @@ public final class UMIKeyCount {
     /** Orders by cell then gene (cellFirst) or gene then cell: equal means the same UMICollection. */
     public static Comparator<UMIKeyCount> groupOrder(final boolean cellFirst) {
         return cellFirst ? CELL_FIRST_GROUP : GENE_FIRST_GROUP;
+    }
+
+    /** Orders by cell, then UMI, then gene, so that all the genes of one (cell, UMI) are adjacent. */
+    public static Comparator<UMIKeyCount> cellUmiSortOrder() {
+        return CELL_UMI_ORDER;
+    }
+
+    /** Orders by cell then UMI: equal means the same (cell, UMI), whatever the gene. */
+    public static Comparator<UMIKeyCount> cellUmiGroupOrder() {
+        return CELL_UMI_GROUP;
     }
 
     @Override

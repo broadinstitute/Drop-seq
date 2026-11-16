@@ -50,6 +50,9 @@ import java.util.stream.Collectors;
  *
  * A gene can only be in one category: unique, unambiguous meta-gene, or ambiguous meta-gene.
  *
+ * A collection is built from the informative reads of the cell and UMI with the constructor, from the reads that are not uniquely mapped plus the genes of the uniquely
+ * mapped reads with {@link #withUniqueGenes}, or from only the genes of the uniquely mapped reads with {@link #uniqueGenesOnly}.
+ *
  * This class will also take a list of reads, and given a map of approved meta genes (one gene -> set of all related genes in meta gene), will tag meta gene annotations onto the reads appropriately.
  * In this case, reads that map uniquely are left alone.  Reads that map to a gene in the list and the other reads map to genes in the set are tagged as meta genes.  Reads that map to a gene in the set
  * and another gene not in the set are left as a unique gene.
@@ -76,6 +79,7 @@ public class UMIMetaGeneCollection {
 	private final String cellBarcode;
 	private final String molecularBarcode;
 	private final List<SAMRecord> informativeReads;
+	private final Set<String> extraUniqueGenes;
 	private Set<String> uniqueGenes;
 	private Set<MetaGene> ambiguousMetaGenes;
 	private Set<MetaGene> unambiguousMetaGenes;
@@ -85,24 +89,59 @@ public class UMIMetaGeneCollection {
 	// if this agrees, then you can use cached results.
 	// private boolean curentUseEditDistance=false;
 
+	/**
+	 * A collection of the informative reads of one cell and UMI.  The unique genes are those of the reads with a map quality of at least mapQualityUnique.
+	 * @param informativeReads The informative reads of one cell and UMI, which supply the cell and molecular barcodes.  If there are none, both barcodes are null.
+	 */
 	public UMIMetaGeneCollection (final String geneTag, final String molBCTag, final String cellBCTag, final Collection<SAMRecord> informativeReads, final int mapQualityUnique) {
+		this(geneTag, molBCTag, cellBCTag, informativeReads, mapQualityUnique, null, null, Collections.emptySet());
+	}
+
+	private UMIMetaGeneCollection (final String geneTag, final String molBCTag, final String cellBCTag, final Collection<SAMRecord> informativeReads, final int mapQualityUnique,
+			final String cellBarcode, final String molecularBarcode, final Set<String> extraUniqueGenes) {
 		this.mapQualityUnique=mapQualityUnique;
 		this.geneTag=geneTag;
 		this.molBCTag=molBCTag;
 		this.cellBCTag=cellBCTag;
+		this.extraUniqueGenes=extraUniqueGenes;
 		List<SAMRecord> infRecs = new ArrayList<>(informativeReads);
 		infRecs.sort(new SAMRecordQueryNameComparator());
-		this.informativeReads=infRecs;		
+		this.informativeReads=infRecs;
 		this.uniqueGenes=null;
 		this.ambiguousMetaGenes=null;
 		this.unambiguousMetaGenes=null;
-		if (!informativeReads.isEmpty()) {
+		if (!infRecs.isEmpty()) {
 			this.cellBarcode=infRecs.getFirst().getStringAttribute(cellBCTag);
 			this.molecularBarcode=infRecs.getFirst().getStringAttribute(molBCTag);
 		} else {
-			this.cellBarcode=null;
-			this.molecularBarcode=null;
+			this.cellBarcode=cellBarcode;
+			this.molecularBarcode=molecularBarcode;
 		}
+	}
+
+	/**
+	 * A collection of the informative reads of one cell and UMI, where the uniquely mapped reads of that cell and UMI are not among the reads.
+	 * Their genes are given instead, and count as unique genes in addition to the genes of any reads in informativeReads that are uniquely mapped.
+	 * @param informativeReads The informative reads of one cell and UMI that are not uniquely mapped.  There must be at least one, which supplies the cell and molecular barcodes.
+	 * @param uniqueGenes The genes of the uniquely mapped reads of this cell and UMI.
+	 */
+	public static UMIMetaGeneCollection withUniqueGenes (final String geneTag, final String molBCTag, final String cellBCTag, final Collection<SAMRecord> informativeReads,
+			final int mapQualityUnique, final Set<String> uniqueGenes) {
+		if (informativeReads.isEmpty())
+			throw new IllegalArgumentException("At least one read is required.  Use uniqueGenesOnly if there are none.");
+		return new UMIMetaGeneCollection(geneTag, molBCTag, cellBCTag, informativeReads, mapQualityUnique, null, null, uniqueGenes);
+	}
+
+	/**
+	 * A collection for a cell and UMI that has no reads, only the genes its uniquely mapped reads map to.
+	 * It has no meta genes, and getNumInformativeReads is 0.
+	 * @param cellBarcode The cell barcode of the UMI
+	 * @param molecularBarcode The molecular barcode of the UMI
+	 * @param uniqueGenes The genes of the uniquely mapped reads of this cell and UMI.
+	 */
+	public static UMIMetaGeneCollection uniqueGenesOnly (final String geneTag, final String molBCTag, final String cellBCTag, final int mapQualityUnique,
+			final String cellBarcode, final String molecularBarcode, final Set<String> uniqueGenes) {
+		return new UMIMetaGeneCollection(geneTag, molBCTag, cellBCTag, Collections.emptyList(), mapQualityUnique, cellBarcode, molecularBarcode, uniqueGenes);
 	}
 
 	/**
@@ -165,6 +204,7 @@ public class UMIMetaGeneCollection {
 				this.uniqueGenes.add(gene);
 			}
 		}
+		this.uniqueGenes.addAll(this.extraUniqueGenes);
 
 		return this.uniqueGenes;
 	}

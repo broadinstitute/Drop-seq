@@ -23,133 +23,64 @@
  */
 package org.broadinstitute.dropseqrna.metagene;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
 import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
-import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.GroupingIterator;
-import org.broadinstitute.dropseqrna.utils.MultiComparator;
-import org.broadinstitute.dropseqrna.utils.ObjectSink;
 import org.broadinstitute.dropseqrna.utils.SamWriterSink;
-import org.broadinstitute.dropseqrna.utils.StringTagComparator;
-import org.broadinstitute.dropseqrna.utils.readiterators.GeneFunctionProcessor;
-import org.broadinstitute.dropseqrna.utils.readiterators.MapQualityPredicate;
-import org.broadinstitute.dropseqrna.utils.readiterators.ReadEditDistancePredicate;
-import org.broadinstitute.dropseqrna.utils.readiterators.RequiredTagPredicate;
-import org.broadinstitute.dropseqrna.utils.readiterators.RequiredTagStringValuePredicate;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamHeaderAndIterator;
 import org.broadinstitute.dropseqrna.utils.readiterators.SamRecordSortingIteratorFactory;
 import org.broadinstitute.dropseqrna.utils.readiterators.StrandStrategy;
 
 import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.ProgressLogger;
 import picard.annotation.LocusFunction;
 
 /**
  * Gathers a group of reads for a cell barcode and UMI barcode across all genes.
+ * All informative reads are sorted as SAMRecords by cell and UMI, which allows uninformative reads to be returned to a sink.
+ * See {@link UMIMetaGeneJointIterator} for a faster iterator when uninformative reads are not needed.
  * @author nemesh
  *
  */
-public class UMIMetaGeneCollectionIterator implements CloseableIterator<UMIMetaGeneCollection>{
+public class UMIMetaGeneCollectionIterator extends AbstractUMIMetaGeneCollectionIterator {
 
-	private static final Log log = Log.getInstance(UMIMetaGeneCollectionIterator.class);
-
-	private final String cellBarcodeTag;
-	private final String molecularBarcodeTag;
-	private final String geneTag;
 	private final GroupingIterator<SAMRecord> atoi;
-	private final int mapQualityUnique;
-	
-	// Filtering iterators used by both modes of iterator.
-	
-	private final GeneFunctionProcessor gfteratorWrapper;    
-    private final RequiredTagPredicate missingTagPredicate;
-	private final MapQualityPredicate mapQualityPredicate;
-	private final RequiredTagStringValuePredicate cellBarcodePredicate;
-	private final ReadEditDistancePredicate editDistancePredicate;
-	
-    private final SamWriterSink sink;
-    
-    /**
+	private final SamWriterSink sink;
+
+	/**
 	 * Construct an object that generates UMI objects from a BAM file for informative reads.
-	 * Informative reads are those reads which have cell barcodes from the input set, have appropriate tags [cell, molecular, gene name/strand/function tags].
-	 * Additionally, informative reads pass the gene function strategy passed in, having an acceptable strand,gene function, and unambiguous assignment.
-	 * 
+	 * See {@link AbstractUMIMetaGeneCollectionIterator} for the parameters and the definition of informative reads.
 	 * If a sink is passed in, uninformative reads are added to the sink.
-	 * 
-	 * @param headerAndIterator The BAM records to extract UMIs from
-	 * @param geneTag The gene name tag on BAM records
-	 * @param geneStrandTag The gene strand tag
-	 * @param geneFunctionTag The gene function tag
-	 * @param strandStrategy The strand strategy to match the gene strand to the read strand.
-	 * @param acceptedLociFunctions The list of gene function types that are accepted.
-	 * @param cellBarcodeTag The cell barcode tag on BAM records
-	 * @param molecularBarcodeTag The molecular barcode tag on BAM records
-	 * @param minMapQuality The minimum read map quality of the reads.  This controls how many secondary reads are considered.  For STAR, a setting of 3 includes pairs of reads [1 secondary], 
-	 * and a setting of 2 includes read triplets [2 secondary].
-	 * @param mapQualityUnique The read map quality that defines a read as uniquely mapped.
-	 * @param maxEditDistance THe maximum edit distance from the aligned read to the reference genome as computed by the aligner.
-	 * @param cellBarcodes The list of cell barcode tag values that match the cellBarcodeTag tag on the BAM records.
-     *                     Only reads with these values will be used.  If set to null, all cell barcodes are used.
-     * @param sink If a sink is set with a non-null value, uninformative reads are added to the sink.  Otherwise they are discarded.                     
-     * @param assignReadsToAllGenes Should records tagged with multiple genes be double counted, once for each gene?  Useful to discover ambiguous gene models, but can confuse metagene discovery where
-     * reads that map uniquely to multiple genes can confuse UMI assignment.                     
 	 */
-		
-	public UMIMetaGeneCollectionIterator(final SamHeaderAndIterator headerAndIterator, 
+	public UMIMetaGeneCollectionIterator(final SamHeaderAndIterator headerAndIterator,
 			final String geneTag,
-            final String geneStrandTag,
-            final String geneFunctionTag,
-            final StrandStrategy strandStrategy,
-            final Collection <LocusFunction> acceptedLociFunctions,
+			final String geneStrandTag,
+			final String geneFunctionTag,
+			final StrandStrategy strandStrategy,
+			final Collection <LocusFunction> acceptedLociFunctions,
 			final FunctionalDataProcessorStrategy functionStrategy,
-            final String cellBarcodeTag,
-            final String molecularBarcodeTag, final int minMapQuality, final int mapQualityUnique, final Integer maxEditDistance,
-            final List<String> cellBarcodes, final SamWriterSink sink, final boolean assignReadsToAllGenes) {
-
-		this.cellBarcodeTag=cellBarcodeTag;
-		this.molecularBarcodeTag=molecularBarcodeTag;
-		this.mapQualityUnique=mapQualityUnique;
-		this.geneTag=geneTag;
+			final String cellBarcodeTag,
+			final String molecularBarcodeTag, final int minMapQuality, final int mapQualityUnique, final Integer maxEditDistance,
+			final List<String> cellBarcodes, final SamWriterSink sink, final boolean assignReadsToAllGenes) {
+		super(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy, acceptedLociFunctions, functionStrategy, cellBarcodeTag,
+				molecularBarcodeTag, minMapQuality, mapQualityUnique, maxEditDistance, cellBarcodes, sink, assignReadsToAllGenes);
 		this.sink=sink;
-		
-		final StringTagComparator cellBarcodeTagComparator = new StringTagComparator(cellBarcodeTag);
-		final StringTagComparator molBarcodeTagComparator = new StringTagComparator(molecularBarcodeTag);
-		final MultiComparator<SAMRecord> multiComparator = new MultiComparator<>(cellBarcodeTagComparator, molBarcodeTagComparator);
-
-		ProgressLogger pl = new ProgressLogger(log);
-
-		CloseableIterator<SAMRecord> sortedAlignmentIterator;
-
-		this.missingTagPredicate = new RequiredTagPredicate (cellBarcodeTag, molecularBarcodeTag, geneTag);
-		this.mapQualityPredicate = new MapQualityPredicate(minMapQuality, false);
-		this.cellBarcodePredicate = new RequiredTagStringValuePredicate(cellBarcodeTag, cellBarcodes, false);
-		this.editDistancePredicate = new ReadEditDistancePredicate(maxEditDistance);
-		InformativeReadFilter irf = new InformativeReadFilter(headerAndIterator.iterator, sink, mapQualityPredicate, missingTagPredicate, cellBarcodePredicate, editDistancePredicate);
-		
-		gfteratorWrapper = new GeneFunctionProcessor(geneTag, geneStrandTag, geneFunctionTag, assignReadsToAllGenes, strandStrategy, acceptedLociFunctions, functionStrategy);
-		// need to build an informative reads FilteredIterator that gets the sink passed to it.		
-		sortedAlignmentIterator = SamRecordSortingIteratorFactory.create(headerAndIterator.header, irf.iterator(), multiComparator, pl);
-
-		this.atoi = new GroupingIterator<>(sortedAlignmentIterator, multiComparator);
+		this.atoi = new GroupingIterator<>(SamRecordSortingIteratorFactory.create(headerAndIterator.header, this.informativeReads, this.cellAndUmiComparator, this.progress),
+				this.cellAndUmiComparator);
 	}
 
 	/**
 	 * Get a collection of queryname sorted reads encapsulated in an object designed to help make decisions
 	 * about which genes are meta genes.
-	 * 
+	 *
 	 */
 	@Override
-	public UMIMetaGeneCollection next () {		
+	public UMIMetaGeneCollection next () {
 		// keep pulling read sets until you have informative reads
 		while (this.atoi.hasNext()) {
 			// Records are tracked by identity.  Hashing a SAMRecord hashes all of its attributes, which was the largest
@@ -168,61 +99,13 @@ public class UMIMetaGeneCollectionIterator implements CloseableIterator<UMIMetaG
 			if (!informativeReads.isEmpty()) {
 				UMIMetaGeneCollection c = new UMIMetaGeneCollection(this.geneTag, this.molecularBarcodeTag, this.cellBarcodeTag, informativeReads, this.mapQualityUnique);
 				c.populateGeneSets();
-				return (c);						
-			}				
+				return (c);
+			}
 		}
-		
+
 		// no reads left, return null.
-		return null;						 		 
-	} 
-
-	private List<SAMRecord> getRecordsPassingFilters (final Collection <SAMRecord> recs) {
-		final List<SAMRecord> result = new ArrayList<>(recs.size());
-		for (SAMRecord r: recs)
-			result.addAll(this.gfteratorWrapper.processRead(r));
-		return result;
+		return null;
 	}
-
-	/**
-	 * 
-	 * @author nemesh
-	 *
-	 */
-	private class InformativeReadFilter extends FilteredIterator<SAMRecord> {
-    	private final MapQualityPredicate mapQualityPredicate;
-    	private final RequiredTagPredicate requiredTagPredicate;
-    	private final RequiredTagStringValuePredicate cellBarcodePredicate;
-    	private final ReadEditDistancePredicate editDistancePredicate;    	
-    	
-    	/**
-    	 * Filter reads that don't pass predicates.  If the filteredReadSink is not null, push filtered into the sink.
-    	 * 
-    	 * @param underlyingIterator The SAMRecord iterator to filter
-    	 * @param filteredReadSink If not null, filtered reads are sunk here.
-    	 * @param mapQualityPredicate A filter on map quality
-    	 * @param requiredTagPredicate A filter on required BAM tags
-    	 * @param cellBarcodePredicate A filter on cell barcodes
-    	 * @param editDistancePredicate A filter on edit distance.
-    	 */
-		protected InformativeReadFilter(Iterator<SAMRecord> underlyingIterator, ObjectSink<SAMRecord> filteredReadSink, 
-				MapQualityPredicate mapQualityPredicate, RequiredTagPredicate requiredTagPredicate, 
-				RequiredTagStringValuePredicate cellBarcodePredicate, ReadEditDistancePredicate editDistancePredicate) {
-			super(underlyingIterator, filteredReadSink);
-			this.mapQualityPredicate=mapQualityPredicate;
-			this.requiredTagPredicate=requiredTagPredicate;
-			this.cellBarcodePredicate=cellBarcodePredicate;
-			this.editDistancePredicate=editDistancePredicate;						
-		}
-
-		@Override
-		public boolean filterOut(SAMRecord rec) {			
-			// filter out read if either test fails.
-			return (! mapQualityPredicate.test(rec) || !requiredTagPredicate.test(rec) || 
-					! cellBarcodePredicate.test(rec) || ! editDistancePredicate.test (rec));
-		}
-										    
-    }
-
 
 	@Override
 	public boolean hasNext() {
