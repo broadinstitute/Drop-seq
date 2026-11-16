@@ -23,12 +23,13 @@
  */
 package org.broadinstitute.dropseqrna.metagene;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataProcessorStrategy;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
@@ -151,14 +152,18 @@ public class UMIMetaGeneCollectionIterator implements CloseableIterator<UMIMetaG
 	public UMIMetaGeneCollection next () {		
 		// keep pulling read sets until you have informative reads
 		while (this.atoi.hasNext()) {
-			Set<SAMRecord> allReads = new HashSet<> (this.atoi.next());
-			Set<SAMRecord> informativeReads = getRecordsPassingFilters(allReads);
+			// Records are tracked by identity.  Hashing a SAMRecord hashes all of its attributes, which was the largest
+			// calling-thread cost of this loop.
+			List<SAMRecord> allReads = this.atoi.next();
+			List<SAMRecord> informativeReads = getRecordsPassingFilters(allReads);
 
-			// allReads - informative reads = uninformative reads.
-			allReads.removeAll(informativeReads);
-			
-			// sink uninformative reads to the writer if it isn't null
-			if (sink!=null) allReads.stream().forEach(sink::add);
+			// allReads - informative reads = uninformative reads, which go to the sink if there is one.
+			if (sink!=null) {
+				Set<SAMRecord> informativeSet = Collections.newSetFromMap(new IdentityHashMap<>());
+				informativeSet.addAll(informativeReads);
+				for (SAMRecord r: allReads)
+					if (!informativeSet.contains(r)) sink.add(r);
+			}
 			// informative reads found!
 			if (!informativeReads.isEmpty()) {
 				UMIMetaGeneCollection c = new UMIMetaGeneCollection(this.geneTag, this.molecularBarcodeTag, this.cellBarcodeTag, informativeReads, this.mapQualityUnique);
@@ -171,15 +176,13 @@ public class UMIMetaGeneCollectionIterator implements CloseableIterator<UMIMetaG
 		return null;						 		 
 	} 
 
-	private Set<SAMRecord> getRecordsPassingFilters (final Collection <SAMRecord> recs) {		
-		Set<SAMRecord> result = recs.stream()				
-				.map(this.gfteratorWrapper::processRead)
-				.flatMap(list -> list.stream())
-				.collect(Collectors.toSet());
-						
+	private List<SAMRecord> getRecordsPassingFilters (final Collection <SAMRecord> recs) {
+		final List<SAMRecord> result = new ArrayList<>(recs.size());
+		for (SAMRecord r: recs)
+			result.addAll(this.gfteratorWrapper.processRead(r));
 		return result;
 	}
-	
+
 	/**
 	 * 
 	 * @author nemesh
