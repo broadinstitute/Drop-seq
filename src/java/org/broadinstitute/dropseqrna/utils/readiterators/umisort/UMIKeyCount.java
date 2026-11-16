@@ -27,7 +27,7 @@ import java.util.Comparator;
 
 /**
  * One (cell, gene, UMI) observation with the number of reads that produced it.
- * This is what {@link org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator} sorts when it does not need to retain reads.
+ * This is what {@link org.broadinstitute.dropseqrna.utils.readiterators.UMIIterator} sorts.
  * <p>
  * The count is mutable so that {@link #combine} can merge duplicates without allocating.  When read intervals are
  * collected, the interval summary of the reads is carried and merged along with the count; otherwise it is null.

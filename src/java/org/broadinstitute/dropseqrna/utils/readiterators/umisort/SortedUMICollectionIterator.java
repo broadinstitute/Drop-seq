@@ -45,15 +45,13 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 /**
- * The fast path of {@link UMIIterator} for when reads do not need to be retained in the {@link UMICollection}s.
+ * How {@link UMIIterator} sorts and groups reads into {@link UMICollection}s.
  * <p>
  * Reads that have passed the SAMRecord filters are reduced to {@link UMIRead}s, and what is sorted and spilled to disk is
  * (cell, gene, UMI, count) rather than whole SAMRecords, plus a {@link ReadIntervalSummary} when read intervals are
  * collected.  Duplicates are combined as the sort proceeds, see {@link CombiningSortingCollection}.  When low map
  * quality reads are kept (readMQ &lt;= 3), reads are first sorted by name so that reads that map to more than one
  * place can be resolved to at most one gene.
- * <p>
- * The UMICollections, and the order of the UMIs inside them, are the same as when SAMRecords are sorted.
  */
 public class SortedUMICollectionIterator implements CloseableIterator<UMICollection> {
 
