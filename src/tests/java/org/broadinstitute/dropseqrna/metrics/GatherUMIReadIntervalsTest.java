@@ -44,13 +44,14 @@ public class GatherUMIReadIntervalsTest {
  static final File EXPECTED_REPORT_MQ0 = new File(TEST_DATA_DIR, "GatherUMIReadIntervalsTest.mq0.tsv");
 
  @Test(dataProvider = "testBasicDataProvider")
- public void testBasic(final int editDistance, final int readMQ, final File expectedReport) {
+ public void testBasic(final int editDistance, final int readMQ, final int numThreads, final File expectedReport) {
   final GatherUMIReadIntervals clp = new GatherUMIReadIntervals();
   clp.INPUT = List.of(new PicardHtsPath(INPUT));
   clp.CELL_BC_FILE = SELECTED_CELLS;
   clp.OUTPUT = TestUtils.getTempReportFile("GatherUMIReadIntervalsTest.", ".tsv");
   clp.EDIT_DISTANCE = editDistance;
   clp.READ_MQ = readMQ;
+  clp.NUM_THREADS = numThreads;
   Assert.assertEquals(clp.doWork(), 0);
   Assert.assertTrue(TestUtils.testFilesSame(expectedReport, clp.OUTPUT));
  }
@@ -58,9 +59,10 @@ public class GatherUMIReadIntervalsTest {
  @DataProvider(name = "testBasicDataProvider")
  Object[][] testBasicDataProvider() {
   return new Object[][] {
-          {0, 10, EXPECTED_REPORT},
-          {3, 10, EXPECTED_REPORT_ED3},
-          {0, 0, EXPECTED_REPORT_MQ0},
+          {0, 10, 1, EXPECTED_REPORT},
+          {0, 10, 2, EXPECTED_REPORT},
+          {3, 10, 1, EXPECTED_REPORT_ED3},
+          {0, 0, 1, EXPECTED_REPORT_MQ0},
   };
  }
 
