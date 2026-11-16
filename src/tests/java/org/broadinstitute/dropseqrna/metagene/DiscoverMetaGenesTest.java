@@ -3,6 +3,7 @@ package org.broadinstitute.dropseqrna.metagene;
 import org.broadinstitute.dropseqrna.barnyard.DigitalExpression;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import picard.nio.PicardHtsPath;
 
@@ -176,9 +177,10 @@ public class DiscoverMetaGenesTest {
 		Assert.assertNull(result);		
 	}
 	
-	@Test
-	public void testSMNManySelectedCells() throws IOException {
+	@Test(dataProvider = "numThreadsDataProvider")
+	public void testSMNManySelectedCells(final int numThreads) throws IOException {
 		DiscoverMetaGenes dmg = new DiscoverMetaGenes();
+		dmg.NUM_THREADS=numThreads;
 		dmg.CELL_BC_FILE=IN_SMN_CELL_BARCODE_FILE_BIG;
 		dmg.INPUT = new PicardHtsPath(IN_SMN_FILE_BIG);
 		dmg.MIN_READ_MQ=2;				
@@ -196,6 +198,11 @@ public class DiscoverMetaGenesTest {
 		
 	}
 	
+	@DataProvider(name = "numThreadsDataProvider")
+	Object[][] numThreadsDataProvider() {
+		return new Object[][] {{1}, {2}};
+	}
+
 	@Test
 	public void testSMNAllCells() throws IOException {
 		DiscoverMetaGenes dmg = new DiscoverMetaGenes();

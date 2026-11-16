@@ -26,6 +26,7 @@ package org.broadinstitute.dropseqrna.metagene;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.commons.lang3.StringUtils;
@@ -34,6 +35,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.TranscriptomeException;
 import org.broadinstitute.dropseqrna.barnyard.GeneFunctionCommandLineBase;
 import org.broadinstitute.dropseqrna.barnyard.ParseBarcodeFile;
+import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
 import org.broadinstitute.dropseqrna.utils.FilteredIterator;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
@@ -125,6 +127,10 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
     @Argument(doc="Should single gene UMI counts be written out as separate lines into the REPORT")
     public boolean WRITE_SINGLE_GENES = false;
 
+	@Argument(doc = "Number of threads used to read and decode the input BAM.  " +
+			"A single BAM speeds up as threads are added, up to about 2 threads.")
+	public int NUM_THREADS = 1;
+
     private final String BAM_TAG_DELIMITER=",";
 		
 	private static final String DELIMITER=":";
@@ -172,7 +178,8 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 	 */
 	public Set<MetaGene> umiLevelMetaGeneDiscovery(final List<String> cellBarcodes, final File report) {
 		final SamHeaderAndIterator headerAndIterator =
-				SamFileMergeUtil.mergeInputPaths(Collections.singletonList(this.INPUT.toPath()), false);
+				SamFileMergeUtil.mergeInputPaths(Collections.singletonList(this.INPUT.toPath()), false,
+					SamReaderFactory.makeDefault(), this.NUM_THREADS);
 		SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
 
 		UMIMetaGeneAggregation aggregator = new UMIMetaGeneAggregation();
@@ -203,7 +210,8 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 
 	public int umiLevelMetaGeneTagging (final List<String> cellBarcodes, final Set<MetaGene> metaGenes) {
 		final SamHeaderAndIterator headerAndIterator =
-				SamFileMergeUtil.mergeInputPaths(Collections.singletonList(this.INPUT.toPath()), false);
+				SamFileMergeUtil.mergeInputPaths(Collections.singletonList(this.INPUT.toPath()), false,
+					SamReaderFactory.makeDefault(), this.NUM_THREADS);
 		SamHeaderUtil.addPgRecord(headerAndIterator.header, this);
 		// set up the output writer and the sink.
 		SAMFileWriter writer=null;
@@ -456,6 +464,15 @@ public class DiscoverMetaGenes extends GeneFunctionCommandLineBase {
 			return false;
 		}
 		
+	}
+
+	@Override
+	protected String[] customCommandLineValidation() {
+		final ArrayList<String> list = new ArrayList<>();
+		if (this.NUM_THREADS < 1) {
+			list.add("NUM_THREADS must be >= 1");
+		}
+		return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
 	}
 
 	/** Stock main method. */
