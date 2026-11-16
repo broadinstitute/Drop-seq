@@ -29,6 +29,7 @@ import java.util.*;
 import org.broadinstitute.dropseqrna.barnyard.GatherMolecularBarcodeDistributionByGene;
 import org.broadinstitute.dropseqrna.utils.ObjectCounter;
 import org.broadinstitute.dropseqrna.utils.editdistance.MapBarcodesByEditDistance;
+import org.broadinstitute.dropseqrna.utils.readiterators.umisort.ReadIntervalSummary;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.CloserUtil;
@@ -49,6 +50,8 @@ public class UMICollection {
 	private ObjectCounter<String> molecularBarcodeCounts;	
 	private static MapBarcodesByEditDistance mbed =new MapBarcodesByEditDistance(false);
 	private Map<String, List<SAMRecord>> reads=null;
+	// Per UMI, where its reads aligned.  Null unless read intervals were added.
+	private Map<String, ReadIntervalSummary> readIntervals=null;
 
 	public UMICollection (final String cellBarcode, final String geneName) {
 		this.cellBarcode = cellBarcode;
@@ -110,6 +113,26 @@ public class UMICollection {
 		if (this.reads==null)
 			return null;
 		return this.reads.get(molecularBarcode);		
+	}
+
+	/**
+	 * Adds where some reads of a molecular barcode aligned.  If the barcode already has a read interval, the two are merged.
+	 */
+	public void addReadInterval (final String molecularBarcode, final ReadIntervalSummary interval) {
+		if (readIntervals==null) {
+			readIntervals=new HashMap<>();
+		}
+		readIntervals.merge(molecularBarcode, interval, ReadIntervalSummary::merge);
+	}
+
+	/**
+	 * @param molecularBarcode The molecular barcode to request the read interval of
+	 * @return where the reads of this molecular barcode aligned, or null if no read interval was added for it.
+	 */
+	public ReadIntervalSummary getReadInterval (final String molecularBarcode) {
+		if (this.readIntervals==null)
+			return null;
+		return this.readIntervals.get(molecularBarcode);
 	}
 
 	/**
@@ -192,6 +215,30 @@ public class UMICollection {
 		molecularBarcodeCounts = new ObjectCounter<>();
 		for (Map.Entry<String, List<SAMRecord>> entry: this.reads.entrySet()) {
 			molecularBarcodeCounts.setCount(entry.getKey(), entry.getValue().size());
+		}
+	}
+
+	/**
+	 * Collapse the molecular barcodes in this collection by edit distance, in place.  Each collapsed barcode is removed,
+	 * and its read count and read interval (if any) are added to the barcode it collapsed into.
+	 * @param editDistance How close two molecular barcodes should be in edit distance space to be collapsed.  Must be at least 1.
+	 */
+	public void collapseThisByEditDistance(final int editDistance) {
+		if (editDistance < 1) {
+			throw new IllegalArgumentException("Edit distance must be at least 1");
+		}
+		Map<String, List<String>> collapsedToUncollapsed = mbed.collapseBarcodes(this.molecularBarcodeCounts, false, editDistance);
+		for (Map.Entry<String, List<String>> entry: collapsedToUncollapsed.entrySet()) {
+			final String goodUmi = entry.getKey();
+			for (final String umiToBeCollapsed : entry.getValue()) {
+				molecularBarcodeCounts.incrementByCount(goodUmi, molecularBarcodeCounts.getCountForKey(umiToBeCollapsed));
+				molecularBarcodeCounts.remove(umiToBeCollapsed);
+				if (readIntervals != null) {
+					final ReadIntervalSummary collapsed = readIntervals.remove(umiToBeCollapsed);
+					if (collapsed != null)
+						addReadInterval(goodUmi, collapsed);
+				}
+			}
 		}
 	}
 

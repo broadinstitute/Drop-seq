@@ -30,7 +30,8 @@ package org.broadinstitute.dropseqrna.utils.readiterators.umisort;
  * Compare with a SAMRecord: this is spilled to disk by {@link UMIReadCodec} in a few dozen bytes
  * instead of a full BAM record.
  * <p>
- * Instances are immutable. Nullable fields: readName, geneStrand, geneFunction.
+ * Instances are immutable. Nullable fields: readName, geneStrand, geneFunction, interval.  The interval is only
+ * present when read intervals are collected (see {@link ReadIntervalSummary}).
  */
 public final class UMIRead {
     public final String readName;
@@ -40,9 +41,16 @@ public final class UMIRead {
     public final String geneStrand;
     public final String geneFunction;
     public final String umi;
+    public final ReadIntervalSummary interval;
 
     public UMIRead(final String readName, final boolean negativeStrand, final String cell, final String gene,
                    final String geneStrand, final String geneFunction, final String umi) {
+        this(readName, negativeStrand, cell, gene, geneStrand, geneFunction, umi, null);
+    }
+
+    public UMIRead(final String readName, final boolean negativeStrand, final String cell, final String gene,
+                   final String geneStrand, final String geneFunction, final String umi,
+                   final ReadIntervalSummary interval) {
         this.readName = readName;
         this.negativeStrand = negativeStrand;
         this.cell = cell;
@@ -50,12 +58,13 @@ public final class UMIRead {
         this.geneStrand = geneStrand;
         this.geneFunction = geneFunction;
         this.umi = umi;
+        this.interval = interval;
     }
 
     /** @return a copy of this read with the gene, strand and function replaced. A null function keeps the current one. */
     public UMIRead withGeneAssignment(final String gene, final String geneStrand, final String geneFunction) {
         return new UMIRead(readName, negativeStrand, cell, gene, geneStrand,
-                geneFunction == null ? this.geneFunction : geneFunction, umi);
+                geneFunction == null ? this.geneFunction : geneFunction, umi, interval);
     }
 
     @Override

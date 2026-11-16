@@ -35,13 +35,14 @@ import static org.broadinstitute.dropseqrna.utils.readiterators.umisort.UMISortC
 
 /**
  * Spills {@link UMIRead}s to disk for sorting by read name. A flag byte says which of the nullable fields
- * are present, followed by the strings.
+ * are present, followed by the strings and, if present, the read interval.
  */
 public class UMIReadCodec implements SortingCollection.Codec<UMIRead> {
     private static final int NEGATIVE_STRAND = 1;
     private static final int HAS_NAME = 2;
     private static final int HAS_STRAND = 4;
     private static final int HAS_FUNCTION = 8;
+    private static final int HAS_INTERVAL = 16;
 
     private DataOutputStream out;
     private DataInputStream in;
@@ -64,6 +65,7 @@ public class UMIReadCodec implements SortingCollection.Codec<UMIRead> {
             if (r.readName != null) flags |= HAS_NAME;
             if (r.geneStrand != null) flags |= HAS_STRAND;
             if (r.geneFunction != null) flags |= HAS_FUNCTION;
+            if (r.interval != null) flags |= HAS_INTERVAL;
             out.writeByte(flags);
             writeString(out, r.cell);
             writeString(out, r.gene);
@@ -71,6 +73,7 @@ public class UMIReadCodec implements SortingCollection.Codec<UMIRead> {
             if (r.readName != null) writeString(out, r.readName);
             if (r.geneStrand != null) writeString(out, r.geneStrand);
             if (r.geneFunction != null) writeString(out, r.geneFunction);
+            if (r.interval != null) r.interval.encode(out);
         } catch (IOException e) {
             throw wrap(e);
         }
@@ -89,7 +92,8 @@ public class UMIReadCodec implements SortingCollection.Codec<UMIRead> {
             final String name = (flags & HAS_NAME) != 0 ? readString(in) : null;
             final String strand = (flags & HAS_STRAND) != 0 ? readString(in) : null;
             final String function = (flags & HAS_FUNCTION) != 0 ? readString(in) : null;
-            return new UMIRead(name, (flags & NEGATIVE_STRAND) != 0, cell, gene, strand, function, umi);
+            final ReadIntervalSummary interval = (flags & HAS_INTERVAL) != 0 ? ReadIntervalSummary.decode(in) : null;
+            return new UMIRead(name, (flags & NEGATIVE_STRAND) != 0, cell, gene, strand, function, umi, interval);
         } catch (IOException e) {
             throw wrap(e);
         }

@@ -32,6 +32,7 @@ import org.broadinstitute.dropseqrna.annotation.functionaldata.FunctionalDataPro
 import org.broadinstitute.dropseqrna.barnyard.Utils;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.utils.*;
+import org.broadinstitute.dropseqrna.utils.readiterators.umisort.ReadIntervalSummary;
 import org.broadinstitute.dropseqrna.utils.readiterators.umisort.SortedUMICollectionIterator;
 import picard.annotation.LocusFunction;
 
@@ -53,6 +54,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
     private final StringInterner stringCache = new StringInterner();
     private final Set<String> cellBarcodesSeen;
     private final boolean retainReads;
+    private final boolean collectReadIntervals;
     // The records being read.  Closed with this iterator: a multi-threaded reader holds decode threads until it is closed.
     private final CloseableIterator<SAMRecord> source;
 
@@ -75,6 +77,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 	 * @param retainReads If true the SAMRecords are added to the UMICollection.  This uses more memory than the standard UMICollection so exercise caution.  
 	 * This is false in other method signatures by default.  If false, only cell, gene and UMI are sorted and spilled
 	 * (see {@link SortedUMICollectionIterator}), which is much cheaper than sorting SAMRecords.
+	 * @param collectReadIntervals If true, each UMI of the UMICollections carries a {@link ReadIntervalSummary} of
+	 *                             where its reads aligned (see {@link UMICollection#getReadInterval}).
 	 */
 	private UMIIterator(final SamHeaderAndIterator headerAndIterator,
 					   final String geneTag,
@@ -91,9 +95,11 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
                        final boolean cellFirstSort,
 					   final boolean recordCellsInInput, 
 					   final boolean retainReads,
+					   final boolean collectReadIntervals,
 					   final IntervalList intervals) {
 		
 		this.retainReads=retainReads;
+		this.collectReadIntervals=collectReadIntervals;
         this.source=headerAndIterator.iterator;
         this.geneTag=geneTag;
         this.cellBarcodeTag=cellBarcodeTag;
@@ -144,7 +150,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		if (!retainReads) {
 			this.atoi = null;
 			this.umiKeyIter = new SortedUMICollectionIterator(samRecordIter, wrapper.getGeneFunctionProcessor(),
-					cellBarcodeTag, geneTag, geneStrandTag, geneFunctionTag, molecularBarcodeTag, readMQ, cellFirstSort, prog);
+					cellBarcodeTag, geneTag, geneStrandTag, geneFunctionTag, molecularBarcodeTag, readMQ, cellFirstSort,
+					collectReadIntervals, prog);
 			return;
 		}
 		this.umiKeyIter = null;
@@ -218,6 +225,8 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 			// optionally store the reads for a cell/gene 
 			if (retainReads)
 				umi.addRead(molecularBarcode, r);
+			if (collectReadIntervals)
+				umi.addReadInterval(molecularBarcode, ReadIntervalSummary.fromRead(r));
 			
 		}
 		// I ran out of reads
@@ -324,6 +333,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		private boolean cellFirstSort=false;
 		private boolean recordCellsInInput=false;
 		private boolean retainReads=false;
+		private boolean collectReadIntervals=false;
 
 		// nullable parameters
 		private Collection<String> cellBarcodes;
@@ -382,6 +392,19 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 			return this;
 		}
 
+		public boolean isCollectReadIntervals() {
+			return collectReadIntervals;
+		}
+
+		/**
+		 * @param collectReadIntervals If true, each UMI of the UMICollections carries a {@link ReadIntervalSummary} of
+		 *                             where its reads aligned.  Off by default, as it makes the sort larger.
+		 */
+		public UMIIteratorBuilder collectReadIntervals(boolean collectReadIntervals) {
+			this.collectReadIntervals = collectReadIntervals;
+			return this;
+		}
+
 		public Collection<String> getCellBarcodes() {
 			return cellBarcodes;
 		}
@@ -403,7 +426,7 @@ public class UMIIterator implements CloseableIterator<UMICollection>  {
 		public UMIIterator build() {
 			return new UMIIterator(headerAndIterator, geneTag, geneStrandTag, geneFunctionTag, strandStrategy,
 					acceptedLociFunctions, functionStrategy, cellBarcodeTag, molecularBarcodeTag, readMQ,
-					assignReadsToAllGenes, cellBarcodes, cellFirstSort, recordCellsInInput, retainReads, intervals);
+					assignReadsToAllGenes, cellBarcodes, cellFirstSort, recordCellsInInput, retainReads, collectReadIntervals, intervals);
 		}
 	}
 }
