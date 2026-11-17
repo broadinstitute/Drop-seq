@@ -250,12 +250,40 @@ public class UMICollection {
 		// Fixed order so that a given seed always gives the same result.
 		for (String umi : this.molecularBarcodeCounts.getKeysOrderedByCount(true)) {
 			count = this.getMolecularBarcodeCounts().getCountForKey(umi);
-			downsampledCount =  (int)random.doubles(count).filter(r -> r < downsampleRate).count();
+			downsampledCount = downsampleReadCount(count, downsampleRate, random);
             if (downsampledCount >= minDownsampledCount) {
                 res.add(new Pair<>(umi, downsampledCount));
             }
 		}
 		return res;
+	}
+
+	/**
+	 * @return the number of reads each UMI has, in descending order.  This is the order in which
+	 * {@link #getDownsampledMolecularBarcodeCounts} draws random numbers (UMIs with equal counts draw identically,
+	 * so their relative order does not matter when only the counts are needed).
+	 */
+	public int[] getReadCountsDescending() {
+		final int[] counts = new int[this.molecularBarcodeCounts.getSize()];
+		int i = 0;
+		for (final int c : this.molecularBarcodeCounts.getCounts()) counts[i++] = c;
+		Arrays.sort(counts);
+		for (int lo = 0, hi = counts.length - 1; lo < hi; lo++, hi--) {
+			final int t = counts[lo]; counts[lo] = counts[hi]; counts[hi] = t;
+		}
+		return counts;
+	}
+
+	/**
+	 * Number of reads, out of <code>count</code>, that are retained when each is kept with probability
+	 * <code>downsampleRate</code>.  Consumes <code>count</code> doubles from <code>random</code>.
+	 */
+	public static int downsampleReadCount(final int count, final double downsampleRate, final SplittableRandom random) {
+		int retained = 0;
+		for (int i = 0; i < count; i++) {
+			if (random.nextDouble() < downsampleRate) retained++;
+		}
+		return retained;
 	}
 
 }
