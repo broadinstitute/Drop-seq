@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.broadinstitute.dropseqrna.beadsynthesis;
+package org.broadinstitute.dropseqrna.utils.editdistance;
 
 import org.broadinstitute.dropseqrna.utils.BaseRange;
 
@@ -35,13 +35,13 @@ import java.util.List;
  * can be looked up straight from read bases, and its edit-distance-1 neighbors can be looked up, without creating any
  * Strings.  Each lookup returns the String that was passed to {@link #build}, which is typically interned by the caller.
  * <p>
- * Used by {@link BarcodeCorrector} as a fast path.  A barcode that cannot be packed (a base other than upper-case ACGT,
+ * Used by {@link org.broadinstitute.dropseqrna.beadsynthesis.BarcodeCorrector} and by the edit distance 1 collapse of large groups as a fast path.  A barcode that cannot be packed (a base other than upper-case ACGT,
  * or a range that runs past the end of the read) is reported as {@link #NOT_PACKABLE}, and the caller falls back to
  * its String-based logic, so the results are the same as that logic gives.
  */
-class PackedBarcodeSet {
+public class PackedBarcodeSet {
     /** Returned by {@link #packRead} when the barcode cannot be packed. */
-    static final long NOT_PACKABLE = -1;
+    public static final long NOT_PACKABLE = -1;
     /** 2 bits per base in a long, leaving the top bit free so packed values are never negative. */
     static final int MAX_LENGTH = 31;
 
@@ -90,7 +90,7 @@ class PackedBarcodeSet {
      * @return a set, or null if the fast path cannot represent these barcodes: length out of range, a barcode of a
      * different length, or a base other than upper-case ACGT.
      */
-    static PackedBarcodeSet build(final Collection<String> barcodes, final int barcodeLength) {
+    public static PackedBarcodeSet build(final Collection<String> barcodes, final int barcodeLength) {
         if (barcodeLength < 1 || barcodeLength > MAX_LENGTH) {
             return null;
         }
@@ -124,7 +124,7 @@ class PackedBarcodeSet {
      * @return the packed barcode, or {@link #NOT_PACKABLE} if a range runs past the end of the bases or a base is not
      * upper-case ACGT.
      */
-    static long packRead(final List<BaseRange> ranges, final byte[] bases) {
+    public static long packRead(final List<BaseRange> ranges, final byte[] bases) {
         long packed = 0;
         for (final BaseRange range : ranges) {
             if (range.getEnd() > bases.length) {
@@ -142,7 +142,7 @@ class PackedBarcodeSet {
     }
 
     /** @return the member that was packed as this value, or null if there is none. */
-    String get(final long packed) {
+    public String get(final long packed) {
         final long key = packed + 1;
         int idx = slot(key);
         while (true) {
@@ -161,7 +161,7 @@ class PackedBarcodeSet {
      * @return the members that differ from this barcode at exactly one position, ordered by position and then by the
      * order of the other three bases, as BarcodeCorrector's String-based search orders them.
      */
-    List<String> getEd1Matches(final long packed) {
+    public List<String> getEd1Matches(final long packed) {
         final List<String> ret = new ArrayList<>();
         for (int i = 0; i < barcodeLength; ++i) {
             final int shift = 2 * (barcodeLength - 1 - i);
@@ -175,6 +175,46 @@ class PackedBarcodeSet {
             }
         }
         return ret;
+    }
+
+    /**
+     * Remove a member, so later lookups no longer find it.  The slot stays occupied (as a tombstone) so that probe
+     * sequences of other members are not broken.
+     */
+    public void remove(final long packed) {
+        final long key = packed + 1;
+        int idx = slot(key);
+        while (true) {
+            final long k = keys[idx];
+            if (k == 0) {
+                return;
+            }
+            if (k == key) {
+                values[idx] = null;
+                return;
+            }
+            idx = (idx + 1) & mask;
+        }
+    }
+
+    /**
+     * @return the packed barcode, or {@link #NOT_PACKABLE} if it is longer than this set's barcodes can be, or has a
+     * base other than upper-case ACGT.
+     */
+    public static long pack(final String barcode) {
+        if (barcode.length() < 1 || barcode.length() > MAX_LENGTH) {
+            return NOT_PACKABLE;
+        }
+        long packed = 0;
+        for (int i = 0; i < barcode.length(); ++i) {
+            final char c = barcode.charAt(i);
+            final int code = c < BASE_CODE.length ? BASE_CODE[c] : -1;
+            if (code < 0) {
+                return NOT_PACKABLE;
+            }
+            packed = (packed << 2) | code;
+        }
+        return packed;
     }
 
     private void put(final long packed, final String barcode) {

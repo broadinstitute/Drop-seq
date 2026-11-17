@@ -86,6 +86,9 @@ public class UMICollection {
 	}
 
 	public ObjectCounter<String> getMolecularBarcodeCountsCollapsed(final int editDistance) {
+		// A single UMI has nothing to collapse with.  Edit distance 0 returns the stored counter itself, so leave that to the collapse.
+		if (editDistance > 0 && this.molecularBarcodeCounts.getSize() <= 1)
+			return new ObjectCounter<>(this.molecularBarcodeCounts);
 		ObjectCounter<String> counts = collapseByEditDistance(this.molecularBarcodeCounts, editDistance);
 		return counts;
 	}

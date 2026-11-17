@@ -289,6 +289,13 @@ public class MapBarcodesByEditDistance {
 	 * @return
 	 */
 	public Map<String, List<String>> collapseBarcodes (List<String> coreBarcodes, ObjectCounter<String> barcodes, final boolean findIndels, final int editDistance) {
+		// Fast path: edit distance is 1, no indel search, and enough barcodes that looking up each barcode's
+		// single-base changes beats comparing every pair.
+		if (editDistance == 1 && !findIndels && PackedEd1Collapser.isWorthwhile(barcodes)) {
+			final Map<String, List<String>> packedResult = PackedEd1Collapser.collapse(coreBarcodes, barcodes);
+			if (packedResult != null)
+				return packedResult;
+		}
 		FindSimilarEntitiesByEditDistance function = new FindSimilarEntitiesByEditDistance(this, findIndels, editDistance);
 		FindSimilarEntitiesResult<String, String> result = collapseBarcodesGeneric(coreBarcodes, barcodes, function, 0);
 		return result.getEntityMap();
@@ -473,8 +480,13 @@ public class MapBarcodesByEditDistance {
 			result.addMapping(b, closeBCList);
 			result.addMetrics(singleResult.getCollapseMetric());
 			
-			barcodeList.removeAll(closeBC);
-			coreBarcodes.removeAll(closeBC);
+			// removeAll scans the whole list even when there is nothing to remove, and tests membership in a List linearly,
+			// so skip it when nothing collapsed and look members up in a Set otherwise.
+			if (!closeBC.isEmpty()) {
+				final Set<T> closeBCSet = new HashSet<>(closeBC);
+				barcodeList.removeAll(closeBCSet);
+				coreBarcodes.removeAll(closeBCSet);
+			}
 			if (this.REPORT_PROGRESS_INTERVAL!=0 && count % this.REPORT_PROGRESS_INTERVAL == 0) {
 				if (entityCounts.getSize()>10000) log.info("Processed [" + count + "] records, totals BC Space left [" + barcodeList.size() +"]", " # collapsed this set [" + numBCCollapsed+"]");
 				numBCCollapsed=0;

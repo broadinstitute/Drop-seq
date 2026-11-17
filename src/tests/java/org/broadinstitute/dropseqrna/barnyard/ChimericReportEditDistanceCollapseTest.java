@@ -34,8 +34,11 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import picard.util.TabbedTextFileWithHeaderParser;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ChimericReportEditDistanceCollapseTest {
@@ -140,6 +143,35 @@ public class ChimericReportEditDistanceCollapseTest {
           {true, 18},
           {false, 19},
   };
+ }
+
+ /** The parallel BGZF output must decompress to the same lines as the single thread output. */
+ @Test
+ public void testNumThreadsGivesSameOutput() throws IOException {
+  final List<List<String>> outputs = new ArrayList<>();
+  for (final int numThreads : new int[]{1, 4}) {
+   final ChimericReportEditDistanceCollapse clp = new ChimericReportEditDistanceCollapse();
+   clp.INPUT = ED1_CHIMERIC_REPORT;
+   clp.EDIT_DISTANCE = 1;
+   clp.IGNORE_CHIMERIC = false;
+   clp.NUM_THREADS = numThreads;
+   clp.OUTPUT = TestUtils.getTempReportFile("ChimericReportEditDistanceCollapseTest", ".molBC.txt.gz");
+   Assert.assertEquals(clp.doWork(), 0);
+   try (final BufferedReader reader = IOUtil.openFileForBufferedReading(clp.OUTPUT)) {
+    outputs.add(reader.lines().toList());
+   }
+  }
+  Assert.assertTrue(outputs.get(0).size() > 1);
+  Assert.assertEquals(outputs.get(1), outputs.get(0));
+ }
+
+ @Test
+ public void testNumThreadsMustBePositive() {
+  final ChimericReportEditDistanceCollapse clp = new ChimericReportEditDistanceCollapse();
+  clp.NUM_THREADS = 0;
+  Assert.assertNotNull(clp.customCommandLineValidation());
+  clp.NUM_THREADS = 1;
+  Assert.assertNull(clp.customCommandLineValidation());
  }
 
  private static List<TabbedTextFileWithHeaderParser.Row> slurpRows(final File f) {
