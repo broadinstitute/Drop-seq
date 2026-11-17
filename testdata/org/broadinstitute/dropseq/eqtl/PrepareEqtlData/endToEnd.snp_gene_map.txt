@@ -1,0 +1,4 @@
+# null
+snp	gene	source
+1:245318300:G:C	KIF26B	CD
+10:45454900:A:G	RASSF4	CD

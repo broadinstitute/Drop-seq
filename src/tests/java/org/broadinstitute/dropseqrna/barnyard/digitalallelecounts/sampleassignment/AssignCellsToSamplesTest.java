@@ -529,4 +529,167 @@ public class AssignCellsToSamplesTest {
 		b.chr(chr);
 		return b.make();
 	}
+
+	/**********
+	 * COMMAND LINE VALIDATION AND OPTIONAL INPUT/OUTPUT PATHS
+	 **********/
+
+	/** An assigner with just enough set to pass base validation; each test then perturbs one thing. */
+	private AssignCellsToSamples makeValidAssigner() {
+		AssignCellsToSamples assigner = new AssignCellsToSamples();
+		assigner.GQ_THRESHOLD = 30;
+		assigner.INPUT_BAM = Collections.singletonList(new PicardHtsPath(this.INPUT_BAM));
+		assigner.VCF = new PicardHtsPath(this.VCFC);
+		assigner.NUM_BARCODES = 10;
+		assigner.OUTPUT = TestUtils.getTempReportFile("AssignCellsToSamples.", ".output");
+		return assigner;
+	}
+
+	private static String joined(final String[] errors) {
+		return errors == null ? "" : String.join("\n", errors);
+	}
+
+	@Test
+	public void testValidationAcceptsValidArguments() {
+		Assert.assertNull(makeValidAssigner().customCommandLineValidation());
+	}
+
+	@Test
+	public void testValidationContaminationRequiresAlleleFrequency() {
+		AssignCellsToSamples a = makeValidAssigner();
+		a.CELL_CONTAMINATION_ESTIMATE_FILE = CONTAMINATION_FILE;
+		Assert.assertTrue(joined(a.customCommandLineValidation()).contains("ALLELE_FREQUENCY_ESTIMATE_FILE"));
+
+		a = makeValidAssigner();
+		a.ALLELE_FREQUENCY_ESTIMATE_FILE = MAF_ESIMATE_FILE;
+		Assert.assertTrue(joined(a.customCommandLineValidation()).contains("CELL_CONTAMINATION_ESTIMATE_FILE"));
+	}
+
+	@Test
+	public void testValidationContaminationIgnoresErrorRates() {
+		AssignCellsToSamples a = makeValidAssigner();
+		a.CELL_CONTAMINATION_ESTIMATE_FILE = CONTAMINATION_FILE;
+		a.ALLELE_FREQUENCY_ESTIMATE_FILE = MAF_ESIMATE_FILE;
+		a.MAX_ERROR_RATE = 0.1;
+		a.FIXED_ERROR_RATE = 0.05;
+		Assert.assertNull(a.customCommandLineValidation());
+		Assert.assertNull(a.MAX_ERROR_RATE);
+		Assert.assertNull(a.FIXED_ERROR_RATE);
+	}
+
+	@Test
+	public void testValidationErrorRateWithoutContamination() {
+		AssignCellsToSamples a = makeValidAssigner();
+		a.FIXED_ERROR_RATE = 0.05;
+		Assert.assertNull(a.customCommandLineValidation());
+		Assert.assertEquals(a.FIXED_ERROR_RATE, 0.05);
+
+		a = makeValidAssigner();
+		a.MAX_ERROR_RATE = 0.1;
+		Assert.assertNull(a.customCommandLineValidation());
+		Assert.assertEquals(a.MAX_ERROR_RATE, 0.1);
+	}
+
+	@Test
+	public void testValidationBestDonorRequiresVerbose() {
+		AssignCellsToSamples a = makeValidAssigner();
+		a.VERBOSE_BEST_DONOR_OUTPUT = TestUtils.getTempReportFile("AssignCellsToSamples.", ".best_verbose.gz");
+		Assert.assertTrue(joined(a.customCommandLineValidation()).contains("VERBOSE_OUTPUT"));
+		a.VERBOSE_OUTPUT = TestUtils.getTempReportFile("AssignCellsToSamples.", ".verbose.gz");
+		Assert.assertNull(a.customCommandLineValidation());
+	}
+
+	@Test
+	public void testValidationRanges() {
+		AssignCellsToSamples a = makeValidAssigner();
+		a.FRACTION_SAMPLES_PASSING = 1.5;
+		Assert.assertTrue(joined(a.customCommandLineValidation()).contains("FRACTION_SAMPLES_PASSING"));
+
+		a = makeValidAssigner();
+		a.FRACTION_SAMPLES_PASSING = -0.1;
+		Assert.assertTrue(joined(a.customCommandLineValidation()).contains("FRACTION_SAMPLES_PASSING"));
+
+		a = makeValidAssigner();
+		a.NUM_THREADS = 0;
+		Assert.assertTrue(joined(a.customCommandLineValidation()).contains("NUM_THREADS"));
+	}
+
+	@Test
+	public void testValidationUnindexedVcf() {
+		AssignCellsToSamples a = makeValidAssigner();
+		a.VCF = new PicardHtsPath(this.VCF);  // uncompressed, no index
+		Assert.assertTrue(joined(a.customCommandLineValidation()).contains("not indexed"));
+	}
+
+	@Test
+	public void testValidationDnaModeDisablesEditDistance() {
+		AssignCellsToSamples a = makeValidAssigner();
+		a.DNA_MODE = true;
+		Assert.assertEquals(a.EDIT_DISTANCE, Integer.valueOf(1));
+		Assert.assertNull(a.customCommandLineValidation());
+		Assert.assertEquals(a.EDIT_DISTANCE, Integer.valueOf(0));
+	}
+
+	@Test
+	public void testValidationOptionalFilesMustBeReadable() {
+		AssignCellsToSamples a = makeValidAssigner();
+		a.CELL_BC_FILE = new File(rootDir, "does_not_exist.txt");
+		Assert.assertThrows(RuntimeException.class, a::customCommandLineValidation);
+	}
+
+	/** Explicit CELL_BC_FILE with every barcode gives the same result as picking the top N barcodes. */
+	@Test
+	public void testEndToEndWithCellBarcodeFile() throws IOException {
+		final File barcodes = File.createTempFile("cell_barcodes", ".txt");
+		barcodes.deleteOnExit();
+		final List<String> lines = java.nio.file.Files.readAllLines(EXPECTED_OUTPUT.toPath()).stream()
+				.filter(l -> !l.startsWith("#") && !l.isEmpty() && !l.startsWith("cell\t"))
+				.map(l -> l.split("\t")[0]).distinct().collect(Collectors.toList());
+		java.nio.file.Files.write(barcodes.toPath(), lines);
+
+		AssignCellsToSamples assigner = makeValidAssigner();
+		assigner.CELL_BC_FILE = barcodes;
+		assigner.VCF_OUTPUT = TestUtils.getTempReportFile("AssignCellsToSamples.", ".vcf.gz", "tbi");
+		Assert.assertEquals(assigner.doWork(), 0);
+		Assert.assertTrue(TestUtils.testFilesSame(EXPECTED_OUTPUT, assigner.OUTPUT));
+		// A .vcf.gz output is block compressed and indexed.
+		Assert.assertTrue(assigner.VCF_OUTPUT.length() > 0);
+		Assert.assertTrue(new File(assigner.VCF_OUTPUT.getPath() + ".tbi").exists());
+	}
+
+	@Test
+	public void testNoSnpsPassFilterReturnsError() {
+		AssignCellsToSamples assigner = makeValidAssigner();
+		assigner.GQ_THRESHOLD = 1000;  // nothing can pass
+		Assert.assertEquals(assigner.doWork(), 1);
+	}
+
+	@Test
+	public void testDnaMode() {
+		AssignCellsToSamples assigner = makeValidAssigner();
+		assigner.DNA_MODE = true;
+		Assert.assertEquals(assigner.doWork(), 0);
+		Assert.assertTrue(assigner.OUTPUT.length() > 0);
+	}
+
+	@Test
+	public void testAnswerKeyBadHeader() throws IOException {
+		final File key = File.createTempFile("answer_key", ".txt");
+		key.deleteOnExit();
+		java.nio.file.Files.write(key.toPath(), Arrays.asList("barcode\tdonor", "AAAA\td1"));
+		AssignCellsToSamples assigner = makeValidAssigner();
+		assigner.ANSWER_KEY_FILE = key;
+		Assert.assertThrows(IllegalArgumentException.class, assigner::readAnswerKey);
+	}
+
+	@Test
+	public void testAnswerKeyWrongColumnCount() throws IOException {
+		final File key = File.createTempFile("answer_key", ".txt");
+		key.deleteOnExit();
+		java.nio.file.Files.write(key.toPath(), Arrays.asList("cell\tsample", "AAAA\td1\textra"));
+		AssignCellsToSamples assigner = makeValidAssigner();
+		assigner.ANSWER_KEY_FILE = key;
+		// BasicInputParser enforces the 2-column format itself.
+		Assert.assertThrows(RuntimeException.class, assigner::readAnswerKey);
+	}
 }
