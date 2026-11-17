@@ -9,7 +9,7 @@ Repo: `dropseq/` module, Java 21, htsjdk 5.0.1, Picard 3.5.0, TestNG, Barclay ar
 
 ## 1. Triage: what bounds the tool?
 
-Profile before coding (JFR `settings=profile` plus per-thread CPU, e.g. `jdk.ThreadCPULoad#period=200ms`). A top frame on the calling thread often shows only where a record's memory is first touched; confirm a suspect with a timing experiment. When a frame surprises you, read the stack below it (`jfr print --stack-depth`) before ranking options on it.
+Profile before coding (JFR `settings=profile` plus per-thread CPU, e.g. `jdk.ThreadCPULoad#period=200ms`). A top frame on the calling thread often shows only where a record's memory is first touched; confirm a suspect with a timing experiment. When a frame surprises you, read the stack below it (`jfr print --stack-depth`) before ranking options on it. `jdk.ExecutionSample` does not see native deflate/inflate: count `jdk.NativeMethodSample` frames (`Deflater.deflate`, `Inflater.inflate`) to size the codec share before choosing a writer/reader fix. Measure distributions the idea depends on (group sizes, rows per cell) on the slice before quantifying a gain; rows are not proportional to cells.
 
 | Bound by | Signature | Lever |
 |---|---|---|

@@ -26,5 +26,10 @@ Results: `dropseq/build/test-results/test/TEST-*.xml` (`tests= skipped= failures
 - Record wall, user CPU, wall x N, peak RSS (`/usr/bin/time -l`). Production reads the central `workflow.log` (per-step logs can be truncated); `/tmp` is noexec on UGER.
 
 ## Output identity
+- Compare decompressed data without `#` lines; the header records the output path, so md5 of the whole decompressed file differs between runs. At full size run the `gzip -dc | grep -v '^#' | md5` for each output in parallel in one background script.
+- A mutation that survives may be an equivalent mutant (e.g. removing the core itself from the set in an ED 1 collapse): argue why and say so, do not add a contrived test.
+- Slice a cell-sorted text report at a cell boundary (head N lines, drop the trailing partial cell), not by raw line count.
+- Paths in a pasted command may no longer exist (data dirs get renamed): check inputs first and report substitutions.
+- After a squash merge, local master may hold your earlier commit that is now inside the squash: check the file content matches `origin/master`, then reset local master to it before branching; delete the squashed branch with `-D`.
 - Text/`.gz`: `cmp <(gzip -dc a.gz) <(gzip -dc b.gz) && echo IDENTICAL`, or `gzip -dc f | md5` on each in parallel. Use `gzip -dc`, not `zcat`, on macOS. Exclude `#` command/header lines (`grep -v '^#'`).
 - BAM: `samtools view` records identical, header minus `@PG`, metrics/manifest minus `#` lines. At full size do NOT `cmp` two `samtools view` pipes (far too slow): run `samtools view -@3 f | md5` on each BAM in parallel and compare.
