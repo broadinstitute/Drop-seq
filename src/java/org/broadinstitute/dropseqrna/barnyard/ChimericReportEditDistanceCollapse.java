@@ -31,12 +31,14 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.cmdline.CustomCommandLineValidationHelper;
 import org.broadinstitute.dropseqrna.cmdline.DropSeq;
+import org.broadinstitute.dropseqrna.utils.io.ParallelBgzfOutputStream;
 import picard.cmdline.CommandLineProgram;
 import picard.cmdline.StandardOptionDefinitions;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -68,11 +70,20 @@ public class ChimericReportEditDistanceCollapse
     @Argument(doc="If true, skip lines in INPUT with CHIMERIC=true")
     public boolean IGNORE_CHIMERIC = true;
 
+    @Argument(doc = "Number of threads used to compress OUTPUT, when its name ends in .gz.  With more than 1 thread the output is " +
+            "written as BGZF blocks compressed in parallel, which any gzip reader can read.  " +
+            "The compression is done by the codecs selected with USE_JDK_DEFLATER and USE_JDK_INFLATER.  " +
+            "The calling thread, which reads, collapses and formats, is in addition to these threads.")
+    public int NUM_THREADS = 1;
+
     @Override
     protected String[] customCommandLineValidation() {
         final ArrayList<String> list = new ArrayList<>(1);
         if (EDIT_DISTANCE < 0) {
             list.add("EDIT_DISTANCE must be non-negative.");
+        }
+        if (NUM_THREADS < 1) {
+            list.add("NUM_THREADS must be >= 1");
         }
         return CustomCommandLineValidationHelper.makeValue(super.customCommandLineValidation(), list);
     }
@@ -90,7 +101,9 @@ public class ChimericReportEditDistanceCollapse
             log.info("Found " + selectedCellBarcodes.size()+ " cell barcodes in file " + CELL_BC_FILE);
         }
 
-        BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT);
+        final BufferedWriter out = NUM_THREADS == 1
+                ? IOUtil.openFileForBufferedWriting(OUTPUT)
+                : new BufferedWriter(new OutputStreamWriter(ParallelBgzfOutputStream.openFileForWriting(OUTPUT, NUM_THREADS)));
         GatherMolecularBarcodeDistributionByGene.writePerTranscriptHeader(out, false);
 
         final UMICollectionByCellParser parser = new UMICollectionByCellParser(INPUT, IGNORE_CHIMERIC);
