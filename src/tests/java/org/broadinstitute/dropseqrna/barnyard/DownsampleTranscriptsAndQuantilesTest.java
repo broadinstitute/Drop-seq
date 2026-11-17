@@ -8,6 +8,7 @@ import org.broadinstitute.dropseqrna.barnyard.digitalexpression.UMICollection;
 import org.broadinstitute.dropseqrna.utils.TestUtils;
 import org.broadinstitute.dropseqrna.utils.io.ErrorCheckingPrintStream;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import picard.util.TabbedTextFileWithHeaderParser;
 
@@ -262,8 +263,13 @@ public class DownsampleTranscriptsAndQuantilesTest {
         integrationTestQuantiles(javaQuantileFile, rQuantileFile);
     }
 
-    @Test
-    public void integrationTestHistogram() throws IOException {
+    @DataProvider(name = "histogramThreads")
+    public Object[][] histogramThreads() {
+        return new Object[][]{{1}, {2}};
+    }
+
+    @Test(dataProvider = "histogramThreads")
+    public void integrationTestHistogram(final int numThreads) throws IOException {
         /* Integration test against output from R code to
          * To recreate R outputs to test against, run the following in R from the dropseqrna github directory:
          *
@@ -286,6 +292,7 @@ public class DownsampleTranscriptsAndQuantilesTest {
         // drop rows of the histogram, which makes the correlation test harder. So we only test at higher downsampling rates.
         c.DOWNSAMPLING_RATES = Arrays.asList(0.5, 0.6, 0.7, 0.8, 0.9, 1.0);
         c.OUTPUT_HISTOGRAM_FILE = javaDownsamplingFile;
+        c.NUM_THREADS = numThreads;
         int ret = c.doWork();
         Assert.assertEquals(ret, 0);
 

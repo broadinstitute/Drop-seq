@@ -42,8 +42,8 @@ import java.io.PrintStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
@@ -104,7 +104,8 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
     public File OUTPUT_HISTOGRAM_FILE = null;
 
     @Argument(doc = "Number of threads to use.  If positive, that number of threads are used.  If non-positive, " +
-            "the number of processors + NUM_THREADS is used.", optional = true)
+            "the number of processors + NUM_THREADS is used.  Results for NUM_THREADS 1 and NUM_THREADS > 1 will be " +
+            "highly correlated but slightly different, due to different random seeds.", optional = true)
     public int NUM_THREADS = 1;
 
     private SplittableRandom random;
@@ -113,22 +114,36 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
     private ForkJoinPool pool;
 
 
-    /** Downsample all UMICollections at 'rate' and return map of downsamped histograms. */
-    private Map<Double, ObjectCounter<Integer>> buildDownsampledHistograms(final List<UMICollection> umiCollections) {
-        // Set up initial map of histograms
-        // TODO: could I pass in existing histograms to update?  That would reduce object creation.
-        final LinkedHashMap<Double, ObjectCounter<Integer>> initMap = new LinkedHashMap<>();
-        for (final double r : DOWNSAMPLING_RATES) initMap.put(r, new ObjectCounter<>());
+    /** One empty histogram of reads per UMI for each downsampling rate. */
+    private Map<Double, ObjectCounter<Integer>> newHistograms() {
+        final Map<Double, ObjectCounter<Integer>> hists = new LinkedHashMap<>();
+        for (final double r : DOWNSAMPLING_RATES) hists.put(r, new ObjectCounter<>());
+        return hists;
+    }
 
-        // for each UMI, downsample at each rate, and update histograms
+    /**
+     * Downsample every UMI of one cell at each rate and add the resulting read counts to 'histograms'.
+     * Used by both the single- and multi-threaded paths.
+     */
+    private void addDownsampledCounts(final Map<Double, ObjectCounter<Integer>> histograms,
+                                      final List<UMICollection> umiCollections, final SplittableRandom random) {
         for (final UMICollection uc : umiCollections) {
+            // EG: gene with 4 UMIs with read support [4, 3, 1, 1] passed to all downsample rates.
+            // Sorted once per collection; the order fixes which random numbers each UMI gets.
+            final int[] readCounts = uc.getReadCountsDescending();
             for (final double rate : DOWNSAMPLING_RATES) {
-                final List<Pair<String, Integer>> down = uc.getDownsampledMolecularBarcodeCounts(rate, random, 1);
-                final ObjectCounter<Integer> histogram = initMap.get(rate);
-                down.forEach(p -> histogram.increment(p.getRight()));
+                final ObjectCounter<Integer> histogram = histograms.get(rate);
+                for (final int down : downsampleReadCounts(readCounts, rate, random)) histogram.increment(down);
             }
         }
-        return initMap;
+    }
+
+    /** Downsample each UMI's read count at 'rate'; returns the counts of the UMIs that keep at least one read. */
+    private int[] downsampleReadCounts(final int[] readCounts, final double rate, final SplittableRandom random) {
+        return Arrays.stream(readCounts)
+                .map(count -> UMICollection.downsampleReadCount(count, rate, random))
+                .filter(down -> down >= 1)
+                .toArray();
     }
 
     /**
@@ -215,7 +230,7 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
         // Create output streams
         PrintStream writer = new ErrorCheckingPrintStream(IOUtil.openFileForWriting(OUTPUT_DOWNSAMPLING_FILE));
 
-        UMICollectionByCellParser iter = new UMICollectionByCellParser(INPUT);
+        UMICollectionByCellParser iter = new UMICollectionByCellParser(INPUT, false, cellBarcodes);
         if (!iter.hasNext()) {
             throw new IOException("File " + INPUT + " is empty!");
         }
@@ -248,29 +263,75 @@ public class DownsampleTranscriptsAndQuantiles extends CommandLineProgram {
     }
 
     private void writeDownsampledHistogram() throws IOException {
-        UMICollectionByCellParser iter = new UMICollectionByCellParser(INPUT);
+        UMICollectionByCellParser iter = new UMICollectionByCellParser(INPUT, false, cellBarcodes);
         if (!iter.hasNext()) {
             throw new IOException("File " + INPUT + " is empty!");
         }
-        List<UMICollection> cur;
 
-        // initialize accumulators for global histograms at each downsampling rate
-        final Map<Double, ObjectCounter<Integer>> globalHists = new LinkedHashMap<>();
-        for (final double r : DOWNSAMPLING_RATES) globalHists.put(r, new ObjectCounter<>());
-
-        // iterate over cells, keep valid cells, and update global histograms
-        while (iter.hasNext()) {
-            // Get UMIs of next cell
-            cur = iter.next();
-            if (CELL_BC_FILE != null && !cellBarcodes.contains(cur.get(0).getCellBarcode()))
-                continue;
-            final Map<Double, ObjectCounter<Integer>> batchHists = buildDownsampledHistograms(cur);
-            for (final double r : DOWNSAMPLING_RATES) globalHists.get(r).increment(batchHists.get(r));
+        final Map<Double, ObjectCounter<Integer>> globalHists = newHistograms();
+        final int numThreads = (NUM_THREADS > 0 ? NUM_THREADS : Runtime.getRuntime().availableProcessors() + NUM_THREADS);
+        if (numThreads > 1) {
+            downsampleHistogramsInParallel(iter, globalHists, numThreads - 1);
+        } else {
+            // iterate over cells, keep valid cells, and update global histograms
+            while (iter.hasNext()) {
+                // The parser has already dropped cells that are not in CELL_BC_FILE.
+                addDownsampledCounts(globalHists, iter.next(), random);
+            }
         }
 
         // write global histograms
         writeDownsampledHistogramTable(globalHists);
         CloserUtil.close(iter);
+    }
+
+    /**
+     * Multi-threaded version of the loop in writeDownsampledHistogram.  The calling thread parses cells and hands them
+     * to workers, each of which downsamples whole cells into its own histograms; these are merged at the end.
+     * Every cell gets its own random generator seeded from RANDOM_SEED and the cell barcode, so the result does not
+     * depend on how cells are spread over workers.  (It differs from the single-threaded result, which uses one
+     * random stream across all cells.)
+     */
+    private void downsampleHistogramsInParallel(final UMICollectionByCellParser iter,
+                                                final Map<Double, ObjectCounter<Integer>> globalHists,
+                                                final int numWorkers) {
+        final List<UMICollection> endMarker = new ArrayList<>();
+        final BlockingQueue<List<UMICollection>> queue = new ArrayBlockingQueue<>(numWorkers * 4);
+        final AtomicReference<Throwable> failure = new AtomicReference<>();
+        final ExecutorService workers = Executors.newFixedThreadPool(numWorkers);
+        final List<Future<Map<Double, ObjectCounter<Integer>>>> results = new ArrayList<>();
+        for (int i = 0; i < numWorkers; i++) {
+            results.add(workers.submit(() -> {
+                final Map<Double, ObjectCounter<Integer>> hists = newHistograms();
+                List<UMICollection> cell;
+                // Keep draining after a failure so the producer never blocks.
+                while ((cell = queue.take()) != endMarker) {
+                    if (failure.get() != null) continue;
+                    try {
+                        // Per-cell generator, so a cell's draws do not depend on which worker gets it or on other cells.
+                        final SplittableRandom cellRandom = RANDOM_SEED == null
+                                ? new SplittableRandom()
+                                : new SplittableRandom(Objects.hash(RANDOM_SEED, cell.get(0).getCellBarcode()));
+                        addDownsampledCounts(hists, cell, cellRandom);
+                    } catch (Throwable t) {
+                        failure.compareAndSet(null, t);
+                    }
+                }
+                return hists;
+            }));
+        }
+        try {
+            while (iter.hasNext() && failure.get() == null) queue.put(iter.next());
+            for (int i = 0; i < numWorkers; i++) queue.put(endMarker);
+            for (final Future<Map<Double, ObjectCounter<Integer>>> result : results) {
+                for (final double r : DOWNSAMPLING_RATES) globalHists.get(r).increment(result.get().get(r));
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        } finally {
+            workers.shutdownNow();
+        }
+        if (failure.get() != null) throw new RuntimeException(failure.get());
     }
 
     /** Write wide TSV: num_reads_per_UMI, then counts_<rate> for each rate in DOWNSAMPLING_RATES. */
