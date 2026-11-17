@@ -28,6 +28,7 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.dropseqrna.utils.BaseRange;
 import org.broadinstitute.dropseqrna.utils.StringInterner;
+import org.broadinstitute.dropseqrna.utils.editdistance.PackedBarcodeSet;
 import org.broadinstitute.dropseqrna.utils.readpairs.ReadPair;
 
 import java.io.File;

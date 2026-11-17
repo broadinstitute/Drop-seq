@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.broadinstitute.dropseqrna.beadsynthesis;
+package org.broadinstitute.dropseqrna.utils.editdistance;
 
 import org.broadinstitute.dropseqrna.utils.BaseRange;
 import org.testng.Assert;

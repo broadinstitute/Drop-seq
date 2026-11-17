@@ -926,6 +926,119 @@ public class MapBarcodesByEditDistanceTest {
 		m.bottomUpCollapse (barcodes, 1);
 	}
 
+
+	/**
+	 * The packed edit distance 1 search must give the same collapse as the comparison search, for several barcode
+	 * lengths, with random counts (so ties are common), and with N bases (which can't be packed, so both runs compare).
+	 */
+	@Test
+	public void testPackedEd1CollapseMatchesComparisonSearch() {
+		final java.util.Random random = new java.util.Random(7);
+		for (final int length : new int[]{8, 12, 16}) {
+			for (final String alphabet : new String[]{"ACGT", "ACGTN"}) {
+				final ObjectCounter<String> counts = new ObjectCounter<>();
+				// clustered barcodes: a few seeds and many single-base variants, so there is something to collapse
+				final List<String> seeds = new ArrayList<>();
+				for (int i = 0; i < 40; i++)
+					seeds.add(randomBarcode(random, alphabet, length));
+				for (int i = 0; i < 2000; i++) {
+					final char[] bc = seeds.get(random.nextInt(seeds.size())).toCharArray();
+					final int changes = random.nextInt(3);
+					for (int c = 0; c < changes; c++)
+						bc[random.nextInt(length)] = alphabet.charAt(random.nextInt(alphabet.length()));
+					counts.incrementByCount(new String(bc), 1 + random.nextInt(4));
+				}
+				final MapBarcodesByEditDistance mbed = new MapBarcodesByEditDistance(false);
+				final List<String> all = counts.getKeysOrderedByCount(true);
+				assertPackedMatchesComparison(mbed, all, counts, "length " + length + " alphabet " + alphabet);
+				// a core list that is a subset of the barcodes
+				assertPackedMatchesComparison(mbed, all.subList(0, 50), counts, "core subset, length " + length + " alphabet " + alphabet);
+			}
+		}
+	}
+
+	private static void assertPackedMatchesComparison(final MapBarcodesByEditDistance mbed, final List<String> core,
+			final ObjectCounter<String> counts, final String message) {
+		final Map<String, List<String>> comparison = mbed.collapseBarcodesGeneric(core, counts,
+				new FindSimilarEntitiesByEditDistance(mbed, false, 1), 0).getEntityMap();
+		final Map<String, List<String>> packed = PackedEd1Collapser.collapse(core, counts);
+		if (packed == null) {
+			// only barcodes with an N can't be packed
+			Assert.assertTrue(message.contains("ACGTN"), message);
+		} else {
+			Assert.assertEquals(packed, comparison, message);
+		}
+	}
+
+	/**
+	 * A group that is large enough for the packed search but has a barcode with an N can't be packed, so it must fall back
+	 * to the comparison search and still collapse correctly (an N counts as a mismatch, so it is distance 1 from a barcode
+	 * that has a base there).
+	 */
+	@Test
+	public void testLargeGroupWithNBaseCollapsesViaComparisonSearch() {
+		final java.util.Random random = new java.util.Random(11);
+		final ObjectCounter<String> counts = new ObjectCounter<>();
+		final String main = "ACGTACGTACGT";
+		final String mainWithN = "ACGTACNTACGT";      // distance 1 from main: collapses into it
+		final String farWithN = "NNNNGGGGCCCC";        // far from everything
+		counts.incrementByCount(main, 100);
+		counts.incrementByCount(mainWithN, 5);
+		counts.incrementByCount(farWithN, 3);
+		while (counts.getSize() < 300)
+			counts.incrementByCount(randomBarcode(random, "ACGT", 12), 1);
+		Assert.assertTrue(PackedEd1Collapser.isWorthwhile(counts), "group is big enough for the packed search");
+		Assert.assertNull(PackedEd1Collapser.collapse(counts.getKeysOrderedByCount(true), counts), "an N can't be packed");
+
+		final MapBarcodesByEditDistance mbed = new MapBarcodesByEditDistance(false);
+		final Map<String, List<String>> result = mbed.collapseBarcodes(counts, false, 1);
+		Assert.assertEquals(result.get(main), Collections.singletonList(mainWithN));
+		Assert.assertTrue(result.containsKey(farWithN));
+		Assert.assertFalse(result.containsKey(mainWithN));
+		Assert.assertEquals(result, mbed.collapseBarcodesGeneric(counts.getKeysOrderedByCount(true), counts,
+				new FindSimilarEntitiesByEditDistance(mbed, false, 1), 0).getEntityMap());
+	}
+
+	/**
+	 * Same as above, but the barcode with the N has the highest count, so it is a core barcode that absorbs others: a
+	 * barcode that has a base where it has the N, and another barcode with an N in the same place and one other change.
+	 */
+	@Test
+	public void testLargeGroupWithNBaseInCoreBarcode() {
+		final java.util.Random random = new java.util.Random(13);
+		final ObjectCounter<String> counts = new ObjectCounter<>();
+		final String coreWithN = "ACGTACNTACGT";
+		final String noN = "ACGTACGTACGT";             // distance 1 (N vs G)
+		final String sameNOtherChange = "ACGTACNTACGA"; // distance 1 (last base)
+		final String twoAway = "ACGTACGTACGA";          // distance 2 from the core: not collapsed into it
+		counts.incrementByCount(coreWithN, 100);
+		counts.incrementByCount(noN, 5);
+		counts.incrementByCount(sameNOtherChange, 4);
+		counts.incrementByCount(twoAway, 3);
+		while (counts.getSize() < 300)
+			counts.incrementByCount(randomBarcode(random, "ACGT", 12), 1);
+		Assert.assertTrue(PackedEd1Collapser.isWorthwhile(counts), "group is big enough for the packed search");
+		Assert.assertNull(PackedEd1Collapser.collapse(counts.getKeysOrderedByCount(true), counts), "an N can't be packed");
+
+		final MapBarcodesByEditDistance mbed = new MapBarcodesByEditDistance(false);
+		final Map<String, List<String>> result = mbed.collapseBarcodes(counts, false, 1);
+		final List<String> expectedAbsorbed = new ArrayList<>(Arrays.asList(noN, sameNOtherChange));
+		Collections.sort(expectedAbsorbed);
+		Assert.assertEquals(result.get(coreWithN), expectedAbsorbed);
+		// twoAway is not within distance 1 of the core, but is within 1 of noN, which was already collapsed, so it stays a core
+		Assert.assertTrue(result.containsKey(twoAway));
+		Assert.assertFalse(result.containsKey(noN));
+		Assert.assertFalse(result.containsKey(sameNOtherChange));
+		Assert.assertEquals(result, mbed.collapseBarcodesGeneric(counts.getKeysOrderedByCount(true), counts,
+				new FindSimilarEntitiesByEditDistance(mbed, false, 1), 0).getEntityMap());
+	}
+
+	private static String randomBarcode(final java.util.Random random, final String alphabet, final int length) {
+		final StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < length; i++)
+			sb.append(alphabet.charAt(random.nextInt(alphabet.length())));
+		return sb.toString();
+	}
 }
 
 
