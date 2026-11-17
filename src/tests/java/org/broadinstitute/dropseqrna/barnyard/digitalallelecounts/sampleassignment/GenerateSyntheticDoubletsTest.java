@@ -92,7 +92,7 @@ public class GenerateSyntheticDoubletsTest {
 	}
 
 	@Test
-	public void testRandomMultiCellsFromTopBarcodes() {
+	public void testRandomMultiCellsFromTopBarcodes() throws IOException {
 		GenerateSyntheticDoublets g = makeBase();
 		g.NUM_BARCODES = 2;
 		g.NUMBER_MULTICELL = 1;
