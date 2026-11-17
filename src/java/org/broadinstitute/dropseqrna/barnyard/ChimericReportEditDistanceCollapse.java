@@ -106,11 +106,10 @@ public class ChimericReportEditDistanceCollapse
                 : new BufferedWriter(new OutputStreamWriter(ParallelBgzfOutputStream.openFileForWriting(OUTPUT, NUM_THREADS)));
         GatherMolecularBarcodeDistributionByGene.writePerTranscriptHeader(out, false);
 
-        final UMICollectionByCellParser parser = new UMICollectionByCellParser(INPUT, IGNORE_CHIMERIC);
+        final UMICollectionByCellParser parser = new UMICollectionByCellParser(INPUT, IGNORE_CHIMERIC, selectedCellBarcodes);
+        int numCellBarcodesWritten = 0;
         for (final List<UMICollection> umiCollections : parser) {
-            if (selectedCellBarcodes != null && !selectedCellBarcodes.contains(umiCollections.getFirst().getCellBarcode())) {
-                continue;
-            }
+            numCellBarcodesWritten++;
             for (final UMICollection umiCollection : umiCollections) {
                 GatherMolecularBarcodeDistributionByGene.writePerTranscriptStats(
                         umiCollection.getGeneName(),
@@ -118,6 +117,9 @@ public class ChimericReportEditDistanceCollapse
                         umiCollection.getMolecularBarcodeCountsCollapsed(EDIT_DISTANCE),
                         out);
             }
+        }
+        if (selectedCellBarcodes != null) {
+            log.info("Found data for " + numCellBarcodesWritten + " of " + selectedCellBarcodes.size() + " cell barcodes in file " + CELL_BC_FILE);
         }
         try {
             out.close();

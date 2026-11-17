@@ -6,10 +6,13 @@ import org.broadinstitute.dropseqrna.utils.OrderAssertingIterator;
 import picard.util.TabbedTextFileWithHeaderParser;
 
 import java.io.File;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Set;
 
 /**
  * Given a molecular barcodes file
@@ -21,22 +24,38 @@ public class UMICollectionByCellParser extends IterableOnceIterator<List<UMIColl
 
     private final PeekableIterator<TabbedTextFileWithHeaderParser.Row> parserIter;
     private final Log log = Log.getInstance(UMICollectionByCellParser.class);
-    private final ProgressLogger progress = new ProgressLogger(log, 10000, "Processed", "cells");
+    private final ProgressLogger progress;
 
     private final boolean skipChimeric;
-    
+
     /**
      * Constructor to parse a given molecular barcode file.
      * @param input molecular barcode file object (ends in .molBC.txt.gz)
      */
     public UMICollectionByCellParser(File input, boolean skipChimeric) {
+        this(input, skipChimeric, null);
+    }
+
+    /**
+     * Constructor to parse a given molecular barcode file, keeping only some of the cell barcodes.
+     * @param input molecular barcode file object (ends in .molBC.txt.gz)
+     * @param cellBarcodes the cell barcodes to keep; rows of any other cell barcode are skipped, and progress is logged
+     *                     as a fraction of this list.  If null, all cell barcodes are kept.
+     */
+    public UMICollectionByCellParser(File input, boolean skipChimeric, Set<String> cellBarcodes) {
         this.skipChimeric = skipChimeric;
+        this.progress = cellBarcodes == null
+                ? new CellProgressLogger(log, 10000, "cell barcodes")
+                : new CellProgressLogger(log, 1000, "of " + NumberFormat.getIntegerInstance().format(cellBarcodes.size()) + " cell barcodes");
         IOUtil.assertFileIsReadable(input);
         IterableOnceIterator<TabbedTextFileWithHeaderParser.Row> iterator = new OrderAssertingIterator<>(
                 (new TabbedTextFileWithHeaderParser(input)).iterator(),
                 Comparator.comparing((TabbedTextFileWithHeaderParser.Row o) -> o.getField(GatherMolecularBarcodeDistributionByGene.CELL_BARCODE_COLUMN))
                         .thenComparing(o -> o.getField(GatherMolecularBarcodeDistributionByGene.GENE_COLUMN))
         );
+        if (cellBarcodes != null) {
+            iterator = new CellBarcodeFilteringIterator(iterator, cellBarcodes);
+        }
         if (skipChimeric) {
             iterator = new ChimericSkippingIterator(iterator);
         }
@@ -87,6 +106,40 @@ public class UMICollectionByCellParser extends IterableOnceIterator<List<UMIColl
         return res;
     }
 
+    /** Passes only the rows of the given cell barcodes. */
+    private static class CellBarcodeFilteringIterator
+    extends IterableOnceIterator<TabbedTextFileWithHeaderParser.Row> {
+        private final Iterator<TabbedTextFileWithHeaderParser.Row> underlyingIterator;
+        private final Set<String> cellBarcodes;
+        private TabbedTextFileWithHeaderParser.Row nextRow = null;
+
+        CellBarcodeFilteringIterator(final Iterator<TabbedTextFileWithHeaderParser.Row> iterator, final Set<String> cellBarcodes) {
+            this.underlyingIterator = iterator;
+            this.cellBarcodes = cellBarcodes;
+        }
+
+        @Override
+        public boolean hasNext() {
+            while (nextRow == null && underlyingIterator.hasNext()) {
+                final TabbedTextFileWithHeaderParser.Row row = underlyingIterator.next();
+                if (cellBarcodes.contains(row.getField(GatherMolecularBarcodeDistributionByGene.CELL_BARCODE_COLUMN))) {
+                    nextRow = row;
+                }
+            }
+            return nextRow != null;
+        }
+
+        @Override
+        public TabbedTextFileWithHeaderParser.Row next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            final TabbedTextFileWithHeaderParser.Row row = nextRow;
+            nextRow = null;
+            return row;
+        }
+    }
+
     private static class ChimericSkippingIterator
     extends IterableOnceIterator<TabbedTextFileWithHeaderParser.Row> {
         private final PeekableIterator<TabbedTextFileWithHeaderParser.Row> underlyingIterator;
@@ -113,6 +166,24 @@ public class UMICollectionByCellParser extends IterableOnceIterator<List<UMIColl
             return underlyingIterator.next();
         }
 
+    }
+
+    /**
+     * Logs progress every 10,000 cells.  ProgressLogger was written for records with a genomic position and ends its message
+     * with "Last read position: chrom:pos", which is meaningless here (there is no position in a text report), so that is left off.
+     */
+    private static class CellProgressLogger extends ProgressLogger {
+        private final Log log;
+
+        CellProgressLogger(final Log log, final int interval, final String noun) {
+            super(log, interval, "Processed", noun);
+            this.log = log;
+        }
+
+        @Override
+        protected void log(final String... message) {
+            log.info(String.join("", message).replaceFirst("\\s*Last read position:.*$", ""));
+        }
     }
 }
 
