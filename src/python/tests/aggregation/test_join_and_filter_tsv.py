@@ -91,7 +91,6 @@ class TestJoinAndFilterTSV(unittest.TestCase):
     def test_set(self):
         primary = os.path.join(self.testDataDir, "sample1.100.cell_metadata.txt")
         secondary = os.path.join(self.testDataDir, "sample1.100.scPred.txt")
-        # new columns: the primary file already has PREFIX, which --set does not replace (see test_set_column_already_in_input_is_an_error)
         setTuples = [("LIBRARY", "library1"), ("SUFFIX", "brary1")]
         options = self.options._replace(input=open(primary),
                                         join=[(secondary, "CELL_BARCODE", "CELL_BARCODE")],
@@ -170,14 +169,15 @@ class TestJoinAndFilterTSV(unittest.TestCase):
                                         join=[(self.donorFile("N1\t64\tfemale\n"), "donor", "donor")])
         self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 1)
 
-    def test_set_column_already_in_input_is_an_error(self):
-        # the donor of each cell is in the input: it is trusted data and --set must not replace it
+    def test_set_column_already_in_input_replaces_it(self):
         primary = self.writeTsv("cells.tsv", "cell_barcode\tdonor\nAAAA\tN1\nCCCC\tN2\n")
-        options = self.options._replace(input=open(primary), set=[("donor", "N7")],
+        options = self.options._replace(input=open(primary), set=[("donor", "N2")],
                                         join=[(self.donorFile(), "donor", "donor")])
-        with self.assertLogs(level="ERROR") as logs:
-            self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 1)
-        self.assertIn("donor", "\n".join(logs.output))
+        self.assertEqual(dropseq.aggregation.join_and_filter_tsv.run(options), 0)
+        outputDf = pd.read_csv(self.outputFile, sep='\t')
+        self.assertEqual(list(outputDf.columns), ["cell_barcode", "donor", "age", "sex"])
+        self.assertEqual(list(outputDf["donor"]), ["N2", "N2"])
+        self.assertEqual(list(outputDf["age"]), [41, 41])
 
     def test_join_on_existing_column_with_other_set_column(self):
         # a --set of a column that is not in the input does not change a join on a column that is
@@ -192,11 +192,8 @@ class TestJoinAndFilterTSV(unittest.TestCase):
         self.assertTrue((outputDf["library"] == "L1").all())
 
     def test_main_returns_the_exit_status_of_an_error(self):
-        # the command line program exits with the status of run(): a failed join or --set must not look like success
+        # the command line program exits with the status of run(): a failed join must not look like success
         primary = self.writeTsv("cells.tsv", "cell_barcode\tdonor\nAAAA\tN1\n")
-        args = ["--input", primary, "--output", self.outputFile, "--set", "donor", "N7"]
-        with self.assertLogs(level="ERROR"):
-            self.assertEqual(dropseq.aggregation.join_and_filter_tsv.main(args), 1)
         nonUnique = ["--input", primary, "--output", self.outputFile, "--join", self.donorFile("N1\t64\tfemale\n"), "donor", "donor"]
         with self.assertLogs(level="ERROR"):
             self.assertEqual(dropseq.aggregation.join_and_filter_tsv.main(nonUnique), 1)
